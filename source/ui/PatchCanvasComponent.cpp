@@ -523,7 +523,7 @@ void PatchCanvas::paint(juce::Graphics& g)
     if (showRubberBand)
     {
         auto rb = rubberBandRect.toFloat();
-        g.setColour(juce::Colour(0x33ffffff));
+        g.setColour(activeScheme_.selectionFill);
         g.fillRect(rb);
         g.setColour(activeScheme_.snapHighlight.withAlpha(0.8f));
         g.drawRect(rb, 1.5f);
@@ -902,7 +902,7 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
     if (m.getDescriptor()->index == 58) return;
 
     const int yTolerance = 12;
-    g.setColour(juce::Colour(0xff1a1a1a));
+    g.setColour(activeScheme_.connectorLine);
     for (auto& tc : theme.connectors)
     {
         if (tc.cssClass == "cSLAVE") continue;
@@ -1890,12 +1890,12 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
         // --- Increment buttons: draw arrow pairs ---
         if (tb.isIncrement)
         {
-            g.setColour(juce::Colour(0xff3a3a3a));
+            g.setColour(activeScheme_.incrementBg);
             g.fillRect(bx, by, bw, bh);
-            g.setColour(juce::Colour(0xff555555));
+            g.setColour(activeScheme_.incrementBorder);
             g.drawRect(bx, by, bw, bh, 1.0f);
 
-            g.setColour(juce::Colour(0xffcccccc));
+            g.setColour(activeScheme_.incrementFg);
             float cx = bx + bw * 0.5f;
             float cy = by + bh * 0.5f;
 
@@ -1948,7 +1948,7 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
                                static_cast<int>(bx), static_cast<int>(by + arrowH),
                                static_cast<int>(bw), static_cast<int>(valH),
                                juce::Justification::centred, false);
-                    g.setColour(juce::Colour(0xffcccccc));
+                    g.setColour(activeScheme_.incrementFg);
                 }
 
                 // Down arrow (bottom third)
@@ -2088,7 +2088,7 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
             float sx = bx + (bw - sq) * 0.5f;
             float sy = by + (bh - sq) * 0.5f;
 
-            juce::Colour muteBase = isOn ? juce::Colour(0xffcc4444) : moduleBg.darker(0.2f);
+            juce::Colour muteBase = isOn ? activeScheme_.muteActive : moduleBg.darker(0.2f);
             juce::Colour muteText = isOn ? juce::Colours::white : activeScheme_.buttonText;
             drawBevelSegment(sx, sy, sq, sq, isOn, muteBase, labelText, muteText, iconRef);
 
@@ -3706,7 +3706,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             float top     = dy + 1.0f;
             float bot     = dy + dh - 1.0f;
 
-            g.setColour(juce::Colour(0xff00cc44));  // green routing lines (matches original)
+            g.setColour(activeScheme_.vocoderRouting);  // green routing lines (matches original)
             for (int i = 0; i < kBands; ++i)
             {
                 if (cd.bandIds[i].isEmpty()) continue;
@@ -3855,7 +3855,7 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             float barX   = outX - 28.0f;  // bar well to the left of the labels (~x=209)
             float lineEnd = outX - 18.0f; // lines stop just before the label text (~x=219)
 
-            g.setColour(juce::Colour(0xff888888)); // grey
+            g.setColour(activeScheme_.bracketRouting); // grey
 
             // Horizontal line from in connector to bar, at BP level (centre of bracket)
             g.drawLine(inX + 7.0f, bpY, barX, bpY, 1.0f);

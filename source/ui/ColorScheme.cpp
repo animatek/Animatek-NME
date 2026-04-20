@@ -73,6 +73,19 @@ static ColorScheme makeClassicTheme()
     // Snap / selection
     s.snapHighlight       = juce::Colour(0xffE5DE45);
     s.selectionRect       = juce::Colours::yellow;
+    s.selectionFill       = juce::Colour(0x33ffffff);
+    // Connector lines
+    s.connectorLine       = juce::Colour(0xff1a1a1a);
+    // Increment buttons
+    s.incrementBg         = juce::Colour(0xff3a3a3a);
+    s.incrementBorder     = juce::Colour(0xff555555);
+    s.incrementFg         = juce::Colour(0xffcccccc);
+    // Mute
+    s.muteActive          = juce::Colour(0xffcc4444);
+    // Vocoder
+    s.vocoderRouting      = juce::Colour(0xff00cc44);
+    // Filter bracket
+    s.bracketRouting      = juce::Colour(0xff888888);
     // SlotBar
     s.slotIconActive      = juce::Colour(0xffcc3333);
     s.slotIconInactive    = juce::Colour(0xff555577);
@@ -152,6 +165,19 @@ static ColorScheme makeDarkTheme()
     // Snap / selection
     s.snapHighlight       = juce::Colour(0xffE5DE45);
     s.selectionRect       = juce::Colour(0xff4444ff);
+    s.selectionFill       = juce::Colour(0x22ffffff);
+    // Connector lines
+    s.connectorLine       = juce::Colour(0xff2a2a2a);
+    // Increment buttons
+    s.incrementBg         = juce::Colour(0xff2a2a2a);
+    s.incrementBorder     = juce::Colour(0xff55585C);
+    s.incrementFg         = juce::Colour(0xffcccccc);
+    // Mute
+    s.muteActive          = juce::Colour(0xffcc4444);
+    // Vocoder
+    s.vocoderRouting      = juce::Colour(0xff2DDCA3);
+    // Filter bracket
+    s.bracketRouting      = juce::Colour(0xff888888);
     // SlotBar
     s.slotIconActive      = juce::Colour(0xffcc3333);
     s.slotIconInactive    = juce::Colour(0xff555577);

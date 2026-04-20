@@ -84,6 +84,24 @@ struct ColorScheme
 
     // Rubber-band selection rect
     juce::Colour selectionRect;
+    juce::Colour selectionFill;
+
+    // Connector/knob linking lines
+    juce::Colour connectorLine;
+
+    // Increment buttons (▲▼ spinners)
+    juce::Colour incrementBg;
+    juce::Colour incrementBorder;
+    juce::Colour incrementFg;
+
+    // Mute button active state
+    juce::Colour muteActive;
+
+    // Vocoder routing display
+    juce::Colour vocoderRouting;
+
+    // Filter bracket routing lines
+    juce::Colour bracketRouting;
 
     // SlotBar synth icon
     juce::Colour slotIconActive;
