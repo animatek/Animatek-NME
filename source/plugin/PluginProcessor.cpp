@@ -2,7 +2,8 @@
 #include "PluginEditor.h"
 
 NomadPluginProcessor::NomadPluginProcessor()
-    : AudioProcessor(BusesProperties())  // No audio buses — MIDI effect only
+    : AudioProcessor(BusesProperties()
+                         .withOutput("Output", juce::AudioChannelSet::stereo(), true))  // Stereo out so DAWs see it as an instrument
 {
     juce::PropertiesFile::Options options;
     options.applicationName = "Nomad2026";

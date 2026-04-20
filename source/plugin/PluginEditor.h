@@ -8,7 +8,7 @@ class NomadPluginEditor : public juce::AudioProcessorEditor
 {
 public:
     explicit NomadPluginEditor(NomadPluginProcessor& processor);
-    ~NomadPluginEditor() override = default;
+    ~NomadPluginEditor() override;
 
     void resized() override;
 

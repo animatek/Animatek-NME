@@ -12,6 +12,13 @@ NomadPluginEditor::NomadPluginEditor(NomadPluginProcessor& processor)
     setResizable(true, true);
 }
 
+NomadPluginEditor::~NomadPluginEditor()
+{
+    // Destroy MainComponent before the editor's Component base class destructor
+    // runs — prevents dangling child-component and async callback crashes.
+    mainComponent.reset();
+}
+
 void NomadPluginEditor::resized()
 {
     mainComponent->setBounds(getLocalBounds());

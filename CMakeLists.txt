@@ -96,10 +96,12 @@ if(NOMAD_BUILD_PLUGIN)
         FORMATS VST3 AU Standalone
         PRODUCT_NAME "Nomad2026"
         COMPANY_NAME "Nomad2026"
-        IS_MIDI_EFFECT TRUE
+        IS_SYNTH TRUE
+        IS_MIDI_EFFECT FALSE
         NEEDS_MIDI_INPUT TRUE
         NEEDS_MIDI_OUTPUT TRUE
         EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+        VST3_CATEGORIES "Instrument" "Tools"
         VERSION "0.5.5"
     )
 
