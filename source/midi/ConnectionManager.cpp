@@ -14,6 +14,8 @@ ConnectionManager::ConnectionManager()
 
 ConnectionManager::~ConnectionManager()
 {
+    *alive = false;   // Cancel any pending Timer::callAfterDelay lambdas
+    protocol.stopTimer();
     protocol.removeListener(this);
     disconnect();
 }
@@ -204,7 +206,9 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
 
     // Prefer the synth's NewPatchInSlot notification. This fallback covers
     // devices/firmware paths that ACK the load but do not emit sc=0x38.
-    juce::Timer::callAfterDelay(1200, [this, slot, loadGeneration]() {
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(1200, [this, slot, loadGeneration, aliveFlag]() {
+        if (!*aliveFlag) return;
         if (!isConnected())
             return;
 
@@ -441,7 +445,9 @@ void ConnectionManager::drainAckedQueue()
 
     // 3-second timeout: if no ACK arrives, unblock the queue.
     // The generation check ensures only the timeout for the *current* message fires.
-    juce::Timer::callAfterDelay(ackedTimeoutMs, [this, generation]() {
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(ackedTimeoutMs, [this, generation, aliveFlag]() {
+        if (!*aliveFlag) return;
         if (ackedQueueWaiting && ackedQueueGeneration == generation)
         {
             std::cout << "[QUEUE] ACK timeout (gen=" << generation << ") — unblocking queue ("
@@ -525,8 +531,10 @@ void ConnectionManager::requestPatchList()
 
     // Start timeout
     int generation = patchListGeneration;
-    juce::Timer::callAfterDelay(patchListTimeoutMs, [this, generation]()
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(patchListTimeoutMs, [this, generation, aliveFlag]()
     {
+        if (!*aliveFlag) return;
         if (generation == patchListGeneration && fetchingPatchList)
         {
             std::cout << "[PATCHLIST] TIMEOUT - delivering partial results" << std::endl;
@@ -639,8 +647,10 @@ void ConnectionManager::startPatchTimeout()
     int generation = patchTimeoutGeneration;
 
     // Hard timeout: absolute max wait for entire patch
-    juce::Timer::callAfterDelay(patchTimeoutMs, [this, generation]()
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(patchTimeoutMs, [this, generation, aliveFlag]()
     {
+        if (!*aliveFlag) return;
         if (generation == patchTimeoutGeneration && collectingSections && sectionsReceived < totalSections)
         {
             DBG("Patch hard timeout: received " + juce::String(sectionsReceived) + "/" + juce::String(totalSections)
@@ -655,8 +665,10 @@ void ConnectionManager::startSectionStaleTimeout()
     int generation = patchTimeoutGeneration;
     int currentCount = sectionsReceived;
 
-    juce::Timer::callAfterDelay(sectionStaleMs, [this, generation, currentCount]()
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(sectionStaleMs, [this, generation, currentCount, aliveFlag]()
     {
+        if (!*aliveFlag) return;
         // Fire if no new sections arrived since this timer was started
         if (generation == patchTimeoutGeneration && collectingSections
             && sectionsReceived == currentCount && sectionsReceived > 0
@@ -945,8 +957,10 @@ void ConnectionManager::setStatus(State state, const juce::String& message)
 void ConnectionManager::startHandshakeTimeout()
 {
     // Use a Timer via callAfterDelay for the 3-second handshake timeout
-    juce::Timer::callAfterDelay(NmProtocol::timeoutMs, [this]()
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(NmProtocol::timeoutMs, [this, aliveFlag]()
     {
+        if (!*aliveFlag) return;
         if (status.state == State::Connecting)
         {
             DBG("ConnectionManager: handshake timeout");
@@ -965,8 +979,10 @@ void ConnectionManager::startSlotDetectionFallback()
 {
     int generation = slotDetectGeneration;
 
-    juce::Timer::callAfterDelay(3000, [this, generation]()
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(3000, [this, generation, aliveFlag]()
     {
+        if (!*aliveFlag) return;
         // Only fire if no SlotActivated/NewPatchInSlot arrived and we're still connected
         if (generation == slotDetectGeneration && !slotDetected && isConnected()
             && !waitingForPatchAck && !collectingSections)
@@ -994,7 +1010,9 @@ void ConnectionManager::copyPatchInBank(int srcSection, int srcPosition, int dst
 
         storeLoadedSlotToBank(tempSlot, dstSection, dstPosition, [this]() {
             std::cout << "[COPY] Copy complete!" << std::endl;
-            juce::Timer::callAfterDelay(300, [this]() {
+            auto aliveFlag = alive;
+            juce::Timer::callAfterDelay(300, [this, aliveFlag]() {
+                if (!*aliveFlag) return;
                 if (isConnected())
                     requestPatchList();
             });
@@ -1028,7 +1046,9 @@ void ConnectionManager::movePatchInBank(int srcSection, int srcPosition, int dst
             std::cout << "[MOVE] Move complete; delete queued for source bank ("
                       << srcSection << "," << srcPosition << ")" << std::endl;
 
-            juce::Timer::callAfterDelay(500, [this]() {
+            auto aliveFlag = alive;
+            juce::Timer::callAfterDelay(500, [this, aliveFlag]() {
+                if (!*aliveFlag) return;
                 if (isConnected())
                     requestPatchList();
             });
@@ -1049,7 +1069,9 @@ void ConnectionManager::deletePatchInBank(int section, int position)
     DeletePatchMessage msg(section, position);
     sendAckedSysEx(msg.toSysEx());
 
-    juce::Timer::callAfterDelay(500, [this]() {
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(500, [this, aliveFlag]() {
+        if (!*aliveFlag) return;
         if (isConnected())
             requestPatchList();
     });

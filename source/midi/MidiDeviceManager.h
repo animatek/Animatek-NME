@@ -2,6 +2,7 @@
 
 #include <juce_audio_devices/juce_audio_devices.h>
 #include "NmProtocol.h"
+#include <atomic>
 #include <memory>
 
 class MidiDeviceManager : private juce::MidiInputCallback
@@ -32,6 +33,7 @@ private:
     NmProtocol& protocol;
     std::unique_ptr<juce::MidiInput> midiInput;
     std::unique_ptr<juce::MidiOutput> midiOutput;
+    std::shared_ptr<std::atomic<bool>> alive { std::make_shared<std::atomic<bool>>(true) };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MidiDeviceManager)
 };

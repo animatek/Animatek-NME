@@ -12,6 +12,7 @@ MidiDeviceManager::MidiDeviceManager(NmProtocol& proto)
 
 MidiDeviceManager::~MidiDeviceManager()
 {
+    *alive = false;   // Cancel any pending callAsync lambdas
     disconnect();
 }
 
@@ -96,8 +97,10 @@ void MidiDeviceManager::handleIncomingMidiMessage(juce::MidiInput*, const juce::
 
     // Forward to protocol on the message thread
     auto sysexCopy = std::make_shared<std::vector<uint8_t>>(data, data + size);
-    juce::MessageManager::callAsync([this, sysexCopy]()
+    auto aliveFlag = alive;  // prevent use-after-free on plugin close
+    juce::MessageManager::callAsync([this, sysexCopy, aliveFlag]()
     {
+        if (!*aliveFlag) return;
 #if JUCE_DEBUG
         // Suppress logging for high-frequency NMInfo messages (Lights=0x39, Meters=0x3a, VoiceCount=0x05)
         bool suppress = false;

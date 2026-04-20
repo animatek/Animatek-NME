@@ -128,8 +128,9 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire connection manager status updates to UI
   connectionManager.setStatusCallback(
       [this](const ConnectionManager::Status &status) {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
         juce::MessageManager::callAsync(
-            [this, status]() { onConnectionStatusChanged(status); });
+            [safeThis, status]() { if (safeThis) safeThis->onConnectionStatusChanged(status); });
       });
 
   connectionManager.setVoiceCountCallback([this](const int voiceCounts[4]) {
@@ -138,10 +139,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     int c0 = voiceCounts[0], c1 = voiceCounts[1], c2 = voiceCounts[2], c3 = voiceCounts[3];
     DBG("[DSP] VoiceCount: " + juce::String(c0) + " " + juce::String(c1) + " "
         + juce::String(c2) + " " + juce::String(c3) + " total=" + juce::String(total));
+    juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::MessageManager::callAsync(
-        [this, total, c0, c1, c2, c3]() {
-          mainLayout->getStatusBar().setVoiceCount(total);
-          mainLayout->getHeaderBar().setSynthDspLoad(c0, c1, c2, c3);
+        [safeThis, total, c0, c1, c2, c3]() {
+          if (!safeThis) return;
+          safeThis->mainLayout->getStatusBar().setVoiceCount(total);
+          safeThis->mainLayout->getHeaderBar().setSynthDspLoad(c0, c1, c2, c3);
         });
   });
 
@@ -215,9 +218,11 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // Wire patch list updates to patch browser panel
   connectionManager.setPatchListCallback([this](const std::vector<std::string>& names) {
-    juce::MessageManager::callAsync([this, names]() {
-      mainLayout->getPatchBrowser().setPatchList(names);
-      mainLayout->getPatchBrowser().setLoadingState(false);
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::MessageManager::callAsync([safeThis, names]() {
+      if (!safeThis) return;
+      safeThis->mainLayout->getPatchBrowser().setPatchList(names);
+      safeThis->mainLayout->getPatchBrowser().setLoadingState(false);
     });
   });
 
@@ -300,54 +305,56 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         PatchParser parser(moduleDescs);
         auto patch = parser.parse(sections);
 
-        juce::MessageManager::callAsync([this, p = std::move(patch), targetSlot]() mutable {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::MessageManager::callAsync([safeThis, p = std::move(patch), targetSlot]() mutable {
+          if (!safeThis) return;
           if (targetSlot < 0 || targetSlot >= numSlots)
             return;
 
           // Store patch in the correct slot
-          slotSynchronizers[targetSlot].reset();
+          safeThis->slotSynchronizers[targetSlot].reset();
 
           // If replacing the active slot, clear UI refs BEFORE destroying old patch
-          if (targetSlot == activeSlot) {
-            mainLayout->getInspector().clearModule();
+          if (targetSlot == safeThis->activeSlot) {
+            safeThis->mainLayout->getInspector().clearModule();
           }
 
-          slotPatches[targetSlot] = std::move(p);
-          if (slotPatches[targetSlot]) {
-            if (connectionManager.isConnected()) {
-              slotSynchronizers[targetSlot] = std::make_unique<PatchSynchronizer>(
-                  *slotPatches[targetSlot], connectionManager);
+          safeThis->slotPatches[targetSlot] = std::move(p);
+          if (safeThis->slotPatches[targetSlot]) {
+            if (safeThis->connectionManager.isConnected()) {
+              safeThis->slotSynchronizers[targetSlot] = std::make_unique<PatchSynchronizer>(
+                  *safeThis->slotPatches[targetSlot], safeThis->connectionManager);
             }
 
-            slotUndoManagers[targetSlot].clearUndoHistory();
-            rebuildUndoContext(targetSlot);
-            clearSnapshots(targetSlot);
+            safeThis->slotUndoManagers[targetSlot].clearUndoHistory();
+            safeThis->rebuildUndoContext(targetSlot);
+            safeThis->clearSnapshots(targetSlot);
 
             // If this is the currently viewed slot, update the UI
-            if (targetSlot == activeSlot) {
-              mainLayout->getCanvas().setPatch(currentPatch().get(), &moduleDescs, &themeData);
-              mainLayout->getHeaderBar().setPatch(currentPatch().get());
-              mainLayout->getInspector().setPatch(currentPatch().get());
-              updateDspLoadDisplay();
-              mainLayout->getStatusBar().setConnectionStatus(
-                  "Connected - " + currentPatch()->getName(), true);
+            if (targetSlot == safeThis->activeSlot) {
+              safeThis->mainLayout->getCanvas().setPatch(safeThis->currentPatch().get(), &safeThis->moduleDescs, &safeThis->themeData);
+              safeThis->mainLayout->getHeaderBar().setPatch(safeThis->currentPatch().get());
+              safeThis->mainLayout->getInspector().setPatch(safeThis->currentPatch().get());
+              safeThis->updateDspLoadDisplay();
+              safeThis->mainLayout->getStatusBar().setConnectionStatus(
+                  "Connected - " + safeThis->currentPatch()->getName(), true);
 
-              int ls = connectionManager.getLastLoadedSection();
-              int lp = connectionManager.getLastLoadedPosition();
+              int ls = safeThis->connectionManager.getLastLoadedSection();
+              int lp = safeThis->connectionManager.getLastLoadedPosition();
               if (ls >= 0 && lp >= 0)
-                  mainLayout->getPatchBrowser().setLoadedPatch(ls, lp);
+                  safeThis->mainLayout->getPatchBrowser().setLoadedPatch(ls, lp);
             }
 
             // Update slot bar with patch name
-            mainLayout->getSlotBar().setSlotName(targetSlot, slotPatches[targetSlot]->getName());
+            safeThis->mainLayout->getSlotBar().setSlotName(targetSlot, safeThis->slotPatches[targetSlot]->getName());
 
             const char* slotLetters[] = {"A", "B", "C", "D"};
             std::cout << "[SYNC] Patch loaded into slot " << slotLetters[targetSlot]
-                      << ": " << slotPatches[targetSlot]->getName().toStdString() << std::endl;
+                      << ": " << safeThis->slotPatches[targetSlot]->getName().toStdString() << std::endl;
           }
 
-          if (pendingBrowserLoadSlot == targetSlot)
-            pendingBrowserLoadSlot = -1;
+          if (safeThis->pendingBrowserLoadSlot == targetSlot)
+            safeThis->pendingBrowserLoadSlot = -1;
         });
       });
 
@@ -585,8 +592,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
           std::array<int,128> l, me;
           std::copy(lights,  lights  + 128, l.begin());
           std::copy(meters, meters + 128, me.begin());
-          juce::MessageManager::callAsync([this, l, me]() mutable {
-              mainLayout->getCanvas().setLightMeterData(l.data(), me.data());
+          juce::Component::SafePointer<MainComponent> safeThis(this);
+          juce::MessageManager::callAsync([safeThis, l, me]() mutable {
+              if (!safeThis) return;
+              safeThis->mainLayout->getCanvas().setLightMeterData(l.data(), me.data());
           });
       });
 
@@ -620,25 +629,27 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   connectionManager.setParameterChangeCallback([this](int section, int moduleId,
                                                       int parameterId,
                                                       int value) {
-    juce::MessageManager::callAsync([this, section, moduleId, parameterId,
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::MessageManager::callAsync([safeThis, section, moduleId, parameterId,
                                      value]() {
-      if (currentPatch() == nullptr)
+      if (!safeThis) return;
+      if (safeThis->currentPatch() == nullptr)
         return;
 
       // Morph section (section=2, module=1, parameter=0-3)
       if (section == 2 && moduleId == 1 && parameterId >= 0 &&
           parameterId < 4) {
-        currentPatch()->morphValues[static_cast<size_t>(parameterId)] = value;
-        mainLayout->getHeaderBar().repaint();
+        safeThis->currentPatch()->morphValues[static_cast<size_t>(parameterId)] = value;
+        safeThis->mainLayout->getHeaderBar().repaint();
         return;
       }
 
       // Skip if the user is currently dragging this exact parameter (avoid
       // fighting the user)
-      if (mainLayout->getCanvas().isDragging(section, moduleId, parameterId))
+      if (safeThis->mainLayout->getCanvas().isDragging(section, moduleId, parameterId))
         return;
 
-      auto &container = currentPatch()->getContainer(section);
+      auto &container = safeThis->currentPatch()->getContainer(section);
       auto *module = container.getModuleByIndex(moduleId);
       if (module == nullptr)
         return;
@@ -651,7 +662,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       // repaints)
       if (param->getValue() != value) {
         param->setValue(value);
-        mainLayout->getCanvas().repaintCanvas();
+        safeThis->mainLayout->getCanvas().repaintCanvas();
       }
     });
   });
@@ -677,31 +688,56 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // Wire synth slot changes (user presses slot button on hardware)
   connectionManager.setSlotChangedCallback([this](int slot) {
-    juce::MessageManager::callAsync([this, slot]() {
-      if (pendingBrowserLoadSlot >= 0 && slot != pendingBrowserLoadSlot) {
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::MessageManager::callAsync([safeThis, slot]() {
+      if (!safeThis) return;
+      if (safeThis->pendingBrowserLoadSlot >= 0 && slot != safeThis->pendingBrowserLoadSlot) {
         std::cout << "[SLOT] Ignoring stale slot change " << slot
-                  << " during browser load to slot " << pendingBrowserLoadSlot << std::endl;
+                  << " during browser load to slot " << safeThis->pendingBrowserLoadSlot << std::endl;
         return;
       }
-      mainLayout->getSlotBar().setCurrentTab(slot);
-      switchToSlot(slot, /*notifySynth=*/false);
+      safeThis->mainLayout->getSlotBar().setCurrentTab(slot);
+      safeThis->switchToSlot(slot, /*notifySynth=*/false);
     });
   });
 
   setSize(1280, 800);
 
   // Auto-connect after UI is set up (with delay to let ALSA enumerate devices)
-  juce::Timer::callAfterDelay(500, [this]() { attemptAutoConnect(); });
+  {
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::Timer::callAfterDelay(500, [safeThis]() { if (safeThis) safeThis->attemptAutoConnect(); });
 
-  // Show beta warning dialog (after UI is ready)
-  juce::Timer::callAfterDelay(800, [this]() { showBetaWarning(); });
+    // Show beta warning dialog (after UI is ready)
+    juce::Timer::callAfterDelay(800, [safeThis]() { if (safeThis) safeThis->showBetaWarning(); });
+  }
 }
 
 MainComponent::~MainComponent() {
+  // Stop interpolation timer before anything else
+  if (interpolationTimer)
+    interpolationTimer->stopTimer();
+  interpolationTimer.reset();
+
+  // Disconnect MIDI and clear all async callbacks to prevent post-destruction
+  // dispatches (fixes crash-on-close in plugin builds)
+  connectionManager.disconnect();
+  connectionManager.setStatusCallback(nullptr);
+  connectionManager.setVoiceCountCallback(nullptr);
+  connectionManager.setPatchDataCallback(nullptr);
+  connectionManager.setParameterChangeCallback(nullptr);
+  connectionManager.setSynthErrorCallback(nullptr);
+  connectionManager.setSlotChangedCallback(nullptr);
+  connectionManager.setUploadCompleteCallback(nullptr);
+  connectionManager.setLightMeterCallback(nullptr);
+  connectionManager.setPatchListCallback(nullptr);
+
+  // Tear down UI before members are destroyed
 #if JUCE_MAC
   juce::MenuBarModel::setMacMainMenu(nullptr);
 #endif
   menuBar.reset();
+  mainLayout.reset();
 }
 
 void MainComponent::resized() {
@@ -1359,7 +1395,8 @@ void MainComponent::attemptAutoConnect() {
       autoConnectRetries--;
       DBG("No MIDI devices found yet, retrying in 500ms (" +
           juce::String(autoConnectRetries) + " left)");
-      juce::Timer::callAfterDelay(500, [this]() { attemptAutoConnect(); });
+      juce::Component::SafePointer<MainComponent> safeThis(this);
+      juce::Timer::callAfterDelay(500, [safeThis]() { if (safeThis) safeThis->attemptAutoConnect(); });
     } else {
       DBG("Saved MIDI ports not found (id=" + savedInputId + "/" +
           savedOutputId + " name=" + savedInputName + "/" + savedOutputName +

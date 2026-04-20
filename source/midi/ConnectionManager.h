@@ -2,6 +2,7 @@
 
 #include "NmProtocol.h"
 #include "MidiDeviceManager.h"
+#include <atomic>
 #include <functional>
 
 class Patch;
@@ -133,6 +134,7 @@ private:
     void finalizePatch();
     void storeLoadedSlotToBank(int slot, int section, int position, std::function<void()> afterStoreQueued = {});
 
+    std::shared_ptr<std::atomic<bool>> alive { std::make_shared<std::atomic<bool>>(true) };
     NmProtocol protocol;
     std::unique_ptr<MidiDeviceManager> midiDevice;
     Status status;
