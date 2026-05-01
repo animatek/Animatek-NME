@@ -1,6 +1,15 @@
 #include "SnipFileIO.h"
 #include <map>
 
+bool isSnippetExcludedModuleType(int typeIndex)
+{
+    // Singleton hardware/global modules do not behave like reusable macro
+    // modules. Saving or importing them inside snippets can leave the synth in
+    // an invalid edit state, especially when the target patch already has one.
+    return typeIndex == 63   // KeyboardPatch
+        || typeIndex == 65;  // MIDIGlobal
+}
+
 SnipData patchToSnipData(const Patch& patch)
 {
     SnipData snip;
@@ -15,6 +24,9 @@ SnipData patchToSnipData(const Patch& patch)
         const auto& container = patch.getContainer(sec);
         for (auto& m : container.getModules())
         {
+            if (!m->getDescriptor() || isSnippetExcludedModuleType(m->getDescriptor()->index))
+                continue;
+
             SnipEntry entry;
             entry.typeIndex = m->getDescriptor()->index;
             entry.name      = m->getTitle();
@@ -51,8 +63,10 @@ SnipData patchToSnipData(const Patch& patch)
             SnipCable cb;
             cb.srcIdx  = itSrcClip->second;
             cb.srcConn = conn.output->getDescriptor()->index;
+            cb.srcIsOutput = conn.output->getDescriptor()->isOutput;
             cb.dstIdx  = itDstClip->second;
             cb.dstConn = conn.input->getDescriptor()->index;
+            cb.dstIsOutput = conn.input->getDescriptor()->isOutput;
             snip.cables.push_back(cb);
         }
     }
@@ -68,6 +82,12 @@ std::unique_ptr<Patch> snipDataToPatch(const SnipData& snip, const ModuleDescrip
     std::vector<Module*> created;
     for (auto& entry : snip.entries)
     {
+        if (isSnippetExcludedModuleType(entry.typeIndex))
+        {
+            created.push_back(nullptr);
+            continue;
+        }
+
         auto* mod = patch->createModule(entry.section, entry.typeIndex,
                                         entry.gridPos.x, entry.gridPos.y,
                                         entry.name, descs);
@@ -83,20 +103,20 @@ std::unique_ptr<Patch> snipDataToPatch(const SnipData& snip, const ModuleDescrip
     {
         if (cb.srcIdx < 0 || cb.srcIdx >= (int)created.size()) continue;
         if (cb.dstIdx < 0 || cb.dstIdx >= (int)created.size()) continue;
-        auto* src = created[cb.srcIdx];
-        auto* dst = created[cb.dstIdx];
+        auto* src = created[static_cast<size_t>(cb.srcIdx)];
+        auto* dst = created[static_cast<size_t>(cb.dstIdx)];
         if (!src || !dst) continue;
 
-        int srcSec = snip.entries[cb.srcIdx].section;
-        int dstSec = snip.entries[cb.dstIdx].section;
+        int srcSec = snip.entries[static_cast<size_t>(cb.srcIdx)].section;
+        int dstSec = snip.entries[static_cast<size_t>(cb.dstIdx)].section;
         if (srcSec != dstSec) continue;
 
         auto& container = patch->getContainer(srcSec);
         // Use isOutput-aware lookup: descriptor indices can collide between input
         // and output connectors of the same module (e.g. OscMaster has input "sync"
         // and output "out" both at index 0). By convention src=output, dst=input.
-        auto* sc = src->getConnector(cb.srcConn, true);
-        auto* dc = dst->getConnector(cb.dstConn, false);
+        auto* sc = src->getConnector(cb.srcConn, cb.srcIsOutput);
+        auto* dc = dst->getConnector(cb.dstConn, cb.dstIsOutput);
         if (sc && dc) container.addConnection(sc, dc);
     }
 

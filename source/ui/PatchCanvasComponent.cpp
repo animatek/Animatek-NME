@@ -6331,8 +6331,8 @@ void PatchCanvas::duplicateSelection(bool withCables)
                     auto* dstDesc = dstConn->getDescriptor();
                     if (!srcDesc || !dstDesc) continue;
 
-                    Connector* newSrc = newSrcMod->getConnector(srcDesc->index);
-                    Connector* newDst = newDstMod->getConnector(dstDesc->index);
+                    Connector* newSrc = newSrcMod->getConnector(srcDesc->index, srcDesc->isOutput);
+                    Connector* newDst = newDstMod->getConnector(dstDesc->index, dstDesc->isOutput);
                     if (newSrc && newDst)
                         container.addConnection(newSrc, newDst);
                 }
@@ -6363,7 +6363,7 @@ void PatchCanvas::copySelectionToClipboard()
 
     for (int i = 0; i < (int)selection.size(); ++i)
     {
-        auto& sel = selection[i];
+        auto& sel = selection[static_cast<size_t>(i)];
         ClipboardEntry entry;
         entry.typeIndex = sel.module->getDescriptor() ? sel.module->getDescriptor()->index : 0;
         entry.name = sel.module->getTitle();
@@ -6400,8 +6400,8 @@ void PatchCanvas::copySelectionToClipboard()
                 auto* srcDesc = cable.output->getDescriptor();
                 auto* dstDesc = cable.input->getDescriptor();
                 if (srcDesc && dstDesc)
-                    clipboardCables.push_back({ modToClipIdx[srcMod], srcDesc->index,
-                                                modToClipIdx[dstMod], dstDesc->index });
+                    clipboardCables.push_back({ modToClipIdx[srcMod], srcDesc->index, srcDesc->isOutput,
+                                                modToClipIdx[dstMod], dstDesc->index, dstDesc->isOutput });
             }
         }
     }
@@ -6457,11 +6457,11 @@ void PatchCanvas::pasteFromClipboard(juce::Point<int> mousePos)
     {
         if (cb.srcModuleClipIdx >= (int)pasted.size()) continue;
         if (cb.dstModuleClipIdx >= (int)pasted.size()) continue;
-        auto* s = pasted[cb.srcModuleClipIdx];
-        auto* d = pasted[cb.dstModuleClipIdx];
+        auto* s = pasted[static_cast<size_t>(cb.srcModuleClipIdx)];
+        auto* d = pasted[static_cast<size_t>(cb.dstModuleClipIdx)];
         if (!s || !d) continue;
-        auto* sc = s->getConnector(cb.srcConnectorIdx);
-        auto* dc = d->getConnector(cb.dstConnectorIdx);
+        auto* sc = s->getConnector(cb.srcConnectorIdx, cb.srcIsOutput);
+        auto* dc = d->getConnector(cb.dstConnectorIdx, cb.dstIsOutput);
         if (sc && dc) container.addConnection(sc, dc);
     }
 
@@ -6528,11 +6528,38 @@ void PatchCanvas::saveSelectionAsSnippet()
         snip.entries.push_back(std::move(se));
     }
 
-    for (auto& cb : clipboardCables)
-        snip.cables.push_back({ cb.srcModuleClipIdx, cb.srcConnectorIdx,
-                                 cb.dstModuleClipIdx, cb.dstConnectorIdx });
+    std::map<int, int> clipToSnip;
+    std::vector<SnipEntry> filteredEntries;
+    for (int i = 0; i < static_cast<int>(snip.entries.size()); ++i)
+    {
+        auto& entry = snip.entries[static_cast<size_t>(i)];
+        if (isSnippetExcludedModuleType(entry.typeIndex))
+            continue;
 
-    snippetSaveCallback_(std::move(snip));
+        clipToSnip[i] = static_cast<int>(filteredEntries.size());
+        filteredEntries.push_back(std::move(entry));
+    }
+    snip.entries = std::move(filteredEntries);
+
+    for (auto& cb : clipboardCables)
+    {
+        auto srcIt = clipToSnip.find(cb.srcModuleClipIdx);
+        auto dstIt = clipToSnip.find(cb.dstModuleClipIdx);
+        if (srcIt == clipToSnip.end() || dstIt == clipToSnip.end())
+            continue;
+
+        SnipCable sc;
+        sc.srcIdx = srcIt->second;
+        sc.srcConn = cb.srcConnectorIdx;
+        sc.srcIsOutput = cb.srcIsOutput;
+        sc.dstIdx = dstIt->second;
+        sc.dstConn = cb.dstConnectorIdx;
+        sc.dstIsOutput = cb.dstIsOutput;
+        snip.cables.push_back(sc);
+    }
+
+    if (!snip.entries.empty())
+        snippetSaveCallback_(std::move(snip));
 }
 
 // --- PatchCanvasComponent (two-panel split viewport) ---

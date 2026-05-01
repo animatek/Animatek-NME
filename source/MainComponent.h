@@ -38,7 +38,6 @@ private:
     void openPatch();
     void savePatch();
     void savePatchAs();
-    void uploadToActiveSlot();
     void storePatchToBank();
     void loadPatchFromFile(const juce::File& file);
     bool savePatchToFile(const juce::File& file);

@@ -784,7 +784,6 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addSeparator();
     bool connected = connectionManager.isConnected();
     menu.addItem(31, "Request Patch from Synth", connected);
-    menu.addItem(32, "Upload to Active Slot", connected);
     menu.addItem(33, "Store to Bank...", connected);
   }
   else if (menuIndex == 4) // Help
@@ -874,9 +873,6 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 31:
     connectionManager.requestPatch(connectionManager.getCurrentSlot());
-    break;
-  case 32:
-    uploadToActiveSlot();
     break;
   case 33:
     storePatchToBank();
@@ -1104,47 +1100,6 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
 
   undoManager().clearUndoHistory();
   rebuildUndoContext(activeSlot);
-}
-
-void MainComponent::uploadToActiveSlot() {
-  if (!connectionManager.isConnected()) {
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::MessageBoxIconType::WarningIcon,
-        "Not Connected",
-        "Please connect to the Nord Modular first.");
-    return;
-  }
-  if (currentPatch() == nullptr) {
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::MessageBoxIconType::WarningIcon,
-        "No Patch",
-        "Please load a patch first.");
-    return;
-  }
-
-  int slot = connectionManager.getCurrentSlot();
-  const char* slotNames[] = {"A", "B", "C", "D"};
-  mainLayout->getStatusBar().showMessage(
-      juce::String("Uploading patch to slot ") + slotNames[slot] + "...", 0);
-
-  // Suppress synchronizer during upload to prevent redundant SysEx
-  // (the upload replaces the entire patch, individual sync messages are wasteful and cause race conditions)
-  if (currentSynchronizer())
-    currentSynchronizer()->setSuppressed(true);
-
-  juce::Component::SafePointer<MainComponent> safeThis(this);
-  connectionManager.setUploadCompleteCallback([safeThis, slot]() {
-    if (safeThis == nullptr) return;
-    safeThis->connectionManager.setUploadCompleteCallback(nullptr);
-    // Re-enable synchronizer after upload
-    if (safeThis->currentSynchronizer())
-      safeThis->currentSynchronizer()->setSuppressed(false);
-    const char* names[] = {"A", "B", "C", "D"};
-    safeThis->mainLayout->getStatusBar().showMessage(
-        juce::String("Patch uploaded to slot ") + names[slot], 3000);
-  });
-
-  connectionManager.uploadPatch(slot, *currentPatch());
 }
 
 void MainComponent::storePatchToBank() {

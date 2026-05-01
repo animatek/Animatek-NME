@@ -18,7 +18,9 @@ struct SnipEntry
 struct SnipCable
 {
     int srcIdx = 0, srcConn = 0;  // clip-local entry index + connector descriptor index
+    bool srcIsOutput = true;
     int dstIdx = 0, dstConn = 0;
+    bool dstIsOutput = false;
 };
 
 struct SnipData
@@ -27,6 +29,8 @@ struct SnipData
     std::vector<SnipEntry> entries;
     std::vector<SnipCable> cables;
 };
+
+bool isSnippetExcludedModuleType(int typeIndex);
 
 // Convert a Patch loaded from .pch into SnipData for insertion into another patch.
 // Module container indices are remapped to 0-based clip indices to avoid collisions.

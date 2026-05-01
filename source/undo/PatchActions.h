@@ -885,6 +885,12 @@ public:
 
         for (auto& entry : snip_.entries)
         {
+            if (isSnippetExcludedModuleType(entry.typeIndex))
+            {
+                createdIndices_.push_back({ entry.section, -1 });
+                continue;
+            }
+
             auto& container = ctx_.patch.getContainer(entry.section);
             int tx = entry.gridPos.x + offsetX_;
             int ty = entry.gridPos.y + offsetY_;
@@ -951,10 +957,8 @@ public:
             auto* src = container.getModuleByIndex(srcCI);
             auto* dst = container.getModuleByIndex(dstCI);
             if (!src || !dst) continue;
-            // isOutput-aware lookup: src=output, dst=input. Descriptor indices
-            // can collide across input/output (e.g. OscMaster sync/out both index=0).
-            auto* sc = src->getConnector(cb.srcConn, true);
-            auto* dc = dst->getConnector(cb.dstConn, false);
+            auto* sc = src->getConnector(cb.srcConn, cb.srcIsOutput);
+            auto* dc = dst->getConnector(cb.dstConn, cb.dstIsOutput);
             if (sc && dc) container.addConnection(sc, dc);
         }
 

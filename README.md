@@ -56,10 +56,7 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - Shows "01: PatchName" or "01: --" for empty slots
 - [x] **Help Menu**: Links to Nord Modular forum, Facebook group, and patch archive
 - [x] **About Menu**: Links to Patreon, GitHub source code, and project website
-- [x] **Send Patch to Synth** (Device menu): Full 16-section SysEx upload of editor patch to synth working slot
-  - Serializes patch to PDL2 binary (modules, cables, parameters, morphs, knobs, controls, names, notes)
-  - Variable-width parameter encoding derived from module descriptors
-  - Sequential section upload (one section at a time, waits for ACK before sending next — matches Java protocol)
+- [x] **Store to Bank** (Device menu): Uploads the editor patch and stores it directly to a selected synth bank location
   - Optional "Store to Bank" dialog after upload
 - [x] **New Patch** (File menu): Creates empty Init Patch in editor
 - [x] **Split Poly/Common Canvas**: Two independent scrollable panels (Poly top, Common bottom), each 128 rows tall
@@ -91,7 +88,7 @@ application that runs on macOS, Windows, and Linux without requiring Java.
   - *Low*: `duplicateSelection` stores section in `oldToNew` map — eliminates O(N²) re-search after module creation
 - [x] **Morph system bug fixes** (6 bugs fixed):
   - *Critical*: Inspector dangling pointer crash — `clearModule()` before replacing patch prevents SIGSEGV when `refreshMorphList()` accesses destroyed module (all 3 patch-replace paths: synth load, file load, new patch)
-  - *Critical*: Morph assignments lost after "Send Patch to Synth" — suppress auto-refetch (`NewPatchInSlot`) after upload; `currentPatch` is already authoritative
+  - *Critical*: Morph assignments lost after full patch upload — suppress auto-refetch (`NewPatchInSlot`) after upload; `currentPatch` is already authoritative
   - *High*: `getParameter(int)` matched wrong parameter on modules with overlapping indices (e.g. FilterF: custom "freq display units" and regular "frequency" both index=0) — now filters to `paramClass == "parameter"` only
   - *Medium*: "Zero Morph" now fully removes morph assignment (group + range) instead of only zeroing the range
   - *Medium*: Default morph range changed from 64 to 0 on new assignments — matches synth expectation
@@ -293,7 +290,6 @@ This section outlines all planned features to achieve feature parity with the or
 
 ### Patch Management
 - [x] **Patch Settings Dialog** (Ctrl+P) - Edit voices, velocity/keyboard range, pedal mode, bend range, portamento, octave shift, voice retrigger
-- [x] **Send Patch to Slot** - Upload editor patch to synth working slot (full 16-section PDL2 upload)
 - [x] **Save Patch in Synth** - Store uploaded patch to a bank location
 - [x] **New Patch** - Create a new empty patch in the editor
 - [x] **Multi-Slot Support** - All 4 slots (A, B, C, D) with independent patches, undo, sync, hardware selection, and active-slot switching

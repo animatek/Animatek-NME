@@ -262,8 +262,10 @@ private:
     {
         int srcModuleClipIdx = 0;   // index into clipboard entries
         int srcConnectorIdx = 0;    // connector index within source module
+        bool srcIsOutput = true;
         int dstModuleClipIdx = 0;
         int dstConnectorIdx = 0;
+        bool dstIsOutput = false;
     };
     std::vector<ClipboardEntry> clipboard;
     std::vector<ClipboardCable> clipboardCables;
