@@ -936,8 +936,10 @@ public:
             auto* src = container.getModuleByIndex(srcCI);
             auto* dst = container.getModuleByIndex(dstCI);
             if (!src || !dst) continue;
-            auto* sc = src->getConnector(cb.srcConn);
-            auto* dc = dst->getConnector(cb.dstConn);
+            // isOutput-aware lookup: src=output, dst=input. Descriptor indices
+            // can collide across input/output (e.g. OscMaster sync/out both index=0).
+            auto* sc = src->getConnector(cb.srcConn, true);
+            auto* dc = dst->getConnector(cb.dstConn, false);
             if (sc && dc) container.addConnection(sc, dc);
         }
 

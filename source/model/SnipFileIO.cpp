@@ -92,8 +92,11 @@ std::unique_ptr<Patch> snipDataToPatch(const SnipData& snip, const ModuleDescrip
         if (srcSec != dstSec) continue;
 
         auto& container = patch->getContainer(srcSec);
-        auto* sc = src->getConnector(cb.srcConn);
-        auto* dc = dst->getConnector(cb.dstConn);
+        // Use isOutput-aware lookup: descriptor indices can collide between input
+        // and output connectors of the same module (e.g. OscMaster has input "sync"
+        // and output "out" both at index 0). By convention src=output, dst=input.
+        auto* sc = src->getConnector(cb.srcConn, true);
+        auto* dc = dst->getConnector(cb.dstConn, false);
         if (sc && dc) container.addConnection(sc, dc);
     }
 
