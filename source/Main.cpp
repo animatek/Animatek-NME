@@ -6,7 +6,7 @@ class NomadApplication : public juce::JUCEApplication
 {
 public:
     const juce::String getApplicationName() override    { return "Nomad2026"; }
-    const juce::String getApplicationVersion() override { return "0.5.5"; }
+    const juce::String getApplicationVersion() override { return "0.5.6"; }
     bool moreThanOneInstanceAllowed() override           { return false; }
 
     void initialise(const juce::String&) override
