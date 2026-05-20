@@ -81,6 +81,8 @@ set(NOMAD_SHARED_SOURCES
 juce_add_gui_app(Nomad2026
     PRODUCT_NAME "Nomad2026"
     COMPANY_NAME "Nomad2026"
+    ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
+    ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
     VERSION "0.5.5"
 )
 
@@ -97,6 +99,8 @@ if(NOMAD_BUILD_PLUGIN)
         FORMATS VST3 AU Standalone
         PRODUCT_NAME "Nomad2026"
         COMPANY_NAME "Nomad2026"
+        ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
+        ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
         IS_SYNTH TRUE
         IS_MIDI_EFFECT FALSE
         NEEDS_MIDI_INPUT TRUE
@@ -121,6 +125,7 @@ if(NOMAD_BUILD_PLUGIN)
 endif()
 
 juce_add_binary_data(NomadData SOURCES
+    data/images/app-icon-dark.png
     data/modules.xml
     data/transformations.xml
     data/classic-theme.xml

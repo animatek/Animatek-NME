@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "BinaryData.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 
 class NomadApplication : public juce::JUCEApplication
@@ -76,10 +77,12 @@ public:
             : DocumentWindow(name, juce::Colour(0xff1a1a2e), allButtons)
         {
             setUsingNativeTitleBar(true);
+            applyWindowIcon();
             setContentOwned(new MainComponent(props), true);
             setResizable(true, true);
             centreWithSize(getWidth(), getHeight());
             setVisible(true);
+            applyWindowIcon();
         }
 
         void closeButtonPressed() override
@@ -88,6 +91,19 @@ public:
         }
 
     private:
+        void applyWindowIcon()
+        {
+            auto icon = juce::ImageFileFormat::loadFrom(BinaryData::appicondark_png,
+                                                        BinaryData::appicondark_pngSize);
+            if (!icon.isValid())
+                return;
+
+            setIcon(icon);
+
+            if (auto* peer = getPeer())
+                peer->setIcon(icon);
+        }
+
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainWindow)
     };
 
