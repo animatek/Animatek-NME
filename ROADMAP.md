@@ -1,56 +1,82 @@
 # Nomad2026 Roadmap
 
-Future implementation ideas and architecture plans. These are not yet started — just documented for when the time comes.
+This roadmap is intentionally limited to real remaining implementation work. Completed features and
+release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](CHANGELOG.md).
 
----
+## High Priority
 
-## VST3/CLAP Plugin Architecture
+- [ ] **Bank Upload from Synth**
+  - Save an entire synth bank to disk.
+  - Choose source bank.
+  - Choose destination folder.
+  - Show progress and failures.
+  - Preserve useful location metadata where possible.
 
-### Dual MIDI Design
+- [ ] **Bank Download to Synth**
+  - Send a full bank from disk to the synth.
+  - Support bank file or folder source.
+  - Choose destination bank.
+  - Show clear overwrite warning.
+  - Show progress and stop cleanly on failure.
 
-The Nord Modular has two independent MIDI port pairs:
-- **MIDI standard** (In/Out) — notes, CC, performance data
-- **PC MIDI** (In/Out) — dedicated SysEx traffic for editor communication
+- [ ] **Controller Snapshot**
+  - Send the current controller state to the synth in one action.
+  - Decide exact scope: hardware knobs, morph sources, MIDI CC assignments, or all performance controllers.
 
-These are hardware-independent and can operate simultaneously without interference.
+## Editor Workflow
 
-### Plugin MIDI Flow
+- [ ] **Keyboard Floater**
+  - Virtual MIDI keyboard.
+  - Octave navigation.
+  - Drone/sustain mode.
+  - Repeat mode if it proves useful.
+  - Visual key feedback.
 
-```
-DAW automation lanes ──→ VST params ──→ SysEx (PC port) ──→ Nord Modular
-DAW MIDI track ─────────→ MIDI standard ─────────────────→ Nord Modular
-                          (notes, CC)
-```
+- [ ] **Knob Floater**
+  - Hardware knob overview for 18 knobs, pedal, aftertouch, and on/off switch.
+  - Show current module/parameter assignments.
+  - Allow reassignment/removal from a dedicated view.
+  - Include morph-related controls only if the workflow stays clear.
 
-- The plugin opens the PC MIDI port directly via `juce::MidiInput/MidiOutput` (bypasses DAW MIDI bus)
-- DAW sends notes/CC to the Nord through its normal MIDI routing
-- Both paths are fully independent — they don't interfere
+- [ ] **Patch Notes Floater**
+  - Patch notes/comments window.
+  - Decide whether notes are editor-only metadata or saved into a compatible sidecar file.
 
-### Parameter Automation Strategy
+- [ ] **Window Management**
+  - Remember main window size and position.
+  - Remember floating window positions.
+  - Restore sensible defaults if monitor layout changes.
 
-**Option A — VST parameter slots (recommended)**
-- Expose module parameters as native VST/CLAP parameters
-- DAW automates them via automation lanes
-- Plugin translates changes to SysEx Parameter Change (cc=0x13) over PC port
-- Challenge: parameters are dynamic (each patch has different modules/params)
-- Solution: fixed pool of ~256 parameter slots, mapped dynamically per patch
+## Search And Navigation
 
-**Option B — MIDI CC passthrough**
-- Plugin receives MIDI CC from DAW input bus
-- Maps CCs to Nord parameters and sends as SysEx
-- More flexible but harder to configure per patch
+- [ ] **Module Search Tags**
+  - Add tags such as bass, pad, utility, modulation, clock, random, sequencing, mixer, audio, logic.
+  - Improve QuickAdd and module browser search ranking.
+  - Keep tags close to module descriptors or generate them from a simple data file.
 
-**Option C — Hybrid (knobs + morphs only)**
-- Expose only the 23 hardware knobs + 4 morph sources as plugin parameters
-- Simpler, matches the physical interface
-- Users assign knobs to parameters in the editor, DAW automates the knobs
+- [ ] **Keyboard Shortcuts Audit**
+  - Compare current shortcuts with original editor expectations.
+  - Add missing shortcuts only where they do not conflict with modern platform conventions.
+  - Document final shortcut set in-app or in a concise docs file.
 
-### Known Issues (parked)
-- Experimental VST3/CLAP builds exist but have a crash-on-close bug
-- See commit `48323ae` for current state
+## Verification
 
----
+- [ ] **Input/Output Connector Verification**
+  - Audit connector direction and visual distinction across all modules.
+  - Confirm input circles/output squares are correct against module descriptors and original editor behavior.
+  - Track any module-specific corrections in `MODULE_CHECKLIST.md`.
 
-## Ideas Backlog
+- [ ] **Release Checklist**
+  - Add a small repeatable checklist for tagged releases.
+  - Include build targets, smoke tests, MIDI connection check, patch load/save check, and issue cleanup.
 
-_Add future implementation ideas here as they come up._
+## Parked / Future
+
+- [ ] **Community Patch Library**
+  - Browse bundled or downloaded community patches from inside the preset browser.
+  - Prefer bundled/offline packs first; live archive integration can come later.
+
+- [ ] **Plugin Productization**
+  - VST3/CLAP targets currently exist but are experimental.
+  - Architecture notes live in [PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md).
+  - Treat this as a separate product track after the desktop editor is stable.
