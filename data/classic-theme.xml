@@ -1627,7 +1627,7 @@ label{fill:#000;}
 		</button>
 		<button x="2" y="60" width="20" height="12" cyclic="true" landscape="false">
 			<parameter component-id="p19" alt="monitor" />
-			<btn index="0">Mon</btn>
+			<btn index="0">Off</btn>
 			<btn index="1">Mon</btn>
 		</button>
 		<vocoder-display name="vocoderDisp" x="26" y="25" width="192" height="50">

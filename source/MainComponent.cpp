@@ -1952,6 +1952,8 @@ void MainComponent::randomizeParameters(bool gaussian) {
       if (!pd) return true;
       if (pd->paramClass != "parameter") return true;  // skip morph/custom
       if (pd->minValue == pd->maxValue) return true;    // no range
+      if (pd->maxValue - pd->minValue <= 1) return true; // skip binary switches
+      if (pd->role.containsIgnoreCase("level")) return true;
       for (auto& ex : excludeNames)
           if (pd->name.containsIgnoreCase(ex)) return true;
       return false;
