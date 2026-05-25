@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.5.7
+
+- Fixed Linux/JUCE MIDI device discovery.
+  - Forced ALSA sequencer client mode to legacy MIDI 1.0 so hardware MIDI ports remain visible on systems with UMP support.
+  - Preloads the ALSA endpoint cache so MIDI inputs/outputs appear immediately in the editor.
+  - Sends bytestream MIDI to legacy/proxy ALSA ports instead of incorrectly using UMP output.
+- Fixed slow startup and the X11 `BadLength` warning caused by the oversized app icon.
+  - The window icon is now downscaled before being passed to X11.
+- Improved JUCE build robustness on filesystems without executable bits.
+  - Skips the `juceaide` runtime test only when the failure indicates a non-executable filesystem.
+- Fixed Vocoder monitor switch instability (#10).
+  - Shows the off state explicitly instead of displaying `Mon` for both positions.
+  - Keeps binary switches and level controls out of parameter randomization so the monitor switch does not appear to toggle unexpectedly.
+- Continued patch upload and sync reliability work.
+  - Added upload ACK timeouts and short inter-section delays.
+  - Added clearer upload section diagnostics.
+  - Kept full-patch uploads in the original 16-section Java order for better firmware compatibility.
+  - Treats `NewPatchInSlot` as an ACK-compatible reply for structural edit messages.
+- Fixed `.pch` loading/upload to hardware slots (#1).
+  - Focuses the active synth slot before uploading a patch opened from disk.
+  - Reports disk patch upload progress and completion in the status bar.
+- Fixed `.pch` serialization for newly created patches.
+  - Always writes the expected empty morph, keyboard, knob, and MIDI control sections.
+  - Matches the PDL2 7-bit `MasterOsc.kbt` field so the `ParameterDump` no longer shifts and the synth does not reject fresh patches with `ERROR`.
+
 ## 0.5.6
 
 - Added integrated disk preset browser.
