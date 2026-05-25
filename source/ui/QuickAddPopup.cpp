@@ -1,4 +1,5 @@
 #include "QuickAddPopup.h"
+#include "AppTheme.h"
 
 QuickAddPopup::QuickAddPopup(const ModuleDescriptions& descs_, juce::Point<int> screenPos,
                              int gx, int gy, OnSelectCallback cb, OnDismissCallback dismissCb)
@@ -6,7 +7,7 @@ QuickAddPopup::QuickAddPopup(const ModuleDescriptions& descs_, juce::Point<int> 
 {
     searchField.setFont(juce::Font(juce::FontOptions(14.0f)));
     searchField.setTextToShowWhenEmpty("Type module name...", juce::Colour(0xff666666));
-    searchField.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff323232));
+    searchField.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().backgroundPanel);
     searchField.setColour(juce::TextEditor::textColourId, juce::Colours::white);
     searchField.setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
     searchField.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::transparentBlack);
@@ -44,14 +45,14 @@ void QuickAddPopup::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
 
-    g.setColour(juce::Colour(0xff323232));
+    g.setColour(AppTheme::palette().backgroundPanel);
     g.fillRoundedRectangle(bounds, 6.0f);
 
-    g.setColour(juce::Colour(0xff6B737C));
+    g.setColour(AppTheme::palette().borderColor);
     g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.5f);
 
     // Separator under search field
-    g.setColour(juce::Colour(0xff444A53));
+    g.setColour(AppTheme::palette().buttonActive);
     g.fillRect(0, fieldHeight, popupWidth, 1);
 
     // Module list rows
@@ -63,18 +64,18 @@ void QuickAddPopup::paint(juce::Graphics& g)
 
         if (i == selectedIdx)
         {
-            g.setColour(juce::Colour(0xff343941));
+            g.setColour(AppTheme::palette().backgroundElevated);
             g.fillRect(row.reduced(2, 1));
         }
 
         // Category (dim, left)
-        g.setColour(juce::Colour(0xff6B737C));
+        g.setColour(AppTheme::palette().borderColor);
         g.setFont(juce::Font(juce::FontOptions(10.0f)));
         g.drawText(entry.category, row.withTrimmedLeft(8).withWidth(80),
                    juce::Justification::centredLeft);
 
         // Module fullname
-        g.setColour(i == selectedIdx ? juce::Colours::white : juce::Colour(0xffcccccc));
+        g.setColour(i == selectedIdx ? juce::Colours::white : AppTheme::palette().textSecondary);
         g.setFont(juce::Font(juce::FontOptions(13.0f)));
         g.drawText(entry.desc->fullname, row.withTrimmedLeft(92).withTrimmedRight(8),
                    juce::Justification::centredLeft);
@@ -84,7 +85,7 @@ void QuickAddPopup::paint(juce::Graphics& g)
 
     if (filtered.empty())
     {
-        g.setColour(juce::Colour(0xff555B64));
+        g.setColour(AppTheme::palette().borderColor);
         g.setFont(juce::Font(juce::FontOptions(12.0f)));
         g.drawText("No modules found", 0, fieldHeight + 4, popupWidth, rowHeight,
                    juce::Justification::centred);

@@ -1,18 +1,19 @@
 #include "PresetBrowserWindow.h"
+#include "AppTheme.h"
 #include "BinaryData.h"
 
-static const juce::Colour kBg     { 0xff323232 };
-static const juce::Colour kPanel  { 0xff323232 };
-static const juce::Colour kSep    { 0xff444A53 };
-static const juce::Colour kText   { 0xffcccccc };
-static const juce::Colour kDim    { 0xff888899 };
-static const juce::Colour kPatchTag   { 0xffd0d4d8 };
-static const juce::Colour kSnippetTag { 0xffc9cdd1 };
+#define kBg     (AppTheme::palette().backgroundMain)
+#define kPanel  (AppTheme::palette().backgroundPanel)
+#define kSep    (AppTheme::palette().buttonActive)
+#define kText   (AppTheme::palette().textSecondary)
+#define kDim    (AppTheme::palette().textMuted)
+#define kPatchTag   (AppTheme::palette().textPrimary)
+#define kSnippetTag (AppTheme::palette().textSecondary)
 
 static void styleButton(juce::TextButton& b)
 {
-    b.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff25282E));
-    b.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff444A53));
+    b.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
+    b.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().buttonActive);
     b.setColour(juce::TextButton::textColourOffId, kText);
 }
 
@@ -20,7 +21,7 @@ static void styleFilterButton(juce::TextButton& b)
 {
     styleButton(b);
     b.setClickingTogglesState(true);
-    b.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff444A53));
+    b.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().buttonActive);
 }
 
 DiskPresetBrowserPanel::RefreshIconButton::RefreshIconButton()
@@ -36,13 +37,13 @@ DiskPresetBrowserPanel::RefreshIconButton::RefreshIconButton()
 void DiskPresetBrowserPanel::RefreshIconButton::paintButton(juce::Graphics& g, bool highlighted, bool down)
 {
     auto area = getLocalBounds().toFloat().reduced(3.0f);
-    auto bg = down ? juce::Colour(0xff444A53)
-                  : highlighted ? juce::Colour(0xff343941)
-                                : juce::Colour(0xff25282E);
+    auto bg = down ? AppTheme::palette().buttonActive
+                  : highlighted ? AppTheme::palette().backgroundElevated
+                                : AppTheme::palette().inputBackground;
 
     g.setColour(bg);
     g.fillRoundedRectangle(area, 4.0f);
-    g.setColour(juce::Colour(0xff555B64));
+    g.setColour(AppTheme::palette().borderColor);
     g.drawRoundedRectangle(area, 4.0f, 1.0f);
 
     if (icon)
@@ -70,10 +71,10 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     searchLabel.setColour(juce::Label::textColourId, kText);
     addAndMakeVisible(searchLabel);
 
-    searchBox.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff25282E));
+    searchBox.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().inputBackground);
     searchBox.setColour(juce::TextEditor::textColourId, kText);
     searchBox.setColour(juce::TextEditor::outlineColourId, kSep);
-    searchBox.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(0xffffcc44));
+    searchBox.setColour(juce::TextEditor::focusedOutlineColourId, AppTheme::palette().accentActive);
     searchBox.setTextToShowWhenEmpty("patch or snippet name", kDim);
     searchBox.onTextChange = [this]() { rebuildVisibleEntries(); };
     addAndMakeVisible(searchBox);
@@ -210,7 +211,7 @@ void DiskPresetBrowserPanel::paintListBoxItem(int row, juce::Graphics& g, int wi
 
     const auto& entry = allEntries[static_cast<size_t>(visibleEntryIndices[static_cast<size_t>(row)])];
 
-    g.fillAll(selected ? juce::Colour(0xff343941) : kPanel);
+    g.fillAll(selected ? AppTheme::palette().backgroundElevated : kPanel);
     g.setColour(selected ? juce::Colour(0xffd8dcdf) : kSep);
     g.drawHorizontalLine(height - 1, 0.0f, static_cast<float>(width));
 

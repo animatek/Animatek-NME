@@ -30,6 +30,7 @@ set(NOMAD_SHARED_SOURCES
 
     # UI
     source/ui/MainLayout.cpp
+    source/ui/AppTheme.cpp
     source/ui/ModuleBrowserPanel.cpp
     source/ui/PatchCanvasComponent.cpp
     source/ui/ColorScheme.cpp

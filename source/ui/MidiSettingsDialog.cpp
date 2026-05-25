@@ -1,15 +1,17 @@
 #include "MidiSettingsDialog.h"
+#include "AppTheme.h"
 
-static const juce::Colour kBg     { 0xff323232 };
-static const juce::Colour kSep    { 0xff444A53 };
-static const juce::Colour kGold   { 0xffffcc44 };
-static const juce::Colour kAmber  { 0xffffaa44 };
-static const juce::Colour kText   { 0xffcccccc };
-static const juce::Colour kDim    { 0xff888899 };
-static const juce::Colour kCtrlBg { 0xff25282E };
-static const juce::Colour kCtrlBd { 0xff555B64 };
-static const juce::Colour kBtnBg  { 0xff25282E };
-static const juce::Colour kBtnOn  { 0xff444A53 };
+#define kBg     (AppTheme::palette().backgroundMain)
+#define kSep    (AppTheme::palette().buttonActive)
+#define kGold   (AppTheme::palette().accentActive)
+#define kAmber  (AppTheme::palette().accentWarning)
+#define kText   (AppTheme::palette().textSecondary)
+#define kDim    (AppTheme::palette().textMuted)
+#define kCtrlBg (AppTheme::palette().inputBackground)
+#define kCtrlBd (AppTheme::palette().borderColor)
+#define kBtnBg  (AppTheme::palette().buttonBackground)
+#define kBtnOn  (AppTheme::palette().buttonActive)
+
 static const juce::Colour kOkBg   { 0xff1e3a1e };
 static const juce::Colour kOkOn   { 0xff2a5a2a };
 static const juce::Colour kWarnBg { 0xff3a1e1e };

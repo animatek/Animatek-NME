@@ -1,43 +1,36 @@
 #include "EditorOptionsDialog.h"
 
-// ─── Color palette (same as PatchSettingsDialog) ─────────────────────────────
-static const juce::Colour kBg     { 0xff323232 };
-static const juce::Colour kSep    { 0xff444A53 };
-static const juce::Colour kGold   { 0xffffcc44 };
-static const juce::Colour kAmber  { 0xffffaa44 };
-static const juce::Colour kText   { 0xffcccccc };
-static const juce::Colour kDim    { 0xff888899 };
-static const juce::Colour kBtnBg  { 0xff25282E };
-static const juce::Colour kBtnOn  { 0xff444A53 };
-static const juce::Colour kOkBg   { 0xff1e3a1e };
-static const juce::Colour kOkOn   { 0xff2a5a2a };
+// ─── Color palette ───────────────────────────────────────────────────────────
+static const AppThemePalette& p() { return AppTheme::palette(); }
+static const juce::Colour kOkBg { 0xff1e3a1e };
+static const juce::Colour kOkOn { 0xff2a5a2a };
 
 static void styleToggle (juce::ToggleButton& b)
 {
-    b.setColour (juce::ToggleButton::textColourId,         kText);
-    b.setColour (juce::ToggleButton::tickColourId,         kAmber);
-    b.setColour (juce::ToggleButton::tickDisabledColourId, kDim);
+    b.setColour (juce::ToggleButton::textColourId,         p().textSecondary);
+    b.setColour (juce::ToggleButton::tickColourId,         p().accentWarning);
+    b.setColour (juce::ToggleButton::tickDisabledColourId, p().textMuted);
 }
 static void styleLabel (juce::Label& l, bool section = false)
 {
     l.setFont (section ? juce::Font (juce::FontOptions (11.0f, juce::Font::bold))
                        : juce::Font (juce::FontOptions (12.0f)));
-    l.setColour (juce::Label::textColourId,       section ? kGold : kText);
+    l.setColour (juce::Label::textColourId,       section ? p().accentActive : p().textSecondary);
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
 static void styleBtn (juce::TextButton& b, bool isOk = false)
 {
-    b.setColour (juce::TextButton::buttonColourId,   isOk ? kOkBg : kBtnBg);
-    b.setColour (juce::TextButton::buttonOnColourId, isOk ? kOkOn : kBtnOn);
-    b.setColour (juce::TextButton::textColourOffId,  isOk ? juce::Colour (0xffaaffaa) : kText);
+    b.setColour (juce::TextButton::buttonColourId,   isOk ? kOkBg : p().buttonBackground);
+    b.setColour (juce::TextButton::buttonOnColourId, isOk ? kOkOn : p().buttonActive);
+    b.setColour (juce::TextButton::textColourOffId,  isOk ? juce::Colour (0xffaaffaa) : p().textSecondary);
 }
 static void styleTextEditor (juce::TextEditor& e)
 {
     e.setReadOnly (true);
-    e.setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff25282E));
-    e.setColour (juce::TextEditor::textColourId,       kText);
-    e.setColour (juce::TextEditor::outlineColourId,    kSep);
-    e.setColour (juce::TextEditor::focusedOutlineColourId, kAmber);
+    e.setColour (juce::TextEditor::backgroundColourId, p().inputBackground);
+    e.setColour (juce::TextEditor::textColourId,       p().textSecondary);
+    e.setColour (juce::TextEditor::outlineColourId,    p().borderColor);
+    e.setColour (juce::TextEditor::focusedOutlineColourId, p().accentWarning);
 }
 
 // ─── EditorOptions persistence ───────────────────────────────────────────────
@@ -46,6 +39,7 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
 {
     EditorOptions o;
     if (!props) return o;
+    o.appearanceTheme = AppTheme::themeFromInt(props->getIntValue("appearanceTheme", 0));
     o.cableStyle     = static_cast<CableStyle>  (props->getIntValue  ("cableStyle",      0));
     o.knobControl    = static_cast<KnobControl> (props->getIntValue  ("knobControl",     0));
     o.autoUpload     = props->getBoolValue  ("autoUpload",     true);
@@ -60,6 +54,7 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
 void EditorOptions::save(juce::PropertiesFile* props) const
 {
     if (!props) return;
+    props->setValue ("appearanceTheme", static_cast<int> (appearanceTheme));
     props->setValue ("cableStyle",      static_cast<int> (cableStyle));
     props->setValue ("knobControl",     static_cast<int> (knobControl));
     props->setValue ("autoUpload",      autoUpload);
@@ -100,6 +95,14 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
 
     closeButton.onClick = [this]() { close(); };
     addAndMakeVisible (closeButton);
+
+    // Appearance
+    styleLabel (appearanceLabel, true);
+    styleLabel (themeLabel);
+    populateThemeSelector();
+    addAndMakeVisible (appearanceLabel);
+    addAndMakeVisible (themeLabel);
+    addAndMakeVisible (themeSelector);
 
     // Cable Style (radio group 1)
     styleLabel (cableStyleLabel, true);
@@ -142,7 +145,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
     styleLabel (libraryLabel, true);
     styleTextEditor (libraryPath);
     libraryPath.setText (options.presetLibraryRoot.getFullPathName(), juce::dontSendNotification);
-    libraryPath.setTextToShowWhenEmpty ("Choose a root folder. Nomad2026 will create Patches and Snippets inside it.", kDim);
+    libraryPath.setTextToShowWhenEmpty ("Choose a root folder. Nomad2026 will create Patches and Snippets inside it.", p().textMuted);
     styleBtn (browseLibraryButton);
     browseLibraryButton.onClick = [this]() { browseLibraryRoot(); };
     addAndMakeVisible (libraryLabel);
@@ -157,31 +160,39 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
     addAndMakeVisible (okButton);
     addAndMakeVisible (cancelButton);
 
-    setSize (560, 450);
+    setSize (560, 510);
+}
+
+void EditorOptionsDialog::populateThemeSelector()
+{
+    themeSelector.addItem(AppTheme::displayName(AppThemeId::SoftDarkGrey), 1);
+    themeSelector.addItem(AppTheme::displayName(AppThemeId::DeepDarkGrey), 2);
+    themeSelector.setSelectedId(static_cast<int>(options.appearanceTheme) + 1, juce::dontSendNotification);
+    themeSelector.setColour(juce::ComboBox::backgroundColourId, p().inputBackground);
+    themeSelector.setColour(juce::ComboBox::outlineColourId, p().borderColor);
+    themeSelector.setColour(juce::ComboBox::textColourId, p().textSecondary);
+    themeSelector.setColour(juce::ComboBox::arrowColourId, p().accentWarning);
 }
 
 // ─── paint ───────────────────────────────────────────────────────────────────
 
 void EditorOptionsDialog::paint (juce::Graphics& g)
 {
-    g.fillAll (kBg);
+    g.fillAll (p().backgroundMain);
 
-    g.setColour (kGold);
+    g.setColour (p().accentActive);
     g.setFont (juce::Font (juce::FontOptions (14.0f)).boldened());
     g.drawText ("Editor Options", 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
 
-    g.setColour (kSep);
+    g.setColour (p().buttonActive);
     g.fillRect (0, 31, getWidth(), 1);
 
     // Separators — positions match resized() math:
-    //   after cable:     32 + 8 + (16+2) + 4*22 + 8  = 154
-    //   after knob:     154 + 8 + (16+2) + 3*22 + 8  = 254
-    //   after behaviour:254 + 8 + (16+2) + 2*22 + 12 = 336
-    //   after library: 336 + 8 + (16+2) + 26 + 12 = 400
+    // Separators match resized() section starts.
     const float x0 = 14.0f, x1 = static_cast<float> (getWidth() - 14);
-    for (int sy : { 154, 254, 336, 400 })
+    for (int sy : { 104, 226, 326, 408, 472 })
     {
-        g.setColour (kSep);
+        g.setColour (p().buttonActive);
         g.drawHorizontalLine (sy, x0, x1);
     }
 }
@@ -200,7 +211,15 @@ void EditorOptionsDialog::resized()
 
     int y = 32 + secGap;  // below title bar
 
+    // ── Appearance ───────────────────────────────────────────
+    appearanceLabel.setBounds (pad, y, getWidth() - pad * 2, secH);
+    y += secH + 6;
+    themeLabel.setBounds (pad + 8, y, 80, rowH);
+    themeSelector.setBounds (pad + 92, y, getWidth() - pad * 2 - 100, rowH);
+    y += rowH + secGap;
+
     // ── Cable Style ──────────────────────────────────────────
+    y += sepGap;
     cableStyleLabel.setBounds (pad, y, getWidth() - pad * 2, secH);
     y += secH + 2;
     for (auto* b : { &cableCurvedThick, &cableStraightThick, &cableCurvedThin, &cableStraightThin })
@@ -208,7 +227,7 @@ void EditorOptionsDialog::resized()
         b->setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
         y += rowH;
     }
-    y += secGap;   // → separator at y=154
+    y += secGap;
 
     // ── Knob Control ─────────────────────────────────────────
     y += sepGap;
@@ -219,7 +238,7 @@ void EditorOptionsDialog::resized()
         b->setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
         y += rowH;
     }
-    y += secGap;   // → separator at y=254
+    y += secGap;
 
     // ── Behaviour ────────────────────────────────────────────
     y += sepGap;
@@ -228,7 +247,7 @@ void EditorOptionsDialog::resized()
     autoUploadToggle.setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
     y += rowH;
     recycleWinToggle.setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
-    y += rowH + 12;  // → separator at y=336
+    y += rowH + 12;
 
     // ── Preset Library ───────────────────────────────────────
     y += sepGap;
@@ -237,7 +256,7 @@ void EditorOptionsDialog::resized()
     auto libraryRow = juce::Rectangle<int> (pad + 8, y, getWidth() - pad * 2 - 8, 26);
     browseLibraryButton.setBounds (libraryRow.removeFromRight (92));
     libraryPath.setBounds (libraryRow.removeFromLeft (libraryRow.getWidth() - 8));
-    y += 26 + 12; // → separator at y=400
+    y += 26 + 12;
 
     // ── OK / Cancel ──────────────────────────────────────────
     y += 10;
@@ -298,6 +317,7 @@ void EditorOptionsDialog::apply()
     if (knobCircular  .getToggleState()) options.knobControl = EditorOptions::KnobControl::Circular;
     if (knobVertical  .getToggleState()) options.knobControl = EditorOptions::KnobControl::Vertical;
 
+    options.appearanceTheme = AppTheme::themeFromInt(themeSelector.getSelectedId() - 1);
     options.autoUpload     = autoUploadToggle.getToggleState();
     options.recycleWindows = recycleWinToggle .getToggleState();
 

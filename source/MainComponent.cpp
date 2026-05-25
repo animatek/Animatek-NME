@@ -5,6 +5,7 @@
 #include "ui/PatchLocationDialog.h"
 #include "ui/PatchSettingsDialog.h"
 #include "ui/SynthSettingsDialog.h"
+#include "ui/AppTheme.h"
 #include "protocol/StorePatchMessage.h"
 #include "protocol/MorphKeyboardAssignmentMessage.h"
 #include "BinaryData.h"
@@ -23,11 +24,11 @@ public:
                         juce::dontSendNotification);
         slider.setSliderStyle(juce::Slider::LinearHorizontal);
         slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 38, 18);
-        slider.setColour(juce::Slider::textBoxTextColourId,       juce::Colour(0xffffaa44));
-        slider.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff25282E));
-        slider.setColour(juce::Slider::textBoxOutlineColourId,    juce::Colour(0xff555B64));
-        slider.setColour(juce::Slider::thumbColourId,             juce::Colour(0xffffcc44));
-        slider.setColour(juce::Slider::trackColourId,             juce::Colour(0xff444A53));
+        slider.setColour(juce::Slider::textBoxTextColourId,       AppTheme::palette().accentWarning);
+        slider.setColour(juce::Slider::textBoxBackgroundColourId, AppTheme::palette().inputBackground);
+        slider.setColour(juce::Slider::textBoxOutlineColourId,    AppTheme::palette().borderColor);
+        slider.setColour(juce::Slider::thumbColourId,             AppTheme::palette().accentActive);
+        slider.setColour(juce::Slider::trackColourId,             AppTheme::palette().buttonActive);
         slider.onValueChange = [this]
         {
             PatchCanvas::setCableOpacity(static_cast<float>(slider.getValue()));
@@ -48,7 +49,7 @@ public:
 
     void paint(juce::Graphics& g) override
     {
-        g.setColour(juce::Colour(0xffcccccc));
+        g.setColour(AppTheme::palette().textSecondary);
         g.setFont(juce::FontOptions(12.0f));
         g.drawText("Cable Opacity", getLocalBounds().withTrimmedRight(getWidth() - 90).reduced(6, 0),
                    juce::Justification::centredLeft);
@@ -62,6 +63,7 @@ private:
 MainComponent::MainComponent(juce::ApplicationProperties &props)
     : appProperties(props) {
   editorOptions = EditorOptions::load(appProperties.getUserSettings());
+  AppTheme::setTheme(editorOptions.appearanceTheme);
   editorOptions.ensureLibraryFolders();
   PatchCanvas::setCableStyle   (static_cast<int>(editorOptions.cableStyle));
   PatchCanvas::setKnobControl  (static_cast<int>(editorOptions.knobControl));
@@ -124,6 +126,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // Main layout
   mainLayout = std::make_unique<MainLayout>(moduleDescs);
+  mainLayout->setTheme(createDarkTheme(), ThemeId::Dark);
   addAndMakeVisible(mainLayout.get());
 
   // Wire connection manager status updates to UI
@@ -993,10 +996,10 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     mainLayout->getCanvas().shakeCables();
     break;
   case 70:  // Theme: Classic
-    mainLayout->setTheme(kClassicTheme, ThemeId::Classic);
+    mainLayout->setTheme(createClassicTheme(), ThemeId::Classic);
     break;
   case 71:  // Theme: Dark
-    mainLayout->setTheme(kDarkTheme, ThemeId::Dark);
+    mainLayout->setTheme(createDarkTheme(), ThemeId::Dark);
     break;
 
   default:
@@ -1335,13 +1338,15 @@ void MainComponent::showEditorOptionsDialog() {
 
 void MainComponent::applyEditorOptions(const EditorOptions& opts) {
   editorOptions = opts;
+  AppTheme::setTheme(editorOptions.appearanceTheme);
   auto libraryOk = editorOptions.ensureLibraryFolders();
   editorOptions.save(appProperties.getUserSettings());
   PatchCanvas::setCableStyle   (static_cast<int>(opts.cableStyle));
   PatchCanvas::setKnobControl  (static_cast<int>(opts.knobControl));
   PatchCanvas::setAutoUpload   (opts.autoUpload);
   PatchCanvas::setCableOpacity (opts.cableOpacity);
-  mainLayout->getCanvas().repaint();
+  mainLayout->setTheme(createDarkTheme(), ThemeId::Dark);
+  mainLayout->repaint();
 
   if (editorOptions.presetLibraryRoot != juce::File()) {
     if (mainLayout)
@@ -1577,15 +1582,15 @@ public:
         setOpaque(true);
 
         titleLabel.setFont(juce::Font(juce::FontOptions(15.0f)).boldened());
-        titleLabel.setColour(juce::Label::textColourId, juce::Colour(0xffffcc44));
+        titleLabel.setColour(juce::Label::textColourId, AppTheme::palette().accentActive);
         titleLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
         titleLabel.setText("Nomad2026 - Beta", juce::dontSendNotification);
         addAndMakeVisible(titleLabel);
 
         closeButton.setButtonText("x");
-        closeButton.setColour(juce::TextButton::buttonColourId,   juce::Colour(0xff323232));
-        closeButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff25282E));
-        closeButton.setColour(juce::TextButton::textColourOffId,  juce::Colour(0xffffcc44));
+        closeButton.setColour(juce::TextButton::buttonColourId,   AppTheme::palette().backgroundPanel);
+        closeButton.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().inputBackground);
+        closeButton.setColour(juce::TextButton::textColourOffId,  AppTheme::palette().accentActive);
         closeButton.setColour(juce::TextButton::textColourOnId,   juce::Colours::white);
         closeButton.onClick = [this]() { removeFromDesktop(); delete this; };
         addAndMakeVisible(closeButton);
@@ -1612,7 +1617,7 @@ public:
         addAndMakeVisible(suppressToggle);
 
         okButton.setButtonText("I understand, let me in!");
-        okButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff444A53));
+        okButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().buttonActive);
         okButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
         okButton.onClick = [this]() {
             if (suppressToggle.getToggleState()) {
@@ -1640,8 +1645,8 @@ public:
     }
 
     void paint(juce::Graphics& g) override {
-        g.fillAll(juce::Colour(0xff323232));
-        g.setColour(juce::Colour(0xff444A53));
+        g.fillAll(AppTheme::palette().backgroundPanel);
+        g.setColour(AppTheme::palette().buttonActive);
         g.fillRect(0, 31, getWidth(), 1);
     }
 

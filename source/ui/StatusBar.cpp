@@ -1,4 +1,5 @@
 #include "StatusBar.h"
+#include "AppTheme.h"
 
 StatusBar::StatusBar()
 {
@@ -18,7 +19,7 @@ StatusBar::StatusBar()
 
     // Message label (centered, initially hidden)
     messageLabel.setJustificationType(juce::Justification::centred);
-    messageLabel.setColour(juce::Label::textColourId, juce::Colour(0xffffaa44)); // Orange
+    messageLabel.setColour(juce::Label::textColourId, AppTheme::palette().accentWarning); // Orange
     messageLabel.setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::bold)));
     addAndMakeVisible(messageLabel);
     messageLabel.setVisible(false);
@@ -31,7 +32,7 @@ void StatusBar::setConnectionStatus(const juce::String& status, bool connected)
 
     // Set color based on connection state
     if (connected)
-        connectionLabel.setColour(juce::Label::textColourId, juce::Colour(0xff44cc44)); // Green
+        connectionLabel.setColour(juce::Label::textColourId, AppTheme::palette().accentSuccess); // Green
     else
         connectionLabel.setColour(juce::Label::textColourId, juce::Colour(0xffaaaaaa)); // Gray
 
@@ -67,8 +68,8 @@ void StatusBar::clearMessage()
 
 void StatusBar::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff323232));
-    g.setColour(juce::Colour(0xff444A53));
+    g.fillAll(AppTheme::palette().backgroundPanel);
+    g.setColour(AppTheme::palette().buttonActive);
     g.drawLine(0.0f, 0.0f, static_cast<float>(getWidth()), 0.0f, 1.0f);
 
     // Draw LED indicator
@@ -77,12 +78,12 @@ void StatusBar::paint(juce::Graphics& g)
         // Outer glow for connected state
         if (isConnected)
         {
-            g.setColour(juce::Colour(0xff44cc44).withAlpha(0.3f));
+            g.setColour(AppTheme::palette().accentSuccess.withAlpha(0.3f));
             g.fillEllipse(ledBounds.expanded(2.0f));
         }
 
         // LED circle
-        g.setColour(isConnected ? juce::Colour(0xff44cc44) : juce::Colour(0xff555555));
+        g.setColour(isConnected ? AppTheme::palette().accentSuccess : juce::Colour(0xff555555));
         g.fillEllipse(ledBounds);
 
         // Highlight for 3D effect

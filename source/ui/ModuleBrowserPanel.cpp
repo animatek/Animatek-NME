@@ -1,4 +1,5 @@
 #include "ModuleBrowserPanel.h"
+#include "AppTheme.h"
 
 // --- CategoryItem ---
 
@@ -25,7 +26,7 @@ ModuleBrowserPanel::ModuleItem::ModuleItem(const ModuleDescriptor* desc)
 void ModuleBrowserPanel::ModuleItem::paintItem(juce::Graphics& g, int width, int height)
 {
     // Module name
-    g.setColour(juce::Colour(0xffcccccc));
+    g.setColour(AppTheme::palette().textSecondary);
     g.setFont(juce::Font(juce::FontOptions(13.0f)));
     g.drawText(descriptor->fullname, 4, 0, width - 80, height, juce::Justification::centredLeft);
 
@@ -56,13 +57,13 @@ juce::var ModuleBrowserPanel::ModuleItem::getDragSourceDescription()
 ModuleBrowserPanel::ModuleBrowserPanel()
 {
     filterField.setTextToShowWhenEmpty("Filter modules...", juce::Colour(0xff666666));
-    filterField.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff25282E));
+    filterField.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().inputBackground);
     filterField.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-    filterField.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xff444A53));
+    filterField.setColour(juce::TextEditor::outlineColourId, AppTheme::palette().buttonActive);
     filterField.onTextChange = [this] { applyFilter(); };
     addAndMakeVisible(filterField);
 
-    treeView.setColour(juce::TreeView::backgroundColourId, juce::Colour(0xff323232));
+    treeView.setColour(juce::TreeView::backgroundColourId, AppTheme::palette().backgroundPanel);
     treeView.setDefaultOpenness(false);
     addAndMakeVisible(treeView);
 }
@@ -75,7 +76,7 @@ void ModuleBrowserPanel::setModuleDescriptions(ModuleDescriptions* descriptions)
 
 void ModuleBrowserPanel::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff323232));
+    g.fillAll(AppTheme::palette().backgroundPanel);
 }
 
 void ModuleBrowserPanel::resized()

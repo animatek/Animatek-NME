@@ -1,4 +1,5 @@
 #include "MainLayout.h"
+#include "AppTheme.h"
 
 // ============================================================
 // SlotBar implementation
@@ -45,7 +46,7 @@ void SlotBar::drawSlotIcon(juce::Graphics& g, juce::Rectangle<int> area, bool ac
     float w = iconArea.getWidth(), h = iconArea.getHeight();
 
     // Body
-    g.setColour(active ? juce::Colour(0xffcc3333) : juce::Colour(0xff555B64));
+    g.setColour(active ? juce::Colour(0xffcc3333) : AppTheme::palette().borderColor);
     g.fillRoundedRectangle(x, y, w, h, 2.0f);
 
     // Keys (bottom half)
@@ -73,7 +74,7 @@ void SlotBar::drawSlotIcon(juce::Graphics& g, juce::Rectangle<int> area, bool ac
 
 void SlotBar::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff323232));
+    g.fillAll(AppTheme::palette().backgroundPanel);
 
     for (int i = 0; i < numSlots; ++i)
     {
@@ -84,13 +85,13 @@ void SlotBar::paint(juce::Graphics& g)
         if (active)
             g.setColour(juce::Colour(0xff3a3a3a));
         else
-            g.setColour(juce::Colour(0xff323232));
+            g.setColour(AppTheme::palette().backgroundPanel);
         g.fillRect(bounds);
 
         // Left border highlight for active
         if (active)
         {
-            g.setColour(juce::Colour(0xff6B737C));
+            g.setColour(AppTheme::palette().borderColor);
             g.fillRect(bounds.getX(), bounds.getY(), 3, bounds.getHeight());
         }
 
@@ -109,7 +110,7 @@ void SlotBar::paint(juce::Graphics& g)
         g.drawText(label, textArea, juce::Justification::centredLeft, true);
 
         // Bottom separator
-        g.setColour(juce::Colour(0xff444A53));
+        g.setColour(AppTheme::palette().buttonActive);
         g.drawHorizontalLine(slotBounds[i].getBottom() - 1,
                              static_cast<float>(slotBounds[i].getX()),
                              static_cast<float>(slotBounds[i].getRight()));
@@ -147,15 +148,15 @@ MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
     };
 
     // Toolbar buttons
-    midiButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff25282E));
+    midiButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
     midiButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffaaaacc));
     midiButton.onClick = [this]() { if (onMidiSettingsClicked) onMidiSettingsClicked(); };
 
-    libraryButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff25282E));
+    libraryButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
     libraryButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffaaaacc));
     libraryButton.onClick = [this]() { if (onLibraryFolderClicked) onLibraryFolderClicked(); };
 
-    storeButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff25282E));
+    storeButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
     storeButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffaaaacc));
     storeButton.onClick = [this]() { if (onStoreToBankClicked) onStoreToBankClicked(); };
 
@@ -167,8 +168,8 @@ MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
     leftColumn.addAndMakeVisible(slotBar);
 
     rightBrowserTabs.setTabBarDepth(28);
-    rightBrowserTabs.addTab("Synth", juce::Colour(0xff323232), &patchBrowserPanel, false);
-    rightBrowserTabs.addTab("Disk", juce::Colour(0xff323232), &diskPresetBrowserPanel, false);
+    rightBrowserTabs.addTab("Synth", AppTheme::palette().backgroundPanel, &patchBrowserPanel, false);
+    rightBrowserTabs.addTab("Disk", AppTheme::palette().backgroundPanel, &diskPresetBrowserPanel, false);
 
     addAndMakeVisible(leftColumn);
     addAndMakeVisible(headerBar);
@@ -188,7 +189,7 @@ MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
 
 void MainLayout::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff323232));
+    g.fillAll(AppTheme::palette().backgroundPanel);
 }
 
 void MainLayout::resized()

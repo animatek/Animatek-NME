@@ -2,12 +2,14 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "FlatCloseButton.h"
+#include "AppTheme.h"
 
 struct EditorOptions
 {
     enum class CableStyle  { CurvedThick = 0, StraightThick, CurvedThin, StraightThin };
     enum class KnobControl { Horizontal = 0, Circular, Vertical };
 
+    AppThemeId  appearanceTheme = AppThemeId::SoftDarkGrey;
     CableStyle  cableStyle     = CableStyle::CurvedThick;
     KnobControl knobControl    = KnobControl::Horizontal;
     bool        autoUpload     = true;
@@ -43,10 +45,16 @@ private:
     void close();
     void apply();
     void browseLibraryRoot();
+    void populateThemeSelector();
 
     EditorOptions options;
     juce::ComponentDragger dragger;
     FlatCloseButton closeButton;
+
+    // Appearance
+    juce::Label    appearanceLabel { {}, "APPEARANCE" };
+    juce::Label    themeLabel      { {}, "Theme" };
+    juce::ComboBox themeSelector;
 
     // Cable Style
     juce::Label    cableStyleLabel   { {}, "CABLE STYLE" };

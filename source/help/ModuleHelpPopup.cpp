@@ -1,4 +1,5 @@
 #include "ModuleHelpPopup.h"
+#include "../ui/AppTheme.h"
 #include <iostream>
 
 // ============================================================================
@@ -22,7 +23,7 @@ public:
         {
             auto* nl = names.add(std::make_unique<juce::Label>());
             nl->setFont(juce::Font(juce::FontOptions(12.0f)).boldened());
-            nl->setColour(juce::Label::textColourId,       juce::Colour(0xffffaa44));
+            nl->setColour(juce::Label::textColourId,       AppTheme::palette().accentWarning);
             nl->setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
             nl->setText(p.name, juce::dontSendNotification);
             nl->setJustificationType(juce::Justification::topLeft);
@@ -30,7 +31,7 @@ public:
 
             auto* dl = descs.add(std::make_unique<juce::Label>());
             dl->setFont(juce::Font(juce::FontOptions(12.0f)));
-            dl->setColour(juce::Label::textColourId,       juce::Colour(0xffcccccc));
+            dl->setColour(juce::Label::textColourId,       AppTheme::palette().textSecondary);
             dl->setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
             dl->setText(p.description, juce::dontSendNotification);
             dl->setJustificationType(juce::Justification::topLeft);
@@ -76,12 +77,12 @@ public:
 
     void paint(juce::Graphics& g) override
     {
-        g.fillAll(juce::Colour(0xff323232));
+        g.fillAll(AppTheme::palette().backgroundPanel);
         if (!names.isEmpty())
         {
             // divider line just above first parameter
             int y = descLabel.getBottom() + 10 + 4;
-            g.setColour(juce::Colour(0xff444A53));
+            g.setColour(AppTheme::palette().buttonActive);
             g.fillRect(12, y, getWidth() - 24, 1);
         }
     }
@@ -116,7 +117,7 @@ ModuleHelpPopup::ModuleHelpPopup(const NordHelp::ModuleHelp& help,
 
     // Title bar
     titleLabel.setFont(juce::Font(juce::FontOptions(14.0f)).boldened());
-    titleLabel.setColour(juce::Label::textColourId,       juce::Colour(0xffffcc44));
+    titleLabel.setColour(juce::Label::textColourId,       AppTheme::palette().accentActive);
     titleLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
     titleLabel.setText(help.name, juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
@@ -130,7 +131,7 @@ ModuleHelpPopup::ModuleHelpPopup(const NordHelp::ModuleHelp& help,
     auto* content = new HelpContent(help);
     viewport.setViewedComponent(content, true);
     viewport.setScrollBarsShown(true, false);
-    viewport.setColour(juce::ScrollBar::thumbColourId, juce::Colour(0xff555B64));
+    viewport.setColour(juce::ScrollBar::thumbColourId, AppTheme::palette().borderColor);
     addAndMakeVisible(viewport);
 
     // Size: lay out content at target width first
@@ -170,9 +171,9 @@ void ModuleHelpPopup::resized()
 
 void ModuleHelpPopup::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff323232));
+    g.fillAll(AppTheme::palette().backgroundPanel);
     // Title bar bottom line
-    g.setColour(juce::Colour(0xff444A53));
+    g.setColour(AppTheme::palette().buttonActive);
     g.fillRect(0, 31, getWidth(), 1);
 }
 

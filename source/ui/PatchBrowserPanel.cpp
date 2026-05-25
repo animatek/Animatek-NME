@@ -1,4 +1,5 @@
 #include "PatchBrowserPanel.h"
+#include "AppTheme.h"
 #include <iostream>
 
 PatchBrowserPanel::PatchBrowserPanel()
@@ -11,35 +12,35 @@ PatchBrowserPanel::PatchBrowserPanel()
 
     // Search label
     searchLabel.setText("Search:", juce::dontSendNotification);
-    searchLabel.setColour(juce::Label::textColourId, juce::Colour(0xffcccccc));
+    searchLabel.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
     searchLabel.setFont(juce::Font(juce::FontOptions(12.0f)));
     addAndMakeVisible(searchLabel);
 
     // Search box
-    searchBox.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff25282E));
-    searchBox.setColour(juce::TextEditor::textColourId, juce::Colour(0xffcccccc));
-    searchBox.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xff555B64));
+    searchBox.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().inputBackground);
+    searchBox.setColour(juce::TextEditor::textColourId, AppTheme::palette().textSecondary);
+    searchBox.setColour(juce::TextEditor::outlineColourId, AppTheme::palette().borderColor);
     searchBox.setFont(juce::Font(juce::FontOptions(12.0f)));
     searchBox.onTextChange = [this]() { onSearchTextChanged(); };
     addAndMakeVisible(searchBox);
 
     // Hide empty button
     hideEmptyButton.setButtonText("Hide Empty");
-    hideEmptyButton.setColour(juce::ToggleButton::textColourId, juce::Colour(0xffcccccc));
+    hideEmptyButton.setColour(juce::ToggleButton::textColourId, AppTheme::palette().textSecondary);
     hideEmptyButton.onClick = [this]() { onHideEmptyToggled(); };
     addAndMakeVisible(hideEmptyButton);
 
     // Refresh button
     refreshButton.setButtonText("Refresh");
-    refreshButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff555B64));
-    refreshButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffcccccc));
+    refreshButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().borderColor);
+    refreshButton.setColour(juce::TextButton::textColourOffId, AppTheme::palette().textSecondary);
     refreshButton.onClick = [this]() { onRefreshClicked(); };
     addAndMakeVisible(refreshButton);
 
     // TreeView for patch browser
     treeView = std::make_unique<juce::TreeView>();
-    treeView->setColour(juce::TreeView::backgroundColourId, juce::Colour(0xff323232));
-    treeView->setColour(juce::TreeView::linesColourId, juce::Colour(0xff555B64));
+    treeView->setColour(juce::TreeView::backgroundColourId, AppTheme::palette().backgroundPanel);
+    treeView->setColour(juce::TreeView::linesColourId, AppTheme::palette().borderColor);
     treeView->setDefaultOpenness(false);  // Banks start collapsed
     treeView->setIndentSize(20);
     addAndMakeVisible(*treeView);
@@ -49,7 +50,7 @@ PatchBrowserPanel::PatchBrowserPanel()
 
 void PatchBrowserPanel::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff323232));
+    g.fillAll(AppTheme::palette().backgroundPanel);
 }
 
 void PatchBrowserPanel::resized()
@@ -286,10 +287,12 @@ void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, i
 
     if (isSelected)
     {
-        g.setColour(juce::Colour(isLoaded ? 0x44ffaa00 : 0x33343941));
+        g.setColour(isLoaded ? juce::Colour(0x44ffaa00)
+                             : AppTheme::palette().backgroundElevated.withAlpha(0.33f));
         g.fillRect(0, 0, width, height);
 
-        g.setColour(juce::Colour(isLoaded ? 0xffffcc44 : 0xffd0d4d8));
+        g.setColour(isLoaded ? AppTheme::palette().accentActive
+                             : AppTheme::palette().textPrimary);
         g.drawRect(0, 0, width, height);
     }
     else if (isLoaded)
@@ -299,9 +302,9 @@ void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, i
         g.fillRect(0, 0, width, height);
     }
 
-    juce::Colour textColor = isLoaded ? juce::Colour(0xffffcc44)
-                            : isSelected ? juce::Colour(0xffd0d4d8)
-                                         : juce::Colour(0xffcccccc);
+    juce::Colour textColor = isLoaded ? AppTheme::palette().accentActive
+                            : isSelected ? AppTheme::palette().textPrimary
+                                         : AppTheme::palette().textSecondary;
 
     if (section >= 0 && position == -1)
     {

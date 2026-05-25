@@ -1,4 +1,5 @@
 #include "InspectorPanel.h"
+#include "AppTheme.h"
 #include "protocol/KnobAssignmentMessage.h"
 #include <cmath>
 
@@ -170,13 +171,13 @@ public:
     // ── Paint ──
     void paint(juce::Graphics& g) override
     {
-        g.fillAll(juce::Colour(0xff323232));
+        g.fillAll(AppTheme::palette().backgroundPanel);
         bool isGlobal = (patch != nullptr && module == nullptr);
         bool hasAny = !morphRows.empty() || !knobRows.empty() || !ctrlRows.empty();
 
         if (!hasAny)
         {
-            g.setColour(juce::Colour(0xff555B64));
+            g.setColour(AppTheme::palette().borderColor);
             g.setFont(juce::FontOptions(11.0f));
             g.drawText("No assignments", getLocalBounds().reduced(marginX),
                        juce::Justification::centredTop);
@@ -324,11 +325,12 @@ private:
     void paintMorphRow(juce::Graphics& g, int y, int i, const MorphRow& r, bool isGlobal)
     {
         int w = getWidth();
-        g.setColour(juce::Colour(i % 2 == 0 ? 0xff323232 : 0xff2d2d2d));
+        g.setColour(i % 2 == 0 ? AppTheme::palette().backgroundPanel
+                                : AppTheme::palette().backgroundSecondary);
         g.fillRect(0, y, w, rowH);
 
         // X button
-        g.setColour(juce::Colour(0xff6B737C));
+        g.setColour(AppTheme::palette().borderColor);
         juce::Rectangle<int> xRect(marginX, y + (rowH - xBtnW) / 2, xBtnW, xBtnW);
         g.drawRoundedRectangle(xRect.toFloat(), 3.0f, 1.0f);
         g.setFont(juce::FontOptions(10.0f));
@@ -346,7 +348,7 @@ private:
             int morphRange = r.param->getMorphRange();
             juce::Colour gc = kMorphColors[r.group];
             juce::Rectangle<int> amRect(amX, y + 3, amountW, rowH - 6);
-            g.setColour(juce::Colour(0xff25282E));
+            g.setColour(AppTheme::palette().inputBackground);
             g.fillRoundedRectangle(amRect.toFloat(), 3.0f);
             float fraction = static_cast<float>(morphRange) / 127.0f;
             float midXf = amRect.getX() + amRect.getWidth() * 0.5f;
@@ -354,7 +356,7 @@ private:
             float barX = (fraction >= 0.0f) ? midXf : midXf - barW;
             g.setColour(gc.withAlpha(0.75f));
             g.fillRoundedRectangle(barX, float(amRect.getY()), barW, float(amRect.getHeight()), 2.0f);
-            g.setColour(juce::Colour(0xff555B64));
+            g.setColour(AppTheme::palette().borderColor);
             g.drawVerticalLine(int(midXf), float(amRect.getY()), float(amRect.getBottom()));
             g.setColour(juce::Colours::white.withAlpha(0.9f));
             g.setFont(juce::FontOptions(10.0f));
@@ -367,11 +369,12 @@ private:
     void paintHwRow(juce::Graphics& g, int y, int i, const HwRow& r, bool isGlobal, juce::Colour accent)
     {
         int w = getWidth();
-        g.setColour(juce::Colour(i % 2 == 0 ? 0xff323232 : 0xff2d2d2d));
+        g.setColour(i % 2 == 0 ? AppTheme::palette().backgroundPanel
+                                : AppTheme::palette().backgroundSecondary);
         g.fillRect(0, y, w, rowH);
 
         // X button
-        g.setColour(juce::Colour(0xff6B737C));
+        g.setColour(AppTheme::palette().borderColor);
         juce::Rectangle<int> xRect(marginX, y + (rowH - xBtnW) / 2, xBtnW, xBtnW);
         g.drawRoundedRectangle(xRect.toFloat(), 3.0f, 1.0f);
         g.setFont(juce::FontOptions(10.0f));
@@ -398,7 +401,7 @@ private:
     {
         if (isGlobal && moduleName.isNotEmpty())
         {
-            g.setColour(juce::Colour(0xff888899));
+            g.setColour(AppTheme::palette().textMuted);
             g.setFont(juce::FontOptions(9.0f));
             g.drawText(moduleName, x, y, w, rowH / 2, juce::Justification::bottomLeft, true);
             g.setColour(juce::Colours::white.withAlpha(0.85f));
@@ -557,28 +560,28 @@ InspectorPanel::InspectorPanel()
 {
     titleLabel.setText("Inspector", juce::dontSendNotification);
     titleLabel.setFont(juce::Font(juce::FontOptions(13.0f).withStyle("Bold")));
-    titleLabel.setColour(juce::Label::textColourId, juce::Colour(0xffd0d4d8));
+    titleLabel.setColour(juce::Label::textColourId, AppTheme::palette().textPrimary);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(titleLabel);
 
     nameLabel.setText("Name", juce::dontSendNotification);
     nameLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
-    nameLabel.setColour(juce::Label::textColourId, juce::Colour(0xff888899));
+    nameLabel.setColour(juce::Label::textColourId, AppTheme::palette().textMuted);
     nameLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(nameLabel);
 
     nameEditor.setFont(juce::Font(juce::FontOptions(13.0f)));
-    nameEditor.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff25282E));
+    nameEditor.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().inputBackground);
     nameEditor.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-    nameEditor.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xff555B64));
-    nameEditor.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(0xff6B737C));
+    nameEditor.setColour(juce::TextEditor::outlineColourId, AppTheme::palette().borderColor);
+    nameEditor.setColour(juce::TextEditor::focusedOutlineColourId, AppTheme::palette().borderColor);
     nameEditor.setInputRestrictions(16);
     nameEditor.addListener(this);
     nameEditor.setEnabled(false);
     addAndMakeVisible(nameEditor);
 
     sectionLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
-    sectionLabel.setColour(juce::Label::textColourId, juce::Colour(0xff6B737C));
+    sectionLabel.setColour(juce::Label::textColourId, AppTheme::palette().borderColor);
     sectionLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(sectionLabel);
 
@@ -687,11 +690,11 @@ void InspectorPanel::refreshMorphList()
 
 void InspectorPanel::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff323232));
+    g.fillAll(AppTheme::palette().backgroundPanel);
 
     if (currentModule != nullptr)
     {
-        g.setColour(juce::Colour(0xff25282E));
+        g.setColour(AppTheme::palette().inputBackground);
         g.fillRect(0, margin + rowH + 2 + 14 + 14 + margin * 2 + rowH + 4, getWidth(), 1);
     }
 }
