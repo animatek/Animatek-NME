@@ -12,6 +12,28 @@ int PatchSerializer::bitWidth(int maxValue)
     return bits;
 }
 
+static int pdlBitWidth(int maxValue)
+{
+    if (maxValue <= 0) return 1;
+    int bits = 0, v = maxValue;
+    while (v > 0) { bits++; v >>= 1; }
+    return bits;
+}
+
+static int parameterBitWidth(const Module& module, const ParameterDescriptor& pd)
+{
+    // PDL2 Param97 stores MasterOsc.kbt as 7 bits even though modules.xml
+    // describes the UI range as Off/On. Using the UI maxValue here misaligns
+    // every following parameter in the dump and the synth rejects the patch.
+    if (module.getDescriptor() != nullptr
+        && module.getDescriptor()->index == 97
+        && pd.index == 2
+        && pd.paramClass == "parameter")
+        return 7;
+
+    return pdlBitWidth(pd.maxValue);
+}
+
 int PatchSerializer::findModuleContainerIndex(const ModuleContainer& container, const Connector* conn) const
 {
     for (const auto& m : container.getModules())
@@ -267,7 +289,7 @@ std::vector<uint8_t> PatchSerializer::serializeParameterDump(const Patch& patch,
             if (pd.paramClass != "parameter")
                 continue;
 
-            int bits = bitWidth(pd.maxValue);
+            int bits = parameterBitWidth(*m, pd);
             const auto* param = m->getParameter(pd.index);
             int value = param ? param->getValue() : pd.defaultValue;
             bs.writeBits(value, bits);

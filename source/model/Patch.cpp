@@ -156,6 +156,13 @@ bool ModuleContainer::canAdd(const ModuleDescriptor& desc) const
 
 void ModuleContainer::addConnection(Connector* output, Connector* input)
 {
+    if (output == nullptr || input == nullptr)
+        return;
+
+    for (const auto& c : connections)
+        if (c.output == output && c.input == input)
+            return;
+
     connections.push_back({ output, input });
     if (onCableAdded)
         onCableAdded(output, input);
@@ -163,11 +170,17 @@ void ModuleContainer::addConnection(Connector* output, Connector* input)
 
 void ModuleContainer::removeConnection(Connector* output, Connector* input)
 {
+    bool removed = false;
     connections.erase(
         std::remove_if(connections.begin(), connections.end(),
-            [output, input](const Connection& c) { return c.output == output && c.input == input; }),
+            [output, input, &removed](const Connection& c)
+            {
+                const bool match = c.output == output && c.input == input;
+                removed = removed || match;
+                return match;
+            }),
         connections.end());
-    if (onCableRemoved)
+    if (removed && onCableRemoved)
         onCableRemoved(output, input);
 }
 

@@ -3663,17 +3663,17 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             // frg = (vrGain * 2 - 1) * 24 / 25
             // Line 1: (ox, cy) to (ox+len, cy + flg*len) -> Right side (Java used vlGain for Right!)
             // Line 2: (ox, cy) to (ox-len, cy - frg*len) -> Left side  (Java used vrGain for Left!)
-            
+
             float flg = ((1.0f - lGain) * 2.0f - 1.0f) * 24.0f / 25.0f;
             float frg = (rGain * 2.0f - 1.0f) * 24.0f / 25.0f;
-            
+
             float len = std::sqrt(plotW * plotW + plotH * plotH);
 
             juce::Path curve;
             // Left segment (Java line 2)
             curve.startNewSubPath(ox, midY);
             curve.lineTo(ox - len, midY - frg * len);
-            
+
             // Right segment (Java line 1)
             curve.startNewSubPath(ox, midY);
             curve.lineTo(ox + len, midY + flg * len);
@@ -6322,10 +6322,27 @@ void PatchCanvas::duplicateSelection(bool withCables)
         std::set<Module*> selSet;
         for (auto& s : selection) selSet.insert(s.module);
 
-        for (auto& sel : selection)
+        std::set<int> sections;
+        for (auto& s : selection) sections.insert(s.section);
+
+        struct CableToDuplicate
         {
-            auto& container = patch->getContainer(sel.section);
-            for (auto& cable : container.getConnections())
+            int section = 0;
+            Module* srcMod = nullptr;
+            Module* dstMod = nullptr;
+            int srcConnIndex = 0;
+            bool srcIsOutput = false;
+            int dstConnIndex = 0;
+            bool dstIsOutput = false;
+        };
+        std::vector<CableToDuplicate> cablesToDuplicate;
+
+        for (int section : sections)
+        {
+            auto& container = patch->getContainer(section);
+            const auto originalConnections = container.getConnections();
+
+            for (const auto& cable : originalConnections)
             {
                 // Find which modules own output and input
                 Module* srcMod = nullptr;
@@ -6345,21 +6362,32 @@ void PatchCanvas::duplicateSelection(bool withCables)
                 // Only duplicate cable if BOTH endpoints are in the selection
                 if (srcMod && dstMod && selSet.count(srcMod) && selSet.count(dstMod))
                 {
-                    auto* newSrcMod = oldToNew[srcMod].first;
-                    auto* newDstMod = oldToNew[dstMod].first;
-                    if (!newSrcMod || !newDstMod) continue;
-
                     // Find matching connectors by descriptor index
                     auto* srcDesc = srcConn->getDescriptor();
                     auto* dstDesc = dstConn->getDescriptor();
                     if (!srcDesc || !dstDesc) continue;
 
-                    Connector* newSrc = newSrcMod->getConnector(srcDesc->index, srcDesc->isOutput);
-                    Connector* newDst = newDstMod->getConnector(dstDesc->index, dstDesc->isOutput);
-                    if (newSrc && newDst)
-                        container.addConnection(newSrc, newDst);
+                    cablesToDuplicate.push_back({ section, srcMod, dstMod,
+                                                  srcDesc->index, srcDesc->isOutput,
+                                                  dstDesc->index, dstDesc->isOutput });
                 }
             }
+        }
+
+        for (const auto& cable : cablesToDuplicate)
+        {
+            auto srcIt = oldToNew.find(cable.srcMod);
+            auto dstIt = oldToNew.find(cable.dstMod);
+            if (srcIt == oldToNew.end() || dstIt == oldToNew.end()) continue;
+
+            auto* newSrcMod = srcIt->second.first;
+            auto* newDstMod = dstIt->second.first;
+            if (!newSrcMod || !newDstMod) continue;
+
+            Connector* newSrc = newSrcMod->getConnector(cable.srcConnIndex, cable.srcIsOutput);
+            Connector* newDst = newDstMod->getConnector(cable.dstConnIndex, cable.dstIsOutput);
+            if (newSrc && newDst)
+                patch->getContainer(cable.section).addConnection(newSrc, newDst);
         }
     }
 

@@ -204,35 +204,37 @@ void PchFileIO::parseCableDump(const juce::StringArray& lines, Patch& patch)
         if (tokens.size() < 7) continue;
 
         int color    = tokens[0].getIntValue();
-        int dstMod   = tokens[1].getIntValue();
-        int dstConn  = tokens[2].getIntValue();
-        int dstType  = tokens[3].getIntValue();  // 0=input, 1=output
-        int srcMod   = tokens[4].getIntValue();
-        int srcConn  = tokens[5].getIntValue();
-        int srcType  = tokens[6].getIntValue();  // 0=input, 1=output
+        int firstMod   = tokens[1].getIntValue();
+        int firstConn  = tokens[2].getIntValue();
+        int firstType  = tokens[3].getIntValue();  // 0=input, 1=output
+        int secondMod  = tokens[4].getIntValue();
+        int secondConn = tokens[5].getIntValue();
+        int secondType = tokens[6].getIntValue();  // 0=input, 1=output
         (void)color;
 
-        auto* srcModule = container.getModuleByIndex(srcMod);
-        auto* dstModule = container.getModuleByIndex(dstMod);
+        auto* firstModule = container.getModuleByIndex(firstMod);
+        auto* secondModule = container.getModuleByIndex(secondMod);
 
-        if (srcModule == nullptr || dstModule == nullptr)
+        if (firstModule == nullptr || secondModule == nullptr)
         {
-            DBG("PchFileIO: CableDump missing module src=" + juce::String(srcMod)
-                + " dst=" + juce::String(dstMod));
+            DBG("PchFileIO: CableDump missing module first=" + juce::String(firstMod)
+                + " second=" + juce::String(secondMod));
             continue;
         }
 
-        auto* srcConnector = srcModule->getConnector(srcConn, srcType != 0);
-        auto* dstConnector = dstModule->getConnector(dstConn, dstType != 0);
+        auto* firstConnector = firstModule->getConnector(firstConn, firstType != 0);
+        auto* secondConnector = secondModule->getConnector(secondConn, secondType != 0);
 
-        if (srcConnector == nullptr || dstConnector == nullptr)
+        if (firstConnector == nullptr || secondConnector == nullptr)
         {
-            DBG("PchFileIO: CableDump missing connector src_conn=" + juce::String(srcConn)
-                + " dst_conn=" + juce::String(dstConn));
+            DBG("PchFileIO: CableDump missing connector first_conn=" + juce::String(firstConn)
+                + " second_conn=" + juce::String(secondConn));
             continue;
         }
 
-        container.addConnection(srcConnector, dstConnector);
+        Connector* outputConnector = (firstType != 0) ? firstConnector : secondConnector;
+        Connector* inputConnector  = (firstType != 0) ? secondConnector : firstConnector;
+        container.addConnection(outputConnector, inputConnector);
     }
 }
 
@@ -424,25 +426,10 @@ bool PchFileIO::writeFile(const Patch& patch, const juce::File& file)
     writeCableDump(out, patch.getCommonArea(), 0);
     writeParameterDump(out, patch.getPolyVoiceArea(), 1);
     writeParameterDump(out, patch.getCommonArea(), 0);
-
-    if (!patch.morphAssignments.empty())
-        writeMorphMapDump(out, patch);
-
-    bool hasKeyboard = false;
-    for (int i = 0; i < 4; ++i)
-        if (patch.morphKeyboard[static_cast<size_t>(i)] != 0) hasKeyboard = true;
-    if (hasKeyboard)
-        writeKeyboardAssignment(out, patch);
-
-    bool hasKnobs = false;
-    for (auto& ka : patch.knobAssignments)
-        if (ka.assigned) { hasKnobs = true; break; }
-    if (hasKnobs)
-        writeKnobMapDump(out, patch);
-
-    if (!patch.ctrlAssignments.empty())
-        writeCtrlMapDump(out, patch);
-
+    writeMorphMapDump(out, patch);
+    writeKeyboardAssignment(out, patch);
+    writeKnobMapDump(out, patch);
+    writeCtrlMapDump(out, patch);
     writeCustomDump(out, patch, patch.getPolyVoiceArea(), 1);
     writeCustomDump(out, patch, patch.getCommonArea(), 0);
     writeNameDump(out, patch.getPolyVoiceArea(), 1);
