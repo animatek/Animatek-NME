@@ -170,7 +170,7 @@ public:
     // ── Paint ──
     void paint(juce::Graphics& g) override
     {
-        g.fillAll(juce::Colour(0xff16162a));
+        g.fillAll(juce::Colour(0xff323232));
         bool isGlobal = (patch != nullptr && module == nullptr);
         bool hasAny = !morphRows.empty() || !knobRows.empty() || !ctrlRows.empty();
 
@@ -188,7 +188,7 @@ public:
         // ── Morph section ──
         if (!morphRows.empty())
         {
-            paintSectionTitle(g, y, "Morphs", juce::Colour(0xffaa88cc));
+            paintSectionTitle(g, y, "Morphs", juce::Colour(0xff9CA3AA));
             y += sectionTitleH;
             int prevGroup = -1;
             int w = getWidth();
@@ -211,7 +211,7 @@ public:
         // ── Knob section ──
         if (!knobRows.empty())
         {
-            paintSectionTitle(g, y, "Knobs", juce::Colour(0xff88aacc));
+            paintSectionTitle(g, y, "Knobs", juce::Colour(0xff9CA3AA));
             y += sectionTitleH;
             for (int i = 0; i < (int)knobRows.size(); ++i)
             {
@@ -346,7 +346,7 @@ private:
             int morphRange = r.param->getMorphRange();
             juce::Colour gc = kMorphColors[r.group];
             juce::Rectangle<int> amRect(amX, y + 3, amountW, rowH - 6);
-            g.setColour(juce::Colour(0xff0d0d20));
+            g.setColour(juce::Colour(0xff25282E));
             g.fillRoundedRectangle(amRect.toFloat(), 3.0f);
             float fraction = static_cast<float>(morphRange) / 127.0f;
             float midXf = amRect.getX() + amRect.getWidth() * 0.5f;
@@ -557,7 +557,7 @@ InspectorPanel::InspectorPanel()
 {
     titleLabel.setText("Inspector", juce::dontSendNotification);
     titleLabel.setFont(juce::Font(juce::FontOptions(13.0f).withStyle("Bold")));
-    titleLabel.setColour(juce::Label::textColourId, juce::Colour(0xffaaaacc));
+    titleLabel.setColour(juce::Label::textColourId, juce::Colour(0xffd0d4d8));
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(titleLabel);
 
@@ -687,7 +687,7 @@ void InspectorPanel::refreshMorphList()
 
 void InspectorPanel::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff1a1a30));
+    g.fillAll(juce::Colour(0xff323232));
 
     if (currentModule != nullptr)
     {
