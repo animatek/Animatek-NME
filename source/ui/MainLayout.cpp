@@ -147,17 +147,10 @@ MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
             onSlotChanged(idx);
     };
 
-    // Toolbar buttons
-    midiButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
-    midiButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffaaaacc));
     midiButton.onClick = [this]() { if (onMidiSettingsClicked) onMidiSettingsClicked(); };
 
-    libraryButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
-    libraryButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffaaaacc));
     libraryButton.onClick = [this]() { if (onLibraryFolderClicked) onLibraryFolderClicked(); };
 
-    storeButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
-    storeButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffaaaacc));
     storeButton.onClick = [this]() { if (onStoreToBankClicked) onStoreToBankClicked(); };
 
     // Left column: inspector + toolbar + slots
@@ -185,6 +178,28 @@ MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
     layoutManager.setItemLayout(2, 200, -1.0, -0.6);  // canvas (most space)
     layoutManager.setItemLayout(3, 4, 4, 4);          // resizer
     layoutManager.setItemLayout(4, 150, 400, 220);    // patch browser (right)
+
+    applyTheme();
+}
+
+void MainLayout::applyTheme()
+{
+    midiButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
+    midiButton.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().buttonActive);
+    midiButton.setColour(juce::TextButton::textColourOffId, AppTheme::palette().textSecondary);
+    libraryButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
+    libraryButton.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().buttonActive);
+    libraryButton.setColour(juce::TextButton::textColourOffId, AppTheme::palette().textSecondary);
+    storeButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
+    storeButton.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().buttonActive);
+    storeButton.setColour(juce::TextButton::textColourOffId, AppTheme::palette().textSecondary);
+
+    rightBrowserTabs.setTabBackgroundColour(0, AppTheme::palette().backgroundPanel);
+    rightBrowserTabs.setTabBackgroundColour(1, AppTheme::palette().backgroundPanel);
+
+    patchBrowserPanel.applyTheme();
+    diskPresetBrowserPanel.applyTheme();
+    repaint();
 }
 
 void MainLayout::paint(juce::Graphics& g)

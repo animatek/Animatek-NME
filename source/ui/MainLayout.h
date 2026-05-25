@@ -47,6 +47,7 @@ public:
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void applyTheme();
 
     PatchCanvasComponent& getCanvas()      { return canvasComponent; }
     void setTheme(const ColorScheme& cs)   { canvasComponent.setTheme(cs); }

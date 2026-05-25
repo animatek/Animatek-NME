@@ -6,46 +6,58 @@ PatchBrowserPanel::PatchBrowserPanel()
 {
     // Status label for loading state
     statusLabel.setJustificationType(juce::Justification::centred);
-    statusLabel.setColour(juce::Label::textColourId, juce::Colour(0xff888888));
     statusLabel.setFont(juce::Font(juce::FontOptions(14.0f)));
     addAndMakeVisible(statusLabel);
 
     // Search label
     searchLabel.setText("Search:", juce::dontSendNotification);
-    searchLabel.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
     searchLabel.setFont(juce::Font(juce::FontOptions(12.0f)));
     addAndMakeVisible(searchLabel);
 
     // Search box
-    searchBox.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().inputBackground);
-    searchBox.setColour(juce::TextEditor::textColourId, AppTheme::palette().textSecondary);
-    searchBox.setColour(juce::TextEditor::outlineColourId, AppTheme::palette().borderColor);
     searchBox.setFont(juce::Font(juce::FontOptions(12.0f)));
     searchBox.onTextChange = [this]() { onSearchTextChanged(); };
     addAndMakeVisible(searchBox);
 
     // Hide empty button
     hideEmptyButton.setButtonText("Hide Empty");
-    hideEmptyButton.setColour(juce::ToggleButton::textColourId, AppTheme::palette().textSecondary);
     hideEmptyButton.onClick = [this]() { onHideEmptyToggled(); };
     addAndMakeVisible(hideEmptyButton);
 
     // Refresh button
     refreshButton.setButtonText("Refresh");
-    refreshButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().borderColor);
-    refreshButton.setColour(juce::TextButton::textColourOffId, AppTheme::palette().textSecondary);
     refreshButton.onClick = [this]() { onRefreshClicked(); };
     addAndMakeVisible(refreshButton);
 
     // TreeView for patch browser
     treeView = std::make_unique<juce::TreeView>();
-    treeView->setColour(juce::TreeView::backgroundColourId, AppTheme::palette().backgroundPanel);
-    treeView->setColour(juce::TreeView::linesColourId, AppTheme::palette().borderColor);
     treeView->setDefaultOpenness(false);  // Banks start collapsed
     treeView->setIndentSize(20);
     addAndMakeVisible(*treeView);
 
+    applyTheme();
     setLoadingState(false);
+}
+
+void PatchBrowserPanel::applyTheme()
+{
+    statusLabel.setColour(juce::Label::textColourId, AppTheme::palette().textMuted);
+    searchLabel.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
+    searchBox.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().inputBackground);
+    searchBox.setColour(juce::TextEditor::textColourId, AppTheme::palette().textSecondary);
+    searchBox.setColour(juce::TextEditor::outlineColourId, AppTheme::palette().borderColor);
+    hideEmptyButton.setColour(juce::ToggleButton::textColourId, AppTheme::palette().textSecondary);
+    refreshButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().borderColor);
+    refreshButton.setColour(juce::TextButton::textColourOffId, AppTheme::palette().textSecondary);
+
+    if (treeView)
+    {
+        treeView->setColour(juce::TreeView::backgroundColourId, AppTheme::palette().backgroundPanel);
+        treeView->setColour(juce::TreeView::linesColourId, AppTheme::palette().borderColor);
+        treeView->repaint();
+    }
+
+    repaint();
 }
 
 void PatchBrowserPanel::paint(juce::Graphics& g)

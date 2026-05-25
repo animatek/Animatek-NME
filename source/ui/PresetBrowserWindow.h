@@ -12,6 +12,7 @@ public:
     void refresh();
     void resized() override;
     void paint(juce::Graphics& g) override;
+    void applyTheme();
 
     std::function<void(const juce::File&)> onPatchChosen;
     std::function<void(const juce::File&)> onSnippetChosen;
@@ -73,6 +74,7 @@ public:
     void setLibraryRoot(const juce::File& root);
     void refresh();
     void closeButtonPressed() override;
+    void applyTheme();
 
     std::function<void(const juce::File&)> onPatchChosen;
     std::function<void(const juce::File&)> onSnippetChosen;

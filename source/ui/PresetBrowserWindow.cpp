@@ -68,14 +68,8 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
 
     searchLabel.setText("Search", juce::dontSendNotification);
     searchLabel.setFont(juce::Font(juce::FontOptions(12.0f)));
-    searchLabel.setColour(juce::Label::textColourId, kText);
     addAndMakeVisible(searchLabel);
 
-    searchBox.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().inputBackground);
-    searchBox.setColour(juce::TextEditor::textColourId, kText);
-    searchBox.setColour(juce::TextEditor::outlineColourId, kSep);
-    searchBox.setColour(juce::TextEditor::focusedOutlineColourId, AppTheme::palette().accentActive);
-    searchBox.setTextToShowWhenEmpty("patch or snippet name", kDim);
     searchBox.onTextChange = [this]() { rebuildVisibleEntries(); };
     addAndMakeVisible(searchBox);
 
@@ -93,14 +87,32 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     refreshButton.onClick = [this]() { refresh(); };
     addAndMakeVisible(refreshButton);
 
-    statusLabel.setColour(juce::Label::textColourId, kDim);
     statusLabel.setFont(juce::Font(juce::FontOptions(12.0f)));
     addAndMakeVisible(statusLabel);
 
-    listBox.setColour(juce::ListBox::backgroundColourId, kPanel);
-    listBox.setColour(juce::ListBox::outlineColourId, kSep);
     listBox.setRowHeight(24);
     addAndMakeVisible(listBox);
+
+    applyTheme();
+}
+
+void DiskPresetBrowserPanel::applyTheme()
+{
+    searchLabel.setColour(juce::Label::textColourId, kText);
+    searchBox.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().inputBackground);
+    searchBox.setColour(juce::TextEditor::textColourId, kText);
+    searchBox.setColour(juce::TextEditor::outlineColourId, kSep);
+    searchBox.setColour(juce::TextEditor::focusedOutlineColourId, AppTheme::palette().accentActive);
+    searchBox.setTextToShowWhenEmpty("patch or snippet name", kDim);
+    statusLabel.setColour(juce::Label::textColourId, kDim);
+    listBox.setColour(juce::ListBox::backgroundColourId, kPanel);
+    listBox.setColour(juce::ListBox::outlineColourId, kSep);
+
+    for (auto* b : { &allButton, &patchesButton, &snippetsButton })
+        styleFilterButton(*b);
+
+    listBox.repaint();
+    repaint();
 }
 
 void DiskPresetBrowserPanel::paint(juce::Graphics& g)
@@ -288,6 +300,13 @@ PresetBrowserWindow::PresetBrowserWindow()
 
     browserPanel.onPatchChosen = [this](const juce::File& f) { if (onPatchChosen) onPatchChosen(f); };
     browserPanel.onSnippetChosen = [this](const juce::File& f) { if (onSnippetChosen) onSnippetChosen(f); };
+}
+
+void PresetBrowserWindow::applyTheme()
+{
+    setBackgroundColour(kBg);
+    browserPanel.applyTheme();
+    repaint();
 }
 
 void PresetBrowserWindow::setLibraryRoot(const juce::File& root)

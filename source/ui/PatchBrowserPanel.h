@@ -11,6 +11,7 @@ public:
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void applyTheme();
 
     // Update the patch list from the synth
     void setPatchList(const std::vector<std::string>& names);

@@ -1346,6 +1346,9 @@ void MainComponent::applyEditorOptions(const EditorOptions& opts) {
   PatchCanvas::setAutoUpload   (opts.autoUpload);
   PatchCanvas::setCableOpacity (opts.cableOpacity);
   mainLayout->setTheme(createDarkTheme(), ThemeId::Dark);
+  mainLayout->applyTheme();
+  if (presetBrowserWindow)
+    presetBrowserWindow->applyTheme();
   mainLayout->repaint();
 
   if (editorOptions.presetLibraryRoot != juce::File()) {
