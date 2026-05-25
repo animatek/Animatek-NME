@@ -6,6 +6,97 @@
 #include "../model/Patch.h"
 #include <iostream>
 #include <iomanip>
+#include <sstream>
+
+namespace
+{
+class Midi7BitReader
+{
+public:
+    explicit Midi7BitReader(const std::vector<uint8_t>& bytesIn) : bytes(bytesIn) {}
+
+    bool readBits(int count, int& value)
+    {
+        value = 0;
+        for (int i = 0; i < count; ++i)
+        {
+            if (byteIndex >= bytes.size())
+                return false;
+
+            value = (value << 1) | ((bytes[byteIndex] >> bitIndex) & 0x01);
+            if (--bitIndex < 0)
+            {
+                bitIndex = 6;
+                ++byteIndex;
+            }
+        }
+        return true;
+    }
+
+private:
+    const std::vector<uint8_t>& bytes;
+    size_t byteIndex = 0;
+    int bitIndex = 6;
+};
+
+const char* pdlSectionName(int type)
+{
+    switch (type)
+    {
+        case 33:  return "Header";
+        case 55:  return "PatchName";
+        case 74:  return "ModuleDump";
+        case 77:  return "ParameterDump";
+        case 82:  return "CableDump";
+        case 90:  return "NameDump";
+        case 91:  return "CustomDump";
+        case 96:  return "ControlMapDump";
+        case 98:  return "KnobMapDump";
+        case 101: return "MorphMap";
+        case 105: return "NoteDump";
+        default:  return "Unknown";
+    }
+}
+
+const char* synthErrorName(int code)
+{
+    switch (code)
+    {
+        case 3:  return "non-fatal patch message warning";
+        case 4:  return "checksum error";
+        case 5:  return "no slot focused";
+        case 6:  return "non-fatal patch message warning";
+        default: return "unknown";
+    }
+}
+
+std::string describePdlSection(const std::vector<uint8_t>& section)
+{
+    Midi7BitReader reader(section);
+    int type = -1;
+    if (!reader.readBits(8, type))
+        return "type=-1 (Unknown)";
+
+    std::ostringstream out;
+    out << "type=" << type << " (" << pdlSectionName(type) << ")";
+
+    if (type == 77)
+    {
+        int pdlSection = 0;
+        int moduleCount = 0;
+        int moduleIndex = 0;
+        int moduleType = 0;
+        if (reader.readBits(1, pdlSection) && reader.readBits(7, moduleCount))
+        {
+            out << " pdlSection=" << pdlSection << " modules=" << moduleCount;
+            if (moduleCount > 0 && reader.readBits(7, moduleIndex) && reader.readBits(7, moduleType))
+                out << " firstModule=" << moduleIndex << " firstType=" << moduleType;
+        }
+    }
+
+    return out.str();
+}
+}
 
 ConnectionManager::ConnectionManager()
 {
@@ -112,8 +203,9 @@ void ConnectionManager::requestPatch(int slot)
     // Cancel any pending edit queue — we're about to reload from synth
     if (!ackedQueue.empty() || ackedQueueWaiting)
     {
-        ackedQueue.clear();
-        ackedQueueWaiting = false;
+            ackedQueue.clear();
+            ackedQueueWaiting = false;
+            ackedQueueWaitingAllowsNewPatchInSlot = false;
         ++ackedQueueGeneration;
     }
 
@@ -273,16 +365,37 @@ void ConnectionManager::sendNextUploadSection()
     }
 
     auto msg = buildUploadSysEx(uploadSectionIndex, total, uploadSlot);
+    const int sentSection = uploadSectionIndex;
+    const int ackGeneration = ++uploadAckGeneration;
 
     // Log full SysEx for debugging
     std::cout << "[UPLOAD]   section " << uploadSectionIndex
-              << "/" << total << " size=" << msg.size() << " hex:";
+              << "/" << total << " size=" << msg.size()
+              << " " << describePdlSection(uploadSections[static_cast<size_t>(uploadSectionIndex)])
+              << " hex:";
     for (size_t k = 0; k < msg.size(); ++k)
         std::cout << " " << std::hex << std::setw(2) << std::setfill('0') << (int)msg[k];
     std::cout << std::dec << std::endl;
 
     sendRawSysEx(msg);
     // waitingForUploadAck stays true — onAckReceived will call sendNextUploadSection
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(uploadAckTimeoutMs, [this, sentSection, ackGeneration, aliveFlag]() {
+        if (!*aliveFlag) return;
+        if (waitingForUploadAck && uploadAckGeneration == ackGeneration)
+        {
+            std::cout << "[UPLOAD] ACK timeout at section " << sentSection
+                      << "/" << uploadSections.size()
+                      << " " << (uploadSections.size() > static_cast<size_t>(sentSection)
+                          ? describePdlSection(uploadSections[static_cast<size_t>(sentSection)])
+                          : "type=-1 (Unknown)")
+                      << " — aborting upload" << std::endl;
+            waitingForUploadAck = false;
+            uploadSections.clear();
+            uploadSectionIndex = 0;
+            setStatus(State::Connected, "Upload timeout at section " + juce::String(sentSection));
+        }
+    });
 }
 
 void ConnectionManager::uploadPatch(int slot, const Patch& patch)
@@ -304,11 +417,12 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
         ++ackedQueueGeneration;
     }
 
-    // Serialize the patch into individual PDL2 sections (Java upload order, 16 sections)
+    // Serialize the patch into individual PDL2 sections in the Java upload order.
     PatchSerializer serializer;
     uploadSections = serializer.serializeForUpload(patch);
     uploadSlot = slot;
     uploadSectionIndex = 0;
+    ++uploadAckGeneration;
 
     std::cout << "[UPLOAD] Uploading patch \"" << patch.getName().toStdString()
               << "\" to slot " << slot << " (" << uploadSections.size() << " sections)" << std::endl;
@@ -420,12 +534,12 @@ void ConnectionManager::sendRawSysEx(const std::vector<uint8_t>& sysex)
     midiDevice->sendSysEx(sysex);
 }
 
-void ConnectionManager::sendAckedSysEx(const std::vector<uint8_t>& sysex)
+void ConnectionManager::sendAckedSysEx(const std::vector<uint8_t>& sysex, bool allowNewPatchInSlotReply)
 {
     if (!isConnected() || !midiDevice)
         return;
 
-    ackedQueue.push_back(sysex);
+    ackedQueue.push_back({ sysex, allowNewPatchInSlotReply });
     drainAckedQueue();
 }
 
@@ -437,8 +551,9 @@ void ConnectionManager::drainAckedQueue()
     auto msg = ackedQueue.front();
     ackedQueue.pop_front();
     ackedQueueWaiting = true;
+    ackedQueueWaitingAllowsNewPatchInSlot = msg.allowNewPatchInSlotReply;
     int generation = ++ackedQueueGeneration;
-    midiDevice->sendSysEx(msg);
+    midiDevice->sendSysEx(msg.bytes);
 
     std::cout << "[QUEUE] Sent queued message (gen=" << generation
               << ", " << ackedQueue.size() << " remaining), waiting for ACK" << std::endl;
@@ -453,6 +568,7 @@ void ConnectionManager::drainAckedQueue()
             std::cout << "[QUEUE] ACK timeout (gen=" << generation << ") — unblocking queue ("
                       << ackedQueue.size() << " pending)" << std::endl;
             ackedQueueWaiting = false;
+            ackedQueueWaitingAllowsNewPatchInSlot = false;
             drainAckedQueue();
         }
     });
@@ -468,6 +584,7 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
     if (ackedQueueWaiting)
     {
         ackedQueueWaiting = false;
+        ackedQueueWaitingAllowsNewPatchInSlot = false;
         std::cout << "[QUEUE] ACK received, unblocking queue ("
                   << ackedQueue.size() << " pending)" << std::endl;
         drainAckedQueue();
@@ -477,10 +594,16 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
     {
         // Synth ACK for current upload section — advance to next
         currentPatchId = msg.pid1;
+        ++uploadAckGeneration;  // invalidate timeout for the section just ACKed
         uploadSectionIndex++;
         std::cout << "[UPLOAD] ACK for section " << (uploadSectionIndex - 1)
                   << ", patchId=" << currentPatchId << std::endl;
-        sendNextUploadSection();  // sends next or completes if all done
+        auto aliveFlag = alive;
+        juce::Timer::callAfterDelay(uploadInterSectionDelayMs, [this, aliveFlag]() {
+            if (!*aliveFlag) return;
+            if (waitingForUploadAck)
+                sendNextUploadSection();  // sends next or completes if all done
+        });
         return;
     }
 
@@ -720,7 +843,9 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
 {
     // Debug: log all NMInfo subcommands we receive
     if (msg.sc != 0x39 && msg.sc != 0x3a)  // skip Lights and Meters (too spammy)
+    {
         DBG("[NMInfo] sc=0x" + juce::String::toHexString(msg.sc) + " data=" + juce::String(static_cast<int>(msg.data.size())) + " bytes");
+    }
 
     if (msg.sc == 0x39 && msg.lightStartIndex >= 0)  // LightMessage
     {
@@ -755,6 +880,19 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
     if (msg.sc == 0x38)  // NewPatchInSlot
     {
         DBG("New patch in slot " + juce::String(msg.newPatchSlot) + " pid=" + juce::String(msg.newPatchPid));
+
+        // Structural edit messages such as CableInsert/ModuleInsert are
+        // confirmed by NewPatchInSlot on some firmware paths instead of a
+        // regular ACK. Treat it as a queue reply so subsequent edit messages
+        // are not held until the 3-second timeout.
+        if (ackedQueueWaiting && ackedQueueWaitingAllowsNewPatchInSlot)
+        {
+            ackedQueueWaiting = false;
+            ackedQueueWaitingAllowsNewPatchInSlot = false;
+            std::cout << "[QUEUE] NewPatchInSlot received, unblocking queue ("
+                      << ackedQueue.size() << " pending)" << std::endl;
+            drainAckedQueue();
+        }
 
         slotDetected = true;
         slotDetectGeneration++;  // Cancel any pending fallback timer
@@ -826,7 +964,20 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
     {
         int errorCode = msg.data.empty() ? -1 : msg.data[0];
         std::cout << "*** SYNTH ERROR: sc=0x7e code=" << errorCode
+                  << " (" << synthErrorName(errorCode) << ")"
                   << " (pid=" << msg.pid << ")" << std::endl;
+
+        if (waitingForUploadAck)
+        {
+            ++uploadAckGeneration;
+            waitingForUploadAck = false;
+            uploadSections.clear();
+            uploadSectionIndex = 0;
+            setStatus(State::Connected,
+                      "Upload rejected by synth (code " + juce::String(errorCode)
+                          + ": " + juce::String(synthErrorName(errorCode)) + ")");
+        }
+
         if (synthErrorCallback)
         {
             // Capture callback by value so it's safe even if ConnectionManager

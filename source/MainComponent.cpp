@@ -674,9 +674,17 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   });
 
   connectionManager.setSynthErrorCallback([this](int errorCode) {
+    juce::String description;
+    if (errorCode == 4)
+      description = "checksum error";
+    else if (errorCode == 5)
+      description = "no slot focused";
+    else
+      description = "unknown";
+
     mainLayout->getStatusBar().showMessage(
         "ERROR: Synth error code " + juce::String(errorCode)
-        + " — check console for details", 8000);
+        + " (" + description + ") — check console for details", 8000);
   });
 
   // Wire toolbar buttons
@@ -1151,8 +1159,31 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   if (connectionManager.isConnected()) {
     // Send loaded patch to synth so it plays immediately
     int slot = connectionManager.getCurrentSlot();
-    connectionManager.uploadPatch(slot, *currentPatch());
-    std::cout << "[FILE] Uploading loaded patch to synth slot " << slot << std::endl;
+    connectionManager.selectSlot(slot);
+    std::cout << "[FILE] Focusing synth slot " << slot << " before disk patch upload" << std::endl;
+    mainLayout->getStatusBar().showMessage(
+        "Uploading " + file.getFileName() + " to synth...", 0);
+
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    connectionManager.setUploadCompleteCallback([safeThis, slot, fileName = file.getFileName()]() {
+      if (!safeThis)
+        return;
+
+      safeThis->connectionManager.setUploadCompleteCallback(nullptr);
+
+      const char* slotNames[] = {"A", "B", "C", "D"};
+      juce::String slotName = (slot >= 0 && slot < 4) ? slotNames[slot] : juce::String(slot);
+      safeThis->mainLayout->getStatusBar().showMessage(
+          "Uploaded " + fileName + " to synth slot " + slotName, 3000);
+    });
+
+    juce::Timer::callAfterDelay(200, [safeThis, slot]() {
+      if (!safeThis || !safeThis->connectionManager.isConnected() || !safeThis->currentPatch())
+        return;
+
+      safeThis->connectionManager.uploadPatch(slot, *safeThis->currentPatch());
+      std::cout << "[FILE] Uploading loaded patch to synth slot " << slot << std::endl;
+    });
 
     currentSynchronizer() = std::make_unique<PatchSynchronizer>(
         *currentPatch(), connectionManager);

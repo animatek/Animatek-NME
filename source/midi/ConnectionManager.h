@@ -44,7 +44,8 @@ public:
     void sendParameter(int section, int moduleId, int parameterId, int value);
     void sendPatchTitle(const juce::String& title);  // Change patch name in current slot (not saved to flash)
     void sendRawSysEx(const std::vector<uint8_t>& sysex);       // Fire-and-forget (no ACK needed)
-    void sendAckedSysEx(const std::vector<uint8_t>& sysex);     // Queued, waits for ACK before next
+    void sendAckedSysEx(const std::vector<uint8_t>& sysex,
+                        bool allowNewPatchInSlotReply = false); // Queued, waits for ACK before next
 
     // Bank operations (high-level)
     void copyPatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition, int tempSlot);
@@ -165,6 +166,9 @@ private:
     void sendNextUploadSection();
     int uploadSlot = 0;
     int uploadSectionIndex = 0;
+    int uploadAckGeneration = 0;
+    static constexpr int uploadAckTimeoutMs = 5000;
+    static constexpr int uploadInterSectionDelayMs = 40;
     int pendingPatchSlot = 0;
     int currentSlot = 0;  // Track which slot is currently loaded
     int pendingBankLoadSlot = -1;
@@ -211,8 +215,15 @@ private:
     // each waits for an ACK from the synth before the next is dispatched.
     // This prevents the synth from freezing/dropping operations when multiple
     // edit messages (DeleteModule, NewCable, etc.) are sent in rapid succession.
-    std::deque<std::vector<uint8_t>> ackedQueue;
+    struct QueuedSysEx
+    {
+        std::vector<uint8_t> bytes;
+        bool allowNewPatchInSlotReply = false;
+    };
+
+    std::deque<QueuedSysEx> ackedQueue;
     bool ackedQueueWaiting = false;       // True while awaiting ACK for in-flight message
+    bool ackedQueueWaitingAllowsNewPatchInSlot = false;
     int ackedQueueGeneration = 0;         // Incremented each time a message is sent; invalidates old timeouts
     static constexpr int ackedTimeoutMs = 3000;  // 3 s timeout per message
     void drainAckedQueue();              // Send next from queue if not already waiting
