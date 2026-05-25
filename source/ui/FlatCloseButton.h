@@ -17,7 +17,7 @@ public:
     {
         if (isMouseOver())
         {
-            g.setColour (juce::Colour (0xff2a2a50));
+            g.setColour (juce::Colour (0xff25282E));
             g.fillRoundedRectangle (getLocalBounds().toFloat().reduced (2.0f), 4.0f);
         }
         g.setColour (isMouseOver() ? juce::Colours::white : juce::Colour (0xffffcc44));

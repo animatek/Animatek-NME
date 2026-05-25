@@ -68,7 +68,7 @@ void StatusBar::clearMessage()
 void StatusBar::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(0xff323232));
-    g.setColour(juce::Colour(0xff333355));
+    g.setColour(juce::Colour(0xff444A53));
     g.drawLine(0.0f, 0.0f, static_cast<float>(getWidth()), 0.0f, 1.0f);
 
     // Draw LED indicator

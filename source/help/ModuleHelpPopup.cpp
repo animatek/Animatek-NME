@@ -76,12 +76,12 @@ public:
 
     void paint(juce::Graphics& g) override
     {
-        g.fillAll(juce::Colour(0xff1e1e2e));
+        g.fillAll(juce::Colour(0xff323232));
         if (!names.isEmpty())
         {
             // divider line just above first parameter
             int y = descLabel.getBottom() + 10 + 4;
-            g.setColour(juce::Colour(0xff333355));
+            g.setColour(juce::Colour(0xff444A53));
             g.fillRect(12, y, getWidth() - 24, 1);
         }
     }
@@ -130,7 +130,7 @@ ModuleHelpPopup::ModuleHelpPopup(const NordHelp::ModuleHelp& help,
     auto* content = new HelpContent(help);
     viewport.setViewedComponent(content, true);
     viewport.setScrollBarsShown(true, false);
-    viewport.setColour(juce::ScrollBar::thumbColourId, juce::Colour(0xff444466));
+    viewport.setColour(juce::ScrollBar::thumbColourId, juce::Colour(0xff555B64));
     addAndMakeVisible(viewport);
 
     // Size: lay out content at target width first
@@ -170,9 +170,9 @@ void ModuleHelpPopup::resized()
 
 void ModuleHelpPopup::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff14142a));
+    g.fillAll(juce::Colour(0xff323232));
     // Title bar bottom line
-    g.setColour(juce::Colour(0xff333355));
+    g.setColour(juce::Colour(0xff444A53));
     g.fillRect(0, 31, getWidth(), 1);
 }
 

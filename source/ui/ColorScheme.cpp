@@ -4,8 +4,8 @@ static ColorScheme makeClassicTheme()
 {
     ColorScheme s;
     // Canvas
-    s.gridBackground  = juce::Colour(0xff12122a);
-    s.gridLines       = juce::Colour(0xff1a1a3a);
+    s.gridBackground  = juce::Colour(0xff1f2125);
+    s.gridLines       = juce::Colour(0xff2a2d33);
     // Module panels
     s.moduleBorder    = juce::Colour(0x44000000);
     s.moduleText      = juce::Colours::black.withAlpha(0.7f);
@@ -26,9 +26,9 @@ static ColorScheme makeClassicTheme()
     s.connHole        = juce::Colour(0xff111111);
     s.connOutline     = juce::Colour(0xff222222);
     // Text displays
-    s.displayBg       = juce::Colour(0xff2A2560);
-    s.displayBorder   = juce::Colour(0xff181440);
-    s.displayText     = juce::Colour(0xff4A3FA0);
+    s.displayBg       = juce::Colour(0xff25282E);
+    s.displayBorder   = juce::Colour(0xff555B64);
+    s.displayText     = juce::Colour(0xffd0d4d8);
     // Buttons
     s.buttonText       = juce::Colour(0xff333333);
     s.buttonTextActive = juce::Colour(0xff111111);
@@ -58,9 +58,9 @@ static ColorScheme makeClassicTheme()
     s.meterTrack       = juce::Colour(0xff555555);
     s.meterBg          = juce::Colour(0xff222222);
     // Custom displays
-    s.displayBgCustom     = juce::Colour(0xff1a1a2e);
-    s.displayBorderCustom = juce::Colour(0xff444466);
-    s.displayGrid         = juce::Colour(0xff333355);
+    s.displayBgCustom     = juce::Colour(0xff25282E);
+    s.displayBorderCustom = juce::Colour(0xff555B64);
+    s.displayGrid         = juce::Colour(0xff444A53);
     s.displayCurveGreen   = juce::Colour(0xff55cc55);
     s.displayCurveBlue    = juce::Colour(0xff55aaff);
     s.displayCurveWarm    = juce::Colour(0xffff8844);
@@ -88,7 +88,7 @@ static ColorScheme makeClassicTheme()
     s.bracketRouting      = juce::Colour(0xff888888);
     // SlotBar
     s.slotIconActive      = juce::Colour(0xffcc3333);
-    s.slotIconInactive    = juce::Colour(0xff555577);
+    s.slotIconInactive    = juce::Colour(0xff555B64);
     return s;
 }
 
@@ -97,7 +97,7 @@ static ColorScheme makeDarkTheme()
     ColorScheme s;
     // Canvas
     s.gridBackground  = juce::Colour(0xff111111);
-    s.gridLines       = juce::Colour(0xff1c1c2a);
+    s.gridLines       = juce::Colour(0xff2a2d33);
     // Module panels
     s.moduleBorder    = juce::Colour(0x44000000);
     s.moduleText      = juce::Colours::white.withAlpha(0.85f);
@@ -150,9 +150,9 @@ static ColorScheme makeDarkTheme()
     s.meterTrack       = juce::Colour(0xff3a3a3a);
     s.meterBg          = juce::Colour(0xff1a1a1a);
     // Custom displays
-    s.displayBgCustom     = juce::Colour(0xff1a1a2e);
-    s.displayBorderCustom = juce::Colour(0xff444466);
-    s.displayGrid         = juce::Colour(0xff333355);
+    s.displayBgCustom     = juce::Colour(0xff25282E);
+    s.displayBorderCustom = juce::Colour(0xff555B64);
+    s.displayGrid         = juce::Colour(0xff444A53);
     s.displayCurveGreen   = juce::Colour(0xff2DDCA3);
     s.displayCurveBlue    = juce::Colour(0xff55aaff);
     s.displayCurveWarm    = juce::Colour(0xffff8844);
@@ -164,7 +164,7 @@ static ColorScheme makeDarkTheme()
     s.iconFg              = juce::Colours::white;
     // Snap / selection
     s.snapHighlight       = juce::Colour(0xffE5DE45);
-    s.selectionRect       = juce::Colour(0xff4444ff);
+    s.selectionRect       = juce::Colour(0xffD4A020);
     s.selectionFill       = juce::Colour(0x22ffffff);
     // Connector lines
     s.connectorLine       = juce::Colour(0xff2a2a2a);
@@ -180,7 +180,7 @@ static ColorScheme makeDarkTheme()
     s.bracketRouting      = juce::Colour(0xff888888);
     // SlotBar
     s.slotIconActive      = juce::Colour(0xffcc3333);
-    s.slotIconInactive    = juce::Colour(0xff555577);
+    s.slotIconInactive    = juce::Colour(0xff555B64);
     return s;
 }
 

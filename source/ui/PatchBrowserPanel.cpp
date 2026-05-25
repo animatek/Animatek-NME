@@ -16,9 +16,9 @@ PatchBrowserPanel::PatchBrowserPanel()
     addAndMakeVisible(searchLabel);
 
     // Search box
-    searchBox.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff2a2a4a));
+    searchBox.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff25282E));
     searchBox.setColour(juce::TextEditor::textColourId, juce::Colour(0xffcccccc));
-    searchBox.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xff3a3a5a));
+    searchBox.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xff555B64));
     searchBox.setFont(juce::Font(juce::FontOptions(12.0f)));
     searchBox.onTextChange = [this]() { onSearchTextChanged(); };
     addAndMakeVisible(searchBox);
@@ -31,7 +31,7 @@ PatchBrowserPanel::PatchBrowserPanel()
 
     // Refresh button
     refreshButton.setButtonText("Refresh");
-    refreshButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff3a3a5a));
+    refreshButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff555B64));
     refreshButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffcccccc));
     refreshButton.onClick = [this]() { onRefreshClicked(); };
     addAndMakeVisible(refreshButton);
@@ -39,7 +39,7 @@ PatchBrowserPanel::PatchBrowserPanel()
     // TreeView for patch browser
     treeView = std::make_unique<juce::TreeView>();
     treeView->setColour(juce::TreeView::backgroundColourId, juce::Colour(0xff323232));
-    treeView->setColour(juce::TreeView::linesColourId, juce::Colour(0xff3a3a5a));
+    treeView->setColour(juce::TreeView::linesColourId, juce::Colour(0xff555B64));
     treeView->setDefaultOpenness(false);  // Banks start collapsed
     treeView->setIndentSize(20);
     addAndMakeVisible(*treeView);
@@ -286,10 +286,10 @@ void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, i
 
     if (isSelected)
     {
-        g.setColour(juce::Colour(isLoaded ? 0x44ffaa00 : 0x333d8bff));
+        g.setColour(juce::Colour(isLoaded ? 0x44ffaa00 : 0x33343941));
         g.fillRect(0, 0, width, height);
 
-        g.setColour(juce::Colour(isLoaded ? 0xffffcc44 : 0xff7aa2ff));
+        g.setColour(juce::Colour(isLoaded ? 0xffffcc44 : 0xffd0d4d8));
         g.drawRect(0, 0, width, height);
     }
     else if (isLoaded)
@@ -300,7 +300,7 @@ void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, i
     }
 
     juce::Colour textColor = isLoaded ? juce::Colour(0xffffcc44)
-                            : isSelected ? juce::Colour(0xffdbe6ff)
+                            : isSelected ? juce::Colour(0xffd0d4d8)
                                          : juce::Colour(0xffcccccc);
 
     if (section >= 0 && position == -1)

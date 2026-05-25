@@ -3,16 +3,16 @@
 
 static const juce::Colour kBg     { 0xff323232 };
 static const juce::Colour kPanel  { 0xff323232 };
-static const juce::Colour kSep    { 0xff333355 };
+static const juce::Colour kSep    { 0xff444A53 };
 static const juce::Colour kText   { 0xffcccccc };
 static const juce::Colour kDim    { 0xff888899 };
-static const juce::Colour kBlue   { 0xff7aa2ff };
-static const juce::Colour kPurple { 0xffc78cff };
+static const juce::Colour kPatchTag   { 0xffd0d4d8 };
+static const juce::Colour kSnippetTag { 0xffc9cdd1 };
 
 static void styleButton(juce::TextButton& b)
 {
-    b.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff2a2a4a));
-    b.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff353560));
+    b.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff25282E));
+    b.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff444A53));
     b.setColour(juce::TextButton::textColourOffId, kText);
 }
 
@@ -20,7 +20,7 @@ static void styleFilterButton(juce::TextButton& b)
 {
     styleButton(b);
     b.setClickingTogglesState(true);
-    b.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff3a3a70));
+    b.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff444A53));
 }
 
 DiskPresetBrowserPanel::RefreshIconButton::RefreshIconButton()
@@ -30,19 +30,19 @@ DiskPresetBrowserPanel::RefreshIconButton::RefreshIconButton()
     icon = juce::Drawable::createFromImageData(BinaryData::refreshicon_svg,
                                                BinaryData::refreshicon_svgSize);
     if (icon)
-        icon->replaceColour(juce::Colours::black, juce::Colour(0xff4aa3ff));
+        icon->replaceColour(juce::Colours::black, juce::Colour(0xffc9cdd1));
 }
 
 void DiskPresetBrowserPanel::RefreshIconButton::paintButton(juce::Graphics& g, bool highlighted, bool down)
 {
     auto area = getLocalBounds().toFloat().reduced(3.0f);
-    auto bg = down ? juce::Colour(0xff353560)
-                  : highlighted ? juce::Colour(0xff303055)
-                                : juce::Colour(0xff2a2a4a);
+    auto bg = down ? juce::Colour(0xff444A53)
+                  : highlighted ? juce::Colour(0xff343941)
+                                : juce::Colour(0xff25282E);
 
     g.setColour(bg);
     g.fillRoundedRectangle(area, 4.0f);
-    g.setColour(juce::Colour(0xff45456a));
+    g.setColour(juce::Colour(0xff555B64));
     g.drawRoundedRectangle(area, 4.0f, 1.0f);
 
     if (icon)
@@ -57,7 +57,7 @@ void DiskPresetBrowserPanel::RefreshIconButton::paintButton(juce::Graphics& g, b
     p.addCentredArc(iconArea.getCentreX(), iconArea.getCentreY(),
                     iconArea.getWidth() * 0.42f, iconArea.getHeight() * 0.42f,
                     0.0f, juce::degreesToRadians(35.0f), juce::degreesToRadians(325.0f), true);
-    g.setColour(juce::Colour(0xff4aa3ff));
+    g.setColour(juce::Colour(0xffc9cdd1));
     g.strokePath(p, juce::PathStrokeType(1.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 }
 
@@ -70,7 +70,7 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     searchLabel.setColour(juce::Label::textColourId, kText);
     addAndMakeVisible(searchLabel);
 
-    searchBox.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff202038));
+    searchBox.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff25282E));
     searchBox.setColour(juce::TextEditor::textColourId, kText);
     searchBox.setColour(juce::TextEditor::outlineColourId, kSep);
     searchBox.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(0xffffcc44));
@@ -210,12 +210,12 @@ void DiskPresetBrowserPanel::paintListBoxItem(int row, juce::Graphics& g, int wi
 
     const auto& entry = allEntries[static_cast<size_t>(visibleEntryIndices[static_cast<size_t>(row)])];
 
-    g.fillAll(selected ? juce::Colour(0xff2c3560) : kPanel);
-    g.setColour(selected ? juce::Colour(0xff8fb0ff) : kSep);
+    g.fillAll(selected ? juce::Colour(0xff343941) : kPanel);
+    g.setColour(selected ? juce::Colour(0xffd8dcdf) : kSep);
     g.drawHorizontalLine(height - 1, 0.0f, static_cast<float>(width));
 
     auto tagArea = juce::Rectangle<int>(6, 4, 48, height - 8);
-    auto tagColour = entry.type == Entry::Type::Patch ? kBlue : kPurple;
+    auto tagColour = entry.type == Entry::Type::Patch ? kPatchTag : kSnippetTag;
     g.setColour(tagColour.withAlpha(0.22f));
     g.fillRoundedRectangle(tagArea.toFloat(), 3.0f);
     g.setColour(tagColour);

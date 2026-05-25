@@ -56,9 +56,9 @@ juce::var ModuleBrowserPanel::ModuleItem::getDragSourceDescription()
 ModuleBrowserPanel::ModuleBrowserPanel()
 {
     filterField.setTextToShowWhenEmpty("Filter modules...", juce::Colour(0xff666666));
-    filterField.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff2a2a4a));
+    filterField.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff25282E));
     filterField.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-    filterField.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xff333355));
+    filterField.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xff444A53));
     filterField.onTextChange = [this] { applyFilter(); };
     addAndMakeVisible(filterField);
 

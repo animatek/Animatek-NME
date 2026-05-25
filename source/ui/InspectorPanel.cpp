@@ -176,7 +176,7 @@ public:
 
         if (!hasAny)
         {
-            g.setColour(juce::Colour(0xff444466));
+            g.setColour(juce::Colour(0xff555B64));
             g.setFont(juce::FontOptions(11.0f));
             g.drawText("No assignments", getLocalBounds().reduced(marginX),
                        juce::Justification::centredTop);
@@ -215,7 +215,7 @@ public:
             y += sectionTitleH;
             for (int i = 0; i < (int)knobRows.size(); ++i)
             {
-                paintHwRow(g, y, i, knobRows[size_t(i)], isGlobal, juce::Colour(0xff6688aa));
+                paintHwRow(g, y, i, knobRows[size_t(i)], isGlobal, juce::Colour(0xff8D969F));
                 y += rowH;
             }
             y += sectionGap;
@@ -328,7 +328,7 @@ private:
         g.fillRect(0, y, w, rowH);
 
         // X button
-        g.setColour(juce::Colour(0xff666688));
+        g.setColour(juce::Colour(0xff6B737C));
         juce::Rectangle<int> xRect(marginX, y + (rowH - xBtnW) / 2, xBtnW, xBtnW);
         g.drawRoundedRectangle(xRect.toFloat(), 3.0f, 1.0f);
         g.setFont(juce::FontOptions(10.0f));
@@ -354,7 +354,7 @@ private:
             float barX = (fraction >= 0.0f) ? midXf : midXf - barW;
             g.setColour(gc.withAlpha(0.75f));
             g.fillRoundedRectangle(barX, float(amRect.getY()), barW, float(amRect.getHeight()), 2.0f);
-            g.setColour(juce::Colour(0xff444466));
+            g.setColour(juce::Colour(0xff555B64));
             g.drawVerticalLine(int(midXf), float(amRect.getY()), float(amRect.getBottom()));
             g.setColour(juce::Colours::white.withAlpha(0.9f));
             g.setFont(juce::FontOptions(10.0f));
@@ -371,7 +371,7 @@ private:
         g.fillRect(0, y, w, rowH);
 
         // X button
-        g.setColour(juce::Colour(0xff666688));
+        g.setColour(juce::Colour(0xff6B737C));
         juce::Rectangle<int> xRect(marginX, y + (rowH - xBtnW) / 2, xBtnW, xBtnW);
         g.drawRoundedRectangle(xRect.toFloat(), 3.0f, 1.0f);
         g.setFont(juce::FontOptions(10.0f));
@@ -568,17 +568,17 @@ InspectorPanel::InspectorPanel()
     addAndMakeVisible(nameLabel);
 
     nameEditor.setFont(juce::Font(juce::FontOptions(13.0f)));
-    nameEditor.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff252540));
+    nameEditor.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff25282E));
     nameEditor.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-    nameEditor.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xff3a3a60));
-    nameEditor.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(0xff6666cc));
+    nameEditor.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xff555B64));
+    nameEditor.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(0xff6B737C));
     nameEditor.setInputRestrictions(16);
     nameEditor.addListener(this);
     nameEditor.setEnabled(false);
     addAndMakeVisible(nameEditor);
 
     sectionLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
-    sectionLabel.setColour(juce::Label::textColourId, juce::Colour(0xff666688));
+    sectionLabel.setColour(juce::Label::textColourId, juce::Colour(0xff6B737C));
     sectionLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(sectionLabel);
 
@@ -691,7 +691,7 @@ void InspectorPanel::paint(juce::Graphics& g)
 
     if (currentModule != nullptr)
     {
-        g.setColour(juce::Colour(0xff2a2a50));
+        g.setColour(juce::Colour(0xff25282E));
         g.fillRect(0, margin + rowH + 2 + 14 + 14 + margin * 2 + rowH + 4, getWidth(), 1);
     }
 }

@@ -24,10 +24,10 @@ public:
         slider.setSliderStyle(juce::Slider::LinearHorizontal);
         slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 38, 18);
         slider.setColour(juce::Slider::textBoxTextColourId,       juce::Colour(0xffffaa44));
-        slider.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff22223a));
-        slider.setColour(juce::Slider::textBoxOutlineColourId,    juce::Colour(0xff3a3a5a));
+        slider.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff25282E));
+        slider.setColour(juce::Slider::textBoxOutlineColourId,    juce::Colour(0xff555B64));
         slider.setColour(juce::Slider::thumbColourId,             juce::Colour(0xffffcc44));
-        slider.setColour(juce::Slider::trackColourId,             juce::Colour(0xff353560));
+        slider.setColour(juce::Slider::trackColourId,             juce::Colour(0xff444A53));
         slider.onValueChange = [this]
         {
             PatchCanvas::setCableOpacity(static_cast<float>(slider.getValue()));
@@ -1584,7 +1584,7 @@ public:
 
         closeButton.setButtonText("x");
         closeButton.setColour(juce::TextButton::buttonColourId,   juce::Colour(0xff323232));
-        closeButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff252540));
+        closeButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff25282E));
         closeButton.setColour(juce::TextButton::textColourOffId,  juce::Colour(0xffffcc44));
         closeButton.setColour(juce::TextButton::textColourOnId,   juce::Colours::white);
         closeButton.onClick = [this]() { removeFromDesktop(); delete this; };
@@ -1612,7 +1612,7 @@ public:
         addAndMakeVisible(suppressToggle);
 
         okButton.setButtonText("I understand, let me in!");
-        okButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff333366));
+        okButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff444A53));
         okButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
         okButton.onClick = [this]() {
             if (suppressToggle.getToggleState()) {
@@ -1641,7 +1641,7 @@ public:
 
     void paint(juce::Graphics& g) override {
         g.fillAll(juce::Colour(0xff323232));
-        g.setColour(juce::Colour(0xff333355));
+        g.setColour(juce::Colour(0xff444A53));
         g.fillRect(0, 31, getWidth(), 1);
     }
 

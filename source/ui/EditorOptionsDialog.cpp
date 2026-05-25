@@ -2,13 +2,13 @@
 
 // ─── Color palette (same as PatchSettingsDialog) ─────────────────────────────
 static const juce::Colour kBg     { 0xff323232 };
-static const juce::Colour kSep    { 0xff333355 };
+static const juce::Colour kSep    { 0xff444A53 };
 static const juce::Colour kGold   { 0xffffcc44 };
 static const juce::Colour kAmber  { 0xffffaa44 };
 static const juce::Colour kText   { 0xffcccccc };
 static const juce::Colour kDim    { 0xff888899 };
-static const juce::Colour kBtnBg  { 0xff252540 };
-static const juce::Colour kBtnOn  { 0xff353560 };
+static const juce::Colour kBtnBg  { 0xff25282E };
+static const juce::Colour kBtnOn  { 0xff444A53 };
 static const juce::Colour kOkBg   { 0xff1e3a1e };
 static const juce::Colour kOkOn   { 0xff2a5a2a };
 
@@ -34,7 +34,7 @@ static void styleBtn (juce::TextButton& b, bool isOk = false)
 static void styleTextEditor (juce::TextEditor& e)
 {
     e.setReadOnly (true);
-    e.setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff202038));
+    e.setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff25282E));
     e.setColour (juce::TextEditor::textColourId,       kText);
     e.setColour (juce::TextEditor::outlineColourId,    kSep);
     e.setColour (juce::TextEditor::focusedOutlineColourId, kAmber);

@@ -42,9 +42,9 @@ PatchHeaderBar::PatchHeaderBar()
     // Create patch name editor (initially hidden)
     patchNameEditor = std::make_unique<juce::Label>("PatchName", "");
     patchNameEditor->setEditable(true);
-    patchNameEditor->setColour(juce::Label::backgroundColourId, juce::Colour(0xff252545));
+    patchNameEditor->setColour(juce::Label::backgroundColourId, juce::Colour(0xff25282E));
     patchNameEditor->setColour(juce::Label::textColourId, juce::Colours::white);
-    patchNameEditor->setColour(juce::Label::outlineColourId, juce::Colour(0xff444466));
+    patchNameEditor->setColour(juce::Label::outlineColourId, juce::Colour(0xff555B64));
     patchNameEditor->setFont(juce::FontOptions(12.0f));
     patchNameEditor->setJustificationType(juce::Justification::centredLeft);
 
@@ -90,7 +90,7 @@ void PatchHeaderBar::createDisketteIcon()
     auto normalImage = std::make_unique<juce::DrawablePath>();
     normalImage->setPath(diskettePath);
     normalImage->setFill(juce::Colours::white.withAlpha(0.9f));
-    normalImage->setStrokeFill(juce::Colour(0xff444466));
+    normalImage->setStrokeFill(juce::Colour(0xff555B64));
     normalImage->setStrokeThickness(1.0f);
 
     // Disabled state (grayed out)
@@ -322,9 +322,9 @@ void PatchHeaderBar::drawLoadBar(juce::Graphics& g, int x, int y, int w, int h,
     int barW = w - lblW;
 
     // Bar background
-    g.setColour(juce::Colour(0xff252545));
+    g.setColour(juce::Colour(0xff25282E));
     g.fillRect(barX, y, barW, h);
-    g.setColour(juce::Colour(0xff444466));
+    g.setColour(juce::Colour(0xff555B64));
     g.drawRect(barX, y, barW, h, 1);
 
     if (percent >= 0.0f)
@@ -357,7 +357,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
     g.fillAll(juce::Colour(0xff323232));
 
     // Bottom border
-    g.setColour(juce::Colour(0xff333355));
+    g.setColour(juce::Colour(0xff444A53));
     g.drawLine(0.0f, static_cast<float>(h) - 0.5f,
                static_cast<float>(getWidth()), static_cast<float>(h) - 0.5f, 1.0f);
 
@@ -365,7 +365,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
     auto drawSep = [&](int sectionX)
     {
         float sx = static_cast<float>(sectionX) - sepGap * 0.5f;
-        g.setColour(juce::Colour(0xff333355));
+        g.setColour(juce::Colour(0xff444A53));
         g.drawLine(sx, 4.0f, sx, static_cast<float>(h - 4), 1.0f);
     };
     drawSep(voicesSecX_);
@@ -384,9 +384,9 @@ void PatchHeaderBar::paint(juce::Graphics& g)
     if (!patchNameEditor || !patchNameEditor->isVisible())
     {
         auto nameRect = juce::Rectangle<int>(x, 6, patchNameW, h - 12);
-        g.setColour(juce::Colour(0xff252545));
+        g.setColour(juce::Colour(0xff25282E));
         g.fillRoundedRectangle(nameRect.toFloat(), 3.0f);
-        g.setColour(juce::Colour(0xff444466));
+        g.setColour(juce::Colour(0xff555B64));
         g.drawRoundedRectangle(nameRect.toFloat(), 3.0f, 1.0f);
 
         juce::String patchName = patch ? patch->getName() : "No Patch";
@@ -508,7 +508,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             if (active)
                 g.setColour(juce::Colour(0xffD4A020));  // gold for active
             else if (filled)
-                g.setColour(juce::Colour(0xff4466aa));  // blue for filled
+                g.setColour(juce::Colour(0xff6B737C));  // grey for filled
             else
                 g.setColour(juce::Colour(0xff3a3a3a));  // dark gray for empty
 
@@ -565,15 +565,15 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         // Separator
         {
             float sepX = static_cast<float>(sx) - sepGap * 0.5f;
-            g.setColour(juce::Colour(0xff333355));
+            g.setColour(juce::Colour(0xff444A53));
             g.drawLine(sepX, 4.0f, sepX, static_cast<float>(h - 4), 1.0f);
         }
 
         // Synth name box
         auto nameRect = juce::Rectangle<int>(sx, 6, synthNameW, h - 12);
-        g.setColour(juce::Colour(0xff252545));
+        g.setColour(juce::Colour(0xff25282E));
         g.fillRoundedRectangle(nameRect.toFloat(), 3.0f);
-        g.setColour(juce::Colour(0xff444466));
+        g.setColour(juce::Colour(0xff555B64));
         g.drawRoundedRectangle(nameRect.toFloat(), 3.0f, 1.0f);
         g.setColour(juce::Colours::white);
         g.setFont(juce::FontOptions(11.0f));

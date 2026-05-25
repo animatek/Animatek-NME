@@ -44,14 +44,14 @@ void QuickAddPopup::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
 
-    g.setColour(juce::Colour(0xff1a1a38));
+    g.setColour(juce::Colour(0xff323232));
     g.fillRoundedRectangle(bounds, 6.0f);
 
-    g.setColour(juce::Colour(0xff5555bb));
+    g.setColour(juce::Colour(0xff6B737C));
     g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.5f);
 
     // Separator under search field
-    g.setColour(juce::Colour(0xff333366));
+    g.setColour(juce::Colour(0xff444A53));
     g.fillRect(0, fieldHeight, popupWidth, 1);
 
     // Module list rows
@@ -63,18 +63,18 @@ void QuickAddPopup::paint(juce::Graphics& g)
 
         if (i == selectedIdx)
         {
-            g.setColour(juce::Colour(0xff3344cc));
+            g.setColour(juce::Colour(0xff343941));
             g.fillRect(row.reduced(2, 1));
         }
 
         // Category (dim, left)
-        g.setColour(juce::Colour(0xff666699));
+        g.setColour(juce::Colour(0xff6B737C));
         g.setFont(juce::Font(juce::FontOptions(10.0f)));
         g.drawText(entry.category, row.withTrimmedLeft(8).withWidth(80),
                    juce::Justification::centredLeft);
 
         // Module fullname
-        g.setColour(i == selectedIdx ? juce::Colours::white : juce::Colour(0xffccccdd));
+        g.setColour(i == selectedIdx ? juce::Colours::white : juce::Colour(0xffcccccc));
         g.setFont(juce::Font(juce::FontOptions(13.0f)));
         g.drawText(entry.desc->fullname, row.withTrimmedLeft(92).withTrimmedRight(8),
                    juce::Justification::centredLeft);
@@ -84,7 +84,7 @@ void QuickAddPopup::paint(juce::Graphics& g)
 
     if (filtered.empty())
     {
-        g.setColour(juce::Colour(0xff555577));
+        g.setColour(juce::Colour(0xff555B64));
         g.setFont(juce::Font(juce::FontOptions(12.0f)));
         g.drawText("No modules found", 0, fieldHeight + 4, popupWidth, rowHeight,
                    juce::Justification::centred);
