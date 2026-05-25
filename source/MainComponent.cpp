@@ -1583,7 +1583,7 @@ public:
         addAndMakeVisible(titleLabel);
 
         closeButton.setButtonText("x");
-        closeButton.setColour(juce::TextButton::buttonColourId,   juce::Colour(0xff14142a));
+        closeButton.setColour(juce::TextButton::buttonColourId,   juce::Colour(0xff323232));
         closeButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff252540));
         closeButton.setColour(juce::TextButton::textColourOffId,  juce::Colour(0xffffcc44));
         closeButton.setColour(juce::TextButton::textColourOnId,   juce::Colours::white);
@@ -1640,7 +1640,7 @@ public:
     }
 
     void paint(juce::Graphics& g) override {
-        g.fillAll(juce::Colour(0xff14142a));
+        g.fillAll(juce::Colour(0xff323232));
         g.setColour(juce::Colour(0xff333355));
         g.fillRect(0, 31, getWidth(), 1);
     }

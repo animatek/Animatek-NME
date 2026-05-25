@@ -1,8 +1,8 @@
 #include "PresetBrowserWindow.h"
 #include "BinaryData.h"
 
-static const juce::Colour kBg     { 0xff151528 };
-static const juce::Colour kPanel  { 0xff1e1e3a };
+static const juce::Colour kBg     { 0xff323232 };
+static const juce::Colour kPanel  { 0xff323232 };
 static const juce::Colour kSep    { 0xff333355 };
 static const juce::Colour kText   { 0xffcccccc };
 static const juce::Colour kDim    { 0xff888899 };

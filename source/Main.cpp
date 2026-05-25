@@ -26,7 +26,7 @@ public:
         auto& lf = juce::LookAndFeel::getDefaultLookAndFeel();
 
         // PopupMenu / ComboBox dropdowns / context menus / main menu bar
-        lf.setColour (juce::PopupMenu::backgroundColourId,            juce::Colour (0xff14142a));
+        lf.setColour (juce::PopupMenu::backgroundColourId,            juce::Colour (0xff323232));
         lf.setColour (juce::PopupMenu::textColourId,                  juce::Colour (0xffcccccc));
         lf.setColour (juce::PopupMenu::headerTextColourId,            juce::Colour (0xffffcc44));
         lf.setColour (juce::PopupMenu::highlightedBackgroundColourId, juce::Colour (0xff353560));
@@ -47,7 +47,7 @@ public:
 
         // ScrollBar
         lf.setColour (juce::ScrollBar::thumbColourId,                 juce::Colour (0xff353560));
-        lf.setColour (juce::ScrollBar::trackColourId,                 juce::Colour (0xff14142a));
+        lf.setColour (juce::ScrollBar::trackColourId,                 juce::Colour (0xff323232));
 
         // ToggleButton
         lf.setColour (juce::ToggleButton::textColourId,               juce::Colour (0xffcccccc));
@@ -55,7 +55,7 @@ public:
         lf.setColour (juce::ToggleButton::tickDisabledColourId,       juce::Colour (0xff888899));
 
         // AlertWindow
-        lf.setColour (juce::AlertWindow::backgroundColourId,          juce::Colour (0xff14142a));
+        lf.setColour (juce::AlertWindow::backgroundColourId,          juce::Colour (0xff323232));
         lf.setColour (juce::AlertWindow::textColourId,                juce::Colour (0xffcccccc));
         lf.setColour (juce::AlertWindow::outlineColourId,             juce::Colour (0xff333355));
     }
@@ -74,7 +74,7 @@ public:
     {
     public:
         explicit MainWindow(const juce::String& name, juce::ApplicationProperties& props)
-            : DocumentWindow(name, juce::Colour(0xff1a1a2e), allButtons)
+            : DocumentWindow(name, juce::Colour(0xff323232), allButtons)
         {
             setUsingNativeTitleBar(true);
             applyWindowIcon();

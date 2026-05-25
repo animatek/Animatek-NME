@@ -354,7 +354,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
     int h = getHeight();
 
     // Background
-    g.fillAll(juce::Colour(0xff1a1a2e));
+    g.fillAll(juce::Colour(0xff323232));
 
     // Bottom border
     g.setColour(juce::Colour(0xff333355));

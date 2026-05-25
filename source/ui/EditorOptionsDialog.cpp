@@ -1,7 +1,7 @@
 #include "EditorOptionsDialog.h"
 
 // ─── Color palette (same as PatchSettingsDialog) ─────────────────────────────
-static const juce::Colour kBg     { 0xff14142a };
+static const juce::Colour kBg     { 0xff323232 };
 static const juce::Colour kSep    { 0xff333355 };
 static const juce::Colour kGold   { 0xffffcc44 };
 static const juce::Colour kAmber  { 0xffffaa44 };

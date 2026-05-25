@@ -62,7 +62,7 @@ ModuleBrowserPanel::ModuleBrowserPanel()
     filterField.onTextChange = [this] { applyFilter(); };
     addAndMakeVisible(filterField);
 
-    treeView.setColour(juce::TreeView::backgroundColourId, juce::Colour(0xff1e1e3a));
+    treeView.setColour(juce::TreeView::backgroundColourId, juce::Colour(0xff323232));
     treeView.setDefaultOpenness(false);
     addAndMakeVisible(treeView);
 }
@@ -75,7 +75,7 @@ void ModuleBrowserPanel::setModuleDescriptions(ModuleDescriptions* descriptions)
 
 void ModuleBrowserPanel::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff1e1e3a));
+    g.fillAll(juce::Colour(0xff323232));
 }
 
 void ModuleBrowserPanel::resized()

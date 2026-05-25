@@ -6,7 +6,7 @@ QuickAddPopup::QuickAddPopup(const ModuleDescriptions& descs_, juce::Point<int> 
 {
     searchField.setFont(juce::Font(juce::FontOptions(14.0f)));
     searchField.setTextToShowWhenEmpty("Type module name...", juce::Colour(0xff666666));
-    searchField.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff1e1e3a));
+    searchField.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff323232));
     searchField.setColour(juce::TextEditor::textColourId, juce::Colours::white);
     searchField.setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
     searchField.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::transparentBlack);

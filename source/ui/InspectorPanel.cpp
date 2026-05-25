@@ -324,7 +324,7 @@ private:
     void paintMorphRow(juce::Graphics& g, int y, int i, const MorphRow& r, bool isGlobal)
     {
         int w = getWidth();
-        g.setColour(juce::Colour(i % 2 == 0 ? 0xff1e1e38 : 0xff1a1a30));
+        g.setColour(juce::Colour(i % 2 == 0 ? 0xff323232 : 0xff2d2d2d));
         g.fillRect(0, y, w, rowH);
 
         // X button
@@ -367,7 +367,7 @@ private:
     void paintHwRow(juce::Graphics& g, int y, int i, const HwRow& r, bool isGlobal, juce::Colour accent)
     {
         int w = getWidth();
-        g.setColour(juce::Colour(i % 2 == 0 ? 0xff1e1e38 : 0xff1a1a30));
+        g.setColour(juce::Colour(i % 2 == 0 ? 0xff323232 : 0xff2d2d2d));
         g.fillRect(0, y, w, rowH);
 
         // X button

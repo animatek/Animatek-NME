@@ -38,7 +38,7 @@ PatchBrowserPanel::PatchBrowserPanel()
 
     // TreeView for patch browser
     treeView = std::make_unique<juce::TreeView>();
-    treeView->setColour(juce::TreeView::backgroundColourId, juce::Colour(0xff1e1e3a));
+    treeView->setColour(juce::TreeView::backgroundColourId, juce::Colour(0xff323232));
     treeView->setColour(juce::TreeView::linesColourId, juce::Colour(0xff3a3a5a));
     treeView->setDefaultOpenness(false);  // Banks start collapsed
     treeView->setIndentSize(20);
@@ -49,7 +49,7 @@ PatchBrowserPanel::PatchBrowserPanel()
 
 void PatchBrowserPanel::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff1e1e3a));
+    g.fillAll(juce::Colour(0xff323232));
 }
 
 void PatchBrowserPanel::resized()

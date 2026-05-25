@@ -73,7 +73,7 @@ void SlotBar::drawSlotIcon(juce::Graphics& g, juce::Rectangle<int> area, bool ac
 
 void SlotBar::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff1e1e38));
+    g.fillAll(juce::Colour(0xff323232));
 
     for (int i = 0; i < numSlots; ++i)
     {
@@ -82,9 +82,9 @@ void SlotBar::paint(juce::Graphics& g)
 
         // Background
         if (active)
-            g.setColour(juce::Colour(0xff2a2a55));
+            g.setColour(juce::Colour(0xff3a3a3a));
         else
-            g.setColour(juce::Colour(0xff1e1e38));
+            g.setColour(juce::Colour(0xff323232));
         g.fillRect(bounds);
 
         // Left border highlight for active
@@ -167,8 +167,8 @@ MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
     leftColumn.addAndMakeVisible(slotBar);
 
     rightBrowserTabs.setTabBarDepth(28);
-    rightBrowserTabs.addTab("Synth", juce::Colour(0xff1e1e3a), &patchBrowserPanel, false);
-    rightBrowserTabs.addTab("Disk", juce::Colour(0xff1e1e3a), &diskPresetBrowserPanel, false);
+    rightBrowserTabs.addTab("Synth", juce::Colour(0xff323232), &patchBrowserPanel, false);
+    rightBrowserTabs.addTab("Disk", juce::Colour(0xff323232), &diskPresetBrowserPanel, false);
 
     addAndMakeVisible(leftColumn);
     addAndMakeVisible(headerBar);
@@ -188,7 +188,7 @@ MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
 
 void MainLayout::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff1a1a2e));
+    g.fillAll(juce::Colour(0xff323232));
 }
 
 void MainLayout::resized()
