@@ -98,6 +98,16 @@ public:
             if (!icon.isValid())
                 return;
 
+            constexpr int maxWindowIconSize = 256;
+            if (icon.getWidth() > maxWindowIconSize || icon.getHeight() > maxWindowIconSize)
+            {
+                const auto scale = static_cast<double>(maxWindowIconSize)
+                                 / static_cast<double>(juce::jmax(icon.getWidth(), icon.getHeight()));
+                icon = icon.rescaled(juce::roundToInt(icon.getWidth() * scale),
+                                     juce::roundToInt(icon.getHeight() * scale),
+                                     juce::Graphics::highResamplingQuality);
+            }
+
             setIcon(icon);
 
             if (auto* peer = getPeer())
