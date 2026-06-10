@@ -46,6 +46,7 @@ public:
     void sendRawSysEx(const std::vector<uint8_t>& sysex);       // Fire-and-forget (no ACK needed)
     void sendAckedSysEx(const std::vector<uint8_t>& sysex,
                         bool allowNewPatchInSlotReply = false); // Queued, waits for ACK before next
+    bool isAckedQueueIdle() const { return ackedQueue.empty() && !ackedQueueWaiting; }
 
     // Bank operations (high-level)
     void copyPatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition, int tempSlot);
@@ -105,6 +106,17 @@ public:
     const std::vector<std::string>& getPatchList() const { return patchListNames; }
     bool isPatchListLoaded() const { return patchListLoaded; }
 
+    // Bank transfer hooks (one-shot, set by BankTransferManager before each item).
+    // While bankFetchCallback is set, a completed patch fetch is delivered to it
+    // INSTEAD of patchDataCallback, keeping the editor UI out of bulk transfers.
+    using BankFetchCallback = std::function<void(const std::vector<std::vector<uint8_t>>& sections, int slot)>;
+    void setBankFetchCallback(BankFetchCallback cb) { bankFetchCallback = std::move(cb); }
+
+    // While set, upload completion (true) or ACK-timeout abort (false) is
+    // delivered here instead of uploadCompleteCallback.
+    using BankUploadResultCallback = std::function<void(bool success)>;
+    void setBankUploadResultCallback(BankUploadResultCallback cb) { bankUploadResultCallback = std::move(cb); }
+
     NmProtocol& getProtocol() { return protocol; }
 
     // Call after sending a structural edit (module/cable add/delete) that will
@@ -146,6 +158,8 @@ private:
     SynthErrorCallback synthErrorCallback;
     SlotChangedCallback slotChangedCallback;
     UploadCompleteCallback uploadCompleteCallback;
+    BankFetchCallback bankFetchCallback;
+    BankUploadResultCallback bankUploadResultCallback;
     LightMeterCallback lightMeterCallback;
     SynthSettingsCallback synthSettingsCallback;
 

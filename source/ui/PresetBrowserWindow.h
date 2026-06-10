@@ -28,11 +28,11 @@ private:
         std::unique_ptr<juce::Drawable> icon;
     };
 
-    enum class TypeFilter { All, Patches, Snippets };
+    enum class TypeFilter { All, Patches, Snippets, Banks };
 
     struct Entry
     {
-        enum class Type { Patch, Snippet };
+        enum class Type { Patch, Snippet, Bank };
         Type type = Type::Patch;
         juce::File file;
         juce::String displayName;
@@ -54,6 +54,7 @@ private:
     juce::TextButton allButton { "All" };
     juce::TextButton patchesButton { "Patches" };
     juce::TextButton snippetsButton { "Snippets" };
+    juce::TextButton banksButton { "Banks" };
     RefreshIconButton refreshButton;
     juce::Label statusLabel;
     juce::ListBox listBox { "Disk Presets", this };

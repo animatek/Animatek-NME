@@ -3,25 +3,37 @@
 #include "ui/AppTheme.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 
-class NomadApplication : public juce::JUCEApplication
+class NmeApplication : public juce::JUCEApplication
 {
 public:
-    const juce::String getApplicationName() override    { return "Nomad2026"; }
-    const juce::String getApplicationVersion() override { return "0.5.6"; }
+    const juce::String getApplicationName() override    { return "Animatek NME"; }
+    const juce::String getApplicationVersion() override { return "0.6.0"; }
     bool moreThanOneInstanceAllowed() override           { return false; }
 
     void initialise(const juce::String&) override
     {
         juce::PropertiesFile::Options options;
-        options.applicationName = "Nomad2026";
+        options.applicationName = "AnimatekNME";
         options.filenameSuffix = ".settings";
         options.osxLibrarySubFolder = "Application Support";
+
+        // Migrate settings written under the old Nomad2026 name
+        auto oldOptions = options;
+        oldOptions.applicationName = "Nomad2026";
+        const auto oldFile = oldOptions.getDefaultFile();
+        const auto newFile = options.getDefaultFile();
+        if (oldFile.existsAsFile() && !newFile.existsAsFile())
+        {
+            newFile.getParentDirectory().createDirectory();
+            oldFile.copyFileTo(newFile);
+        }
+
         appProperties.setStorageParameters(options);
 
         const auto savedTheme = AppTheme::themeFromInt(
             appProperties.getUserSettings()->getIntValue("appearanceTheme", 0));
         AppTheme::setTheme(savedTheme);
-        mainWindow = std::make_unique<MainWindow>(getApplicationName(), appProperties);
+        mainWindow = std::make_unique<MainWindow>("Animatek NME - Nord Modular Editor G1", appProperties);
     }
 
     void shutdown() override
@@ -86,4 +98,4 @@ private:
     std::unique_ptr<MainWindow> mainWindow;
 };
 
-START_JUCE_APPLICATION(NomadApplication)
+START_JUCE_APPLICATION(NmeApplication)

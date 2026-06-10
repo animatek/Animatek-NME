@@ -6784,9 +6784,18 @@ void PatchCanvas::initDrumPresets()
 
 static juce::File getDrumPresetsFile()
 {
-    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-               .getChildFile("Nomad2026")
-               .getChildFile("drum_presets.txt");
+    const auto appData = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory);
+    const auto file = appData.getChildFile("AnimatekNME").getChildFile("drum_presets.txt");
+
+    // Migrate presets written under the old Nomad2026 name
+    const auto oldFile = appData.getChildFile("Nomad2026").getChildFile("drum_presets.txt");
+    if (oldFile.existsAsFile() && !file.existsAsFile())
+    {
+        file.getParentDirectory().createDirectory();
+        oldFile.copyFileTo(file);
+    }
+
+    return file;
 }
 
 void PatchCanvas::saveDrumPresetsToFile()

@@ -350,8 +350,14 @@ void ConnectionManager::sendNextUploadSection()
         // All sections sent and ACKed — done
         std::cout << "[UPLOAD] All " << total << " sections sent and ACKed." << std::endl;
         waitingForUploadAck = false;
-        // Notify MainComponent that upload is complete
-        if (uploadCompleteCallback)
+        // Notify the bank transfer (if one is running) or MainComponent
+        if (bankUploadResultCallback)
+        {
+            auto cb = std::move(bankUploadResultCallback);
+            bankUploadResultCallback = nullptr;
+            juce::MessageManager::callAsync([cb]() { cb(true); });
+        }
+        else if (uploadCompleteCallback)
         {
             auto cb = uploadCompleteCallback;
             juce::MessageManager::callAsync([cb]() { cb(); });
@@ -394,6 +400,13 @@ void ConnectionManager::sendNextUploadSection()
             uploadSections.clear();
             uploadSectionIndex = 0;
             setStatus(State::Connected, "Upload timeout at section " + juce::String(sentSection));
+
+            if (bankUploadResultCallback)
+            {
+                auto cb = std::move(bankUploadResultCallback);
+                bankUploadResultCallback = nullptr;
+                juce::MessageManager::callAsync([cb]() { cb(false); });
+            }
         }
     });
 }
@@ -825,7 +838,13 @@ void ConnectionManager::finalizePatch()
     // Mark this slot as the current one
     currentSlot = completedSlot;
 
-    if (patchDataCallback)
+    if (bankFetchCallback)
+    {
+        auto cb = std::move(bankFetchCallback);
+        bankFetchCallback = nullptr;
+        cb(patchSections, completedSlot);
+    }
+    else if (patchDataCallback)
         patchDataCallback(patchSections, completedSlot);
 
     if (patchFetchCompleteCallback)

@@ -1,6 +1,8 @@
-# Nomad2026 Status
+# Animatek NME Status
 
-Current version: **0.5.6**
+Current version: **0.6.0** (in development)
+
+The project was renamed from **Nomad2026** to **Animatek NME — Nord Modular Editor G1** in 0.6.0.
 
 This file tracks the current project state at a practical level. Detailed version history lives in
 [CHANGELOG.md](CHANGELOG.md), and remaining work lives in [ROADMAP.md](ROADMAP.md).
@@ -15,6 +17,7 @@ This file tracks the current project state at a practical level. Detailed versio
 - Parameter edits, morph assignments/ranges, hardware knob assignments, and MIDI CC assignments sync to the synth.
 - Patch Settings and Synth Settings dialogs are implemented and synced.
 - Synth patch browser is implemented with search, hide-empty, refresh, load, copy, move, delete, and store flows.
+- Bank transfers are implemented and verified against hardware: Save Bank to Disk, Send Bank to Synth, and Backup All Banks into the preset library's `Banks/` mirror folders, with progress, failure reporting, and cancellation.
 - Disk preset browser is implemented with configurable preset library root, `Patches/` and `Snippets/` folders, recursive `.pch` scan, search, filters, patch load, and snippet import/drag.
 - Snippet import/export works as standard `.pch` files with incremental sync and undo/redo.
 - Module rendering has gone through systematic passes for oscillator/LFO, envelope, filter/EQ/vocoder, sequencer, logic, audio, mixer, control, and in/out modules.

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Nomad2026 reimplements the Nomad editor for the Clavia Nord Modular G1 synthesizer, porting from Java (Swing/JPF) to JUCE/C++17. The original editor requires JDK 8 and is incompatible with Java 9+ due to JPF 1.5.1's classloader design.
+Animatek NME (Nord Modular Editor G1, formerly Nomad2026) reimplements the Nomad editor for the Clavia Nord Modular G1 synthesizer, porting from Java (Swing/JPF) to JUCE/C++17. The original editor requires JDK 8 and is incompatible with Java 9+ due to JPF 1.5.1's classloader design.
 
 ## Build Commands
 
@@ -16,7 +16,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j$(nproc)
 
 # Run
-./build/Nomad2026_artefacts/Debug/Nomad2026
+./build/AnimatekNME_artefacts/Debug/AnimatekNME
 
 # Run original Java editor (for reference/comparison)
 cd nomad-0-3_2 && ../jdk8u482-b08/bin/java -jar nomad.jar

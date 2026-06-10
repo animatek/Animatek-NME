@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.6.0 (in development)
+
+- Added **Save Bank to Disk** (Device menu): saves every non-empty patch of a synth bank as
+  `NN - Name.pch` files into a chosen folder, with progress, per-patch failure reporting,
+  cancellation, and a selectable temp slot used as the transfer buffer.
+- Added **Send Bank to Synth** (Device menu): uploads a folder of `.pch` files (sorted by name)
+  into a destination bank at positions 1-N, with an explicit overwrite warning, progress,
+  cancellation, and a clean stop on the first upload failure.
+- Added **Backup All Banks to Library** (Device menu): mirrors all 9 synth banks into
+  `Banks/Bank1`-`Banks/Bank9` inside the preset library (next to `Patches/` and `Snippets/`).
+  Existing `.pch` files in those folders are replaced so each folder exactly reflects the synth.
+- Added a **Banks** filter to the disk preset browser. Bank backups are listed as
+  `BankN/NN - Name`, searchable, and double-click loads them like any patch.
+- Fixed bank sends failing on upload: each patch upload now focuses the temp slot first
+  (`SlotsSelected`/`SlotActivated` + settle delay, same as the single-file disk upload path),
+  and the next upload waits for the previous `StorePatch` ACK to drain so it is not
+  discarded when the upload clears the ACK queue.
+- Renamed the project from **Nomad2026** to **Animatek NME — Nord Modular Editor G1**.
+  - New app name, window title, CMake targets, and binary name (`AnimatekNME`).
+  - New plugin identifiers (manufacturer `Antk`, code `Nme1`, CLAP id `com.animatek.nme`). DAWs will
+    see the experimental plugin as a new plugin.
+  - Settings and drum presets stored under the old `Nomad2026` name are migrated automatically.
+  - Added a Clavia non-affiliation notice (Nord Modular is a trademark of Clavia DMI AB).
+
 ## 0.5.7
 
 - Fixed Linux/JUCE MIDI device discovery.

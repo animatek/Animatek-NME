@@ -74,6 +74,11 @@ juce::File EditorOptions::getSnippetsFolder() const
     return presetLibraryRoot == juce::File() ? juce::File() : presetLibraryRoot.getChildFile ("Snippets");
 }
 
+juce::File EditorOptions::getBanksFolder() const
+{
+    return presetLibraryRoot == juce::File() ? juce::File() : presetLibraryRoot.getChildFile ("Banks");
+}
+
 bool EditorOptions::ensureLibraryFolders() const
 {
     if (presetLibraryRoot == juce::File())
@@ -82,7 +87,8 @@ bool EditorOptions::ensureLibraryFolders() const
     auto rootOk = presetLibraryRoot.createDirectory().wasOk();
     auto patchesOk = getPatchesFolder().createDirectory().wasOk();
     auto snippetsOk = getSnippetsFolder().createDirectory().wasOk();
-    return rootOk && patchesOk && snippetsOk;
+    auto banksOk = getBanksFolder().createDirectory().wasOk();
+    return rootOk && patchesOk && snippetsOk && banksOk;
 }
 
 // ─── EditorOptionsDialog ─────────────────────────────────────────────────────
@@ -145,7 +151,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
     styleLabel (libraryLabel, true);
     styleTextEditor (libraryPath);
     libraryPath.setText (options.presetLibraryRoot.getFullPathName(), juce::dontSendNotification);
-    libraryPath.setTextToShowWhenEmpty ("Choose a root folder. Nomad2026 will create Patches and Snippets inside it.", p().textMuted);
+    libraryPath.setTextToShowWhenEmpty ("Choose a root folder. Animatek NME will create Patches and Snippets inside it.", p().textMuted);
     styleBtn (browseLibraryButton);
     browseLibraryButton.onClick = [this]() { browseLibraryRoot(); };
     addAndMakeVisible (libraryLabel);

@@ -1,12 +1,15 @@
-# Nomad2026
+# Animatek NME — Nord Modular Editor G1
 
-Nomad2026 is a modern native editor for the **Clavia Nord Modular G1** synthesizer.
-It is a JUCE/C++ reimplementation inspired by the original Java Nomad editor, built
+Animatek NME (formerly Nomad2026) is a modern native editor for the **Clavia Nord Modular G1**
+synthesizer. It is a JUCE/C++ reimplementation inspired by the original Java Nomad editor, built
 to run on current macOS, Windows, and Linux systems without requiring an old Java runtime.
+
+> Nord Modular is a trademark of Clavia DMI AB. This project is an independent,
+> community-developed editor and is not affiliated with or endorsed by Clavia.
 
 ## What It Does
 
-Nomad2026 lets you edit Nord Modular G1 patches from a modern desktop application:
+Animatek NME lets you edit Nord Modular G1 patches from a modern desktop application:
 
 - Connect to the synth over MIDI SysEx, auto-detect ports, and keep editor/synth state in sync.
 - Load, edit, save, and store `.pch` patches.
@@ -14,6 +17,8 @@ Nomad2026 lets you edit Nord Modular G1 patches from a modern desktop applicatio
 - Build patches visually with modules, cables, parameters, morphs, hardware knob assignments, and MIDI CC mappings.
 - Browse synth memory and local disk presets from the integrated right-side browser.
 - Save and import snippets as reusable `.pch` module groups.
+- Transfer whole banks: save a synth bank to a folder, send a folder of patches to a bank,
+  or mirror-backup all 9 banks into the preset library in one action.
 - Use contextual module help based on the original Nord Modular Editor documentation.
 
 ## Main Features
@@ -24,7 +29,10 @@ Nomad2026 lets you edit Nord Modular G1 patches from a modern desktop applicatio
 - Real-time parameter, cable, module, morph, knob, and MIDI controller synchronization.
 - Patch settings and synth settings dialogs.
 - Synth patch browser with bank/slot operations.
-- Disk preset browser with configurable preset library folder, recursive `.pch` scanning, search, and patch/snippet filters.
+- Bank transfer tools (Device menu): Save Bank to Disk, Send Bank to Synth with overwrite
+  warning and clean stop on failure, and Backup All Banks to the preset library
+  (`Banks/Bank1`-`Bank9` mirror folders), all with progress and cancellation.
+- Disk preset browser with configurable preset library folder, recursive `.pch` scanning, search, and patch/snippet/bank filters. Bank backups load like any patch.
 - Randomize, initialize, parameter locks, snapshots, cable visibility tools, canvas zoom, and module help.
 - Dark and classic themes.
 - Experimental VST3/CLAP plugin targets.
@@ -65,13 +73,13 @@ cmake --build build -j$(nproc)
 Run on Linux/Windows:
 
 ```bash
-./build/Nomad2026_artefacts/Debug/Nomad2026
+./build/AnimatekNME_artefacts/Debug/AnimatekNME
 ```
 
 Run on macOS:
 
 ```bash
-build/Nomad2026_artefacts/Debug/Nomad2026.app/Contents/MacOS/Nomad2026
+build/AnimatekNME_artefacts/Debug/AnimatekNME.app/Contents/MacOS/AnimatekNME
 ```
 
 macOS universal binary:
@@ -96,14 +104,14 @@ Requires JUCE via the included `JUCE/` submodule and a C++17 compiler.
 The editor can also be built as VST3/CLAP plugin targets. This path is experimental.
 
 ```bash
-cmake --build build --target Nomad2026Plugin_VST3 Nomad2026Plugin_CLAP -j$(nproc)
+cmake --build build --target AnimatekNMEPlugin_VST3 AnimatekNMEPlugin_CLAP -j$(nproc)
 ```
 
 Install locally:
 
 ```bash
-cp -r build/Nomad2026Plugin_artefacts/Debug/VST3/Nomad2026.vst3 ~/.vst3/
-cp build/Nomad2026Plugin_artefacts/Debug/CLAP/Nomad2026.clap ~/.clap/
+cp -r "build/AnimatekNMEPlugin_artefacts/Debug/VST3/Animatek NME.vst3" ~/.vst3/
+cp "build/AnimatekNMEPlugin_artefacts/Debug/CLAP/Animatek NME.clap" ~/.clap/
 ```
 
 Plugin builds require the `clap-juce-extensions` submodule.

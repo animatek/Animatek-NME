@@ -1,10 +1,10 @@
 #include "PluginEditor.h"
 
-NomadPluginEditor::NomadPluginEditor(NomadPluginProcessor& processor)
+NmePluginEditor::NmePluginEditor(NmePluginProcessor& processor)
     : AudioProcessorEditor(processor),
-      nomadProcessor(processor)
+      nmeProcessor(processor)
 {
-    mainComponent = std::make_unique<MainComponent>(nomadProcessor.getAppProperties());
+    mainComponent = std::make_unique<MainComponent>(nmeProcessor.getAppProperties());
     addAndMakeVisible(mainComponent.get());
 
     // Default plugin window size
@@ -12,14 +12,14 @@ NomadPluginEditor::NomadPluginEditor(NomadPluginProcessor& processor)
     setResizable(true, true);
 }
 
-NomadPluginEditor::~NomadPluginEditor()
+NmePluginEditor::~NmePluginEditor()
 {
     // Destroy MainComponent before the editor's Component base class destructor
     // runs — prevents dangling child-component and async callback crashes.
     mainComponent.reset();
 }
 
-void NomadPluginEditor::resized()
+void NmePluginEditor::resized()
 {
     mainComponent->setBounds(getLocalBounds());
 }

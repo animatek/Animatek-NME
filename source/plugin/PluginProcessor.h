@@ -2,11 +2,11 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
-class NomadPluginProcessor : public juce::AudioProcessor
+class NmePluginProcessor : public juce::AudioProcessor
 {
 public:
-    NomadPluginProcessor();
-    ~NomadPluginProcessor() override = default;
+    NmePluginProcessor();
+    ~NmePluginProcessor() override = default;
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
@@ -15,7 +15,7 @@ public:
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
 
-    const juce::String getName() const override { return "Nomad2026"; }
+    const juce::String getName() const override { return "Animatek NME"; }
 
     bool acceptsMidi() const override { return true; }
     bool producesMidi() const override { return true; }
@@ -36,5 +36,5 @@ public:
 private:
     juce::ApplicationProperties appProperties;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NomadPluginProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NmePluginProcessor)
 };

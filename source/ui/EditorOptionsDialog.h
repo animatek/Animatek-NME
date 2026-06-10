@@ -21,6 +21,7 @@ struct EditorOptions
     void save(juce::PropertiesFile* props) const;
     juce::File getPatchesFolder() const;
     juce::File getSnippetsFolder() const;
+    juce::File getBanksFolder() const;
     bool ensureLibraryFolders() const;
 };
 

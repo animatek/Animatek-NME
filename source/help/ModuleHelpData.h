@@ -3,7 +3,7 @@
 // ModuleHelpData.h
 // Nord Modular G1 — Editor v3.03 help content
 // Auto-generated from Nord_Modular_Editor_v3_03_Helpfile.hlp
-// © Clavia DMI AB 1999  |  Parser: Nomad2026 project
+// © Clavia DMI AB 1999  |  Parser: Animatek NME project
 //==============================================================================
 
 #include <juce_core/juce_core.h>

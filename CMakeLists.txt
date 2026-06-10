@@ -1,19 +1,19 @@
 cmake_minimum_required(VERSION 3.22)
-project(Nomad2026 VERSION 0.5.6 LANGUAGES C CXX)
+project(AnimatekNME VERSION 0.6.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(JUCE)
-option(NOMAD_BUILD_PLUGIN "Build VST3/CLAP plugin targets" OFF)
+option(NME_BUILD_PLUGIN "Build VST3/CLAP plugin targets" OFF)
 
-if(NOMAD_BUILD_PLUGIN)
+if(NME_BUILD_PLUGIN)
     set(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     add_subdirectory(libs/clap-juce-extensions)
 endif()
 
 # --- Shared source files (used by both standalone and plugin) ---
-set(NOMAD_SHARED_SOURCES
+set(NME_SHARED_SOURCES
     source/MainComponent.cpp
 
     # Data Model
@@ -45,6 +45,7 @@ set(NOMAD_SHARED_SOURCES
     source/ui/QuickAddPopup.cpp
     source/ui/PatchBrowserPanel.cpp
     source/ui/PresetBrowserWindow.cpp
+    source/ui/BankTransferDialog.cpp
 
     # MIDI/SysEx
     source/midi/SysExCodec.cpp
@@ -72,6 +73,7 @@ set(NOMAD_SHARED_SOURCES
 
     # Synchronization
     source/sync/PatchSynchronizer.cpp
+    source/sync/BankTransferManager.cpp
 
     # Help system
     source/help/ModuleHelpData.cpp
@@ -79,27 +81,27 @@ set(NOMAD_SHARED_SOURCES
 )
 
 # --- Standalone Application ---
-juce_add_gui_app(Nomad2026
-    PRODUCT_NAME "Nomad2026"
-    COMPANY_NAME "Nomad2026"
+juce_add_gui_app(AnimatekNME
+    PRODUCT_NAME "AnimatekNME"
+    COMPANY_NAME "Animatek"
     ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
     ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
-    VERSION "0.5.6"
+    VERSION "0.6.0"
 )
 
-target_sources(Nomad2026 PRIVATE
+target_sources(AnimatekNME PRIVATE
     source/Main.cpp
-    ${NOMAD_SHARED_SOURCES}
+    ${NME_SHARED_SOURCES}
 )
 
-if(NOMAD_BUILD_PLUGIN)
+if(NME_BUILD_PLUGIN)
     # --- VST3/AU Plugin ---
-    juce_add_plugin(Nomad2026Plugin
-        PLUGIN_MANUFACTURER_CODE Nmad
-        PLUGIN_CODE Nm26
+    juce_add_plugin(AnimatekNMEPlugin
+        PLUGIN_MANUFACTURER_CODE Antk
+        PLUGIN_CODE Nme1
         FORMATS VST3 AU Standalone
-        PRODUCT_NAME "Nomad2026"
-        COMPANY_NAME "Nomad2026"
+        PRODUCT_NAME "Animatek NME"
+        COMPANY_NAME "Animatek"
         ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
         ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
         IS_SYNTH TRUE
@@ -108,24 +110,24 @@ if(NOMAD_BUILD_PLUGIN)
         NEEDS_MIDI_OUTPUT TRUE
         EDITOR_WANTS_KEYBOARD_FOCUS TRUE
         VST3_CATEGORIES "Instrument" "Tools"
-        VERSION "0.5.6"
+        VERSION "0.6.0"
     )
 
-    target_sources(Nomad2026Plugin PRIVATE
+    target_sources(AnimatekNMEPlugin PRIVATE
         source/plugin/PluginProcessor.cpp
         source/plugin/PluginEditor.cpp
-        ${NOMAD_SHARED_SOURCES}
+        ${NME_SHARED_SOURCES}
     )
 
     clap_juce_extensions_plugin(
-        TARGET Nomad2026Plugin
-        CLAP_ID "com.nomad2026.editor"
+        TARGET AnimatekNMEPlugin
+        CLAP_ID "com.animatek.nme"
         CLAP_FEATURES "note-effect" "utility"
         CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES 0
     )
 endif()
 
-juce_add_binary_data(NomadData SOURCES
+juce_add_binary_data(NmeData SOURCES
     data/images/app-icon-dark.png
     data/modules.xml
     data/transformations.xml
@@ -151,24 +153,24 @@ juce_add_binary_data(NomadData SOURCES
 )
 
 # --- Shared settings ---
-set(NOMAD_TARGETS Nomad2026)
-if(NOMAD_BUILD_PLUGIN)
-    list(APPEND NOMAD_TARGETS Nomad2026Plugin)
+set(NME_TARGETS AnimatekNME)
+if(NME_BUILD_PLUGIN)
+    list(APPEND NME_TARGETS AnimatekNMEPlugin)
 endif()
 
-foreach(target ${NOMAD_TARGETS})
+foreach(target ${NME_TARGETS})
     target_include_directories(${target} PRIVATE source)
 
     target_compile_definitions(${target} PRIVATE
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
-        JUCE_APPLICATION_NAME_STRING="Nomad2026"
-        JUCE_APPLICATION_VERSION_STRING="0.5.6"
+        JUCE_APPLICATION_NAME_STRING="Animatek NME"
+        JUCE_APPLICATION_VERSION_STRING="0.6.0"
         JUCE_VST3_CAN_REPLACE_VST2=0
     )
 
     target_link_libraries(${target} PRIVATE
-        NomadData
+        NmeData
         juce::juce_core
         juce::juce_events
         juce::juce_data_structures

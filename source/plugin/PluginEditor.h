@@ -4,17 +4,17 @@
 #include "PluginProcessor.h"
 #include "../MainComponent.h"
 
-class NomadPluginEditor : public juce::AudioProcessorEditor
+class NmePluginEditor : public juce::AudioProcessorEditor
 {
 public:
-    explicit NomadPluginEditor(NomadPluginProcessor& processor);
-    ~NomadPluginEditor() override;
+    explicit NmePluginEditor(NmePluginProcessor& processor);
+    ~NmePluginEditor() override;
 
     void resized() override;
 
 private:
-    NomadPluginProcessor& nomadProcessor;
+    NmePluginProcessor& nmeProcessor;
     std::unique_ptr<MainComponent> mainComponent;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NomadPluginEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NmePluginEditor)
 };

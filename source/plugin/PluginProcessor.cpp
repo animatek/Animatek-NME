@@ -1,21 +1,21 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-NomadPluginProcessor::NomadPluginProcessor()
+NmePluginProcessor::NmePluginProcessor()
     : AudioProcessor(BusesProperties()
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true))  // Stereo out so DAWs see it as an instrument
 {
     juce::PropertiesFile::Options options;
-    options.applicationName = "Nomad2026";
+    options.applicationName = "AnimatekNME";
     options.filenameSuffix = ".settings";
     options.osxLibrarySubFolder = "Application Support";
     appProperties.setStorageParameters(options);
 }
 
-void NomadPluginProcessor::prepareToPlay(double, int) {}
-void NomadPluginProcessor::releaseResources() {}
+void NmePluginProcessor::prepareToPlay(double, int) {}
+void NmePluginProcessor::releaseResources() {}
 
-void NomadPluginProcessor::processBlock(juce::AudioBuffer<float>& buffer,
+void NmePluginProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                                          juce::MidiBuffer& midiMessages)
 {
     buffer.clear();
@@ -23,22 +23,22 @@ void NomadPluginProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     juce::ignoreUnused(midiMessages);
 }
 
-juce::AudioProcessorEditor* NomadPluginProcessor::createEditor()
+juce::AudioProcessorEditor* NmePluginProcessor::createEditor()
 {
-    return new NomadPluginEditor(*this);
+    return new NmePluginEditor(*this);
 }
 
-void NomadPluginProcessor::getStateInformation(juce::MemoryBlock& /*destData*/)
+void NmePluginProcessor::getStateInformation(juce::MemoryBlock& /*destData*/)
 {
     // TODO: serialize current patch state for DAW session recall
 }
 
-void NomadPluginProcessor::setStateInformation(const void* /*data*/, int /*sizeInBytes*/)
+void NmePluginProcessor::setStateInformation(const void* /*data*/, int /*sizeInBytes*/)
 {
     // TODO: restore patch state from DAW session
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new NomadPluginProcessor();
+    return new NmePluginProcessor();
 }

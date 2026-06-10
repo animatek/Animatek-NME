@@ -1,6 +1,7 @@
 #include "MainComponent.h"
 #include "model/PatchParser.h"
 #include "model/PchFileIO.h"
+#include "ui/BankTransferDialog.h"
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
 #include "ui/PatchSettingsDialog.h"
@@ -852,6 +853,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     bool connected = connectionManager.isConnected();
     menu.addItem(31, "Request Patch from Synth", connected);
     menu.addItem(33, "Store to Bank...", connected);
+    menu.addSeparator();
+    menu.addItem(34, "Save Bank to Disk...", connected);
+    menu.addItem(35, "Send Bank to Synth...", connected);
+    menu.addItem(36, "Backup All Banks to Library...", connected);
   }
   else if (menuIndex == 4) // Help
   {
@@ -864,7 +869,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
   }
   else if (menuIndex == 5) // About
   {
-    menu.addItem(53, "Nomad2026 Website", true);
+    menu.addItem(53, "Animatek NME Website", true);
     menu.addItem(50, "Support the Project (Patreon)", true);
     menu.addItem(51, "Source Code (GitHub)", true);
     menu.addItem(52, "animatek.net", true);
@@ -947,6 +952,26 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 33:
     storePatchToBank();
     break;
+  case 34:
+    BankTransferDialog::show(this, BankTransferDialog::Mode::SaveToDisk,
+                             bankTransfer, connectionManager);
+    break;
+  case 35:
+    BankTransferDialog::show(this, BankTransferDialog::Mode::SendToSynth,
+                             bankTransfer, connectionManager);
+    break;
+  case 36:
+    if (editorOptions.presetLibraryRoot == juce::File()) {
+      juce::AlertWindow::showMessageBoxAsync(
+          juce::MessageBoxIconType::InfoIcon, "Backup All Banks",
+          "Set a preset library folder first (File > Editor Options).");
+    } else {
+      editorOptions.ensureLibraryFolders();
+      BankTransferDialog::show(this, BankTransferDialog::Mode::BackupAllBanks,
+                               bankTransfer, connectionManager,
+                               editorOptions.getBanksFolder());
+    }
+    break;
 
   // Help menu
   case 40:  // Nord Modular Forum
@@ -966,7 +991,7 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
 
   // About menu
-  case 53:  // Nomad2026 website
+  case 53:  // Animatek NME website
     openURL("https://animatek.net/nomad2026_eng/");
     break;
   case 50:  // Patreon
@@ -1587,7 +1612,7 @@ public:
         titleLabel.setFont(juce::Font(juce::FontOptions(15.0f)).boldened());
         titleLabel.setColour(juce::Label::textColourId, AppTheme::palette().accentActive);
         titleLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
-        titleLabel.setText("Nomad2026 - Beta", juce::dontSendNotification);
+        titleLabel.setText("Animatek NME - Beta", juce::dontSendNotification);
         addAndMakeVisible(titleLabel);
 
         closeButton.setButtonText("x");
@@ -1602,7 +1627,7 @@ public:
         bodyText.setColour(juce::Label::textColourId, juce::Colour(0xffdddddd));
         bodyText.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
         bodyText.setText(
-            "Welcome to Nomad2026 Beta!\n\n"
+            "Welcome to Animatek NME (Nord Modular Editor G1) Beta!\n\n"
             "This software is under active development and may contain bugs "
             "that could corrupt patches on your Nord Modular.\n\n"
             "PLEASE:\n"
@@ -1610,7 +1635,9 @@ public:
             "  - Back up any important patches before using this editor\n"
             "  - Do NOT use this with patches you rely on for live performance\n\n"
             "Found a bug? Click 'Report a bug' on the toolbar\n"
-            "or visit: github.com/animatek/Nomad2026/issues",
+            "or visit: github.com/animatek/Nomad2026/issues\n\n"
+            "Nord Modular is a trademark of Clavia DMI AB.\n"
+            "This project is not affiliated with or endorsed by Clavia.",
             juce::dontSendNotification);
         bodyText.setJustificationType(juce::Justification::topLeft);
         bodyText.setMinimumHorizontalScale(1.0f);

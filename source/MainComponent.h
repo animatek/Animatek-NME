@@ -9,6 +9,7 @@
 #include "model/SnipFileIO.h"
 #include "model/SynthSettings.h"
 #include "midi/ConnectionManager.h"
+#include "sync/BankTransferManager.h"
 #include "sync/PatchSynchronizer.h"
 #include "undo/PatchActions.h"
 #include "ui/MainLayout.h"
@@ -75,6 +76,7 @@ private:
     ModuleDescriptions moduleDescs;
     ThemeData themeData;
     ConnectionManager connectionManager;
+    BankTransferManager bankTransfer { connectionManager, moduleDescs };
     std::unique_ptr<MainLayout> mainLayout;
     std::unique_ptr<juce::MenuBarComponent> menuBar;
 

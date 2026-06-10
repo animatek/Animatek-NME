@@ -9,6 +9,7 @@
 #define kDim    (AppTheme::palette().textMuted)
 #define kPatchTag   (AppTheme::palette().textPrimary)
 #define kSnippetTag (AppTheme::palette().textSecondary)
+#define kBankTag    (AppTheme::palette().accentWarning)
 
 static void styleButton(juce::TextButton& b)
 {
@@ -73,7 +74,7 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     searchBox.onTextChange = [this]() { rebuildVisibleEntries(); };
     addAndMakeVisible(searchBox);
 
-    for (auto* b : { &allButton, &patchesButton, &snippetsButton })
+    for (auto* b : { &allButton, &patchesButton, &snippetsButton, &banksButton })
     {
         styleFilterButton(*b);
         b->setRadioGroupId(11);
@@ -83,6 +84,7 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     allButton.onClick = [this]() { typeFilter = TypeFilter::All; rebuildVisibleEntries(); };
     patchesButton.onClick = [this]() { typeFilter = TypeFilter::Patches; rebuildVisibleEntries(); };
     snippetsButton.onClick = [this]() { typeFilter = TypeFilter::Snippets; rebuildVisibleEntries(); };
+    banksButton.onClick = [this]() { typeFilter = TypeFilter::Banks; rebuildVisibleEntries(); };
 
     refreshButton.onClick = [this]() { refresh(); };
     addAndMakeVisible(refreshButton);
@@ -108,7 +110,7 @@ void DiskPresetBrowserPanel::applyTheme()
     listBox.setColour(juce::ListBox::backgroundColourId, kPanel);
     listBox.setColour(juce::ListBox::outlineColourId, kSep);
 
-    for (auto* b : { &allButton, &patchesButton, &snippetsButton })
+    for (auto* b : { &allButton, &patchesButton, &snippetsButton, &banksButton })
         styleFilterButton(*b);
 
     listBox.repaint();
@@ -139,10 +141,11 @@ void DiskPresetBrowserPanel::refresh()
 
     scanFolder(libraryRoot.getChildFile("Patches"), Entry::Type::Patch);
     scanFolder(libraryRoot.getChildFile("Snippets"), Entry::Type::Snippet);
+    scanFolder(libraryRoot.getChildFile("Banks"), Entry::Type::Bank);
 
     std::sort(allEntries.begin(), allEntries.end(), [](const Entry& a, const Entry& b) {
         if (a.type != b.type)
-            return a.type == Entry::Type::Patch;
+            return static_cast<int>(a.type) < static_cast<int>(b.type);
         return a.displayName.compareIgnoreCase(b.displayName) < 0;
     });
 
@@ -160,7 +163,11 @@ void DiskPresetBrowserPanel::scanFolder(const juce::File& folder, Entry::Type ty
         Entry entry;
         entry.type = type;
         entry.file = file;
-        entry.displayName = file.getFileNameWithoutExtension();
+        // Bank backups show their bank subfolder ("Bank3/05 - Name") so the
+        // same patch name in different banks stays distinguishable.
+        entry.displayName = type == Entry::Type::Bank
+            ? file.getRelativePathFrom(folder).dropLastCharacters(4)
+            : file.getFileNameWithoutExtension();
         entry.relativePath = file.getRelativePathFrom(folder.getParentDirectory());
         allEntries.push_back(std::move(entry));
     }
@@ -205,6 +212,7 @@ void DiskPresetBrowserPanel::resized()
     allButton.setBounds(filterRow.removeFromLeft(48).reduced(2));
     patchesButton.setBounds(filterRow.removeFromLeft(78).reduced(2));
     snippetsButton.setBounds(filterRow.removeFromLeft(82).reduced(2));
+    banksButton.setBounds(filterRow.removeFromLeft(64).reduced(2));
 
     statusLabel.setBounds(area.removeFromTop(24));
     area.removeFromTop(4);
@@ -228,7 +236,9 @@ void DiskPresetBrowserPanel::paintListBoxItem(int row, juce::Graphics& g, int wi
     g.drawHorizontalLine(height - 1, 0.0f, static_cast<float>(width));
 
     auto tagArea = juce::Rectangle<int>(6, 4, 48, height - 8);
-    auto tagColour = entry.type == Entry::Type::Patch ? kPatchTag : kSnippetTag;
+    auto tagColour = entry.type == Entry::Type::Patch   ? kPatchTag
+                   : entry.type == Entry::Type::Snippet ? kSnippetTag
+                                                        : kBankTag;
     g.setColour(tagColour.withAlpha(0.22f));
     g.fillRoundedRectangle(tagArea.toFloat(), 3.0f);
     g.setColour(tagColour);
@@ -247,14 +257,14 @@ void DiskPresetBrowserPanel::listBoxItemDoubleClicked(int row, const juce::Mouse
         return;
 
     const auto& entry = allEntries[static_cast<size_t>(visibleEntryIndices[static_cast<size_t>(row)])];
-    if (entry.type == Entry::Type::Patch)
+    if (entry.type == Entry::Type::Snippet)
     {
-        if (onPatchChosen)
-            onPatchChosen(entry.file);
+        if (onSnippetChosen)
+            onSnippetChosen(entry.file);
     }
-    else if (onSnippetChosen)
+    else if (onPatchChosen)  // bank backups load exactly like patches
     {
-        onSnippetChosen(entry.file);
+        onPatchChosen(entry.file);
     }
 }
 
@@ -277,7 +287,9 @@ juce::var DiskPresetBrowserPanel::getDragSourceDescription(const juce::SparseSet
 
 juce::String DiskPresetBrowserPanel::getTypeLabel(Entry::Type type) const
 {
-    return type == Entry::Type::Patch ? "PATCH" : "SNIP";
+    return type == Entry::Type::Patch   ? "PATCH"
+         : type == Entry::Type::Snippet ? "SNIP"
+                                        : "BANK";
 }
 
 bool DiskPresetBrowserPanel::entryPassesTypeFilter(const Entry& entry) const
@@ -286,6 +298,8 @@ bool DiskPresetBrowserPanel::entryPassesTypeFilter(const Entry& entry) const
         return entry.type == Entry::Type::Patch;
     if (typeFilter == TypeFilter::Snippets)
         return entry.type == Entry::Type::Snippet;
+    if (typeFilter == TypeFilter::Banks)
+        return entry.type == Entry::Type::Bank;
     return true;
 }
 

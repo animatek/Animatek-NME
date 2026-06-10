@@ -1,23 +1,17 @@
-# Nomad2026 Roadmap
+# Animatek NME Roadmap
 
 This roadmap is intentionally limited to real remaining implementation work. Completed features and
 release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## High Priority
 
-- [ ] **Bank Upload from Synth**
-  - Save an entire synth bank to disk.
-  - Choose source bank.
-  - Choose destination folder.
-  - Show progress and failures.
-  - Preserve useful location metadata where possible.
+- [x] **Bank Upload from Synth** — implemented in 0.6.0 as "Save Bank to Disk" plus
+  "Backup All Banks to Library" (Device menu). Position metadata is preserved in the
+  `NN - Name.pch` filename. Verified against real hardware.
 
-- [ ] **Bank Download to Synth**
-  - Send a full bank from disk to the synth.
-  - Support bank file or folder source.
-  - Choose destination bank.
-  - Show clear overwrite warning.
-  - Show progress and stop cleanly on failure.
+- [x] **Bank Download to Synth** — implemented in 0.6.0 as "Send Bank to Synth"
+  (Device menu), folder source, overwrite warning, stops cleanly on failure.
+  Verified against real hardware.
 
 - [ ] **Controller Snapshot**
   - Send the current controller state to the synth in one action.
