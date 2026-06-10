@@ -394,18 +394,20 @@ PatchListResponseMessage PatchListResponseMessage::decode(const uint8_t* data, s
             }
         }
 
-        // Read null-terminated string (up to 16 chars)
+        // Read the patch name: max 16 chars, and names of exactly 16 chars
+        // carry NO null terminator. Reading past 16 merges the entry with the
+        // following ones and shifts every later position in the bank.
         if (pos >= endmarkerIdx)
             break;
 
         std::string name;
-        while (pos < endmarkerIdx && data[pos] != 0x00)
+        while (pos < endmarkerIdx && data[pos] != 0x00 && name.size() < 16)
         {
             name += static_cast<char>(data[pos]);
             pos++;
         }
-        if (pos < endmarkerIdx)
-            pos++;  // skip null terminator
+        if (pos < endmarkerIdx && data[pos] == 0x00)
+            pos++;  // consume the terminator only when present (<16-char names)
 
         PatchListEntry entry;
         entry.section = section;

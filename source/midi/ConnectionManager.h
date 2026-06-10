@@ -100,10 +100,16 @@ public:
     using SynthSettingsCallback = std::function<void(const SynthSettings& settings)>;
     void setSynthSettingsCallback(SynthSettingsCallback cb) { synthSettingsCallback = std::move(cb); }
 
+    // Patch fetch progress: fired when a fetch starts (0/N) and per completed
+    // section. May fire from the MIDI thread — bounce to the message thread.
+    using PatchLoadProgressCallback = std::function<void(int sectionsDone, int totalSections)>;
+    void setPatchLoadProgressCallback(PatchLoadProgressCallback cb) { patchLoadProgressCallback = std::move(cb); }
+
     // Patch list management
     using PatchListCallback = std::function<void(const std::vector<std::string>& names)>;
     void setPatchListCallback(PatchListCallback cb) { patchListCallback = std::move(cb); }
     void requestPatchList();  // Start loading all 891 patch names from synth
+    void cancelPatchListFetch(const char* reason);  // Abort in-flight list fetch (delivers partial names)
     const std::vector<std::string>& getPatchList() const { return patchListNames; }
     bool isPatchListLoaded() const { return patchListLoaded; }
 
@@ -163,6 +169,7 @@ private:
     BankUploadResultCallback bankUploadResultCallback;
     LightMeterCallback lightMeterCallback;
     SynthSettingsCallback synthSettingsCallback;
+    PatchLoadProgressCallback patchLoadProgressCallback;
 
     // Global light/meter arrays updated by synth messages
     int globalLightValues[128] = {};
@@ -224,6 +231,10 @@ private:
     // patchListTimeoutMs: 891 patches × one request/response each.
     // Measured at ~8-9 s on a real G1; 10 s allows for occasional retransmits.
     static constexpr int patchListTimeoutMs = 10000;
+    // After cancelPatchListFetch, in-flight responses from the old stream must
+    // drain before a new fetch starts, or they get filed at wrong positions.
+    static constexpr juce::uint32 listRestartCooldownMs = 400;
+    juce::uint32 lastListCancelMs = 0;
 
     // Outgoing message queue with ACK-wait (mirrors Java NmProtocol send queue).
     // Messages sent via sendAckedSysEx() are queued and sent one at a time;

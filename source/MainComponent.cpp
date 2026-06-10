@@ -363,6 +363,21 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         });
       });
 
+  // Patch fetch progress in the status bar — some patches take a few seconds
+  // to stream from the synth and the UI should show something is happening.
+  connectionManager.setPatchLoadProgressCallback([this](int done, int total) {
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::MessageManager::callAsync([safeThis, done, total]() {
+      if (!safeThis) return;
+      auto& statusBar = safeThis->mainLayout->getStatusBar();
+      if (done >= total)
+        statusBar.clearProgress();
+      else
+        statusBar.setProgress(total > 0 ? static_cast<double>(done) / total : 0.0,
+                              "Loading patch " + juce::String(done) + "/" + juce::String(total));
+    });
+  });
+
   // Wire parameter changes from canvas to synth (user turns knob in editor)
   mainLayout->getCanvas().setParameterChangeCallback(
       [this](int section, int moduleId, int parameterId, int value) {
@@ -757,6 +772,7 @@ MainComponent::~MainComponent() {
   connectionManager.setUploadCompleteCallback(nullptr);
   connectionManager.setLightMeterCallback(nullptr);
   connectionManager.setPatchListCallback(nullptr);
+  connectionManager.setPatchLoadProgressCallback(nullptr);
 
   // Tear down UI before members are destroyed
 #if JUCE_MAC

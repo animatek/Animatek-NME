@@ -66,6 +66,29 @@ void StatusBar::clearMessage()
     messageLabel.setText("", juce::dontSendNotification);
 }
 
+void StatusBar::setProgress(double fraction, const juce::String& label)
+{
+    progressVisible = true;
+    progressFraction = juce::jlimit(0.0, 1.0, fraction);
+    progressText = label;
+
+    // The progress bar replaces any transient message in the same area
+    messageLabel.setVisible(false);
+
+    // Hide on its own if updates stop coming (stalled/aborted transfer)
+    progressTimer.startTimer(4000);
+    repaint(progressBounds);
+}
+
+void StatusBar::clearProgress()
+{
+    progressTimer.stopTimer();
+    if (!progressVisible)
+        return;
+    progressVisible = false;
+    repaint(progressBounds);
+}
+
 void StatusBar::paint(juce::Graphics& g)
 {
     g.fillAll(AppTheme::palette().backgroundPanel);
@@ -91,6 +114,32 @@ void StatusBar::paint(juce::Graphics& g)
         auto highlightBounds = ledBounds.reduced(1.0f).translated(-0.5f, -0.5f);
         g.fillEllipse(highlightBounds.removeFromTop(ledBounds.getHeight() * 0.4f));
     }
+
+    if (progressVisible && !progressBounds.isEmpty())
+    {
+        const auto track = progressBounds.toFloat().withSizeKeepingCentre(
+            juce::jmin(260.0f, static_cast<float>(progressBounds.getWidth())), 8.0f);
+
+        g.setColour(AppTheme::palette().inputBackground);
+        g.fillRoundedRectangle(track, 4.0f);
+
+        auto fill = track.reduced(1.0f);
+        fill.setWidth(fill.getWidth() * static_cast<float>(progressFraction));
+        g.setColour(AppTheme::palette().accentActive);
+        g.fillRoundedRectangle(fill, 3.0f);
+
+        g.setColour(AppTheme::palette().borderColor);
+        g.drawRoundedRectangle(track, 4.0f, 1.0f);
+
+        if (progressText.isNotEmpty())
+        {
+            g.setColour(AppTheme::palette().textSecondary);
+            g.setFont(juce::Font(juce::FontOptions(11.0f)));
+            g.drawText(progressText,
+                       progressBounds.withTrimmedLeft(static_cast<int>(track.getRight() - progressBounds.getX()) + 8),
+                       juce::Justification::centredLeft, true);
+        }
+    }
 }
 
 void StatusBar::resized()
@@ -111,6 +160,8 @@ void StatusBar::resized()
     dspLabel.setBounds(area.removeFromRight(100));
     voiceLabel.setBounds(area.removeFromRight(100));
 
-    // Message label in the center (takes remaining space)
+    // Message label in the center (takes remaining space), shared with the
+    // progress bar
     messageLabel.setBounds(area);
+    progressBounds = area;
 }

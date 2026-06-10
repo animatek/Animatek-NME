@@ -8,6 +8,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <cstdlib>
 
 namespace
 {
@@ -201,6 +202,10 @@ void ConnectionManager::requestPatch(int slot)
     if (!isConnected())
         return;
 
+    // A patch fetch must not interleave with the 891-message patch list
+    // stream — the G1 firmware freezes on colliding request streams.
+    cancelPatchListFetch("patch request supersedes it");
+
     // Cancel any pending edit queue — we're about to reload from synth
     if (!ackedQueue.empty() || ackedQueueWaiting)
     {
@@ -224,6 +229,25 @@ void ConnectionManager::requestPatch(int slot)
     req.slot = slot;
     auto payload = req.encode();
     protocol.sendMessage(NmCmd::PatchHandling, slot, payload, /*expectsReply=*/true, /*addChecksum=*/true);
+
+    if (patchLoadProgressCallback)
+        patchLoadProgressCallback(0, totalSections);
+
+    // Self-heal if the synth never ACKs (busy loading a patch from the front
+    // panel, for example). Without this, waitingForPatchAck stays true forever
+    // and every future NewPatchInSlot auto-fetch is skipped — the editor goes
+    // deaf and looks disconnected even though MIDI is fine.
+    const int gen = patchTimeoutGeneration;
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(3000, [this, gen, slot, aliveFlag]() {
+        if (!*aliveFlag) return;
+        if (gen == patchTimeoutGeneration && waitingForPatchAck && !collectingSections)
+        {
+            std::cout << "[PATCH] No ACK for patch request (slot " << slot
+                      << ") after 3s - resetting fetch state" << std::endl;
+            waitingForPatchAck = false;
+        }
+    });
 
     DBG("Requesting patch from slot " + juce::String(slot));
 }
@@ -264,6 +288,10 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
 {
     if (!isConnected())
         return;
+
+    // Loading while the patch list stream is in flight interleaves two
+    // request/response streams and freezes the G1 — cancel the list first.
+    cancelPatchListFetch("bank load supersedes it");
 
     int slot = (targetSlot >= 0) ? targetSlot : currentSlot;
     currentSlot = slot;
@@ -416,6 +444,9 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
 {
     if (!isConnected())
         return;
+
+    // Don't interleave the upload with the patch list request stream.
+    cancelPatchListFetch("patch upload supersedes it");
 
     // Cancel any pending edit operations in the ACK queue.
     // The upload sends the complete patch state, making individual
@@ -647,12 +678,53 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
     }
 }
 
+void ConnectionManager::cancelPatchListFetch(const char* reason)
+{
+    if (!fetchingPatchList)
+        return;
+
+    fetchingPatchList = false;
+    patchListGeneration++;  // Invalidate the in-flight request chain
+    lastListCancelMs = juce::Time::getMillisecondCounter();
+    std::cout << "[PATCHLIST] Fetch cancelled: " << reason << std::endl;
+
+    // Deliver what we have so any UI waiting on the list leaves its
+    // loading state. The user can refresh for a complete list later.
+    if (patchListCallback)
+        patchListCallback(patchListNames);
+}
+
 void ConnectionManager::requestPatchList()
 {
     std::cout << "[PATCHLIST] requestPatchList called, connected=" << isConnected() << std::endl;
 
     if (!isConnected())
         return;
+
+    // A fetch is already streaming — starting a second one would interleave
+    // two response streams and file names at the wrong bank positions.
+    if (fetchingPatchList)
+    {
+        std::cout << "[PATCHLIST] Already fetching - ignoring duplicate request" << std::endl;
+        return;
+    }
+
+    // After a cancellation, responses from the old stream may still be in
+    // flight. Wait briefly so they land while fetchingPatchList is false and
+    // get dropped, instead of being filed under the new fetch's cursor.
+    const auto sinceCancel = juce::Time::getMillisecondCounter() - lastListCancelMs;
+    if (lastListCancelMs != 0 && sinceCancel < listRestartCooldownMs)
+    {
+        const int waitMs = static_cast<int>(listRestartCooldownMs - sinceCancel);
+        std::cout << "[PATCHLIST] Deferring restart " << waitMs
+                  << "ms after cancellation" << std::endl;
+        auto aliveFlag = alive;
+        juce::Timer::callAfterDelay(waitMs, [this, aliveFlag]() {
+            if (*aliveFlag && isConnected() && !fetchingPatchList)
+                requestPatchList();
+        });
+        return;
+    }
 
     // Initialize patch list to 891 empty entries (9 banks × 99 positions)
     patchListNames.clear();
@@ -700,28 +772,31 @@ void ConnectionManager::requestPatchList()
 
 void ConnectionManager::onPatchListReceived(const AckMessage& msg)
 {
-    std::cout << "[PATCHLIST] onPatchListReceived called, fetchingPatchList=" << fetchingPatchList << std::endl;
+    // The list fetch handles up to 891 responses — per-response logging is
+    // expensive enough to slow the whole transfer. Opt in with NME_MIDI_LOG=1.
+    static const bool verboseLog = (std::getenv("NME_MIDI_LOG") != nullptr);
 
     if (!fetchingPatchList)
-    {
-        std::cout << "[PATCHLIST] Ignoring - not fetching" << std::endl;
         return;
-    }
 
-    std::cout << "[PATCHLIST] ACK payload size: " << msg.payload.size() << std::endl;
-    std::cout << "[PATCHLIST] ACK payload (hex): ";
-    for (size_t i = 0; i < std::min(msg.payload.size(), size_t(20)); ++i)
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)msg.payload[i] << " ";
-    std::cout << std::dec << std::endl;
+    if (verboseLog)
+    {
+        std::cout << "[PATCHLIST] ACK payload size: " << msg.payload.size() << std::endl;
+        std::cout << "[PATCHLIST] ACK payload (hex): ";
+        for (size_t i = 0; i < std::min(msg.payload.size(), size_t(20)); ++i)
+            std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)msg.payload[i] << " ";
+        std::cout << std::dec << std::endl;
+    }
 
     // Parse the PatchListResponse from the ACK payload
     auto response = PatchListResponseMessage::decode(
         msg.payload.data(), msg.payload.size(),
         patchListSection, patchListPosition);
 
-    std::cout << "[PATCHLIST] Parsed " << response.entries.size() << " entries" << std::endl;
-    std::cout << "[PATCHLIST] nextSection=" << response.nextSection
-              << " nextPosition=" << response.nextPosition << std::endl;
+    if (verboseLog)
+        std::cout << "[PATCHLIST] Parsed " << response.entries.size()
+                  << " entries, nextSection=" << response.nextSection
+                  << " nextPosition=" << response.nextPosition << std::endl;
 
     const int requestLinearIndex = patchListSection * 99 + patchListPosition;
     int nextLinearIndex = requestLinearIndex;
@@ -734,9 +809,10 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
         {
             patchListNames[static_cast<size_t>(index)] = entry.name.empty() ? "" : entry.name;
             nextLinearIndex = std::max(nextLinearIndex, index + 1);
-            std::cout << "[PATCHLIST]   Entry: section=" << entry.section
-                      << " pos=" << entry.position
-                      << " name=\"" << entry.name << "\"" << std::endl;
+            if (verboseLog)
+                std::cout << "[PATCHLIST]   Entry: section=" << entry.section
+                          << " pos=" << entry.position
+                          << " name=\"" << entry.name << "\"" << std::endl;
         }
     }
 
@@ -769,8 +845,9 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
     patchListSection = nextLinearIndex / 99;
     patchListPosition = nextLinearIndex % 99;
 
-    std::cout << "[PATCHLIST] Requesting next: section=" << patchListSection
-              << " position=" << patchListPosition << std::endl;
+    if (verboseLog)
+        std::cout << "[PATCHLIST] Requesting next: section=" << patchListSection
+                  << " position=" << patchListPosition << std::endl;
 
     GetPatchListMessage nextMsg;
     nextMsg.section = patchListSection;
@@ -1050,19 +1127,6 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
 
 void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
 {
-    if (!collectingSections && !waitingForPatchAck)
-    {
-        std::cout << "[MIDI] PatchPacket outside patch fetch: first=" << msg.isFirst
-                  << " last=" << msg.isLast
-                  << " command=" << msg.command
-                  << " pid=" << msg.pid
-                  << " dataSize=" << msg.patchData.size()
-                  << " data:";
-        for (size_t i = 0; i < msg.patchData.size(); ++i)
-            std::cout << " " << std::hex << std::setw(2) << std::setfill('0') << (int) msg.patchData[i];
-        std::cout << std::dec << std::endl;
-    }
-
     // In Java protocol, PatchMessage.isreply = true — patch packets unblock the send queue.
     // The synth may respond to some edit commands (NewModule) with a patch confirmation packet.
     if (ackedQueueWaiting)
@@ -1073,20 +1137,36 @@ void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
         drainAckedQueue();
     }
 
-    SynthSettings settings;
-    if (SynthSettingsMessage::decode(msg.patchData, settings))
-    {
-        std::cout << "[SYNTH] Received synth settings: name=\"" << settings.name << "\"" << std::endl;
-        if (synthSettingsCallback)
-        {
-            auto cb = synthSettingsCallback;
-            juce::MessageManager::callAsync([cb, settings]() { cb(settings); });
-        }
-        return;
-    }
-
     if (!collectingSections && !waitingForPatchAck)
+    {
+        // Not fetching a patch — this may be the reply to requestSynthSettings().
+        // The settings decode is heuristic (matches on a 0x03 type byte), so it
+        // must NEVER run while a patch fetch is streaming: a patch section can
+        // false-positive, showing a garbled synth name and swallowing the
+        // section, which stalls the fetch until the stale timeout.
+        SynthSettings settings;
+        if (SynthSettingsMessage::decode(msg.patchData, settings))
+        {
+            std::cout << "[SYNTH] Received synth settings: name=\"" << settings.name << "\"" << std::endl;
+            if (synthSettingsCallback)
+            {
+                auto cb = synthSettingsCallback;
+                juce::MessageManager::callAsync([cb, settings]() { cb(settings); });
+            }
+            return;
+        }
+
+        std::cout << "[MIDI] PatchPacket outside patch fetch: first=" << msg.isFirst
+                  << " last=" << msg.isLast
+                  << " command=" << msg.command
+                  << " pid=" << msg.pid
+                  << " dataSize=" << msg.patchData.size()
+                  << " data:";
+        for (size_t i = 0; i < msg.patchData.size(); ++i)
+            std::cout << " " << std::hex << std::setw(2) << std::setfill('0') << (int) msg.patchData[i];
+        std::cout << std::dec << std::endl;
         return;  // Not expecting patch data
+    }
 
     if (msg.isFirst)
         sectionAccumulator.clear();
@@ -1099,6 +1179,9 @@ void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
         patchSections.push_back(std::move(sectionAccumulator));
         sectionAccumulator.clear();
         sectionsReceived++;
+
+        if (patchLoadProgressCallback)
+            patchLoadProgressCallback(sectionsReceived, totalSections);
 
         DBG("Received section " + juce::String(sectionsReceived) + "/" + juce::String(totalSections)
             + " (" + juce::String(patchSections.back().size()) + " bytes)");

@@ -303,6 +303,22 @@ void BankTransferManager::sendNextFile()
 
     PchFileIO io(moduleDescs);
     std::shared_ptr<Patch> patch = io.readFile(file);
+
+    // Classic .pch files carry no internal name, so the reader falls back to
+    // the filename. Our bank backups are named "NN - Name.pch" — strip the
+    // position prefix or the synth stores names like "86 - DoubleSawPa".
+    if (patch)
+    {
+        const auto name = patch->getName();
+        if (name.length() > 5
+            && juce::CharacterFunctions::isDigit(name[0])
+            && juce::CharacterFunctions::isDigit(name[1])
+            && name.substring(2, 5) == " - ")
+        {
+            patch->setName(name.substring(5));
+        }
+    }
+
     if (!patch)
     {
         progress.failures.add(file.getFileName() + " (parse failed)");

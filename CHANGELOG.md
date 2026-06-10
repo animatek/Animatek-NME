@@ -22,6 +22,25 @@
   on its **DIN MIDI OUT** (not the PC port) — record it at the start of a sequencer track so
   playback initializes the patch state. Equivalent to the synth's front-panel CTRL SNAP SHOT
   menu. Read-only; verified against hardware.
+- Fixed the editor going deaf ("lost connection") after changing banks/patches on the synth
+  front panel: an unanswered patch request left the fetch state stuck forever, ignoring every
+  later patch change. A 3 s watchdog now resets it.
+- Fixed the synth freezing when loading a preset from the Synth browser while the patch list
+  was still streaming: patch loads/fetches/uploads now cancel the in-flight list fetch first.
+- Fixed garbled synth settings names (`????...`) and stalled patch loads: the heuristic
+  SynthSettings decode no longer runs on packets that belong to a streaming patch fetch, so
+  it can no longer swallow patch sections.
+- Fixed patch list corruption: duplicate refreshes no longer interleave two response streams,
+  a cancelled fetch gets a 400 ms cooldown before restarting, and 16-character patch names
+  (which carry no null terminator) no longer merge with the following entries and shift every
+  later bank position.
+- Fixed Send Bank to Synth storing filename-derived names like "86 - DoubleSawPa": the
+  "NN - " backup position prefix is stripped from patch names before upload.
+- Added a patch-load progress bar to the status bar (sections received while fetching from
+  the synth), with automatic hiding on completion or stall.
+- Made verbose MIDI logging opt-in via the `NME_MIDI_LOG=1` environment variable. Hex-dumping
+  every received SysEx and per-entry patch list logging noticeably slowed transfers in debug
+  builds.
 - Renamed the project from **Nomad2026** to **Animatek NME — Nord Modular Editor G1**.
   - New app name, window title, CMake targets, and binary name (`AnimatekNME`).
   - New plugin identifiers (manufacturer `Antk`, code `Nme1`, CLAP id `com.animatek.nme`). DAWs will
