@@ -13,9 +13,12 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](CHANGELOG.md
   (Device menu), folder source, overwrite warning, stops cleanly on failure.
   Verified against real hardware.
 
-- [ ] **Controller Snapshot**
-  - Send the current controller state to the synth in one action.
-  - Decide exact scope: hardware knobs, morph sources, MIDI CC assignments, or all performance controllers.
+- [x] **Controller Snapshot** — implemented in 0.6.0 as "Send Controller Snapshot"
+  (Device menu). Research against the original protocol resolved the scope question:
+  the `SendControllerSnapshot` command (sc=0x55) asks the *synth* to emit the current
+  values of the patch's MIDI CC assignments as CC messages on its DIN MIDI OUT
+  (sequencer recording aid, same as the front-panel CTRL SNAP SHOT menu); it does not
+  modify synth state. Verified against real hardware.
 
 ## Editor Workflow
 

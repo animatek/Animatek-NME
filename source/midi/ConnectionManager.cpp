@@ -2,6 +2,7 @@
 #include "../protocol/StorePatchMessage.h"
 #include "../protocol/DeletePatchMessage.h"
 #include "../protocol/SetPatchTitleMessage.h"
+#include "../protocol/SendControllerSnapshotMessage.h"
 #include "../model/PatchSerializer.h"
 #include "../model/Patch.h"
 #include <iostream>
@@ -537,6 +538,20 @@ void ConnectionManager::sendPatchTitle(const juce::String& title)
     DBG("sendPatchTitle: slot=" + juce::String(currentSlot)
         + " pid=" + juce::String(currentPatchId)
         + " title=\"" + title + "\"");
+}
+
+void ConnectionManager::sendControllerSnapshot()
+{
+    if (!isConnected())
+        return;
+
+    // Fire-and-forget, matching jnmprotocol (the message does not expect a
+    // reply) — the synth answers with a stream of CC messages on its MIDI out.
+    SendControllerSnapshotMessage msg(currentPatchId);
+    sendRawSysEx(msg.toSysEx(currentSlot));
+
+    std::cout << "[SNAPSHOT] Requested controller snapshot for slot "
+              << currentSlot << " (pid=" << currentPatchId << ")" << std::endl;
 }
 
 void ConnectionManager::sendRawSysEx(const std::vector<uint8_t>& sysex)

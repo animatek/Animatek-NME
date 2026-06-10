@@ -65,6 +65,7 @@ set(NME_SHARED_SOURCES
     source/protocol/StorePatchMessage.cpp
     source/protocol/DeletePatchMessage.cpp
     source/protocol/SetPatchTitleMessage.cpp
+    source/protocol/SendControllerSnapshotMessage.cpp
     source/protocol/MorphAssignmentMessage.cpp
     source/protocol/MorphKeyboardAssignmentMessage.cpp
     source/protocol/MorphRangeChangeMessage.cpp

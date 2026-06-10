@@ -852,6 +852,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addSeparator();
     bool connected = connectionManager.isConnected();
     menu.addItem(31, "Request Patch from Synth", connected);
+    menu.addItem(32, "Send Controller Snapshot", connected);
     menu.addItem(33, "Store to Bank...", connected);
     menu.addSeparator();
     menu.addItem(34, "Save Bank to Disk...", connected);
@@ -948,6 +949,11 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 31:
     connectionManager.requestPatch(connectionManager.getCurrentSlot());
+    break;
+  case 32:
+    connectionManager.sendControllerSnapshot();
+    mainLayout->getStatusBar().showMessage(
+        "Controller snapshot sent - the synth emits assigned CC values on its DIN MIDI OUT (not the PC port)", 5000);
     break;
   case 33:
     storePatchToBank();

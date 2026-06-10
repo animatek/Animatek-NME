@@ -17,6 +17,11 @@
   (`SlotsSelected`/`SlotActivated` + settle delay, same as the single-file disk upload path),
   and the next upload waits for the previous `StorePatch` ACK to drain so it is not
   discarded when the upload clears the ACK queue.
+- Added **Send Controller Snapshot** (Device menu): asks the synth to transmit the current
+  values of all MIDI-CC-assigned parameters of the active patch as Control Change messages
+  on its **DIN MIDI OUT** (not the PC port) — record it at the start of a sequencer track so
+  playback initializes the patch state. Equivalent to the synth's front-panel CTRL SNAP SHOT
+  menu. Read-only; verified against hardware.
 - Renamed the project from **Nomad2026** to **Animatek NME — Nord Modular Editor G1**.
   - New app name, window title, CMake targets, and binary name (`AnimatekNME`).
   - New plugin identifiers (manufacturer `Antk`, code `Nme1`, CLAP id `com.animatek.nme`). DAWs will

@@ -43,6 +43,7 @@ public:
     void sendSynthSettings(const SynthSettings& settings);
     void sendParameter(int section, int moduleId, int parameterId, int value);
     void sendPatchTitle(const juce::String& title);  // Change patch name in current slot (not saved to flash)
+    void sendControllerSnapshot();  // Ask synth to emit current values of assigned MIDI CCs (read-only)
     void sendRawSysEx(const std::vector<uint8_t>& sysex);       // Fire-and-forget (no ACK needed)
     void sendAckedSysEx(const std::vector<uint8_t>& sysex,
                         bool allowNewPatchInSlotReply = false); // Queued, waits for ACK before next
