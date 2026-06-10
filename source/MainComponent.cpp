@@ -704,7 +704,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   };
   // Wire bug report button on header bar
   mainLayout->getHeaderBar().setReportBugCallback([this]() {
-    openURL("https://github.com/animatek/Nomad2026/issues");
+    openURL("https://github.com/animatek/Animatek-NME/issues");
   });
 
   // Wire slot tab changes (user clicks tab)
@@ -984,7 +984,7 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     openURL("https://electro-music.com/nm_classic/");
     break;
   case 43:  // Report Bug
-    openURL("https://github.com/animatek/Nomad2026/issues");
+    openURL("https://github.com/animatek/Animatek-NME/issues");
     break;
   case 44:  // Show Beta Warning
     showBetaWarning(true);
@@ -998,7 +998,7 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     openURL("https://www.patreon.com/collection/2038913");
     break;
   case 51:  // GitHub
-    openURL("https://github.com/animatek/Nomad2026/");
+    openURL("https://github.com/animatek/Animatek-NME/");
     break;
   case 52:  // animatek.net
     openURL("https://animatek.net/");
@@ -1635,7 +1635,7 @@ public:
             "  - Back up any important patches before using this editor\n"
             "  - Do NOT use this with patches you rely on for live performance\n\n"
             "Found a bug? Click 'Report a bug' on the toolbar\n"
-            "or visit: github.com/animatek/Nomad2026/issues\n\n"
+            "or visit: github.com/animatek/Animatek-NME/issues\n\n"
             "Nord Modular is a trademark of Clavia DMI AB.\n"
             "This project is not affiliated with or endorsed by Clavia.",
             juce::dontSendNotification);

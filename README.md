@@ -47,14 +47,14 @@ Animatek NME lets you edit Nord Modular G1 patches from a modern desktop applica
 - [PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md) - parked notes for the experimental plugin direction.
 
 Issues are the preferred place to track bugs and concrete follow-up work:
-https://github.com/animatek/Nomad2026/issues
+https://github.com/animatek/Animatek-NME/issues
 
 ## Building
 
 Clone with submodules:
 
 ```bash
-git clone --recurse-submodules https://github.com/animatek/Nomad2026.git
+git clone --recurse-submodules https://github.com/animatek/Animatek-NME.git
 ```
 
 If the repo is already cloned:
