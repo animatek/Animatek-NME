@@ -7,7 +7,10 @@ to run on current macOS, Windows, and Linux systems without requiring an old Jav
 > Nord Modular is a trademark of Clavia DMI AB. This project is an independent,
 > community-developed editor and is not affiliated with or endorsed by Clavia.
 
+Support this proyect: https://www.patreon.com/c/animatek
+
 ![animatek NME 0.6 ](https://animatek.net/wp-content/uploads/2026/06/Editor_animatek.png) 
+
 
 
 ## What It Does
