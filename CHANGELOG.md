@@ -1,3 +1,7 @@
+Support this proyect: https://www.patreon.com/c/animatek
+
+![animatek NME 0.6 ](https://animatek.net/wp-content/uploads/2026/06/Editor_animatek.png) 
+
 # Changelog
 
 ## 0.6.0 — 2026-06-11
