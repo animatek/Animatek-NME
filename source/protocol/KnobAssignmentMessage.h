@@ -12,7 +12,9 @@
  *   KnobAssignmentChange := 0:1 prevknob:7 ?NewKnobAssignmentPacket
  *   NewKnobAssignmentPacket := 0:1 0x25:7 KnobAssignment
  *
- * 23 knobs: 0-17 = Knob 1-18, 18 = Pedal, 19 = After touch, 20 = On/Off switch
+ * 23 knob slots (KnobMapDump order): 0-17 = Knob 1-18, 19 = Pedal,
+ * 20 = After touch, 22 = On/Off switch. Indices 18 and 21 are unused
+ * (see nmedit knobmap.h / KnobSet.getByID).
  */
 class KnobAssignmentMessage
 {
@@ -29,4 +31,10 @@ public:
     // Knob display names
     static const char* getKnobName(int knobIndex);
     static constexpr int numKnobs = 23;
+
+    // Indices 18 and 21 are gaps in the wire format, not real knobs
+    static constexpr bool isValidKnob(int k)
+    {
+        return k >= 0 && k < numKnobs && k != 18 && k != 21;
+    }
 };

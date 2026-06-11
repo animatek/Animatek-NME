@@ -15,6 +15,8 @@
 #include "ui/MainLayout.h"
 #include "ui/EditorOptionsDialog.h"
 #include "ui/PresetBrowserWindow.h"
+#include "ui/KnobFloaterWindow.h"
+#include "ui/KeyboardFloaterWindow.h"
 
 class SynthSettingsDialog;
 
@@ -51,6 +53,11 @@ private:
     void applyEditorOptions(const EditorOptions& opts);
     void togglePresetBrowser();
     void showPresetBrowser();
+    void toggleKnobFloater();
+    void toggleKeyboardFloater();
+    void showFloaterWindow(juce::DocumentWindow& window, const juce::String& settingsPrefix);
+    void saveFloaterState();
+    void restoreFloaterWindows();  // reopen floaters that were open last session
 
     void showMidiSettingsDialog();
     void showPatchSettingsDialog();
@@ -93,6 +100,8 @@ private:
 
     EditorOptions editorOptions;
     std::unique_ptr<PresetBrowserWindow> presetBrowserWindow;
+    std::unique_ptr<KnobFloaterWindow> knobFloaterWindow;
+    std::unique_ptr<KeyboardFloaterWindow> keyboardFloaterWindow;
 
     // Last-known global synth settings.
     SynthSettings cachedSynthSettings;

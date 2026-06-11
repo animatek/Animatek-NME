@@ -593,6 +593,49 @@ void ConnectionManager::sendRawSysEx(const std::vector<uint8_t>& sysex)
     midiDevice->sendSysEx(sysex);
 }
 
+void ConnectionManager::sendNoteOn(int note, int velocity)
+{
+    sendNoteEvent(note, velocity, true);
+}
+
+void ConnectionManager::sendNoteOff(int note)
+{
+    sendNoteEvent(note, 0, false);
+}
+
+void ConnectionManager::sendNoteEvent(int note, int velocity, bool on)
+{
+    // The editor talks to the synth's PC port, which ignores regular MIDI notes.
+    // Note (cc=0x17, sc=0x56) read as an active-note list: count followed by
+    // count note bytes. Note-on = {1, note}; note-off = {0} (empty list).
+    // Hardware-observed: {1, note} sounds; {0, note} is ACKed but ignored
+    // (trailing byte makes it a no-op); NoteEvent (sc=0x41) is incoming-only
+    // and rejected with synth error 5 in this direction.
+    juce::ignoreUnused(velocity);
+
+    if (!isConnected() || !midiDevice)
+    {
+        std::cout << "[KEYS] note event skipped: not connected" << std::endl;
+        return;
+    }
+
+    std::vector<uint8_t> payload;
+    if (on)
+        payload = {
+            static_cast<uint8_t>(currentPatchId & 0x7F),
+            0x56,
+            0x01,
+            static_cast<uint8_t>(note & 0x7F)
+        };
+    else
+        payload = {
+            static_cast<uint8_t>(currentPatchId & 0x7F),
+            0x56,
+            0x00
+        };
+    midiDevice->sendSysEx(SysEx::encode(0x17, currentSlot, payload, /*addChecksum=*/true));
+}
+
 void ConnectionManager::sendAckedSysEx(const std::vector<uint8_t>& sysex, bool allowNewPatchInSlotReply)
 {
     if (!isConnected() || !midiDevice)
@@ -675,6 +718,17 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
             + ", patchId=" + juce::String(currentPatchId) + " — sending GetPatch for all 13 sections");
         sendGetPatchMessages(currentPatchId, pendingPatchSlot);
         startPatchTimeout();
+        return;
+    }
+
+    // Plain ACKs carry the synth's pid for the focused patch. Resync ours like
+    // the original editor does (libnmprotocol ActivePidListener stores pid1 of
+    // every ACK) — a stale pid makes the synth reject edits with error 5.
+    if (msg.type == 0x7f && msg.pid1 != currentPatchId)
+    {
+        std::cout << "[SYNC] Patch id resynced from ACK: " << currentPatchId
+                  << " -> " << msg.pid1 << std::endl;
+        currentPatchId = msg.pid1;
     }
 }
 

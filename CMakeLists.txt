@@ -46,6 +46,8 @@ set(NME_SHARED_SOURCES
     source/ui/PatchBrowserPanel.cpp
     source/ui/PresetBrowserWindow.cpp
     source/ui/BankTransferDialog.cpp
+    source/ui/KnobFloaterWindow.cpp
+    source/ui/KeyboardFloaterWindow.cpp
 
     # MIDI/SysEx
     source/midi/SysExCodec.cpp

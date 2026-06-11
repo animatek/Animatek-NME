@@ -1,5 +1,6 @@
 #include "PatchHeaderBar.h"
 #include "AppTheme.h"
+#include "../protocol/KnobAssignmentMessage.h"
 
 namespace
 {
@@ -767,10 +768,10 @@ void PatchHeaderBar::showMorphKnobContextMenu(int morphIndex)
             knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
         }
         knobSubMenu.addSeparator();
-        const char* specialNames[] = { "Pedal", "After touch", "On/Off switch" };
-        for (int k = 18; k < 21; ++k)
+        // Pedal=19, After touch=20, On/Off switch=22 (18 and 21 unused in the wire format)
+        for (int k : { 19, 20, 22 })
         {
-            juce::String label = specialNames[k - 18];
+            juce::String label = KnobAssignmentMessage::getKnobName(k);
             if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
                 label += " (used)";
             knobSubMenu.addItem(100 + k, label, true, k == currentKnob);

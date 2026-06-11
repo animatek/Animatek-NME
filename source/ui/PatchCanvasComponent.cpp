@@ -1,6 +1,7 @@
 #include "PatchCanvasComponent.h"
 #include "QuickAddPopup.h"
 #include "../format/ValueFormatters.h"
+#include "../protocol/KnobAssignmentMessage.h"
 #include "BinaryData.h"
 #include <cmath>
 #include <set>
@@ -6077,11 +6078,10 @@ void PatchCanvas::showParameterContextMenu(Module& m, int section, Parameter& pa
             knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
         }
         knobSubMenu.addSeparator();
-        // Pedal, After touch, On/Off switch
-        const char* specialNames[] = { "Pedal", "After touch", "On/Off switch" };
-        for (int k = 18; k < 21; ++k)
+        // Pedal=19, After touch=20, On/Off switch=22 (18 and 21 unused in the wire format)
+        for (int k : { 19, 20, 22 })
         {
-            juce::String label = specialNames[k - 18];
+            juce::String label = KnobAssignmentMessage::getKnobName(k);
             if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
                 label += " (used)";
             knobSubMenu.addItem(100 + k, label, true, k == currentKnob);

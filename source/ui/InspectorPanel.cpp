@@ -456,6 +456,7 @@ private:
         // Knob assignments for this module
         for (int k = 0; k < 23; ++k)
         {
+            if (!KnobAssignmentMessage::isValidKnob(k)) continue;
             const auto& ka = patch->knobAssignments[static_cast<size_t>(k)];
             if (!ka.assigned || ka.section != sec || ka.module != modId) continue;
             auto* param = m->getParameter(ka.param);
@@ -484,6 +485,7 @@ private:
         // All knob assignments
         for (int k = 0; k < 23; ++k)
         {
+            if (!KnobAssignmentMessage::isValidKnob(k)) continue;
             const auto& ka = patch->knobAssignments[static_cast<size_t>(k)];
             if (!ka.assigned) continue;
             auto& container = patch->getContainer(ka.section);

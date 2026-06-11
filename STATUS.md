@@ -23,6 +23,7 @@ This file tracks the current project state at a practical level. Detailed versio
 - Module rendering has gone through systematic passes for oscillator/LFO, envelope, filter/EQ/vocoder, sequencer, logic, audio, mixer, control, and in/out modules.
 - Module help, Help Contents, About links, bug-report link, beta warning popup, themes, canvas zoom, parameter randomization, initialization, locks, and snapshots are implemented.
 - Dark-mode app icon and JUCE metadata are in place.
+- Knob Floater (interactive 18-knob + pedal/switch/aftertouch overview) and Keyboard Floater (virtual keyboard with drone/repeat modes) are implemented as View-menu floating windows with position persistence.
 
 ## Known Development Context
 

@@ -1,5 +1,6 @@
 #include "MidiDeviceManager.h"
 #include <cstdlib>
+#include <iostream>
 
 MidiDeviceManager::MidiDeviceManager(NmProtocol& proto)
     : protocol(proto)
@@ -71,6 +72,7 @@ void MidiDeviceManager::sendSysEx(const std::vector<uint8_t>& data)
         midiOutput->sendMessageNow(juce::MidiMessage(data.data(), static_cast<int>(data.size())));
     }
 }
+
 
 juce::String MidiDeviceManager::getInputDeviceName() const
 {

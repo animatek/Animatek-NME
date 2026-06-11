@@ -65,8 +65,7 @@ static const char* kKnobNames[23] = {
     "Knob 1",  "Knob 2",  "Knob 3",  "Knob 4",  "Knob 5",  "Knob 6",
     "Knob 7",  "Knob 8",  "Knob 9",  "Knob 10", "Knob 11", "Knob 12",
     "Knob 13", "Knob 14", "Knob 15", "Knob 16", "Knob 17", "Knob 18",
-    "Pedal", "After touch", "On/Off switch",
-    "Knob 22", "Knob 23"  // rarely used
+    "(unused)", "Pedal", "After touch", "(unused)", "On/Off switch"
 };
 
 const char* KnobAssignmentMessage::getKnobName(int knobIndex)

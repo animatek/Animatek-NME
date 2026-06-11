@@ -22,18 +22,16 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](CHANGELOG.md
 
 ## Editor Workflow
 
-- [ ] **Keyboard Floater**
-  - Virtual MIDI keyboard.
-  - Octave navigation.
-  - Drone/sustain mode.
-  - Repeat mode if it proves useful.
-  - Visual key feedback.
+- [x] **Keyboard Floater** — implemented in 0.6.0 (View menu): virtual keyboard with octave
+  navigation, DRONE latch mode, and REPEAT retrigger mode with a rate slider. Notes go
+  through the editor protocol (Note command sc=0x56 — the PC port ignores plain MIDI).
+  - [ ] Pending: note-off encoding (synth ACKs but ignores every off variant tried so far;
+    next step is sniffing the original Wine editor via snd-virmidi).
 
-- [ ] **Knob Floater**
-  - Hardware knob overview for 18 knobs, pedal, aftertouch, and on/off switch.
-  - Show current module/parameter assignments.
-  - Allow reassignment/removal from a dedicated view.
-  - Include morph-related controls only if the workflow stays clear.
+- [x] **Knob Floater** — implemented in 0.6.0 (View menu): 18 knobs + pedal/switch/aftertouch
+  with assignment LEDs and module/parameter labels. Knobs are interactive (edit + sync +
+  undo, morphs included); right-click reassigns to a free knob. Also fixed the special knob
+  wire indices (Pedal=19, After touch=20, On/Off=22; 18/21 unused).
 
 - [ ] **Patch Notes Floater**
   - Patch notes/comments window.

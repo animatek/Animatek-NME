@@ -2,6 +2,27 @@
 
 ## 0.6.0 (in development)
 
+- Added the **Knob Floater** (View menu): live overview of the 18 assignable hardware knobs
+  plus Pedal, On/Off switch, and After touch, with assignment LEDs and module/parameter
+  labels. Knobs are interactive — dragging one edits the assigned parameter (with undo and
+  synth sync, morph assignments included), and right-click moves an assignment to a free
+  knob slot. Follows hardware knob turns, canvas edits, undo/redo, slot switches, and
+  patch loads in real time.
+- Added the **Keyboard Floater** (View menu): virtual keyboard that plays the synth through
+  the editor protocol (the PC port ignores regular MIDI notes), with octave navigation, a
+  DRONE latch mode, and a REPEAT retrigger mode with rate slider (50 ms - 2 s). Note-on is
+  verified against hardware (Note command, sc=0x56); the matching note-off encoding is
+  still under investigation, so notes currently sustain until the patch is retriggered.
+- Fixed synth error 5 ("no slot focused") on patch-modification commands sent after the
+  synth bumped its patch id: every plain ACK now resyncs the editor's pid, mirroring the
+  original editor's ActivePidListener.
+- Both floaters remember position and open state across sessions.
+- Fixed wrong wire indices for the special knob targets: Pedal, After touch, and On/Off
+  switch are indices 19, 20, and 22 in the protocol and patch format (18 and 21 are unused),
+  but the assignment menus sent 18-20 — so "Pedal" assignments from the editor never
+  responded to the real expression pedal. All knob menus and the inspector now use the
+  correct indices.
+
 - Added **Save Bank to Disk** (Device menu): saves every non-empty patch of a synth bank as
   `NN - Name.pch` files into a chosen folder, with progress, per-patch failure reporting,
   cancellation, and a selectable temp slot used as the transfer buffer.
