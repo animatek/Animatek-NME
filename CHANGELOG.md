@@ -8,6 +8,12 @@
   name > full name > category/tags) instead of flat category order.
 - **Double-click on empty canvas** now opens the Quick Add popup (same as Enter);
   double-clicking a module does not.
+- **Quick Add is now fully mouse-driven**: hover highlights, click adds the module,
+  clicking outside dismisses, and the mouse wheel scrolls the full module list (with a
+  scrollbar indicator). Arrow keys scroll the view too.
+- **Quick Add favorites**: click the star on a row to pin a module as favorite (gold
+  star). Favorites are listed first — also ahead of equal-relevance search results —
+  and persist across sessions.
 
 - Added the **Patch Notes Floater** (View menu): free-text notes for the active slot's patch
   in a resizable window (monospaced — original patches often carry ASCII tables). Notes are

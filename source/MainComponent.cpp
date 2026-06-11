@@ -97,6 +97,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     return {}; // not found
   };
 
+  QuickAddPopup::setSharedSettings(appProperties.getUserSettings());
+
   // Load module descriptions — prefer embedded BinaryData, fall back to disk
   if (BinaryData::modules_xmlSize > 0)
     moduleDescs.loadFromXmlString(juce::String(BinaryData::modules_xml, BinaryData::modules_xmlSize));

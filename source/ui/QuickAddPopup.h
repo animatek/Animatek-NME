@@ -4,8 +4,10 @@
 #include "../model/ModuleDescriptions.h"
 
 // Spotlight-style popup for quickly adding modules.
-// Press Enter on canvas → popup appears at mouse position.
-// Type to filter, arrows to navigate, Enter to add, Escape to close.
+// Press Enter (or double-click) on canvas → popup appears at mouse position.
+// Type to filter, arrows/hover to navigate, Enter or click to add, Escape or
+// clicking outside to close. Clicking the star on a row marks the module as
+// favorite: favorites are listed first and persist in the app settings.
 class QuickAddPopup : public juce::Component,
                       public juce::TextEditor::Listener,
                       public juce::KeyListener
@@ -29,6 +31,12 @@ public:
     // KeyListener (for arrow keys)
     bool keyPressed(const juce::KeyPress& key, juce::Component* origin) override;
 
+    // Mouse: click a row to add, hover to select; registered as a global mouse
+    // listener so a click anywhere outside the popup dismisses it
+    void mouseDown(const juce::MouseEvent& e) override;
+    void mouseMove(const juce::MouseEvent& e) override;
+    void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
+
     // Lose focus → close
     void focusLost(FocusChangeType) override {}
     void inputAttemptWhenModal() override { dismiss(); }
@@ -37,6 +45,9 @@ public:
 
     // Called by PatchCanvas destructor to prevent callbacks firing on a dead parent
     void clearCallbacks() { onSelect = nullptr; onDismiss = nullptr; }
+
+    // Favorites are stored in the app settings ("favoriteModules"); set once at startup
+    static void setSharedSettings(juce::PropertiesFile* settings);
 
 private:
     static constexpr int popupWidth  = 320;
@@ -48,6 +59,10 @@ private:
     void confirmSelection();
     void dismiss();
     int totalHeight() const;
+    int rowIndexAt(juce::Point<int> localPos) const;  // -1 if not on a row
+    bool isStarZone(juce::Point<int> localPos) const;
+    bool isFavorite(const juce::String& moduleName) const;
+    void toggleFavorite(const juce::String& moduleName);
 
     const ModuleDescriptions& descs;
     juce::Point<int> spawnGridPos;
@@ -59,6 +74,13 @@ private:
     struct Entry { const ModuleDescriptor* desc; juce::String category; };
     std::vector<Entry> filtered;
     int selectedIdx = 0;
+    int scrollOffset = 0;  // index of the first visible row
+
+    void scrollSelectedIntoView();
+
+    static juce::PropertiesFile* sharedSettings;
+    juce::StringArray favorites;
+    juce::Time lastMouseDownTime;  // dedup: events arrive direct AND via global listener
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(QuickAddPopup)
 };
