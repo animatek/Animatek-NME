@@ -18,6 +18,7 @@ set(NME_SHARED_SOURCES
 
     # Data Model
     source/model/ModuleDescriptions.cpp
+    source/model/ModuleTags.cpp
     source/model/Patch.cpp
     source/model/PatchParser.cpp
     source/model/PatchSerializer.cpp

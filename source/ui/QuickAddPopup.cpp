@@ -101,19 +101,36 @@ void QuickAddPopup::rebuildFiltered(const juce::String& text)
 {
     filtered.clear();
     auto lower = text.toLowerCase();
+
+    // Rank matches: name prefix > name > fullname > category/tags, keeping
+    // category order within each rank
+    std::vector<std::pair<int, Entry>> scored;
     for (auto& cat : descs.getCategories())
     {
         for (auto* desc : descs.getModulesInCategory(cat))
         {
-            if (lower.isEmpty()
-                || desc->name.toLowerCase().contains(lower)
-                || desc->fullname.toLowerCase().contains(lower)
-                || cat.toLowerCase().contains(lower))
-            {
-                filtered.push_back({ desc, cat });
-            }
+            int score = -1;
+            if (lower.isEmpty())
+                score = 0;
+            else if (desc->name.toLowerCase().startsWith(lower))
+                score = 0;
+            else if (desc->name.toLowerCase().contains(lower))
+                score = 1;
+            else if (desc->fullname.toLowerCase().contains(lower))
+                score = 2;
+            else if (cat.toLowerCase().contains(lower) || desc->tags.contains(lower))
+                score = 3;
+
+            if (score >= 0)
+                scored.push_back({ score, { desc, cat } });
         }
     }
+
+    std::stable_sort(scored.begin(), scored.end(),
+                     [](const auto& a, const auto& b) { return a.first < b.first; });
+    for (auto& s : scored)
+        filtered.push_back(s.second);
+
     selectedIdx = 0;
     setSize(popupWidth, totalHeight());
     repaint();

@@ -4073,6 +4073,53 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
 
 // --- Mouse Event Handlers ---
 
+void PatchCanvas::openQuickAddAtMouse()
+{
+    if (patch == nullptr || moduleDescs == nullptr)
+        return;
+    if (activeQuickAdd != nullptr)
+        return;  // already open
+
+    auto mousePos = screenToCanvas(getMouseXYRelative());
+
+    int section = mySection;
+    int gx = juce::jlimit(0, 39, mousePos.x / gridX);
+    int gy = juce::jlimit(0, 127, mousePos.y / gridY);
+
+    auto screenPos = localPointToGlobal(getMouseXYRelative());
+
+    activeQuickAdd = new QuickAddPopup(
+        *moduleDescs, screenPos, gx, gy,
+        [this, section](const ModuleDescriptor* desc, int pgx, int pgy)
+        {
+            if (moduleDropCallback && desc)
+            {
+                if (undoManager) undoManager->beginNewTransaction("Add Module");
+                moduleDropCallback(desc->index, section, pgx, pgy, desc->name);
+            }
+        },
+        [this]() { activeQuickAdd = nullptr; }
+    );
+
+    activeQuickAdd->grabFocusNow();
+}
+
+void PatchCanvas::mouseDoubleClick(const juce::MouseEvent& e)
+{
+    if (patch == nullptr || moduleDescs == nullptr || !e.mods.isLeftButtonDown())
+        return;
+
+    // Only on empty canvas — double-clicking a module must not open Quick Add
+    auto pos = screenToCanvas(e.getPosition());
+    ModuleContainer& container = (mySection == 1) ? patch->getPolyVoiceArea()
+                                                  : patch->getCommonArea();
+    for (auto& modulePtr : container.getModules())
+        if (getModuleBounds(*modulePtr, 0).contains(pos))
+            return;
+
+    openQuickAddAtMouse();
+}
+
 void PatchCanvas::mouseDown(const juce::MouseEvent& e)
 {
     grabKeyboardFocus();
@@ -5649,31 +5696,7 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
     // Enter → Quick Add popup at mouse position (only one at a time)
     if (key == juce::KeyPress::returnKey && patch != nullptr && moduleDescs != nullptr)
     {
-        if (activeQuickAdd != nullptr)
-            return true;  // already open
-
-        auto mousePos = screenToCanvas(getMouseXYRelative());
-
-        int section = mySection;
-        int gx = juce::jlimit(0, 39, mousePos.x / gridX);
-        int gy = juce::jlimit(0, 127, mousePos.y / gridY);
-
-        auto screenPos = localPointToGlobal(getMouseXYRelative());
-
-        activeQuickAdd = new QuickAddPopup(
-            *moduleDescs, screenPos, gx, gy,
-            [this, section](const ModuleDescriptor* desc, int pgx, int pgy)
-            {
-                if (moduleDropCallback && desc)
-                {
-                    if (undoManager) undoManager->beginNewTransaction("Add Module");
-                    moduleDropCallback(desc->index, section, pgx, pgy, desc->name);
-                }
-            },
-            [this]() { activeQuickAdd = nullptr; }
-        );
-
-        activeQuickAdd->grabFocusNow();
+        openQuickAddAtMouse();
         return true;
     }
 

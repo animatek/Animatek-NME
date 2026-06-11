@@ -131,7 +131,8 @@ void ModuleBrowserPanel::applyFilter()
                 [&filterText](const ModuleDescriptor* d)
                 {
                     return !d->name.toLowerCase().contains(filterText)
-                        && !d->fullname.toLowerCase().contains(filterText);
+                        && !d->fullname.toLowerCase().contains(filterText)
+                        && !d->tags.contains(filterText);
                 }),
                 mods.end());
         }

@@ -45,6 +45,7 @@ struct ModuleDescriptor
     juce::String fullname;
     juce::String category;
     juce::String componentId;
+    juce::String tags;        // lowercase search synonyms (see ModuleTags.cpp)
     int index = 0;
     double cycles = 0;
     double progMem = 0;

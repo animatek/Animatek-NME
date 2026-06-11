@@ -1,4 +1,5 @@
 #include "ModuleDescriptions.h"
+#include "ModuleTags.h"
 
 ModuleDescriptions::ModuleDescriptions() = default;
 
@@ -42,6 +43,7 @@ void ModuleDescriptions::parseModule(const juce::XmlElement& elem)
     desc.name        = elem.getStringAttribute("name");
     desc.fullname    = elem.getStringAttribute("fullname", desc.name);
     desc.category    = elem.getStringAttribute("category", "Other");
+    desc.tags        = getModuleTags(desc.name);
     if (desc.category == "Seqencer") desc.category = "Sequencer";  // typo in modules.xml
     if (desc.category == "Morph" || elem.getStringAttribute("role") == "morph")
         desc.instantiable = false;

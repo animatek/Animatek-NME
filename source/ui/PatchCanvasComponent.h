@@ -67,7 +67,9 @@ public:
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
+    void mouseDoubleClick(const juce::MouseEvent& e) override;
     bool keyPressed(const juce::KeyPress& key) override;
+    void openQuickAddAtMouse();
 
     void setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td = nullptr);
     void setLightMeterData(const int lights[128], const int meters[128]);

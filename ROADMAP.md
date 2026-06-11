@@ -45,10 +45,11 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](CHANGELOG.md
 
 ## Search And Navigation
 
-- [ ] **Module Search Tags**
-  - Add tags such as bass, pad, utility, modulation, clock, random, sequencing, mixer, audio, logic.
-  - Improve QuickAdd and module browser search ranking.
-  - Keep tags close to module descriptors or generate them from a simple data file.
+- [x] **Module Search Tags** — implemented in 0.6.0: hand-written tag table for all 110
+  modules (`source/model/ModuleTags.cpp`, kept next to the descriptors without touching
+  the third-party modules.xml), searched by Quick Add and the module browser filter.
+  Quick Add ranks results by relevance (name prefix > name > full name > category/tags),
+  and double-clicking empty canvas opens Quick Add like Enter does.
 
 - [ ] **Keyboard Shortcuts Audit**
   - Compare current shortcuts with original editor expectations.

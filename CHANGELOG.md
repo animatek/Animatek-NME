@@ -2,6 +2,13 @@
 
 ## 0.6.0 (in development)
 
+- Added **module search tags**: all 110 modules carry hand-written synonyms (lp, hp, vca,
+  s&h, glide, bitcrush, wah, acid, arpeggio, sidechain...) searched by Quick Add and the
+  module browser filter. Quick Add results are now ranked by relevance (name prefix >
+  name > full name > category/tags) instead of flat category order.
+- **Double-click on empty canvas** now opens the Quick Add popup (same as Enter);
+  double-clicking a module does not.
+
 - Added the **Patch Notes Floater** (View menu): free-text notes for the active slot's patch
   in a resizable window (monospaced — original patches often carry ASCII tables). Notes are
   saved into the `.pch` `[Notes]` section and round-trip through load/save. Note this is a
