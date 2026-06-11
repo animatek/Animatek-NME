@@ -34,14 +34,14 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](CHANGELOG.md
   undo, morphs included); right-click reassigns to a free knob. Also fixed the special knob
   wire indices (Pedal=19, After touch=20, On/Off=22; 18/21 unused).
 
-- [ ] **Patch Notes Floater**
-  - Patch notes/comments window.
-  - Decide whether notes are editor-only metadata or saved into a compatible sidecar file.
+- [x] **Patch Notes Floater** — implemented in 0.6.0 (View menu): resizable monospaced
+  notes window bound to the active slot's patch. Notes persist in the `.pch` `[Notes]`
+  section (a Nomad/nmedit extension; the original Clavia editor ignores it), so no sidecar
+  file is needed.
 
-- [ ] **Window Management**
-  - Remember main window size and position.
-  - Remember floating window positions.
-  - Restore sensible defaults if monitor layout changes.
+- [x] **Window Management** — implemented in 0.6.0: main window size/position/maximized
+  state persists (clamped on-screen if the monitor layout changes); floaters restore to
+  the display they were last on, and resizable floaters remember their size.
 
 ## Search And Navigation
 

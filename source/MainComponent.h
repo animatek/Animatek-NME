@@ -17,6 +17,7 @@
 #include "ui/PresetBrowserWindow.h"
 #include "ui/KnobFloaterWindow.h"
 #include "ui/KeyboardFloaterWindow.h"
+#include "ui/PatchNotesFloaterWindow.h"
 
 class SynthSettingsDialog;
 
@@ -55,6 +56,7 @@ private:
     void showPresetBrowser();
     void toggleKnobFloater();
     void toggleKeyboardFloater();
+    void togglePatchNotesFloater();
     void showFloaterWindow(juce::DocumentWindow& window, const juce::String& settingsPrefix);
     void saveFloaterState();
     void restoreFloaterWindows();  // reopen floaters that were open last session
@@ -102,6 +104,7 @@ private:
     std::unique_ptr<PresetBrowserWindow> presetBrowserWindow;
     std::unique_ptr<KnobFloaterWindow> knobFloaterWindow;
     std::unique_ptr<KeyboardFloaterWindow> keyboardFloaterWindow;
+    std::unique_ptr<PatchNotesFloaterWindow> patchNotesFloaterWindow;
 
     // Last-known global synth settings.
     SynthSettings cachedSynthSettings;

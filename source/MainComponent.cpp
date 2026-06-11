@@ -325,6 +325,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             safeThis->mainLayout->getInspector().clearModule();
             if (safeThis->knobFloaterWindow)
               safeThis->knobFloaterWindow->setPatch(nullptr);
+            if (safeThis->patchNotesFloaterWindow)
+              safeThis->patchNotesFloaterWindow->setPatch(nullptr);
           }
 
           safeThis->slotPatches[targetSlot] = std::move(p);
@@ -345,6 +347,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
               safeThis->mainLayout->getInspector().setPatch(safeThis->currentPatch().get());
               if (safeThis->knobFloaterWindow)
                 safeThis->knobFloaterWindow->setPatch(safeThis->currentPatch().get());
+              if (safeThis->patchNotesFloaterWindow)
+                safeThis->patchNotesFloaterWindow->setPatch(safeThis->currentPatch().get());
               safeThis->updateDspLoadDisplay();
               safeThis->mainLayout->getStatusBar().setConnectionStatus(
                   "Connected - " + safeThis->currentPatch()->getName(), true);
@@ -883,6 +887,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
                  knobFloaterWindow != nullptr && knobFloaterWindow->isVisible());
     menu.addItem(81, "Keyboard Floater", true,
                  keyboardFloaterWindow != nullptr && keyboardFloaterWindow->isVisible());
+    menu.addItem(82, "Patch Notes", true,
+                 patchNotesFloaterWindow != nullptr && patchNotesFloaterWindow->isVisible());
   }
   else if (menuIndex == 3) // Device
   {
@@ -1076,6 +1082,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 81:  // Keyboard Floater
     toggleKeyboardFloater();
     break;
+  case 82:  // Patch Notes Floater
+    togglePatchNotesFloater();
+    break;
 
   default:
     break;
@@ -1105,6 +1114,8 @@ void MainComponent::switchToSlot(int slot, bool notifySynth) {
   mainLayout->getInspector().clearModule();
   if (knobFloaterWindow)
     knobFloaterWindow->setPatch(nullptr);
+  if (patchNotesFloaterWindow)
+    patchNotesFloaterWindow->setPatch(nullptr);
 
   if (currentPatch()) {
     mainLayout->getCanvas().setPatch(currentPatch().get(), &moduleDescs, &themeData);
@@ -1112,6 +1123,8 @@ void MainComponent::switchToSlot(int slot, bool notifySynth) {
     mainLayout->getInspector().setPatch(currentPatch().get());
     if (knobFloaterWindow)
       knobFloaterWindow->setPatch(currentPatch().get());
+    if (patchNotesFloaterWindow)
+      patchNotesFloaterWindow->setPatch(currentPatch().get());
     mainLayout->getCanvas().setUndoManager(&undoManager());
     updateDspLoadDisplay();
 
@@ -1144,6 +1157,8 @@ void MainComponent::newPatch() {
   mainLayout->getInspector().clearModule();
   if (knobFloaterWindow)
     knobFloaterWindow->setPatch(nullptr);
+  if (patchNotesFloaterWindow)
+    patchNotesFloaterWindow->setPatch(nullptr);
 
   currentPatch() = std::make_unique<Patch>();
   currentPatchFile() = juce::File();
@@ -1153,6 +1168,8 @@ void MainComponent::newPatch() {
   mainLayout->getInspector().setPatch(currentPatch().get());
   if (knobFloaterWindow)
     knobFloaterWindow->setPatch(currentPatch().get());
+  if (patchNotesFloaterWindow)
+    patchNotesFloaterWindow->setPatch(currentPatch().get());
   mainLayout->getHeaderBar().clearCurrentLocation();
   mainLayout->getSlotBar().setSlotName(activeSlot, currentPatch()->getName());
   mainLayout->getStatusBar().setConnectionStatus("New Patch", false);
@@ -1233,6 +1250,8 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   mainLayout->getInspector().clearModule();
   if (knobFloaterWindow)
     knobFloaterWindow->setPatch(nullptr);
+  if (patchNotesFloaterWindow)
+    patchNotesFloaterWindow->setPatch(nullptr);
 
   currentPatch() = std::move(patch);
   currentPatchFile() = file;
@@ -1242,6 +1261,8 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   mainLayout->getInspector().setPatch(currentPatch().get());
   if (knobFloaterWindow)
     knobFloaterWindow->setPatch(currentPatch().get());
+  if (patchNotesFloaterWindow)
+    patchNotesFloaterWindow->setPatch(currentPatch().get());
   mainLayout->getSlotBar().setSlotName(activeSlot, currentPatch()->getName());
   mainLayout->getStatusBar().showMessage("Loaded: " + file.getFileName(), 3000);
   updateDspLoadDisplay();
@@ -1440,6 +1461,8 @@ void MainComponent::applyEditorOptions(const EditorOptions& opts) {
     knobFloaterWindow->applyTheme();
   if (keyboardFloaterWindow)
     keyboardFloaterWindow->applyTheme();
+  if (patchNotesFloaterWindow)
+    patchNotesFloaterWindow->applyTheme();
   mainLayout->repaint();
 
   if (editorOptions.presetLibraryRoot != juce::File()) {
@@ -1523,9 +1546,18 @@ void MainComponent::showFloaterWindow(juce::DocumentWindow& window,
   const int savedX = settings ? settings->getIntValue(settingsPrefix + "X", INT_MIN) : INT_MIN;
   const int savedY = settings ? settings->getIntValue(settingsPrefix + "Y", INT_MIN) : INT_MIN;
 
+  if (settings && window.isResizable()) {
+    const int savedW = settings->getIntValue(settingsPrefix + "W", 0);
+    const int savedH = settings->getIntValue(settingsPrefix + "H", 0);
+    if (savedW > 0 && savedH > 0)
+      window.setSize(savedW, savedH);
+  }
+
   if (savedX != INT_MIN && savedY != INT_MIN) {
+    // Clamp to the display the floater was last on (falls back to the nearest
+    // display if the monitor layout changed)
     auto userArea = juce::Desktop::getInstance().getDisplays()
-                        .getPrimaryDisplay()->userArea;
+                        .getDisplayForPoint({ savedX, savedY })->userArea;
     window.setTopLeftPosition(
         juce::jlimit(userArea.getX(), userArea.getRight() - window.getWidth(), savedX),
         juce::jlimit(userArea.getY(), userArea.getBottom() - window.getHeight(), savedY));
@@ -1555,9 +1587,14 @@ void MainComponent::saveFloaterState() {
     settings->setValue(prefix + "X", window->getX());
     settings->setValue(prefix + "Y", window->getY());
     settings->setValue(prefix + "Open", window->isVisible());
+    if (window->isResizable()) {
+      settings->setValue(prefix + "W", window->getWidth());
+      settings->setValue(prefix + "H", window->getHeight());
+    }
   };
   save(knobFloaterWindow.get(), "knobFloater");
   save(keyboardFloaterWindow.get(), "keyboardFloater");
+  save(patchNotesFloaterWindow.get(), "patchNotesFloater");
   settings->saveIfNeeded();
 }
 
@@ -1570,6 +1607,8 @@ void MainComponent::restoreFloaterWindows() {
     toggleKnobFloater();
   if (settings->getBoolValue("keyboardFloaterOpen", false))
     toggleKeyboardFloater();
+  if (settings->getBoolValue("patchNotesFloaterOpen", false))
+    togglePatchNotesFloater();
 }
 
 void MainComponent::toggleKnobFloater() {
@@ -1637,6 +1676,23 @@ void MainComponent::toggleKeyboardFloater() {
 
   keyboardFloaterWindow->applyTheme();
   showFloaterWindow(*keyboardFloaterWindow, "keyboardFloater");
+}
+
+void MainComponent::togglePatchNotesFloater() {
+  if (patchNotesFloaterWindow && patchNotesFloaterWindow->isVisible()) {
+    patchNotesFloaterWindow->setVisible(false);
+    saveFloaterState();
+    return;
+  }
+
+  if (!patchNotesFloaterWindow) {
+    patchNotesFloaterWindow = std::make_unique<PatchNotesFloaterWindow>();
+    patchNotesFloaterWindow->onClosed = [this]() { saveFloaterState(); };
+  }
+
+  patchNotesFloaterWindow->applyTheme();
+  patchNotesFloaterWindow->setPatch(currentPatch().get());
+  showFloaterWindow(*patchNotesFloaterWindow, "patchNotesFloater");
 }
 
 void MainComponent::handleConnectionRequest(const juce::String &inputId,

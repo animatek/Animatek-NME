@@ -38,6 +38,14 @@ public:
 
     void shutdown() override
     {
+        if (mainWindow != nullptr)
+        {
+            if (auto* settings = appProperties.getUserSettings())
+            {
+                settings->setValue("mainWindowState", mainWindow->getWindowStateAsString());
+                settings->saveIfNeeded();
+            }
+        }
         mainWindow.reset();
     }
 
@@ -57,6 +65,16 @@ public:
             setContentOwned(new MainComponent(props), true);
             setResizable(true, true);
             centreWithSize(getWidth(), getHeight());
+
+            // Restore last size/position/maximized state; JUCE clamps it back
+            // on-screen if the monitor layout changed since last run
+            if (auto* settings = props.getUserSettings())
+            {
+                const auto state = settings->getValue("mainWindowState");
+                if (state.isNotEmpty())
+                    restoreWindowStateFromString(state);
+            }
+
             setVisible(true);
             applyWindowIcon();
         }

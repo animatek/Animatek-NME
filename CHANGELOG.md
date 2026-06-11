@@ -2,6 +2,16 @@
 
 ## 0.6.0 (in development)
 
+- Added the **Patch Notes Floater** (View menu): free-text notes for the active slot's patch
+  in a resizable window (monospaced — original patches often carry ASCII tables). Notes are
+  saved into the `.pch` `[Notes]` section and round-trip through load/save. Note this is a
+  Nomad/nmedit extension: the original Clavia editor ignores the section and never persists
+  its own notes, so ours survive where the original's did not.
+- The main window now remembers its size, position, and maximized state across sessions,
+  and is clamped back on-screen if the monitor layout changed. Floaters are restored to the
+  display they were last on instead of being forced onto the primary monitor, and resizable
+  floaters also remember their size.
+
 - Added the **Knob Floater** (View menu): live overview of the 18 assignable hardware knobs
   plus Pedal, On/Off switch, and After touch, with assignment LEDs and module/parameter
   labels. Knobs are interactive — dragging one edits the assigned parameter (with undo and
