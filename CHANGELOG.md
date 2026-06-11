@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 (in development)
+## 0.6.0 — 2026-06-11
 
 - Added **CI binary builds** (`.github/workflows/build-binaries.yml`): a manually
   triggered GitHub Actions workflow builds Release binaries for Linux, Windows, and
