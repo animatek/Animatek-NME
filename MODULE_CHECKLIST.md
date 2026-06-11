@@ -205,3 +205,25 @@ For each module, check:
 - [x] Spectral Oscillator display
 - [x] Formant Oscillator display
 - [x] Step sequencer position indicators
+
+---
+
+## Connector I/O Audit (2026-06-11)
+
+Automated cross-check of `data/classic-theme.xml` connectors against
+`modules.xml` descriptors (the script lives in the session log; rerun by
+comparing theme connector component-ids/classes per module against
+descriptor connectors type/signal):
+
+- **Structure: PASS.** All 382 themed connectors map 1:1 to descriptor
+  connectors across the 109 themed modules — none missing, none duplicated,
+  no unknown component-ids (Morph m0 has no theme; it is not instantiable).
+- **Shape: PASS by construction.** Input circles / output squares are drawn
+  from the descriptor `isOutput` flag, never from the theme, so direction
+  cannot disagree with `modules.xml`.
+- **Color: 43 theme classes disagreed with the descriptor signal** (e.g. the
+  ADSR gate jack classed `cAUDIO` while the gate cable is logic-yellow).
+  Fixed globally in 0.6.0: jacks are now colored from the descriptor's
+  signal type — identical to cable coloring — with the theme class kept only
+  as a fallback. Most-affected groups: slave osc/LFO master-slave inputs,
+  envelope gate/retrig inputs, sequencer clock/reset inputs.

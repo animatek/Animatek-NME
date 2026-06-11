@@ -59,14 +59,15 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](CHANGELOG.md
 
 ## Verification
 
-- [ ] **Input/Output Connector Verification**
-  - Audit connector direction and visual distinction across all modules.
-  - Confirm input circles/output squares are correct against module descriptors and original editor behavior.
-  - Track any module-specific corrections in `MODULE_CHECKLIST.md`.
+- [x] **Input/Output Connector Verification** — done in 0.6.0 (results in
+  `MODULE_CHECKLIST.md`): automated cross-check of theme vs descriptors. Structure and
+  direction (circles/squares) correct across all 110 modules; 43 jack colors disagreed
+  with their signal type and are fixed by coloring jacks from the descriptor signal,
+  matching the cables.
 
-- [ ] **Release Checklist**
-  - Add a small repeatable checklist for tagged releases.
-  - Include build targets, smoke tests, MIDI connection check, patch load/save check, and issue cleanup.
+- [x] **Release Checklist** — done in 0.6.0: see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)
+  (version bumps, build targets, no-synth smoke tests, hardware tests, packaging,
+  post-release issue sweep).
 
 ## Parked / Future
 

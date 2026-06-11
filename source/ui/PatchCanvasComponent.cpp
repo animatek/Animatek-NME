@@ -818,15 +818,6 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
         float cy = static_cast<float>(bounds.getY() + tc.y);
         float sz = static_cast<float>(tc.size);
 
-        // Determine color from CSS class
-        juce::Colour connColour = juce::Colours::white;
-        if      (tc.cssClass == "cAUDIO")   connColour = activeScheme_.cableAudio;
-        else if (tc.cssClass == "cCONTROL") connColour = activeScheme_.cableControl;
-        else if (tc.cssClass == "cLOGIC")   connColour = activeScheme_.cableLogic;
-        else if (tc.cssClass == "cSLAVE")   connColour = activeScheme_.cableMasterSlave;
-        else if (tc.cssClass == "cUSER1")   connColour = activeScheme_.cableUser1;
-        else if (tc.cssClass == "cUSER2")   connColour = activeScheme_.cableUser2;
-
         // Find the actual connector object and check if output
         bool isOutput = false;
         const Connector* actualConnector = nullptr;
@@ -839,6 +830,20 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
                 break;
             }
         }
+
+        // Color from the descriptor's signal type, so the jack always matches
+        // the cables plugged into it (the theme CSS class disagrees with the
+        // descriptor on 43 connectors — audit 2026-06-11). CSS class is kept
+        // as a fallback for theme connectors without a descriptor match.
+        juce::Colour connColour = juce::Colours::white;
+        if (actualConnector != nullptr)
+            connColour = getSignalColour(actualConnector->getDescriptor()->signalType);
+        else if (tc.cssClass == "cAUDIO")   connColour = activeScheme_.cableAudio;
+        else if (tc.cssClass == "cCONTROL") connColour = activeScheme_.cableControl;
+        else if (tc.cssClass == "cLOGIC")   connColour = activeScheme_.cableLogic;
+        else if (tc.cssClass == "cSLAVE")   connColour = activeScheme_.cableMasterSlave;
+        else if (tc.cssClass == "cUSER1")   connColour = activeScheme_.cableUser1;
+        else if (tc.cssClass == "cUSER2")   connColour = activeScheme_.cableUser2;
 
         // Check if this connector has a hidden (filtered) cable — show "capped" visual
         bool capped = (actualConnector != nullptr) && hasHiddenCable(*actualConnector, container);
@@ -906,12 +911,12 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
     g.setColour(activeScheme_.connectorLine);
     for (auto& tc : theme.connectors)
     {
-        if (tc.cssClass == "cSLAVE") continue;
-        bool isOut = false;
+        const ConnectorDescriptor* cd = nullptr;
         for (auto& conn : m.getConnectors())
             if (conn.getDescriptor() && conn.getDescriptor()->componentId == tc.componentId)
-                { isOut = conn.getDescriptor()->isOutput; break; }
-        if (isOut) continue;
+                { cd = conn.getDescriptor(); break; }
+        if (cd == nullptr || cd->isOutput || cd->signalType == SignalType::MasterSlave)
+            continue;
 
         float connCx = static_cast<float>(bounds.getX() + tc.x) + tc.size * 0.5f;
         float connCy = static_cast<float>(bounds.getY() + tc.y) + tc.size * 0.5f;

@@ -2,6 +2,15 @@
 
 ## 0.6.0 (in development)
 
+- **Connector I/O audit** (results in `MODULE_CHECKLIST.md`): all 382 themed connectors
+  map 1:1 to the module descriptors and input-circle/output-square shapes are derived from
+  the descriptors, so direction is correct across all 110 modules. Fixed 43 jacks whose
+  theme color disagreed with their signal (e.g. the ADSR gate jack was audio-red): jacks
+  are now colored from the descriptor's signal type, always matching the cables plugged
+  into them.
+- Added `RELEASE_CHECKLIST.md`: repeatable release checklist (version bumps, build
+  targets, no-synth smoke tests, hardware tests, packaging, post-release).
+
 - **Keyboard shortcuts audit**: added `Ctrl+A` (select all in section), `Ctrl+X` (cut),
   `Escape` (clear selection), arrow keys (nudge selected modules one grid cell, undoable),
   `Ctrl+Shift+S` (Save As), and `Ctrl+1..4` (switch slot A-D). The `S` shake-cables key the
