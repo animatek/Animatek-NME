@@ -1,0 +1,111 @@
+name: Build Binaries
+
+# Manual trigger only — binaries are distributed through Patreon, never as
+# public GitHub Releases. Artifacts are short-lived and (when the
+# ARTIFACT_PASSWORD secret is set) wrapped in a password-protected zip.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-22.04
+          - name: windows
+            os: windows-latest
+          - name: macos
+            os: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Linux dependencies
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev libjack-jackd2-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+            libxinerama-dev libxrandr-dev libxrender-dev \
+            libfreetype6-dev libfontconfig1-dev
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          v=$(sed -n 's/^project(AnimatekNME VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Version: $v"
+
+      - name: Configure
+        shell: bash
+        run: |
+          if [ "${{ matrix.name }}" = "macos" ]; then
+            cmake -B build -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+              -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15
+          else
+            cmake -B build -DCMAKE_BUILD_TYPE=Release
+          fi
+
+      - name: Build
+        run: cmake --build build --config Release --target AnimatekNME --parallel 4
+
+      - name: Stage
+        shell: bash
+        run: |
+          mkdir stage
+          case "${{ matrix.name }}" in
+            linux)
+              cp build/AnimatekNME_artefacts/Release/AnimatekNME stage/
+              cp packaging/README-linux.txt stage/README.txt
+              ;;
+            windows)
+              cp build/AnimatekNME_artefacts/Release/AnimatekNME.exe stage/
+              cp packaging/README-windows.txt stage/README.txt
+              ;;
+            macos)
+              cp -R build/AnimatekNME_artefacts/Release/AnimatekNME.app stage/
+              # Ad-hoc signature: without it Gatekeeper reports the app as
+              # "damaged" instead of offering the right-click-Open path
+              codesign --force --deep -s - stage/AnimatekNME.app
+              # Verify both architectures made it into the universal binary
+              lipo -info stage/AnimatekNME.app/Contents/MacOS/AnimatekNME
+              cp packaging/README-macos.txt stage/README.txt
+              ;;
+          esac
+
+      - name: Package
+        shell: bash
+        env:
+          ARTIFACT_PASSWORD: ${{ secrets.ARTIFACT_PASSWORD }}
+        run: |
+          out="AnimatekNME-${{ steps.version.outputs.version }}-${{ matrix.name }}.zip"
+          cd stage
+          if [ "${{ matrix.name }}" = "windows" ]; then
+            if [ -n "$ARTIFACT_PASSWORD" ]; then
+              7z a -p"$ARTIFACT_PASSWORD" "../$out" .
+            else
+              7z a "../$out" .
+            fi
+          else
+            if [ -n "$ARTIFACT_PASSWORD" ]; then
+              zip -ry -P "$ARTIFACT_PASSWORD" "../$out" .
+            else
+              zip -ry "../$out" .
+            fi
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnimatekNME-${{ steps.version.outputs.version }}-${{ matrix.name }}
+          path: AnimatekNME-*.zip
+          retention-days: 3

@@ -2,6 +2,14 @@
 
 ## 0.6.0 (in development)
 
+- Added **CI binary builds** (`.github/workflows/build-binaries.yml`): a manually
+  triggered GitHub Actions workflow builds Release binaries for Linux, Windows, and
+  macOS (universal arm64+x86_64, ad-hoc signed) and uploads them as short-lived
+  artifacts, optionally wrapped in a password-protected zip (`ARTIFACT_PASSWORD`
+  secret). Each package ships a platform README covering Gatekeeper/SmartScreen
+  first-launch steps. Binaries are distributed through Patreon — no public GitHub
+  Releases.
+
 - **Connector I/O audit** (results in `MODULE_CHECKLIST.md`): all 382 themed connectors
   map 1:1 to the module descriptors and input-circle/output-square shapes are derived from
   the descriptors, so direction is correct across all 110 modules. Fixed 43 jacks whose

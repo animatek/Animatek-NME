@@ -31,7 +31,11 @@ The JUCE app is minimal scaffolding so far:
 - `source/MainComponent.cpp` — Root UI component (currently just a splash)
 - `CMakeLists.txt` — JUCE is included as a subdirectory, app links against juce_core, juce_gui_basics, juce_gui_extra, juce_audio_basics, juce_audio_devices
 
-JUCE lives at `JUCE/` as a local copy (not a submodule).
+JUCE lives at `JUCE/` as a git submodule (juce-framework/JUCE, 8.x). CI checks it out
+with `submodules: recursive`; locally run `git submodule update --init` after a fresh clone.
+`.github/workflows/build-binaries.yml` (manual `workflow_dispatch`) builds Release
+binaries for Linux/Windows/macOS-universal as short-lived artifacts — binaries are
+distributed via Patreon, never as public GitHub Releases.
 
 ## Reference Material
 
