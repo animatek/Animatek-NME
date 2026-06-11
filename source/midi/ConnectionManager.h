@@ -44,7 +44,7 @@ public:
     void sendParameter(int section, int moduleId, int parameterId, int value);
     void sendPatchTitle(const juce::String& title);  // Change patch name in current slot (not saved to flash)
     void sendControllerSnapshot();  // Ask synth to emit current values of assigned MIDI CCs (read-only)
-    // Play notes on the current slot via the editor protocol (NoteEvent, cc=0x17 sc=0x41).
+    // Play notes on the current slot via the editor protocol (Note, cc=0x17 sc=0x56).
     // The editor talks to the synth's PC port, which ignores regular MIDI notes.
     void sendNoteOn(int note, int velocity);
     void sendNoteOff(int note);

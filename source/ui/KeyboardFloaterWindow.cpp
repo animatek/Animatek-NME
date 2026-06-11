@@ -35,15 +35,19 @@ KeyboardFloaterPanel::KeyboardFloaterPanel()
     repeatButton.setClickingTogglesState(true);
     repeatButton.onClick = [this]() {
         if (repeatButton.getToggleState())
+        {
+            // Pulses replace sustained notes: silence whatever is sounding,
+            // the timer takes over from here
+            auto notes = soundingNotes;  // sendOff mutates the set
+            for (int note : notes)
+                sendOff(note);
             startTimer(juce::roundToInt(rateSlider.getValue()));
+        }
         else
         {
             stopTimer();
-            // The last retrigger left the note on — silence it unless it is
-            // still held by the mouse or latched by drone
-            if (droneNote < 0 && lastNote >= 0 && soundingNotes.count(lastNote) > 0
-                && !keyboardState.isNoteOn(1, lastNote))
-                sendOff(lastNote);
+            if (droneNote >= 0)
+                sendOn(droneNote);  // drone goes back to a sustained note
         }
     };
     addAndMakeVisible(repeatButton);
@@ -52,8 +56,7 @@ KeyboardFloaterPanel::KeyboardFloaterPanel()
     addAndMakeVisible(rateLabel);
     rateSlider.setSliderStyle(juce::Slider::LinearHorizontal);
     rateSlider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
-    rateSlider.setRange(50.0, 2000.0, 1.0);
-    rateSlider.setSkewFactorFromMidPoint(400.0);
+    rateSlider.setRange(100.0, 500.0, 1.0);
     rateSlider.setValue(250.0, juce::dontSendNotification);
     rateSlider.onValueChange = [this]() {
         if (repeatButton.getToggleState())
@@ -61,8 +64,16 @@ KeyboardFloaterPanel::KeyboardFloaterPanel()
     };
     addAndMakeVisible(rateSlider);
 
+    gateLabel.setText("Gate", juce::dontSendNotification);
+    addAndMakeVisible(gateLabel);
+    gateSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    gateSlider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
+    gateSlider.setRange(20.0, 400.0, 1.0);
+    gateSlider.setValue(100.0, juce::dontSendNotification);
+    addAndMakeVisible(gateSlider);
+
     applyTheme();
-    setSize(640, 168);
+    setSize(720, 168);
 }
 
 KeyboardFloaterPanel::~KeyboardFloaterPanel()
@@ -79,7 +90,6 @@ void KeyboardFloaterPanel::shiftOctave(int semitones)
 void KeyboardFloaterPanel::sendOn(int note)
 {
     soundingNotes.insert(note);
-    lastNote = note;
     if (onNoteOn) onNoteOn(note, 100);  // protocol Note command carries no velocity
 }
 
@@ -93,6 +103,8 @@ void KeyboardFloaterPanel::handleNoteOn(juce::MidiKeyboardState*, int, int note,
 {
     if (internalChange) return;
 
+    bool repeating = repeatButton.getToggleState();
+
     if (droneButton.getToggleState())
     {
         if (note == droneNote)
@@ -104,18 +116,32 @@ void KeyboardFloaterPanel::handleNoteOn(juce::MidiKeyboardState*, int, int note,
 
         if (droneNote >= 0)
         {
-            sendOff(droneNote);
+            if (soundingNotes.count(droneNote) > 0)
+                sendOff(droneNote);
             internalChange = true;
             keyboardState.noteOff(1, droneNote, 0.0f);
             internalChange = false;
         }
         droneNote = note;
         dronePendingOff = false;
-        sendOn(note);
+        if (repeating)
+        {
+            pulse(note);
+            startTimer(juce::roundToInt(rateSlider.getValue()));  // align the ticks with the click
+        }
+        else
+            sendOn(note);
         return;
     }
 
-    sendOn(note);
+    heldNote = note;
+    if (repeating)
+    {
+        pulse(note);
+        startTimer(juce::roundToInt(rateSlider.getValue()));
+    }
+    else
+        sendOn(note);
 }
 
 void KeyboardFloaterPanel::handleNoteOff(juce::MidiKeyboardState*, int, int note, float)
@@ -128,7 +154,8 @@ void KeyboardFloaterPanel::handleNoteOff(juce::MidiKeyboardState*, int, int note
         {
             dronePendingOff = false;
             droneNote = -1;
-            sendOff(note);
+            if (soundingNotes.count(note) > 0)
+                sendOff(note);
             return;
         }
 
@@ -139,17 +166,32 @@ void KeyboardFloaterPanel::handleNoteOff(juce::MidiKeyboardState*, int, int note
         return;
     }
 
-    sendOff(note);
+    if (note == heldNote)
+        heldNote = -1;
+    if (soundingNotes.count(note) > 0)
+        sendOff(note);
 }
 
 void KeyboardFloaterPanel::timerCallback()
 {
-    // Retrigger the drone note, or the last clicked note (even after release)
-    int note = droneNote >= 0 ? droneNote : lastNote;
+    // One pulse per tick, on the drone note or the key held by the mouse
+    int note = droneNote >= 0 ? droneNote : heldNote;
     if (note < 0) return;
 
-    sendOff(note);
+    pulse(note);
+}
+
+void KeyboardFloaterPanel::pulse(int note)
+{
+    if (soundingNotes.count(note) > 0)  // previous pulse still open: close it
+        sendOff(note);
     sendOn(note);
+
+    juce::Component::SafePointer<KeyboardFloaterPanel> safe(this);
+    juce::Timer::callAfterDelay(juce::roundToInt(gateSlider.getValue()), [safe, note]() {
+        if (safe != nullptr && safe->soundingNotes.count(note) > 0)
+            safe->sendOff(note);
+    });
 }
 
 void KeyboardFloaterPanel::allNotesOff()
@@ -160,7 +202,7 @@ void KeyboardFloaterPanel::allNotesOff()
 
     droneNote = -1;
     dronePendingOff = false;
-    lastNote = -1;  // stop the repeat timer from retriggering after close
+    heldNote = -1;  // stop the repeat timer from pulsing after close
 
     internalChange = true;
     keyboardState.allNotesOff(1);
@@ -180,13 +222,17 @@ void KeyboardFloaterPanel::resized()
     octDownButton.setBounds(controls.removeFromLeft(52));
     controls.removeFromLeft(4);
     octUpButton.setBounds(controls.removeFromLeft(52));
-    controls.removeFromLeft(16);
-    droneButton.setBounds(controls.removeFromLeft(64));
     controls.removeFromLeft(12);
-    repeatButton.setBounds(controls.removeFromLeft(64));
+    droneButton.setBounds(controls.removeFromLeft(60));
+    controls.removeFromLeft(8);
+    repeatButton.setBounds(controls.removeFromLeft(60));
     controls.removeFromLeft(8);
     rateLabel.setBounds(controls.removeFromLeft(34));
-    rateSlider.setBounds(controls);
+    int sliderWidth = (controls.getWidth() - 42) / 2;  // room for gate label + gap
+    rateSlider.setBounds(controls.removeFromLeft(sliderWidth));
+    controls.removeFromLeft(8);
+    gateLabel.setBounds(controls.removeFromLeft(34));
+    gateSlider.setBounds(controls);
 
     area.removeFromTop(6);
     keyboard.setBounds(area);
@@ -197,6 +243,7 @@ void KeyboardFloaterPanel::resized()
 void KeyboardFloaterPanel::applyTheme()
 {
     rateLabel.setColour(juce::Label::textColourId, kTextDim);
+    gateLabel.setColour(juce::Label::textColourId, kTextDim);
 
     for (auto* button : { &octDownButton, &octUpButton, &droneButton, &repeatButton })
     {
@@ -206,9 +253,12 @@ void KeyboardFloaterPanel::applyTheme()
         button->setColour(juce::TextButton::textColourOnId, kText);
     }
 
-    rateSlider.setColour(juce::Slider::trackColourId, kAccent);
-    rateSlider.setColour(juce::Slider::backgroundColourId, kBorder);
-    rateSlider.setColour(juce::Slider::thumbColourId, kText);
+    for (auto* slider : { &rateSlider, &gateSlider })
+    {
+        slider->setColour(juce::Slider::trackColourId, kAccent);
+        slider->setColour(juce::Slider::backgroundColourId, kBorder);
+        slider->setColour(juce::Slider::thumbColourId, kText);
+    }
 
     repaint();
 }

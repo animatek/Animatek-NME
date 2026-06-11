@@ -23,10 +23,11 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](CHANGELOG.md
 ## Editor Workflow
 
 - [x] **Keyboard Floater** — implemented in 0.6.0 (View menu): virtual keyboard with octave
-  navigation, DRONE latch mode, and REPEAT retrigger mode with a rate slider. Notes go
-  through the editor protocol (Note command sc=0x56 — the PC port ignores plain MIDI).
-  - [ ] Pending: note-off encoding (synth ACKs but ignores every off variant tried so far;
-    next step is sniffing the original Wine editor via snd-virmidi).
+  navigation, DRONE latch mode, and REPEAT pulse mode (Rate 100-500 ms, Gate 20-400 ms).
+  Notes go through the editor protocol (Note command sc=0x56, `{onOff, note}` with 0=on
+  1=off — captured from the original Clavia editor and hardware-verified; the PC port
+  ignores plain MIDI). Stuck MIDI IN notes are out of the PC port's reach (NoteEvent is
+  incoming-only, CC 120/123 ignored): that is what the front-panel panic is for.
 
 - [x] **Knob Floater** — implemented in 0.6.0 (View menu): 18 knobs + pedal/switch/aftertouch
   with assignment LEDs and module/parameter labels. Knobs are interactive (edit + sync +

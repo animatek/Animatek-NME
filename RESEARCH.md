@@ -191,6 +191,24 @@ Encoded as `cc=0x1f`, containing embedded patch sections:
 - Section 91 (CustomDump): custom values
 - Section 90 (NameDump): module name
 
+### Note Message (virtual keyboard)
+```
+cc=0x17, payload: pid 0x56 onOff note    (onOff: 0 = note-on, 1 = note-off)
+```
+Plays/releases notes on the slot's patch through the PC port (which ignores plain MIDI
+channel messages). No velocity on the wire. Captured from the original Clavia editor's
+keyboard floater and hardware-verified (the editor also sends off+on pairs when changing
+notes in drone mode). Sniffing technique: the Wine editor exposes an ALSA seq client
+("WINE midi driver"), so `aseqdump -p <client>:1` shows its TX directly.
+
+Hardware-tested dead ends (2026-06-11), do not retry:
+- `NoteEvent` (sc=0x41, vel/onoff/note) is **incoming-only** — the synth reports keyboard
+  notes with it but refuses it as input with error 5 ("no slot focused"), even right after
+  an `ActivateSlot` (PatchCommand 0x41/0x09); that attempt left the synth in an error state.
+- CC 120/123 (all sound/notes off) on any channel are ignored by the PC port.
+- The front-panel panic is internal: it emits nothing on the PC port and has no protocol
+  equivalent, so stuck MIDI IN notes cannot be cleared by an editor.
+
 ### NMInfo Subcommands (sc field)
 
 | sc | Message | Content |

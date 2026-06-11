@@ -10,9 +10,12 @@
   patch loads in real time.
 - Added the **Keyboard Floater** (View menu): virtual keyboard that plays the synth through
   the editor protocol (the PC port ignores regular MIDI notes), with octave navigation, a
-  DRONE latch mode, and a REPEAT retrigger mode with rate slider (50 ms - 2 s). Note-on is
-  verified against hardware (Note command, sc=0x56); the matching note-off encoding is
-  still under investigation, so notes currently sustain until the patch is retriggered.
+  DRONE latch mode, and a REPEAT pulse mode with Rate (100-500 ms) and Gate (20-400 ms)
+  sliders — one short note per tick while a key is held or a drone note is latched. Note
+  on/off encoding (Note command sc=0x56: `{onOff, note}`, 0=on 1=off) was captured from the
+  original Clavia editor and is verified against hardware. Stuck notes coming from the
+  synth's own MIDI IN cannot be released through the PC port (NoteEvent is incoming-only
+  and channel messages are ignored) — use the front-panel panic for those.
 - Fixed synth error 5 ("no slot focused") on patch-modification commands sent after the
   synth bumped its patch id: every plain ACK now resyncs the editor's pid, mirroring the
   original editor's ActivePidListener.

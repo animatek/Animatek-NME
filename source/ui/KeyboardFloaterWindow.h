@@ -9,8 +9,9 @@
  * active slot's MIDI channel (modeled on the original Clavia editor).
  *
  * DRONE latches the clicked note until it is clicked again, another note is
- * clicked, or the mode is switched off. REPEAT retriggers the sounding note
- * at the interval set by the rate slider.
+ * clicked, or the mode is switched off. REPEAT sends a pulse (one note-on/off
+ * pair, length set by the gate slider) at the rate slider's interval while a
+ * key is held or a drone note is latched.
  */
 class KeyboardFloaterPanel : public juce::Component,
                              private juce::MidiKeyboardState::Listener,
@@ -35,6 +36,7 @@ private:
 
     void sendOn(int note);
     void sendOff(int note);
+    void pulse(int note);
     void shiftOctave(int semitones);
 
     juce::MidiKeyboardState keyboardState;
@@ -47,11 +49,13 @@ private:
     juce::TextButton repeatButton { "REPEAT" };
     juce::Label rateLabel;
     juce::Slider rateSlider;
+    juce::Label gateLabel;
+    juce::Slider gateSlider;
 
     bool internalChange = false;  // guards programmatic keyboardState calls
     int droneNote = -1;
     bool dronePendingOff = false; // same drone note clicked again: release it on mouse-up
-    int lastNote = -1;
+    int heldNote = -1;            // key currently held by the mouse
     std::set<int> soundingNotes;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(KeyboardFloaterPanel)
