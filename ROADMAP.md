@@ -51,10 +51,11 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](CHANGELOG.md
   Quick Add ranks results by relevance (name prefix > name > full name > category/tags),
   and double-clicking empty canvas opens Quick Add like Enter does.
 
-- [ ] **Keyboard Shortcuts Audit**
-  - Compare current shortcuts with original editor expectations.
-  - Add missing shortcuts only where they do not conflict with modern platform conventions.
-  - Document final shortcut set in-app or in a concise docs file.
+- [x] **Keyboard Shortcuts Audit** — done in 0.6.0: compared against the original
+  nmedit/Nomad editor and added the missing set (Ctrl+A/X, Escape, arrow-key nudge,
+  Ctrl+Shift+S, Ctrl+1..4 slot switch, S shake cables). Documented in
+  [SHORTCUTS.md](SHORTCUTS.md) and in-app (Help → Keyboard Shortcuts). The audit also
+  surfaced and fixed editor-initiated slot switches not loading the slot's patch.
 
 ## Verification
 

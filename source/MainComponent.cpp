@@ -656,11 +656,13 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     if (cmd == "new")   newPatch();
     else if (cmd == "open")  openPatch();
     else if (cmd == "save")  savePatch();
+    else if (cmd == "saveAs") savePatchAs();
     else if (cmd == "patchSettings") showPatchSettingsDialog();
     else if (cmd == "synthSettings") showSynthSettingsDialog();
     else if (cmd == "presetBrowser") togglePresetBrowser();
     else if (cmd == "randomize") randomizeParameters(false);
     else if (cmd == "randomizeGaussian") randomizeParameters(true);
+    else if (cmd.startsWith("slot")) switchToSlot(cmd.getTrailingIntValue());
   });
 
   // Wire parameter changes from synth to editor (user turns knob on hardware)
@@ -844,7 +846,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(2, "Open...\tCtrl+O");
     menu.addSeparator();
     menu.addItem(3, "Save\tCtrl+S");
-    menu.addItem(4, "Save As...");
+    menu.addItem(4, "Save As...\tCtrl+Shift+S");
     menu.addSeparator();
     menu.addItem(5, "Import Snippet...", currentPatch() != nullptr);
     menu.addItem(6, "Preset Browser...\tCtrl+B");
@@ -856,9 +858,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(10, "Quit\tCtrl+Q");
   } else if (menuIndex == 1) // Edit
   {
-    menu.addItem(20, "Undo " + undoManager().getUndoDescription(),
+    menu.addItem(20, "Undo " + undoManager().getUndoDescription() + "\tCtrl+Z",
                  undoManager().canUndo(), false);
-    menu.addItem(21, "Redo " + undoManager().getRedoDescription(),
+    menu.addItem(21, "Redo " + undoManager().getRedoDescription() + "\tCtrl+Shift+Z",
                  undoManager().canRedo(), false);
     menu.addSeparator();
     bool hasPatch = (currentPatch() != nullptr);
@@ -907,6 +909,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
   }
   else if (menuIndex == 4) // Help
   {
+    menu.addItem(45, "Keyboard Shortcuts...", true);
+    menu.addSeparator();
     menu.addItem(40, "Nord Modular Forum", true);
     menu.addItem(41, "Nord Modular Facebook Group", true);
     menu.addItem(42, "Nord Modular Patches Archive", true);
@@ -1041,6 +1045,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 44:  // Show Beta Warning
     showBetaWarning(true);
     break;
+  case 45:  // Keyboard Shortcuts
+    showKeyboardShortcutsDialog();
+    break;
 
   // About menu
   case 53:  // Animatek NME website
@@ -1145,9 +1152,25 @@ void MainComponent::switchToSlot(int slot, bool notifySynth) {
         juce::String("Slot ") + slotNames[slot] + " - empty",
         connectionManager.isConnected());
 
-    // If connected, request this slot's patch from synth
-    if (connectionManager.isConnected())
-      connectionManager.requestPatch(slot);
+    // If connected, the synth echoes our SlotActivated command as a
+    // notification, whose handler auto-requests the patch with clean
+    // sequencing (same path as a front-panel slot change). Requesting here
+    // immediately raced the slot-command ACKs: the first ACK back (for
+    // SlotsSelected) was mistaken for the patch-request ACK and the fetch
+    // derailed. Keep only a delayed fallback in case the echo never comes.
+    if (connectionManager.isConnected()) {
+      juce::Component::SafePointer<MainComponent> safeThis(this);
+      juce::Timer::callAfterDelay(500, [safeThis, slot]() {
+        if (!safeThis) return;
+        if (safeThis->activeSlot != slot) return;
+        if (safeThis->currentPatch() != nullptr) return;
+        if (!safeThis->connectionManager.isConnected()) return;
+        if (safeThis->connectionManager.isFetchingPatch()) return;
+        std::cout << "[SLOT] No SlotActivated echo - fallback patch request for slot "
+                  << slot << std::endl;
+        safeThis->connectionManager.requestPatch(slot);
+      });
+    }
   }
 
   std::cout << "[SLOT] Switched to slot " << slot << std::endl;
@@ -1958,6 +1981,69 @@ private:
     juce::ToggleButton suppressToggle { "Don't show this warning at startup" };
     juce::ComponentDragger dragger;
 };
+
+void MainComponent::showKeyboardShortcutsDialog() {
+  // Keep in sync with SHORTCUTS.md
+  static const char* shortcutsText =
+      "FILE\n"
+      "  Ctrl+N              New patch\n"
+      "  Ctrl+O              Open patch\n"
+      "  Ctrl+S              Save\n"
+      "  Ctrl+Shift+S        Save as\n"
+      "  Ctrl+B              Preset browser\n"
+      "  Ctrl+P              Patch settings\n"
+      "  Ctrl+G              Synth settings\n"
+      "  Ctrl+E              Editor options\n"
+      "  Ctrl+Q              Quit\n"
+      "\n"
+      "EDIT\n"
+      "  Ctrl+Z              Undo\n"
+      "  Ctrl+Shift+Z, Ctrl+Y  Redo\n"
+      "  Ctrl+A              Select all modules (section)\n"
+      "  Ctrl+X / C / V      Cut / copy / paste modules\n"
+      "  Ctrl+D              Duplicate with cables\n"
+      "  Delete, Backspace   Delete selection\n"
+      "  Escape              Clear selection\n"
+      "  Arrow keys          Nudge selected modules\n"
+      "  Ctrl+R              Randomize parameters\n"
+      "  Ctrl+Shift+R        Randomize (gaussian)\n"
+      "\n"
+      "CANVAS\n"
+      "  Enter, Double-click Quick Add module at mouse\n"
+      "  F1                  Module help (hovered/selected)\n"
+      "  F5                  Morph values overlay\n"
+      "  F7                  Morph groups overlay\n"
+      "  Z                   Zoom to selection / reset\n"
+      "  Shift+Z             Reset zoom to 100%\n"
+      "  Ctrl++ / Ctrl+-     Zoom in / out\n"
+      "  S                   Shake cables\n"
+      "  Middle-drag         Pan canvas\n"
+      "\n"
+      "SLOTS\n"
+      "  Ctrl+1..4           Switch to slot A..D\n";
+
+  auto* editor = new juce::TextEditor();
+  editor->setMultiLine(true, false);
+  editor->setReadOnly(true);
+  editor->setScrollbarsShown(true);
+  editor->setCaretVisible(false);
+  editor->setFont(juce::Font(juce::Font::getDefaultMonospacedFontName(), 14.0f,
+                             juce::Font::plain));
+  editor->setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().backgroundMain);
+  editor->setColour(juce::TextEditor::textColourId, AppTheme::palette().textPrimary);
+  editor->setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
+  editor->setText(juce::String::fromUTF8(shortcutsText));
+  editor->setSize(440, 560);
+
+  juce::DialogWindow::LaunchOptions opts;
+  opts.content.setOwned(editor);
+  opts.dialogTitle = "Keyboard Shortcuts";
+  opts.dialogBackgroundColour = AppTheme::palette().backgroundMain;
+  opts.escapeKeyTriggersCloseButton = true;
+  opts.useNativeTitleBar = false;
+  opts.resizable = false;
+  opts.launchAsync();
+}
 
 void MainComponent::showBetaWarning(bool forceShow)
 {

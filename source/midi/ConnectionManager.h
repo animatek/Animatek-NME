@@ -52,6 +52,7 @@ public:
     void sendAckedSysEx(const std::vector<uint8_t>& sysex,
                         bool allowNewPatchInSlotReply = false); // Queued, waits for ACK before next
     bool isAckedQueueIdle() const { return ackedQueue.empty() && !ackedQueueWaiting; }
+    bool isFetchingPatch() const { return waitingForPatchAck || collectingSections; }
 
     // Bank operations (high-level)
     void copyPatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition, int tempSlot);

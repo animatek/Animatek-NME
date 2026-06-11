@@ -2,6 +2,17 @@
 
 ## 0.6.0 (in development)
 
+- **Keyboard shortcuts audit**: added `Ctrl+A` (select all in section), `Ctrl+X` (cut),
+  `Escape` (clear selection), arrow keys (nudge selected modules one grid cell, undoable),
+  `Ctrl+Shift+S` (Save As), and `Ctrl+1..4` (switch slot A-D). The `S` shake-cables key the
+  View menu advertised was never implemented — now it is. Full reference in
+  [SHORTCUTS.md](SHORTCUTS.md) and in-app under **Help → Keyboard Shortcuts**.
+- Fixed switching slots from the editor (slot bar or `Ctrl+1..4`) not loading the slot's
+  patch: the immediate patch request raced the slot-command ACKs (the SlotsSelected ACK was
+  mistaken for the patch-request ACK and the fetch derailed). The editor now lets the
+  synth's SlotActivated echo trigger the load — the same path as front-panel slot changes —
+  with a delayed fallback request if no echo arrives.
+
 - Added **module search tags**: all 110 modules carry hand-written synonyms (lp, hp, vca,
   s&h, glide, bitcrush, wah, acid, arpeggio, sidechain...) searched by Quick Add and the
   module browser filter. Quick Add results are now ranked by relevance (name prefix >

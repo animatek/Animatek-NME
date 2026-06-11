@@ -5671,10 +5671,71 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         }
     }
 
+    // Escape → clear selection
+    if (key == juce::KeyPress::escapeKey)
+    {
+        if (!selection.empty()) { clearSelection(); repaint(); return true; }
+    }
+
+    // Ctrl+A → select all modules in this section
+    if (key == juce::KeyPress('a', juce::ModifierKeys::commandModifier, 0))
+    {
+        if (patch != nullptr)
+        {
+            clearSelection();
+            ModuleContainer& container = (mySection == 1) ? patch->getPolyVoiceArea()
+                                                          : patch->getCommonArea();
+            for (auto& modulePtr : container.getModules())
+                selection.push_back({ modulePtr.get(), mySection });
+            repaint();
+            return true;
+        }
+    }
+
+    // Arrows → nudge selection one grid cell (with undo)
+    if (!selection.empty() && !key.getModifiers().isAnyModifierKeyDown())
+    {
+        int dx = 0, dy = 0;
+        if      (key == juce::KeyPress::leftKey)  dx = -1;
+        else if (key == juce::KeyPress::rightKey) dx = 1;
+        else if (key == juce::KeyPress::upKey)    dy = -1;
+        else if (key == juce::KeyPress::downKey)  dy = 1;
+
+        if (dx != 0 || dy != 0)
+        {
+            if (moduleMoveCallback && undoManager)
+            {
+                undoManager->beginNewTransaction("Move Modules");
+                for (auto& sel : selection)
+                {
+                    auto oldPos = sel.module->getPosition();
+                    juce::Point<int> newPos(juce::jlimit(0, 39, oldPos.x + dx),
+                                            juce::jlimit(0, 127, oldPos.y + dy));
+                    if (newPos != oldPos)
+                        moduleMoveCallback(sel.section, sel.module->getContainerIndex(),
+                                           oldPos, newPos);
+                }
+            }
+            repaint();
+            return true;
+        }
+    }
+
     // Ctrl+C → copy
     if (key == juce::KeyPress('c', juce::ModifierKeys::commandModifier, 0))
     {
         if (!selection.empty()) { copySelectionToClipboard(); return true; }
+    }
+
+    // Ctrl+X → cut (copy + delete)
+    if (key == juce::KeyPress('x', juce::ModifierKeys::commandModifier, 0))
+    {
+        if (!selection.empty())
+        {
+            copySelectionToClipboard();
+            deleteSelection();
+            return true;
+        }
     }
 
     // Ctrl+V → paste at centre of viewport
@@ -5728,9 +5789,11 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         if (redoCallback) { redoCallback(); return true; }
     }
 
-    // Ctrl+N → new patch, Ctrl+O → open, Ctrl+S → save, Ctrl+W → close
+    // File commands and slot switching
     if (fileCommandCallback)
     {
+        if (key == juce::KeyPress('s', juce::ModifierKeys::commandModifier | juce::ModifierKeys::shiftModifier, 0))
+            { fileCommandCallback("saveAs"); return true; }
         if (key == juce::KeyPress('n', juce::ModifierKeys::commandModifier, 0))
             { fileCommandCallback("new"); return true; }
         if (key == juce::KeyPress('o', juce::ModifierKeys::commandModifier, 0))
@@ -5743,6 +5806,17 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
             { fileCommandCallback("synthSettings"); return true; }
         if (key == juce::KeyPress('b', juce::ModifierKeys::commandModifier, 0))
             { fileCommandCallback("presetBrowser"); return true; }
+
+        // Ctrl+1..4 → slot A..D
+        if (key.getModifiers().isCommandDown() && !key.getModifiers().isShiftDown())
+        {
+            int code = key.getKeyCode();
+            if (code >= '1' && code <= '4')
+            {
+                fileCommandCallback("slot" + juce::String(code - '1'));
+                return true;
+            }
+        }
     }
 
     // F1 → show help popup for the selected/hovered module
@@ -5825,6 +5899,13 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
             zoomToSelection();
         else
             resetZoom();
+        return true;
+    }
+
+    // S → shake cables (matches the View menu hint)
+    if (key.getTextCharacter() == 's' && !key.getModifiers().isAnyModifierKeyDown())
+    {
+        shakeCables();
         return true;
     }
 

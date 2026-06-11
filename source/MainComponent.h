@@ -67,6 +67,7 @@ private:
     void showEditorOptionsDialog();
     void openSynthSettingsDialog();
     void showBetaWarning(bool forceShow = false);
+    void showKeyboardShortcutsDialog();
     void randomizeParameters(bool gaussian);
     void initializeModule(int section, Module* module);
     void handleSnapshotClick(int index, bool isShiftClick);
