@@ -1084,7 +1084,7 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
 
   // About menu
   case 53:  // Animatek NME website
-    openURL("https://animatek.net/nomad2026_eng/");
+    openURL("https://animatek.net/animatek-nme-eng/");
     break;
   case 50:  // Patreon
     openURL("https://www.patreon.com/collection/2038913");

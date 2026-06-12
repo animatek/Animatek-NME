@@ -6,6 +6,9 @@ Support this proyect: https://www.patreon.com/c/animatek
 
 ## Unreleased
 
+- Updated the **About → Animatek NME Website** menu link to the current
+  `https://animatek.net/animatek-nme-eng/` page.
+
 - Added **8 rotating color themes** cycled with `Ctrl+T` (and selectable in View → Theme or
   Editor Options): Classic, Dark, Deep Dark, Catppuccin Mocha, Tokyo Night, Gruvbox Dark,
   Dracula, and Nord. Each theme restyles both the app chrome and the patch canvas (modules,
