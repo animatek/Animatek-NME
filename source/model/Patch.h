@@ -98,6 +98,11 @@ public:
     int getContainerIndex() const { return containerIndex; }
     void setContainerIndex(int idx) { containerIndex = idx; }
 
+    // Patch Mutator: excluded modules are never touched by Mutate/Randomize.
+    // Persisted in the .var sidecar, not the .pch (keeps the format standard).
+    bool isExcludedFromMutation() const { return excludedFromMutation; }
+    void setExcludedFromMutation(bool e) { excludedFromMutation = e; }
+
 private:
     Module() = default;
 
@@ -108,6 +113,7 @@ private:
     std::vector<Parameter> parameters;
     std::vector<Connector> connectors;
     std::vector<Light> lights;
+    bool excludedFromMutation = false;
     ModuleMovedCallback onMoved;
 };
 

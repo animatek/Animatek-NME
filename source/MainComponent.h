@@ -5,6 +5,7 @@
 #include "model/ModuleDescriptions.h"
 #include "model/ThemeData.h"
 #include "model/Patch.h"
+#include "model/PatchVariations.h"
 #include "model/PchFileIO.h"
 #include "model/SnipFileIO.h"
 #include "model/SynthSettings.h"
@@ -18,6 +19,7 @@
 #include "ui/KnobFloaterWindow.h"
 #include "ui/KeyboardFloaterWindow.h"
 #include "ui/PatchNotesFloaterWindow.h"
+#include "ui/MutatorWindow.h"
 
 class SynthSettingsDialog;
 
@@ -52,11 +54,15 @@ private:
     void saveSnippet(SnipData snip);
     void choosePresetLibraryFolder();
     void applyEditorOptions(const EditorOptions& opts);
+    void applyUiTheme(int index, bool persist);
     void togglePresetBrowser();
     void showPresetBrowser();
     void toggleKnobFloater();
     void toggleKeyboardFloater();
     void togglePatchNotesFloater();
+    void toggleMutatorWindow();
+    bool handleFloaterShortcut(const juce::KeyPress& key);  // Ctrl+1..8
+    void raiseFloatersAboveEditor();
     void showFloaterWindow(juce::DocumentWindow& window, const juce::String& settingsPrefix);
     void saveFloaterState();
     void restoreFloaterWindows();  // reopen floaters that were open last session
@@ -73,7 +79,13 @@ private:
     void handleSnapshotClick(int index, bool isShiftClick);
     void saveSnapshot(int index);
     void recallSnapshot(int index);
+    void copySnapshot(int from, int to);
+    void initSnapshot(int index);
+    void applySnapshot(const ParamSnapshot& snap, const juce::String& undoName);
+    void refreshSnapshotUi();
     void interpolateSnapshots(int fromIndex, int toIndex, float seconds);
+    // targetVariation >= 0 marks that variation active on completion; -1 = mutator audition
+    void startInterpolationTo(const ParamSnapshot& snap, float seconds, int targetVariation);
     void onInterpolationTick();
     void handleConnectionRequest(const juce::String& inputId, const juce::String& outputId);
     void handleDisconnectionRequest();
@@ -106,6 +118,17 @@ private:
     std::unique_ptr<KnobFloaterWindow> knobFloaterWindow;
     std::unique_ptr<KeyboardFloaterWindow> keyboardFloaterWindow;
     std::unique_ptr<PatchNotesFloaterWindow> patchNotesFloaterWindow;
+    std::unique_ptr<MutatorWindow> mutatorWindow;
+
+    // Re-raises floaters above the editor when it is clicked (alwaysOnTop is
+    // unreliable across Linux compositors)
+    struct FloaterRaiser : juce::MouseListener
+    {
+        explicit FloaterRaiser(MainComponent& o) : owner(o) {}
+        void mouseDown(const juce::MouseEvent& e) override;
+        MainComponent& owner;
+    };
+    FloaterRaiser floaterRaiser { *this };
 
     // Last-known global synth settings.
     SynthSettings cachedSynthSettings;
@@ -124,14 +147,8 @@ private:
     void rebuildUndoContext(int slot);  // call after patch change
     void clearSnapshots(int slot);     // call when patch changes
 
-    // Parameter snapshots (8 slots per patch slot)
-    struct ParamSnapshot {
-        struct Entry { int section, moduleId, paramId, value; };
-        std::vector<Entry> entries;
-        bool filled = false;
-    };
-    ParamSnapshot snapshots[numSlots][8];  // [slot][snapshot]
-    int activeSnapshotIndex[numSlots] = { -1, -1, -1, -1 };
+    // Parameter variations (8 per patch slot, persisted in a .var sidecar)
+    PatchVariations variations[numSlots];
 
     // Interpolation state
     struct InterpolationState {
@@ -140,7 +157,8 @@ private:
         std::vector<ParamSnapshot::Entry> to;
         float durationMs = 0;
         float elapsedMs = 0;
-        int targetSnapshot = -1;
+        int targetSnapshot = -1;   // -1 = not a variation (mutator audition)
+        std::array<int, 4> targetMorphs { 0, 0, 0, 0 };
     };
     InterpolationState interpolation;
     std::unique_ptr<juce::Timer> interpolationTimer;

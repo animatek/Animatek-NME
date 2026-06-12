@@ -224,6 +224,18 @@ int PatchHeaderBar::getSnapshotButtonAt(juce::Point<int> pos) const
     return -1;
 }
 
+juce::Rectangle<float> PatchHeaderBar::getMutatorButtonBounds() const
+{
+    // Right of the snapshot row, leaving room for the interpolation-time label
+    auto last = getSnapshotButtonBounds(7);
+    return { last.getRight() + 30.0f, last.getY(), 36.0f, last.getHeight() };
+}
+
+bool PatchHeaderBar::isMutatorButtonAt(juce::Point<int> pos) const
+{
+    return getMutatorButtonBounds().expanded(2.0f).contains(pos.toFloat());
+}
+
 void PatchHeaderBar::setSnapshotFilled(int index, bool filled)
 {
     if (index >= 0 && index < 8) { snapshotFilled[index] = filled; repaint(); }
@@ -542,6 +554,21 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             }
         }
 
+        // Patch Mutator quick-access button
+        {
+            auto mb = getMutatorButtonBounds();
+            g.setColour(mutatorOpen ? juce::Colour(0xffD4A020)
+                                    : AppTheme::palette().buttonBackground);
+            g.fillRoundedRectangle(mb, 2.0f);
+            g.setColour(mutatorOpen ? juce::Colour(0xffE8C840)
+                                    : AppTheme::palette().borderColor);
+            g.drawRoundedRectangle(mb.reduced(0.5f), 2.0f, 1.0f);
+            g.setColour(mutatorOpen ? juce::Colours::black
+                                    : AppTheme::palette().textSecondary);
+            g.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+            g.drawText("MUT", mb.toNearestInt(), juce::Justification::centred, false);
+        }
+
         // Interpolation progress bar (below snapshot buttons)
         if (interpolationProgress >= 0.0f)
         {
@@ -645,14 +672,33 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
         return;
     }
 
+    // Patch Mutator button
+    if (isMutatorButtonAt(pos))
+    {
+        if (mutatorButtonCallback)
+            mutatorButtonCallback();
+        return;
+    }
+
     // Snapshot buttons
     int snapIdx = getSnapshotButtonAt(pos);
     if (snapIdx >= 0)
     {
         if (e.mods.isRightButtonDown())
         {
-            // Right-click → set interpolation time (works on any snapshot button)
             juce::PopupMenu menu;
+            menu.addSectionHeader("Variation " + juce::String(snapIdx + 1));
+
+            // Copy this variation to another slot (only when it holds data)
+            juce::PopupMenu copyMenu;
+            for (int t = 0; t < 8; ++t)
+                if (t != snapIdx)
+                    copyMenu.addItem(1000 + t, juce::String(t + 1)
+                                     + (snapshotFilled[t] ? "  (overwrite)" : ""));
+            menu.addSubMenu("Copy to", copyMenu, snapshotFilled[snapIdx]);
+            menu.addItem(2000, "Init (default values)");
+            menu.addSeparator();
+
             menu.addSectionHeader("Interpolation Time");
             menu.addItem(1, "Instant", true, snapshotInterpSeconds < 0.01f);
             for (float secs : { 1.0f, 2.0f, 5.0f, 10.0f, 20.0f, 30.0f, 60.0f })
@@ -664,8 +710,18 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
                 menu.addItem(id, label, true, std::abs(snapshotInterpSeconds - secs) < 0.01f);
             }
             menu.showMenuAsync(juce::PopupMenu::Options{},
-                [this](int result) {
-                    if (result == 1)
+                [this, snapIdx](int result) {
+                    if (result >= 1000 && result < 1008)
+                    {
+                        if (snapshotCopyCallback)
+                            snapshotCopyCallback(snapIdx, result - 1000);
+                    }
+                    else if (result == 2000)
+                    {
+                        if (snapshotInitCallback)
+                            snapshotInitCallback(snapIdx);
+                    }
+                    else if (result == 1)
                         snapshotInterpSeconds = 0.0f;
                     else if (result > 1)
                         snapshotInterpSeconds = (result - 1) / 10.0f;

@@ -64,6 +64,13 @@ public:
     std::function<void(int fromKnob, int toKnob)> onReassignRequested;
     std::function<void()> onClosed;
 
+    // App-wide shortcuts (Ctrl+1..8) forwarded while this floater has focus
+    std::function<bool(const juce::KeyPress&)> onGlobalKey;
+    bool keyPressed(const juce::KeyPress& key) override
+    {
+        return (onGlobalKey && onGlobalKey(key)) || juce::DocumentWindow::keyPressed(key);
+    }
+
 private:
     KnobFloaterPanel panel;
 

@@ -1,6 +1,7 @@
 #include "MainComponent.h"
 #include "BinaryData.h"
 #include "ui/AppTheme.h"
+#include "ui/ThemeRegistry.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 
 class NmeApplication : public juce::JUCEApplication
@@ -30,9 +31,8 @@ public:
 
         appProperties.setStorageParameters(options);
 
-        const auto savedTheme = AppTheme::themeFromInt(
-            appProperties.getUserSettings()->getIntValue("appearanceTheme", 0));
-        AppTheme::setTheme(savedTheme);
+        const auto savedOptions = EditorOptions::load(appProperties.getUserSettings());
+        AppTheme::setPalette(ThemeRegistry::get(savedOptions.uiThemeIndex).app);
         mainWindow = std::make_unique<MainWindow>("Animatek NME - Nord Modular Editor G1", appProperties);
     }
 

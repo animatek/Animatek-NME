@@ -32,6 +32,10 @@ struct UndoContext
     const ModuleDescriptions& descs;
     std::function<void()> repaint;         // repaint canvas + inspector refresh
     std::function<void()> syncToSynth;    // full patch upload (may be null if not connected)
+    // Live parameter edits write through into the active patch variation (may be null).
+    // Deliberately NOT fired by bulk actions (recall/randomize) so undoing a
+    // variation recall can't overwrite the stored variation itself.
+    std::function<void(int section, int moduleId, int paramId, int value)> onParamEdited;
 };
 
 // ============================================================================
@@ -483,6 +487,7 @@ public:
         if (!param) return false;
         param->setValue(newValue_);
         ctx_.connMgr.sendParameter(section_, moduleId_, paramId_, newValue_);
+        if (ctx_.onParamEdited) ctx_.onParamEdited(section_, moduleId_, paramId_, newValue_);
         ctx_.repaint();
         return true;
     }
@@ -496,6 +501,7 @@ public:
         if (!param) return false;
         param->setValue(oldValue_);
         ctx_.connMgr.sendParameter(section_, moduleId_, paramId_, oldValue_);
+        if (ctx_.onParamEdited) ctx_.onParamEdited(section_, moduleId_, paramId_, oldValue_);
         ctx_.repaint();
         return true;
     }

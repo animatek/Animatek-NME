@@ -7,6 +7,9 @@
 #include "ui/PatchSettingsDialog.h"
 #include "ui/SynthSettingsDialog.h"
 #include "ui/AppTheme.h"
+#include "ui/ThemeRegistry.h"
+#include "model/Mutator.h"
+#include "model/MutationCategories.h"
 #include "protocol/StorePatchMessage.h"
 #include "protocol/MorphKeyboardAssignmentMessage.h"
 #include "BinaryData.h"
@@ -65,7 +68,7 @@ private:
 MainComponent::MainComponent(juce::ApplicationProperties &props)
     : appProperties(props) {
   editorOptions = EditorOptions::load(appProperties.getUserSettings());
-  AppTheme::setTheme(editorOptions.appearanceTheme);
+  AppTheme::setPalette(ThemeRegistry::get(editorOptions.uiThemeIndex).app);
   editorOptions.ensureLibraryFolders();
   PatchCanvas::setCableStyle   (static_cast<int>(editorOptions.cableStyle));
   PatchCanvas::setKnobControl  (static_cast<int>(editorOptions.knobControl));
@@ -130,7 +133,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // Main layout
   mainLayout = std::make_unique<MainLayout>(moduleDescs);
-  mainLayout->setTheme(createDarkTheme(), ThemeId::Dark);
+  mainLayout->setTheme(ThemeRegistry::get(editorOptions.uiThemeIndex).makeCanvas());
   addAndMakeVisible(mainLayout.get());
 
   // Wire connection manager status updates to UI
@@ -645,6 +648,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       [this](int index, bool isShift) { handleSnapshotClick(index, isShift); });
   mainLayout->getHeaderBar().setSnapshotInterpolateCallback(
       [this](int fromIdx, int toIdx, float secs) { interpolateSnapshots(fromIdx, toIdx, secs); });
+  mainLayout->getHeaderBar().setSnapshotCopyCallback(
+      [this](int fromIdx, int toIdx) { copySnapshot(fromIdx, toIdx); });
+  mainLayout->getHeaderBar().setSnapshotInitCallback(
+      [this](int index) { initSnapshot(index); });
+  mainLayout->getHeaderBar().setMutatorButtonCallback(
+      [this]() { toggleMutatorWindow(); });
 
   // Wire undo/redo keyboard shortcuts from canvas
   mainLayout->getCanvas().setUndoCallback([this]() { undoManager().undo(); updateDspLoadDisplay(); });
@@ -663,6 +672,14 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     else if (cmd == "randomize") randomizeParameters(false);
     else if (cmd == "randomizeGaussian") randomizeParameters(true);
     else if (cmd.startsWith("slot")) switchToSlot(cmd.getTrailingIntValue());
+    else if (cmd.startsWith("floater")) {
+      switch (cmd.getTrailingIntValue()) {
+        case 0: toggleKnobFloater(); break;
+        case 1: toggleKeyboardFloater(); break;
+        case 2: togglePatchNotesFloater(); break;
+        case 3: toggleMutatorWindow(); break;
+      }
+    }
   });
 
   // Wire parameter changes from synth to editor (user turns knob on hardware)
@@ -763,6 +780,9 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   setSize(1280, 800);
 
+  // Keep floaters above the editor when it's clicked (compositor-independent)
+  juce::Desktop::getInstance().addGlobalMouseListener(&floaterRaiser);
+
   // Auto-connect after UI is set up (with delay to let ALSA enumerate devices)
   {
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -777,6 +797,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 }
 
 MainComponent::~MainComponent() {
+  juce::Desktop::getInstance().removeGlobalMouseListener(&floaterRaiser);
+
   // Stop interpolation timer before anything else
   if (interpolationTimer)
     interpolationTimer->stopTimer();
@@ -828,6 +850,15 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
     togglePresetBrowser();
     return true;
   }
+  if (key == juce::KeyPress('t', juce::ModifierKeys::commandModifier, 0))
+  {
+    applyUiTheme(editorOptions.uiThemeIndex + 1, true);
+    mainLayout->getStatusBar().showMessage(
+        "Theme: " + ThemeRegistry::get(editorOptions.uiThemeIndex).name, 2500);
+    return true;
+  }
+  if (handleFloaterShortcut(key))
+    return true;
   return mainLayout != nullptr
       && PatchCanvas::handleMorphOverlayKey(key, mainLayout->getCanvas());
 }
@@ -882,17 +913,19 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addCustomItem(65, std::make_unique<CableOpacitySlider>());
     menu.addSeparator();
     juce::PopupMenu themeMenu;
-    bool isDark = (mainLayout->getCanvas().getThemeId() == ThemeId::Dark);
-    themeMenu.addItem(70, "Classic", true, !isDark);
-    themeMenu.addItem(71, "Dark",    true,  isDark);
-    menu.addSubMenu("Theme", themeMenu);
+    for (int i = 0; i < ThemeRegistry::count(); ++i)  // ids 70..79 reserved for themes
+      themeMenu.addItem(70 + i, ThemeRegistry::get(i).name, true,
+                        i == editorOptions.uiThemeIndex);
+    menu.addSubMenu("Theme\tCtrl+T", themeMenu);
     menu.addSeparator();
-    menu.addItem(80, "Knob Floater", true,
+    menu.addItem(80, "Knob Floater\tCtrl+5", true,
                  knobFloaterWindow != nullptr && knobFloaterWindow->isVisible());
-    menu.addItem(81, "Keyboard Floater", true,
+    menu.addItem(81, "Keyboard Floater\tCtrl+6", true,
                  keyboardFloaterWindow != nullptr && keyboardFloaterWindow->isVisible());
-    menu.addItem(82, "Patch Notes", true,
+    menu.addItem(82, "Patch Notes\tCtrl+7", true,
                  patchNotesFloaterWindow != nullptr && patchNotesFloaterWindow->isVisible());
+    menu.addItem(83, "Patch Mutator\tCtrl+8", true,
+                 mutatorWindow != nullptr && mutatorWindow->isVisible());
   }
   else if (menuIndex == 3) // Device
   {
@@ -1079,12 +1112,6 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 64:  // Shake Cables
     mainLayout->getCanvas().shakeCables();
     break;
-  case 70:  // Theme: Classic
-    mainLayout->setTheme(createClassicTheme(), ThemeId::Classic);
-    break;
-  case 71:  // Theme: Dark
-    mainLayout->setTheme(createDarkTheme(), ThemeId::Dark);
-    break;
   case 80:  // Knob Floater
     toggleKnobFloater();
     break;
@@ -1094,8 +1121,13 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 82:  // Patch Notes Floater
     togglePatchNotesFloater();
     break;
+  case 83:  // Patch Mutator
+    toggleMutatorWindow();
+    break;
 
   default:
+    if (menuItemID >= 70 && menuItemID < 70 + ThemeRegistry::count())
+      applyUiTheme(menuItemID - 70, true);
     break;
   }
 }
@@ -1136,6 +1168,11 @@ void MainComponent::switchToSlot(int slot, bool notifySynth) {
       patchNotesFloaterWindow->setPatch(currentPatch().get());
     mainLayout->getCanvas().setUndoManager(&undoManager());
     updateDspLoadDisplay();
+    if (mutatorWindow) {
+      mutatorWindow->getPanel().clearAll();  // snapshots referenced the old slot's patch
+      mutatorWindow->getPanel().setVariations(variations[activeSlot]);
+    }
+    refreshSnapshotUi();
 
     const char* slotNames[] = {"A", "B", "C", "D"};
     mainLayout->getStatusBar().setConnectionStatus(
@@ -1281,6 +1318,16 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   currentPatch() = std::move(patch);
   currentPatchFile() = file;
   clearSnapshots(activeSlot);
+
+  // Load variations sidecar if present (keeps the .pch itself 100% standard)
+  if (loadVarFile(variations[activeSlot], file.withFileExtension("var"))) {
+    refreshSnapshotUi();
+    for (auto& [sec, modIdx] : variations[activeSlot].mutationExcluded)
+      if (auto* mod = currentPatch()->getContainer(sec).getModuleByIndex(modIdx))
+        mod->setExcludedFromMutation(true);
+    std::cout << "[VAR] Loaded variations sidecar: "
+              << file.withFileExtension("var").getFileName() << std::endl;
+  }
   mainLayout->getCanvas().setPatch(currentPatch().get(), &moduleDescs, &themeData);
   mainLayout->getHeaderBar().setPatch(currentPatch().get());
   mainLayout->getInspector().setPatch(currentPatch().get());
@@ -1383,6 +1430,14 @@ bool MainComponent::savePatchToFile(const juce::File &file) {
   bool ok = io.writeFile(*currentPatch(), file);
 
   if (ok) {
+    auto& vars = variations[activeSlot];
+    vars.mutationExcluded.clear();
+    for (int sec : {0, 1})
+      for (auto& mod : currentPatch()->getContainer(sec).getModules())
+        if (mod && mod->isExcludedFromMutation())
+          vars.mutationExcluded.emplace_back(sec, mod->getContainerIndex());
+    if (vars.anyFilled() || !vars.mutationExcluded.empty())
+      saveVarFile(vars, file.withFileExtension("var"));
     mainLayout->getStatusBar().showMessage("Saved: " + file.getFileName(), 3000);
   } else {
     mainLayout->getStatusBar().showMessage("ERROR:Failed to save: " + file.getFileName(), 5000);
@@ -1471,24 +1526,13 @@ void MainComponent::showEditorOptionsDialog() {
 
 void MainComponent::applyEditorOptions(const EditorOptions& opts) {
   editorOptions = opts;
-  AppTheme::setTheme(editorOptions.appearanceTheme);
   auto libraryOk = editorOptions.ensureLibraryFolders();
   editorOptions.save(appProperties.getUserSettings());
   PatchCanvas::setCableStyle   (static_cast<int>(opts.cableStyle));
   PatchCanvas::setKnobControl  (static_cast<int>(opts.knobControl));
   PatchCanvas::setAutoUpload   (opts.autoUpload);
   PatchCanvas::setCableOpacity (opts.cableOpacity);
-  mainLayout->setTheme(createDarkTheme(), ThemeId::Dark);
-  mainLayout->applyTheme();
-  if (presetBrowserWindow)
-    presetBrowserWindow->applyTheme();
-  if (knobFloaterWindow)
-    knobFloaterWindow->applyTheme();
-  if (keyboardFloaterWindow)
-    keyboardFloaterWindow->applyTheme();
-  if (patchNotesFloaterWindow)
-    patchNotesFloaterWindow->applyTheme();
-  mainLayout->repaint();
+  applyUiTheme(editorOptions.uiThemeIndex, false);
 
   if (editorOptions.presetLibraryRoot != juce::File()) {
     if (mainLayout)
@@ -1501,6 +1545,29 @@ void MainComponent::applyEditorOptions(const EditorOptions& opts) {
       mainLayout->getStatusBar().showMessage(
           "ERROR: Could not create Patches/Snippets folders", 5000);
   }
+}
+
+void MainComponent::applyUiTheme(int index, bool persist) {
+  const int n = ThemeRegistry::count();
+  index = ((index % n) + n) % n;
+  editorOptions.uiThemeIndex = index;
+
+  const auto& theme = ThemeRegistry::get(index);
+  AppTheme::setPalette(theme.app);
+  mainLayout->setTheme(theme.makeCanvas());
+  mainLayout->applyTheme();
+  if (presetBrowserWindow)
+    presetBrowserWindow->applyTheme();
+  if (knobFloaterWindow)
+    knobFloaterWindow->applyTheme();
+  if (keyboardFloaterWindow)
+    keyboardFloaterWindow->applyTheme();
+  if (patchNotesFloaterWindow)
+    patchNotesFloaterWindow->applyTheme();
+  mainLayout->repaint();
+
+  if (persist)
+    editorOptions.save(appProperties.getUserSettings());
 }
 
 void MainComponent::choosePresetLibraryFolder() {
@@ -1620,6 +1687,7 @@ void MainComponent::saveFloaterState() {
   save(knobFloaterWindow.get(), "knobFloater");
   save(keyboardFloaterWindow.get(), "keyboardFloater");
   save(patchNotesFloaterWindow.get(), "patchNotesFloater");
+  save(mutatorWindow.get(), "mutatorFloater");
   settings->saveIfNeeded();
 }
 
@@ -1634,6 +1702,8 @@ void MainComponent::restoreFloaterWindows() {
     toggleKeyboardFloater();
   if (settings->getBoolValue("patchNotesFloaterOpen", false))
     togglePatchNotesFloater();
+  if (settings->getBoolValue("mutatorFloaterOpen", false))
+    toggleMutatorWindow();
 }
 
 void MainComponent::toggleKnobFloater() {
@@ -1646,6 +1716,8 @@ void MainComponent::toggleKnobFloater() {
   if (!knobFloaterWindow) {
     knobFloaterWindow = std::make_unique<KnobFloaterWindow>();
     knobFloaterWindow->onClosed = [this]() { saveFloaterState(); };
+    knobFloaterWindow->onGlobalKey =
+        [this](const juce::KeyPress& k) { return handleFloaterShortcut(k); };
 
     // Same path as the canvas parameter callbacks (live change + undo on drag end)
     knobFloaterWindow->onParameterChanged =
@@ -1690,6 +1762,8 @@ void MainComponent::toggleKeyboardFloater() {
   if (!keyboardFloaterWindow) {
     keyboardFloaterWindow = std::make_unique<KeyboardFloaterWindow>();
     keyboardFloaterWindow->onClosed = [this]() { saveFloaterState(); };
+    keyboardFloaterWindow->onGlobalKey =
+        [this](const juce::KeyPress& k) { return handleFloaterShortcut(k); };
 
     keyboardFloaterWindow->onNoteOn = [this](int note, int velocity) {
       connectionManager.sendNoteOn(note, velocity);
@@ -1713,11 +1787,162 @@ void MainComponent::togglePatchNotesFloater() {
   if (!patchNotesFloaterWindow) {
     patchNotesFloaterWindow = std::make_unique<PatchNotesFloaterWindow>();
     patchNotesFloaterWindow->onClosed = [this]() { saveFloaterState(); };
+    patchNotesFloaterWindow->onGlobalKey =
+        [this](const juce::KeyPress& k) { return handleFloaterShortcut(k); };
   }
 
   patchNotesFloaterWindow->applyTheme();
   patchNotesFloaterWindow->setPatch(currentPatch().get());
   showFloaterWindow(*patchNotesFloaterWindow, "patchNotesFloater");
+}
+
+bool MainComponent::handleFloaterShortcut(const juce::KeyPress& key) {
+  if (!key.getModifiers().isCommandDown() || key.getModifiers().isShiftDown())
+    return false;
+  int code = key.getKeyCode();
+  if (code == 127) code = '8';  // X11 legacy: Ctrl+8 arrives as DEL (0x7F)
+  switch (code) {
+    case '1': case '2': case '3': case '4':
+      switchToSlot(code - '1');
+      return true;
+    case '5': toggleKnobFloater(); return true;
+    case '6': toggleKeyboardFloater(); return true;
+    case '7': togglePatchNotesFloater(); return true;
+    case '8': toggleMutatorWindow(); return true;
+    default: return false;
+  }
+}
+
+void MainComponent::FloaterRaiser::mouseDown(const juce::MouseEvent& e) {
+  // Only react to clicks that land in the main editor window
+  if (e.eventComponent == nullptr
+      || e.eventComponent->getTopLevelComponent() != owner.getTopLevelComponent())
+    return;
+  juce::Component::SafePointer<MainComponent> safe(&owner);
+  juce::MessageManager::callAsync([safe]() {
+    if (safe) safe->raiseFloatersAboveEditor();
+  });
+}
+
+void MainComponent::raiseFloatersAboveEditor() {
+  auto raise = [](juce::DocumentWindow* w) {
+    if (w != nullptr && w->isVisible() && !w->isMinimised())
+      w->toFront(false);  // raise without stealing focus from the editor
+  };
+  raise(knobFloaterWindow.get());
+  raise(keyboardFloaterWindow.get());
+  raise(patchNotesFloaterWindow.get());
+  raise(mutatorWindow.get());
+}
+
+void MainComponent::toggleMutatorWindow() {
+  std::cout << "[MUT] toggleMutatorWindow, visible="
+            << (mutatorWindow && mutatorWindow->isVisible()) << std::endl;
+  if (mutatorWindow && mutatorWindow->isVisible()) {
+    mutatorWindow->setVisible(false);
+    PatchCanvas::setMutatorMode(false);
+    mainLayout->getHeaderBar().setMutatorOpen(false);
+    mainLayout->getCanvas().repaintCanvas();
+    saveFloaterState();
+    return;
+  }
+
+  if (!mutatorWindow) {
+    mutatorWindow = std::make_unique<MutatorWindow>();
+    mutatorWindow->onGlobalKey =
+        [this](const juce::KeyPress& k) { return handleFloaterShortcut(k); };
+    mutatorWindow->onClosed = [this]() {
+      PatchCanvas::setMutatorMode(false);
+      mainLayout->getHeaderBar().setMutatorOpen(false);
+      mainLayout->getCanvas().repaintCanvas();
+      saveFloaterState();
+    };
+
+    auto& panel = mutatorWindow->getPanel();
+
+    panel.onCaptureCurrent = [this]() -> ParamSnapshot {
+      if (!currentPatch()) return {};
+      return Mutator::captureCurrent(*currentPatch());
+    };
+
+    panel.onGenerate = [this](MutatorPanel::GenOp op,
+                              const ParamSnapshot& mother,
+                              const ParamSnapshot& father,
+                              const MutatorPanel::GenParams& gp) -> ParamSnapshot {
+      if (!currentPatch()) return {};
+      Patch& patch = *currentPatch();
+
+      bool anySolo = false;
+      for (int i = 0; i < kNumMutCategories; ++i)
+        anySolo = anySolo || gp.solo[i];
+
+      // Locked = Parameter::locked, module excluded, or filtered by Quick Locks
+      Mutator::LockPredicate isLocked =
+          [&patch, gp, anySolo](int section, int moduleId, int paramId) {
+            auto* mod = patch.getContainer(section).getModuleByIndex(moduleId);
+            if (!mod) return true;
+            if (mod->isExcludedFromMutation()) return true;
+            auto* param = mod->getParameter(paramId);
+            if (!param || param->isLocked()) return true;
+
+            const auto* md = mod->getDescriptor();
+            const auto* pd = param->getDescriptor();
+            if (!md || !pd) return true;
+
+            if (anySolo) {
+              for (int i = 0; i < kNumMutCategories; ++i)
+                if (gp.solo[i] && mutCategoryMatches(static_cast<MutCategory>(i), *md, *pd))
+                  return false;
+              return true;  // solo active: everything else is locked
+            }
+            for (int i = 0; i < kNumMutCategories; ++i)
+              if (gp.lock[i] && mutCategoryMatches(static_cast<MutCategory>(i), *md, *pd))
+                return true;
+            return false;
+          };
+
+      auto& rng = juce::Random::getSystemRandom();
+      switch (op) {
+        case MutatorPanel::GenOp::Mutate:
+          return Mutator::mutate(mother, patch, gp.mutateProb, gp.mutateRange, rng, isLocked);
+        case MutatorPanel::GenOp::Randomize:
+          return Mutator::randomize(mother, patch, rng, isLocked);
+        case MutatorPanel::GenOp::Interpolate:
+          return Mutator::interpolate(mother, father, gp.interpT);
+        case MutatorPanel::GenOp::Cross:
+          return Mutator::cross(mother, father, gp.crossProb, rng);
+      }
+      return {};
+    };
+
+    panel.onAudition = [this](const ParamSnapshot& snap, float seconds) {
+      // Debounce: rapid clicks would pile up throttled sendBatch timer chains
+      static juce::uint32 lastAuditionMs = 0;
+      const auto now = juce::Time::getMillisecondCounter();
+      if (now - lastAuditionMs < 150) return;
+      lastAuditionMs = now;
+      if (seconds > 0.01f)
+        startInterpolationTo(snap, seconds, -1);
+      else
+        applySnapshot(snap, "Mutator Audition");
+    };
+
+    panel.onStoreToVariation = [this](int index, const ParamSnapshot& snap) {
+      if (!currentPatch() || index < 0 || index >= PatchVariations::kNumSlots || !snap.filled)
+        return;
+      variations[activeSlot].slots[index] = snap;
+      refreshSnapshotUi();
+      mainLayout->getStatusBar().showMessage(
+          "Mutator sound stored to Variation " + juce::String(index + 1), 2000);
+    };
+  }
+
+  mutatorWindow->applyTheme();
+  mutatorWindow->getPanel().setVariations(variations[activeSlot]);
+  PatchCanvas::setMutatorMode(true);
+  mainLayout->getHeaderBar().setMutatorOpen(true);
+  mainLayout->getCanvas().repaintCanvas();
+  showFloaterWindow(*mutatorWindow, "mutatorFloater");
 }
 
 void MainComponent::handleConnectionRequest(const juce::String &inputId,
@@ -2016,11 +2241,28 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Z                   Zoom to selection / reset\n"
       "  Shift+Z             Reset zoom to 100%\n"
       "  Ctrl++ / Ctrl+-     Zoom in / out\n"
+      "  Ctrl+T              Cycle color theme\n"
       "  S                   Shake cables\n"
       "  Middle-drag         Pan canvas\n"
       "\n"
       "SLOTS\n"
-      "  Ctrl+1..4           Switch to slot A..D\n";
+      "  Ctrl+1..4           Switch to slot A..D\n"
+      "\n"
+      "FLOATERS\n"
+      "  Ctrl+5              Knob Floater\n"
+      "  Ctrl+6              Keyboard Floater\n"
+      "  Ctrl+7              Patch Notes\n"
+      "  Ctrl+8              Patch Mutator\n"
+      "\n"
+      "PATCH MUTATOR (window focused)\n"
+      "  1-8                 Focus Mother / Children / Father\n"
+      "  O / T               Copy focused sound to Mother / Father\n"
+      "  E / U               Mutate from focused / from Mother\n"
+      "  N                   Randomize\n"
+      "  I / X               Interpolate / Cross (Mother+Father)\n"
+      "  S                   Save focused to Temporary Storage\n"
+      "  Shift+drag          Interpolate two sounds\n"
+      "  Ctrl+drag           Cross two sounds\n";
 
   auto* editor = new juce::TextEditor();
   editor->setMultiLine(true, false);
@@ -2085,6 +2327,9 @@ void MainComponent::rebuildUndoContext(int slot)
                 });
                 safeThis->connectionManager.uploadPatch(slot, *safeThis->slotPatches[slot]);
             });
+        },
+        [this, slot](int section, int moduleId, int paramId, int value) {
+            variations[slot].updateValue(section, moduleId, paramId, value);
         }
     });
 }
@@ -2102,71 +2347,48 @@ void MainComponent::clearSnapshots(int slot) {
         mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
     }
 
-    for (int i = 0; i < 8; ++i) {
-        snapshots[slot][i].entries.clear();
-        snapshots[slot][i].filled = false;
-        if (slot == activeSlot)
-            mainLayout->getHeaderBar().setSnapshotFilled(i, false);
-    }
-    activeSnapshotIndex[slot] = -1;
+    variations[slot].clear();
     if (slot == activeSlot)
-        mainLayout->getHeaderBar().setActiveSnapshot(-1);
+        refreshSnapshotUi();
+    // Mutator snapshots reference module indices of the previous patch
+    if (mutatorWindow)
+        mutatorWindow->getPanel().clearAll();
+}
+
+void MainComponent::refreshSnapshotUi() {
+    auto& vars = variations[activeSlot];
+    for (int i = 0; i < PatchVariations::kNumSlots; ++i)
+        mainLayout->getHeaderBar().setSnapshotFilled(i, vars.slots[i].filled);
+    mainLayout->getHeaderBar().setActiveSnapshot(vars.activeIndex);
+    if (mutatorWindow)
+        mutatorWindow->getPanel().setVariations(vars);
 }
 
 void MainComponent::handleSnapshotClick(int index, bool isShiftClick) {
     if (!currentPatch()) return;
     if (isShiftClick)
         saveSnapshot(index);
-    else if (snapshots[activeSlot][index].filled)
+    else if (variations[activeSlot].slots[index].filled)
         recallSnapshot(index);
     else
         saveSnapshot(index);  // click on empty = save
 }
 
 void MainComponent::saveSnapshot(int index) {
-    if (!currentPatch() || index < 0 || index >= 8) return;
+    if (!currentPatch() || index < 0 || index >= PatchVariations::kNumSlots) return;
 
-    auto& snap = snapshots[activeSlot][index];
-    snap.entries.clear();
-
-    auto captureContainer = [&](const ModuleContainer& container, int section) {
-        for (auto& modPtr : container.getModules()) {
-            if (!modPtr) continue;
-            for (auto& param : modPtr->getParameters()) {
-                auto* pd = param.getDescriptor();
-                if (!pd || pd->paramClass != "parameter") continue;
-                snap.entries.push_back({section, modPtr->getContainerIndex(),
-                                        pd->index, param.getValue()});
-            }
-        }
-    };
-
-    captureContainer(currentPatch()->getPolyVoiceArea(), 1);
-    captureContainer(currentPatch()->getCommonArea(), 0);
-    snap.filled = true;
-
-    activeSnapshotIndex[activeSlot] = index;
-    mainLayout->getHeaderBar().setSnapshotFilled(index, true);
-    mainLayout->getHeaderBar().setActiveSnapshot(index);
+    variations[activeSlot].captureFrom(*currentPatch(), index);
+    refreshSnapshotUi();
     mainLayout->getStatusBar().showMessage(
-        "Snapshot " + juce::String(index + 1) + " saved (" +
-        juce::String(static_cast<int>(snap.entries.size())) + " params)", 2000);
+        "Variation " + juce::String(index + 1) + " saved (" +
+        juce::String(static_cast<int>(variations[activeSlot].slots[index].entries.size())) +
+        " params)", 2000);
 }
 
-void MainComponent::recallSnapshot(int index) {
-    if (!currentPatch() || !undoContext() || index < 0 || index >= 8) return;
-    auto& snap = snapshots[activeSlot][index];
-    if (!snap.filled) return;
+void MainComponent::applySnapshot(const ParamSnapshot& snap, const juce::String& undoName) {
+    if (!currentPatch() || !undoContext() || !snap.filled) return;
 
-    // Stop any running interpolation
-    if (interpolation.active) {
-        interpolation.active = false;
-        if (interpolationTimer) interpolationTimer->stopTimer();
-        interpolationTimer.reset();
-        mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
-    }
-
-    // Build changes list
+    // Build changes list (skips locked params and deleted modules)
     std::vector<RandomizeAction::ParamChange> changes;
     for (auto& e : snap.entries) {
         auto& container = currentPatch()->getContainer(e.section);
@@ -2180,21 +2402,73 @@ void MainComponent::recallSnapshot(int index) {
     }
 
     if (!changes.empty()) {
-        undoManager().beginNewTransaction("Recall Snapshot " + juce::String(index + 1));
+        undoManager().beginNewTransaction(undoName);
         undoManager().perform(new RandomizeAction(*undoContext(), std::move(changes)));
         mainLayout->getCanvas().repaintCanvas();
     }
 
-    activeSnapshotIndex[activeSlot] = index;
-    mainLayout->getHeaderBar().setActiveSnapshot(index);
+    // Morph knob values (protocol: section=2, module=1, param=morphIndex)
+    if (currentPatch()->morphValues != snap.morphValues) {
+        currentPatch()->morphValues = snap.morphValues;
+        if (connectionManager.isConnected())
+            for (int m = 0; m < 4; ++m)
+                connectionManager.sendParameter(2, 1, m, snap.morphValues[static_cast<size_t>(m)]);
+        mainLayout->getHeaderBar().repaint();
+    }
+}
+
+void MainComponent::recallSnapshot(int index) {
+    if (!currentPatch() || !undoContext() || index < 0 || index >= PatchVariations::kNumSlots)
+        return;
+    auto& vars = variations[activeSlot];
+    auto& snap = vars.slots[index];
+    if (!snap.filled) return;
+
+    // Stop any running interpolation
+    if (interpolation.active) {
+        interpolation.active = false;
+        if (interpolationTimer) interpolationTimer->stopTimer();
+        interpolationTimer.reset();
+        mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
+    }
+
+    // Mark active BEFORE applying so write-through into the recalled slot is a no-op
+    vars.activeIndex = index;
+    applySnapshot(snap, "Recall Variation " + juce::String(index + 1));
+
+    refreshSnapshotUi();
     mainLayout->getStatusBar().showMessage(
-        "Snapshot " + juce::String(index + 1) + " recalled", 2000);
+        "Variation " + juce::String(index + 1) + " recalled", 2000);
+}
+
+void MainComponent::copySnapshot(int from, int to) {
+    if (!currentPatch()) return;
+    auto& vars = variations[activeSlot];
+    if (from < 0 || from >= PatchVariations::kNumSlots || !vars.slots[from].filled) return;
+    vars.copySlot(from, to);
+    refreshSnapshotUi();
+    mainLayout->getStatusBar().showMessage(
+        "Variation " + juce::String(from + 1) + " copied to " + juce::String(to + 1), 2000);
+}
+
+void MainComponent::initSnapshot(int index) {
+    if (!currentPatch() || index < 0 || index >= PatchVariations::kNumSlots) return;
+    variations[activeSlot].initFromDefaults(*currentPatch(), index);
+    refreshSnapshotUi();
+    mainLayout->getStatusBar().showMessage(
+        "Variation " + juce::String(index + 1) + " set to default values", 2000);
 }
 
 void MainComponent::interpolateSnapshots(int /*fromIndex*/, int toIndex, float seconds) {
-    if (!currentPatch() || toIndex < 0 || toIndex >= 8) return;
-    auto& toSnap = snapshots[activeSlot][toIndex];
+    if (!currentPatch() || toIndex < 0 || toIndex >= PatchVariations::kNumSlots) return;
+    auto& toSnap = variations[activeSlot].slots[toIndex];
     if (!toSnap.filled) return;
+    startInterpolationTo(toSnap, seconds, toIndex);
+}
+
+void MainComponent::startInterpolationTo(const ParamSnapshot& toSnap, float seconds,
+                                         int targetVariation) {
+    if (!currentPatch() || !toSnap.filled) return;
 
     // Stop any running interpolation
     if (interpolation.active) {
@@ -2222,16 +2496,20 @@ void MainComponent::interpolateSnapshots(int /*fromIndex*/, int toIndex, float s
 
     interpolation.durationMs = seconds * 1000.0f;
     interpolation.elapsedMs = 0.0f;
-    interpolation.targetSnapshot = toIndex;
+    interpolation.targetSnapshot = targetVariation;
+    interpolation.targetMorphs = toSnap.morphValues;
     interpolation.active = true;
 
-    std::cout << "[SNAP] Interpolation START → snapshot " << (toIndex + 1)
+    const juce::String targetName = targetVariation >= 0
+        ? "variation " + juce::String(targetVariation + 1)
+        : juce::String("mutator sound");
+    std::cout << "[SNAP] Interpolation START → " << targetName
               << ", " << interpolation.from.size() << " params, "
               << seconds << "s (" << interpolation.durationMs << "ms)" << std::endl;
 
     mainLayout->getHeaderBar().setInterpolationProgress(0.0f);
     mainLayout->getStatusBar().showMessage(
-        "Interpolating to snapshot " + juce::String(toIndex + 1) +
+        "Interpolating to " + targetName +
         " over " + juce::String(seconds, 1) + "s", static_cast<int>(seconds * 1000));
 
     // Timer: ~30ms ticks for smooth interpolation
@@ -2294,14 +2572,27 @@ void MainComponent::onInterpolationTick() {
 
     // Done?
     if (t >= 1.0f) {
-        std::cout << "[SNAP] Interpolation COMPLETE → snapshot "
-                  << (interpolation.targetSnapshot + 1) << std::endl;
+        std::cout << "[SNAP] Interpolation COMPLETE (target "
+                  << interpolation.targetSnapshot << ")" << std::endl;
         interpolation.active = false;
         if (interpolationTimer) interpolationTimer->stopTimer();
         interpolationTimer.reset();
         mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
-        activeSnapshotIndex[activeSlot] = interpolation.targetSnapshot;
-        mainLayout->getHeaderBar().setActiveSnapshot(interpolation.targetSnapshot);
+        if (interpolation.targetSnapshot >= 0) {
+            // Variation recall: mark it active (mutator auditions don't)
+            variations[activeSlot].activeIndex = interpolation.targetSnapshot;
+            mainLayout->getHeaderBar().setActiveSnapshot(interpolation.targetSnapshot);
+        }
+
+        // Morph knob values land at the end (protocol: section=2, module=1)
+        if (currentPatch() && currentPatch()->morphValues != interpolation.targetMorphs) {
+            currentPatch()->morphValues = interpolation.targetMorphs;
+            if (connectionManager.isConnected())
+                for (int m = 0; m < 4; ++m)
+                    connectionManager.sendParameter(2, 1, m,
+                        interpolation.targetMorphs[static_cast<size_t>(m)]);
+            mainLayout->getHeaderBar().repaint();
+        }
 
         // Send all final values to synth
         auto pending = std::make_shared<std::vector<RandomizeAction::ParamChange>>();
@@ -2313,8 +2604,10 @@ void MainComponent::onInterpolationTick() {
         RandomizeAction::sendBatch(pending, idx, connectionManager);
 
         mainLayout->getStatusBar().showMessage(
-            "Interpolation complete — Snapshot " +
-            juce::String(interpolation.targetSnapshot + 1), 2000);
+            interpolation.targetSnapshot >= 0
+                ? "Interpolation complete — Variation " +
+                      juce::String(interpolation.targetSnapshot + 1)
+                : juce::String("Interpolation complete"), 2000);
     }
 }
 

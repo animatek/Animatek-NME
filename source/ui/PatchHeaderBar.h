@@ -45,11 +45,20 @@ public:
     using ReportBugCallback = std::function<void()>;
     void setReportBugCallback(ReportBugCallback cb) { reportBugCallback = std::move(cb); }
 
-    // Snapshot buttons (click=recall, shift+click=save, right-click=interpolation menu)
+    // Patch Mutator quick-access button (right of the snapshot buttons)
+    using MutatorButtonCallback = std::function<void()>;
+    void setMutatorButtonCallback(MutatorButtonCallback cb) { mutatorButtonCallback = std::move(cb); }
+    void setMutatorOpen(bool open) { mutatorOpen = open; repaint(); }
+
+    // Snapshot buttons (click=recall, shift+click=save, right-click=copy/init/interpolation menu)
     using SnapshotClickCallback = std::function<void(int index, bool isShiftClick)>;
     using SnapshotInterpolateCallback = std::function<void(int fromIndex, int toIndex, float seconds)>;
+    using SnapshotCopyCallback = std::function<void(int fromIndex, int toIndex)>;
+    using SnapshotInitCallback = std::function<void(int index)>;
     void setSnapshotClickCallback(SnapshotClickCallback cb) { snapshotClickCallback = std::move(cb); }
     void setSnapshotInterpolateCallback(SnapshotInterpolateCallback cb) { snapshotInterpolateCallback = std::move(cb); }
+    void setSnapshotCopyCallback(SnapshotCopyCallback cb) { snapshotCopyCallback = std::move(cb); }
+    void setSnapshotInitCallback(SnapshotInitCallback cb) { snapshotInitCallback = std::move(cb); }
     void setSnapshotFilled(int index, bool filled);
     void setActiveSnapshot(int index) { activeSnapshot = index; repaint(); }
     void setInterpolationProgress(float progress);  // 0-1, <0 = not interpolating
@@ -113,6 +122,10 @@ private:
     KeyboardAssignCallback keyboardAssignCallback;
     SnapshotClickCallback snapshotClickCallback;
     SnapshotInterpolateCallback snapshotInterpolateCallback;
+    SnapshotCopyCallback snapshotCopyCallback;
+    SnapshotInitCallback snapshotInitCallback;
+    MutatorButtonCallback mutatorButtonCallback;
+    bool mutatorOpen = false;
 
     void showMorphKnobContextMenu(int morphIndex);
 
@@ -124,6 +137,8 @@ private:
     // Snapshot buttons
     juce::Rectangle<float> getSnapshotButtonBounds(int index) const;
     int getSnapshotButtonAt(juce::Point<int> pos) const;  // -1 if none
+    juce::Rectangle<float> getMutatorButtonBounds() const;
+    bool isMutatorButtonAt(juce::Point<int> pos) const;
     bool snapshotFilled[8] = {};
     int activeSnapshot = -1;       // -1 = none active
     float interpolationProgress = -1.0f;  // <0 = not interpolating

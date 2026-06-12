@@ -314,12 +314,14 @@ private:
     inline static int   cableStyleIdx  = 0;     // 0=CurvedThick 1=StraightThick 2=CurvedThin 3=StraightThin
     inline static int   knobControlIdx = 0;     // 0=Horizontal 1=Circular 2=Vertical
     inline static bool  autoUploadOn   = true;
+    inline static bool  mutatorModeOn  = false; // Patch Mutator open: frame excluded modules
 
 public:
     static void setCableOpacity (float v)  { cableOpacity   = juce::jlimit(0.0f, 1.0f, v); }
     static void setCableStyle   (int idx)  { cableStyleIdx  = idx; }
     static void setKnobControl  (int idx)  { knobControlIdx = idx; }
     static void setAutoUpload   (bool on)  { autoUploadOn   = on;  }
+    static void setMutatorMode  (bool on)  { mutatorModeOn  = on;  }
     static float getCableOpacity()         { return cableOpacity; }
 
 private:

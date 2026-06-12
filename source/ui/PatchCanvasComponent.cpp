@@ -751,6 +751,13 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
     g.setFont(juce::FontOptions("Fira Sans", 12.5f, juce::Font::bold));
     g.drawText(m.getTitle(), titleBar.reduced(4, 0), juce::Justification::centredLeft, true);
 
+    // Patch Mutator: red frame marks modules excluded from mutation (G2 behavior)
+    if (mutatorModeOn && m.isExcludedFromMutation())
+    {
+        g.setColour(juce::Colour(0xffcc3333));
+        g.drawRoundedRectangle(bounds.toFloat().reduced(1.0f), 3.0f, 2.0f);
+    }
+
     // Subtle edge lines on all four sides
     g.setColour(activeScheme_.moduleBorder);
     float x1 = static_cast<float>(bounds.getX());
@@ -4790,6 +4797,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 menu.addItem(4, "Copy");
                 menu.addSeparator();
                 menu.addItem(6, "Initialize Module");
+                menu.addItem(7, "Exclude from Mutation", true, modPtr->isExcludedFromMutation());
                 menu.addSeparator();
                 menu.addItem(5, "Delete Module");
 
@@ -4889,6 +4897,11 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         {
                             if (initModuleCallback)
                                 initModuleCallback(sec, modPtr);
+                        }
+                        else if (result == 7)
+                        {
+                            modPtr->setExcludedFromMutation(!modPtr->isExcludedFromMutation());
+                            repaint();
                         }
                         else if (result >= 100 && result < 200)
                         {
@@ -5812,13 +5825,19 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         if (key == juce::KeyPress('b', juce::ModifierKeys::commandModifier, 0))
             { fileCommandCallback("presetBrowser"); return true; }
 
-        // Ctrl+1..4 → slot A..D
+        // Ctrl+1..4 → slot A..D; Ctrl+5..8 → floaters (Knob/Keyboard/Notes/Mutator)
         if (key.getModifiers().isCommandDown() && !key.getModifiers().isShiftDown())
         {
             int code = key.getKeyCode();
+            if (code == 127) code = '8';  // X11 legacy: Ctrl+8 arrives as DEL (0x7F)
             if (code >= '1' && code <= '4')
             {
                 fileCommandCallback("slot" + juce::String(code - '1'));
+                return true;
+            }
+            if (code >= '5' && code <= '8')
+            {
+                fileCommandCallback("floater" + juce::String(code - '5'));
                 return true;
             }
         }

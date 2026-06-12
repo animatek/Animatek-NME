@@ -1,4 +1,5 @@
 #include "EditorOptionsDialog.h"
+#include "ThemeRegistry.h"
 
 // ─── Color palette ───────────────────────────────────────────────────────────
 static const AppThemePalette& p() { return AppTheme::palette(); }
@@ -39,7 +40,9 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
 {
     EditorOptions o;
     if (!props) return o;
-    o.appearanceTheme = AppTheme::themeFromInt(props->getIntValue("appearanceTheme", 0));
+    // Migrate pre-0.7 "appearanceTheme" (0=Soft chrome, 1=Deep chrome; canvas was always Dark)
+    const int legacyIndex = props->getIntValue("appearanceTheme", 0) == 1 ? 2 : 1;
+    o.uiThemeIndex   = props->getIntValue("uiThemeIndex", legacyIndex);
     o.cableStyle     = static_cast<CableStyle>  (props->getIntValue  ("cableStyle",      0));
     o.knobControl    = static_cast<KnobControl> (props->getIntValue  ("knobControl",     0));
     o.autoUpload     = props->getBoolValue  ("autoUpload",     true);
@@ -54,7 +57,7 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
 void EditorOptions::save(juce::PropertiesFile* props) const
 {
     if (!props) return;
-    props->setValue ("appearanceTheme", static_cast<int> (appearanceTheme));
+    props->setValue ("uiThemeIndex",    uiThemeIndex);
     props->setValue ("cableStyle",      static_cast<int> (cableStyle));
     props->setValue ("knobControl",     static_cast<int> (knobControl));
     props->setValue ("autoUpload",      autoUpload);
@@ -171,9 +174,10 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
 
 void EditorOptionsDialog::populateThemeSelector()
 {
-    themeSelector.addItem(AppTheme::displayName(AppThemeId::SoftDarkGrey), 1);
-    themeSelector.addItem(AppTheme::displayName(AppThemeId::DeepDarkGrey), 2);
-    themeSelector.setSelectedId(static_cast<int>(options.appearanceTheme) + 1, juce::dontSendNotification);
+    const auto themeNames = ThemeRegistry::names();
+    for (int i = 0; i < themeNames.size(); ++i)
+        themeSelector.addItem(themeNames[i], i + 1);
+    themeSelector.setSelectedId(options.uiThemeIndex + 1, juce::dontSendNotification);
     themeSelector.setColour(juce::ComboBox::backgroundColourId, p().inputBackground);
     themeSelector.setColour(juce::ComboBox::outlineColourId, p().borderColor);
     themeSelector.setColour(juce::ComboBox::textColourId, p().textSecondary);
@@ -323,7 +327,7 @@ void EditorOptionsDialog::apply()
     if (knobCircular  .getToggleState()) options.knobControl = EditorOptions::KnobControl::Circular;
     if (knobVertical  .getToggleState()) options.knobControl = EditorOptions::KnobControl::Vertical;
 
-    options.appearanceTheme = AppTheme::themeFromInt(themeSelector.getSelectedId() - 1);
+    options.uiThemeIndex   = themeSelector.getSelectedId() - 1;
     options.autoUpload     = autoUploadToggle.getToggleState();
     options.recycleWindows = recycleWinToggle .getToggleState();
 

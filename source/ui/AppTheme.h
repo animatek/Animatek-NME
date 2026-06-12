@@ -39,5 +39,6 @@ namespace AppTheme
     AppThemeId themeFromInt(int value);
 
     void setTheme(AppThemeId id);
+    void setPalette(const AppThemePalette& p);
     void applyLookAndFeel();
 }

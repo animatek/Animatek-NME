@@ -9,7 +9,7 @@ struct EditorOptions
     enum class CableStyle  { CurvedThick = 0, StraightThick, CurvedThin, StraightThin };
     enum class KnobControl { Horizontal = 0, Circular, Vertical };
 
-    AppThemeId  appearanceTheme = AppThemeId::SoftDarkGrey;
+    int         uiThemeIndex   = 1;   // index into ThemeRegistry ("Dark")
     CableStyle  cableStyle     = CableStyle::CurvedThick;
     KnobControl knobControl    = KnobControl::Horizontal;
     bool        autoUpload     = true;

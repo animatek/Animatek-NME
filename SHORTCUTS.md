@@ -45,6 +45,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `Z` | Zoom to selection (or reset when nothing selected) |
 | `Shift+Z` | Reset zoom to 100% |
 | `Ctrl++` / `Ctrl+-` | Zoom in / out |
+| `Ctrl+T` | Cycle color theme |
 | `S` | Shake cables |
 | Middle-drag | Pan the canvas |
 
@@ -53,3 +54,25 @@ On macOS, `Ctrl` is `Cmd`.
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+1`..`Ctrl+4` | Switch to slot A..D |
+
+## Floaters
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+5` | Knob Floater |
+| `Ctrl+6` | Keyboard Floater |
+| `Ctrl+7` | Patch Notes |
+| `Ctrl+8` | Patch Mutator |
+
+## Patch Mutator (window focused)
+
+| Shortcut | Action |
+|----------|--------|
+| `1`-`8` | Focus Mother / Children / Father |
+| `O` / `T` | Copy focused sound to Mother / Father |
+| `E` / `U` | Mutate from focused / from Mother |
+| `N` | Randomize |
+| `I` / `X` | Interpolate / Cross (Mother + Father) |
+| `S` | Save focused sound to Temporary Storage |
+| Shift+drag | Interpolate two sounds |
+| Ctrl+drag | Cross two sounds |

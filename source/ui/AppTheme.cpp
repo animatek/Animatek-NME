@@ -52,6 +52,7 @@ AppThemePalette makeDeepDarkGrey()
 
 const AppThemePalette soft = makeSoftDarkGrey();
 const AppThemePalette deep = makeDeepDarkGrey();
+AppThemePalette active = makeSoftDarkGrey();
 }
 
 AppThemeId AppTheme::currentTheme()
@@ -61,7 +62,7 @@ AppThemeId AppTheme::currentTheme()
 
 const AppThemePalette& AppTheme::palette()
 {
-    return palette(current);
+    return active;
 }
 
 const AppThemePalette& AppTheme::palette(AppThemeId id)
@@ -84,6 +85,13 @@ AppThemeId AppTheme::themeFromInt(int value)
 void AppTheme::setTheme(AppThemeId id)
 {
     current = id;
+    active = palette(id);
+    applyLookAndFeel();
+}
+
+void AppTheme::setPalette(const AppThemePalette& p)
+{
+    active = p;
     applyLookAndFeel();
 }
 

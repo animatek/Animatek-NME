@@ -22,6 +22,9 @@ set(NME_SHARED_SOURCES
     source/model/Patch.cpp
     source/model/PatchParser.cpp
     source/model/PatchSerializer.cpp
+    source/model/PatchVariations.cpp
+    source/model/Mutator.cpp
+    source/model/MutationCategories.cpp
     source/model/PchFileIO.cpp
     source/model/SnipFileIO.cpp
     source/model/ThemeData.cpp
@@ -35,6 +38,7 @@ set(NME_SHARED_SOURCES
     source/ui/ModuleBrowserPanel.cpp
     source/ui/PatchCanvasComponent.cpp
     source/ui/ColorScheme.cpp
+    source/ui/ThemeRegistry.cpp
     source/ui/InspectorPanel.cpp
     source/ui/StatusBar.cpp
     source/ui/PatchHeaderBar.cpp
@@ -50,6 +54,7 @@ set(NME_SHARED_SOURCES
     source/ui/KnobFloaterWindow.cpp
     source/ui/KeyboardFloaterWindow.cpp
     source/ui/PatchNotesFloaterWindow.cpp
+    source/ui/MutatorWindow.cpp
 
     # MIDI/SysEx
     source/midi/SysExCodec.cpp
