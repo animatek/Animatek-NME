@@ -4,6 +4,53 @@ Support this proyect: https://www.patreon.com/c/animatek
 
 # Changelog
 
+## Unreleased
+
+- Added **8 rotating color themes** cycled with `Ctrl+T` (and selectable in View → Theme or
+  Editor Options): Classic, Dark, Deep Dark, Catppuccin Mocha, Tokyo Night, Gruvbox Dark,
+  Dracula, and Nord. Each theme restyles both the app chrome and the patch canvas (modules,
+  knobs, cables, displays) while keeping the cable signal hues recognizable (red=audio,
+  blue=control, yellow=logic). The selected theme persists across sessions. Themes live in
+  `source/ui/ThemeRegistry.cpp`; adding one is a single palette table. Also fixed opening
+  Editor Options unconditionally resetting the canvas to the Dark theme.
+
+- The 8 header snapshots are now full **Patch Variations** (G2-style): they capture all
+  parameter values plus the four morph knobs, persist in a `<patch>.var` sidecar file next
+  to the `.pch` (which stays 100% compatible with the original editors), and reload when the
+  patch is opened. Right-click a variation for **Copy to 1-8** and **Init (default values)**
+  alongside the existing interpolation-time menu. Live parameter edits write through into
+  the active variation, and switching slots now restores the variation button states
+  (previously they appeared empty after a slot change).
+
+- Added the **Patch Mutator** (View menu, `Ctrl+8`, or the `MUT` header button) — an
+  interactive-evolution sound breeder modeled on the Nord Modular G2's Patch Mutator:
+  - **Mother + 6 Children + Father** boxes with chromosome-graph previews, plus a 24-slot
+    **Temporary Storage** and a **Variations row** mirroring the header variations
+    (drag any sound onto a variation to store it).
+  - Operations: **Mutate** (probability/range knobs, linked G2-style), **Randomize**,
+    **Interpolate**, and **Cross** (crossover probability knob). Generation knobs are drawn
+    like the canvas module knobs with their percentage readout above.
+  - Clicking a sound **auditions it on the synth** (throttled parameter deltas); the
+    **Audition selector** (Instant/0.5s/1s/2s/5s/10s) morphs smoothly to the clicked sound
+    using the snapshot interpolation engine.
+  - **Quick Locks** with Solo per category (OscFreq, OscFine, Envelope, SeqValue, SeqEvent,
+    Delays, Effects), derived from the module descriptors.
+  - Right-click any module on the canvas for **Exclude from Mutation** (red frame while the
+    mutator is open; saved in the `.var` sidecar). `Parameter` locks are respected too.
+  - G2 keyboard map inside the window: `1-8` focus, `O/T` to Mother/Father, `E/U` mutate,
+    `N` randomize, `I` interpolate, `X` cross, `S` to temp storage, Shift+drag interpolates
+    two sounds, Ctrl+drag crosses them.
+
+- Added **`Ctrl+5..8` shortcuts to toggle the floaters** (Knob, Keyboard, Patch Notes,
+  Patch Mutator). The shortcuts — including `Ctrl+1..4` slot switching — now also work while
+  a floater window has keyboard focus, so pressing the same shortcut again closes the
+  floater. Fixed `Ctrl+8` never matching on Linux: X11 delivers it as the legacy DEL control
+  character (0x7F) instead of the digit.
+
+- Floater windows now **stay in front of the editor**: clicking anywhere in the main window
+  re-raises all visible floaters without stealing keyboard focus (JUCE's always-on-top flag
+  is unreliable across Linux compositors).
+
 ## 0.6.0 — 2026-06-11
 
 - Added **CI binary builds** (`.github/workflows/build-binaries.yml`): a manually

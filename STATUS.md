@@ -24,6 +24,9 @@ This file tracks the current project state at a practical level. Detailed versio
 - Module help, Help Contents, About links, bug-report link, beta warning popup, themes, canvas zoom, parameter randomization, initialization, locks, and snapshots are implemented.
 - Dark-mode app icon and JUCE metadata are in place.
 - Knob Floater (interactive 18-knob + pedal/switch/aftertouch overview) and Keyboard Floater (virtual keyboard with drone/repeat modes) are implemented as View-menu floating windows with position persistence.
+- Eight rotating color themes (Ctrl+T) restyle the app chrome and patch canvas; the choice persists across sessions.
+- Patch Variations: the 8 header snapshots persist in a `.var` sidecar (the `.pch` stays standard), with copy/init, morph capture, and write-through of live edits.
+- Patch Mutator (G2-style interactive evolution): Mother/Children/Father breeding with Mutate/Randomize/Interpolate/Cross, Quick Locks, temporary storage, variations row, per-module mutation exclusion, and timed audition morphing — all floaters toggle via Ctrl+5..8 and stay in front of the editor.
 
 ## Known Development Context
 
