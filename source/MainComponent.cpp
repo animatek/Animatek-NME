@@ -1910,7 +1910,7 @@ void MainComponent::toggleMutatorWindow() {
         case MutatorPanel::GenOp::Interpolate:
           return Mutator::interpolate(mother, father, gp.interpT);
         case MutatorPanel::GenOp::Cross:
-          return Mutator::cross(mother, father, gp.crossProb, rng);
+          return Mutator::cross(mother, father, gp.crossProb, rng, gp.independentCross);
       }
       return {};
     };

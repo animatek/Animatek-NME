@@ -33,7 +33,8 @@ namespace Mutator
     ParamSnapshot interpolate(const ParamSnapshot& mother, const ParamSnapshot& father, float t);
 
     /** Each gene copied verbatim from one parent; the source parent switches
-        with `probability` at each gene. No random value changes. */
+        with `probability` at each gene (sequential) or independently per gene (independent).
+        No random value changes. */
     ParamSnapshot cross(const ParamSnapshot& mother, const ParamSnapshot& father,
-                        float probability, juce::Random& rng);
+                        float probability, juce::Random& rng, bool independentCross = false);
 }

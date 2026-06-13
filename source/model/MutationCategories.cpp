@@ -72,3 +72,11 @@ bool mutCategoryMatches(MutCategory cat,
     }
     return false;
 }
+
+int getCategoryForParam(const ModuleDescriptor& module, const ParameterDescriptor& param)
+{
+    for (int i = 0; i < kNumMutCategories; ++i)
+        if (mutCategoryMatches(static_cast<MutCategory>(i), module, param))
+            return i;
+    return -1;
+}

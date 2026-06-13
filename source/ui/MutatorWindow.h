@@ -24,10 +24,11 @@ public:
 
     struct GenParams
     {
-        float mutateProb  = 0.30f;
-        float mutateRange = 0.30f;
+        float mutateProb  = 0.20f;  // Sims 1991 optimum
+        float mutateRange = 0.40f;  // Sims 1991 optimum
         float crossProb   = 0.15f;
         float interpT     = 0.0f;
+        bool independentCross = false;
         bool lock[kNumMutCategories] = {};
         bool solo[kNumMutCategories] = {};
     };
@@ -89,6 +90,7 @@ private:
     juce::Label probLabel, rangeLabel, crossProbLabel;
     juce::Label tempLabel, variationsLabel, quickLockLabel;
     juce::ToggleButton linkToggle { "Link" };
+    juce::ToggleButton crossModeToggle { "Ind" };  // Independent vs Sequential
     bool adjustingLinked = false;
 
     juce::Label auditionLabel;

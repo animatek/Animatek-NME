@@ -203,13 +203,18 @@ MutatorPanel::MutatorPanel()
         l.setFont(juce::FontOptions(10.5f));
         addAndMakeVisible(l);
     };
-    setupKnob(probSlider, probLabel, "Probability", 0.30, false);
-    setupKnob(rangeSlider, rangeLabel, "Range", 0.30, true);
+    setupKnob(probSlider, probLabel, "Probability", 0.20, false);
+    setupKnob(rangeSlider, rangeLabel, "Range", 0.40, true);
     setupKnob(crossProbSlider, crossProbLabel, "Probability", 0.15, false);
 
     // Linked (G2 default): low probability <-> large changes
     linkToggle.setToggleState(true, juce::dontSendNotification);
     addAndMakeVisible(linkToggle);
+
+    // Cross mode: Sequential (default) or Independent
+    crossModeToggle.setButtonText("Seq / Ind");
+    crossModeToggle.setTooltip("Sequential (default): parent switches at each gene\nIndependent: each gene picks parent separately");
+    addAndMakeVisible(crossModeToggle);
     probSlider.onValueChange = [this] {
         if (linkToggle.getToggleState() && !adjustingLinked)
         {
@@ -340,8 +345,9 @@ void MutatorPanel::resized()
     auditionLabel.setBounds(w / 2 - 110, 26, 62, 18);
     auditionTimeBox.setBounds(w / 2 - 44, 24, 92, 22);
 
-    crossProbLabel.setBounds(w - kPad - 70, 6, 70, 12);
-    crossProbSlider.setBounds(w - kPad - 52, 18, 46, 38);
+    crossProbLabel.setBounds(w - kPad - 130, 6, 70, 12);
+    crossProbSlider.setBounds(w - kPad - 112, 18, 46, 38);
+    crossModeToggle.setBounds(w - kPad - 58, 30, 48, 18);
 
     // ── Operation buttons (centered) ─────────────────────────────────────────
     {
@@ -402,6 +408,7 @@ MutatorPanel::GenParams MutatorPanel::currentParams(float interpT) const
     p.mutateRange = static_cast<float>(rangeSlider.getValue());
     p.crossProb   = static_cast<float>(crossProbSlider.getValue());
     p.interpT     = interpT;
+    p.independentCross = crossModeToggle.getToggleState();
     for (int i = 0; i < kNumMutCategories; ++i)
     {
         p.lock[i] = lockBtn[i]->getToggleState();

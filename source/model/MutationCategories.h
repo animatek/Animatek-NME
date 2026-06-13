@@ -25,3 +25,6 @@ const char* mutCategoryName(MutCategory cat);
 bool mutCategoryMatches(MutCategory cat,
                         const ModuleDescriptor& module,
                         const ParameterDescriptor& param);
+
+/** Determine which category (if any) a parameter belongs to. Returns -1 if none. */
+int getCategoryForParam(const ModuleDescriptor& module, const ParameterDescriptor& param);
