@@ -52,13 +52,15 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
 {
     EditorOptions o;
     if (!props) return o;
-    // Migrate pre-0.7 "appearanceTheme" (0=Soft chrome, 1=Deep chrome; canvas was always Dark)
-    const int legacyIndex = props->getIntValue("appearanceTheme", 0) == 1 ? 2 : 1;
+    // Migrate pre-0.7 "appearanceTheme" (0=Soft chrome, 1=Deep chrome; canvas was always Dark);
+    // a fresh install with neither key defaults to "Nord" (index 6).
+    const int legacyIndex = props->getIntValue("appearanceTheme", -1) == 1 ? 2 : 6;
     o.uiThemeIndex   = props->getIntValue("uiThemeIndex", legacyIndex);
     o.cableStyle     = static_cast<CableStyle>  (props->getIntValue  ("cableStyle",      0));
     o.knobControl    = static_cast<KnobControl> (props->getIntValue  ("knobControl",     0));
     o.autoUpload     = props->getBoolValue  ("autoUpload",     true);
     o.recycleWindows = props->getBoolValue  ("recycleWindows", true);
+    o.wireframe      = props->getBoolValue  ("wireframe",      false);
     o.cableOpacity   = static_cast<float>   (props->getDoubleValue("cableOpacity", 0.80));
     o.sendRateIndex  = juce::jlimit (0, static_cast<int> (sendRates().size()) - 1,
                                      props->getIntValue ("sendRateIndex", 1));
@@ -76,6 +78,7 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("knobControl",     static_cast<int> (knobControl));
     props->setValue ("autoUpload",      autoUpload);
     props->setValue ("recycleWindows",  recycleWindows);
+    props->setValue ("wireframe",       wireframe);
     props->setValue ("cableOpacity",    static_cast<double>(cableOpacity));
     props->setValue ("sendRateIndex",   sendRateIndex);
     props->setValue ("presetLibraryRoot", presetLibraryRoot.getFullPathName());
@@ -159,11 +162,14 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
     styleLabel (behaviourLabel, true);
     styleToggle (autoUploadToggle);
     styleToggle (recycleWinToggle);
+    styleToggle (wireframeToggle);
     autoUploadToggle.setToggleState (options.autoUpload,     juce::dontSendNotification);
     recycleWinToggle.setToggleState (options.recycleWindows, juce::dontSendNotification);
+    wireframeToggle .setToggleState (options.wireframe,      juce::dontSendNotification);
     addAndMakeVisible (behaviourLabel);
     addAndMakeVisible (autoUploadToggle);
     addAndMakeVisible (recycleWinToggle);
+    addAndMakeVisible (wireframeToggle);
 
     // Send speed selector — synth parameter throughput (Mutator/Random)
     styleLabel (sendRateLabel);
@@ -200,7 +206,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
     addAndMakeVisible (okButton);
     addAndMakeVisible (cancelButton);
 
-    setSize (560, 536);
+    setSize (560, 558);
 }
 
 void EditorOptionsDialog::populateThemeSelector()
@@ -231,7 +237,7 @@ void EditorOptionsDialog::paint (juce::Graphics& g)
     // Separators — positions match resized() math:
     // Separators match resized() section starts.
     const float x0 = 14.0f, x1 = static_cast<float> (getWidth() - 14);
-    for (int sy : { 104, 226, 326, 434, 498 })
+    for (int sy : { 104, 226, 326, 456, 520 })
     {
         g.setColour (p().buttonActive);
         g.drawHorizontalLine (sy, x0, x1);
@@ -288,6 +294,8 @@ void EditorOptionsDialog::resized()
     autoUploadToggle.setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
     y += rowH;
     recycleWinToggle.setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
+    y += rowH;
+    wireframeToggle.setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
     y += rowH + 4;
     sendRateLabel.setBounds (pad + 8, y, 80, rowH);
     sendRateSelector.setBounds (pad + 92, y, getWidth() - pad * 2 - 100, rowH);
@@ -364,6 +372,7 @@ void EditorOptionsDialog::apply()
     options.uiThemeIndex   = themeSelector.getSelectedId() - 1;
     options.autoUpload     = autoUploadToggle.getToggleState();
     options.recycleWindows = recycleWinToggle .getToggleState();
+    options.wireframe      = wireframeToggle  .getToggleState();
     options.sendRateIndex  = sendRateSelector.getSelectedId() - 1;
 
     if (onChange)

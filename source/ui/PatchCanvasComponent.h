@@ -138,6 +138,10 @@ private:
     juce::Point<int> getConnectorPosition(const Module& m, const Connector& conn, int yOffset) const;
 
     // Theme-aware painting helpers
+    // Wireframe "ink": line/text colour for a module when wireframe mode is on.
+    // Classic-style themes (transparent moduleBg) use each module's own XML colour
+    // so types stay distinct and legible; opaque-moduleBg themes use the light text.
+    juce::Colour wireframeInk(const Module& m) const;
     void paintModuleThemed(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container);
     void paintModuleBackground(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintConnectors(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container);
@@ -150,7 +154,7 @@ private:
     void paintLights(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintCustomDisplays(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintResetButtons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
-    void paintStaticIcons(juce::Graphics& g, juce::Rectangle<int> bounds, const ModuleTheme& theme);
+    void paintStaticIcons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintMorphOverlay(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintMorphOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
                                 juce::Rectangle<int> moduleBounds, const Parameter& param);

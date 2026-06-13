@@ -6,10 +6,23 @@ Support this proyect: https://www.patreon.com/c/animatek
 
 ## Unreleased
 
-- Added **4 more color themes** (12 total, cycled with `Ctrl+T` or in View → Theme):
-  **Cyberpunk Neon** (deep blue-black with cyan text and neon accents, after
-  Roboron3042/Cyberpunk-Neon), **Matrix** (green-on-black terminal), **Light** (clean
-  white/grey), and **Elegant** (muted midnight + gold). The theme menu now uses a wider id
+- Added a **Wireframe modules** mode — toggle in Editor Options → Behaviour, in View →
+  Wireframe Modules, or with **Ctrl+W** (persisted, works with any color theme). When on, the
+  canvas draws module frames, group boxes, knob bodies, text displays and icon boxes as
+  outlines only — the grid shows through — while cables, LEDs, meters and labels keep their
+  colors so the patch stays readable. Each module gets a crisp outline; morph-group color
+  moves to the knob ring so assignments stay visible. On Classic-style themes (where the dark
+  module text would vanish) the outline/labels use each module's own color, so module types
+  stay distinct. (Buttons, sliders and curve "screens" keep their fills for now since they
+  encode state/values.)
+
+- Reworked the **color theme set** (13 total, cycled with `Ctrl+T` or in View → Theme), with
+  **Nord** as the new default: Classic, Dark, Deep Dark, Tokyo Night, Gruvbox Dark, Dracula,
+  **Nord**, plus six **Bitwig community themes** — **Ghosty**, **Frost** (light/frost),
+  **Magnetic Revival**, **MothWig** (teal night), **Macchiato** (Catppuccin Macchiato), and
+  **Cubitwig**. The Bitwig palettes are distilled from each theme's Bitwig Theme Editor file
+  (Berikai/awesome-bitwig-themes): the window background seeds a tinted 5-step ramp and the
+  Bitwig "Panel" accent slots map onto our cable/accent colors. The theme menu uses a wider id
   range, so more themes can be added freely.
 
 - The preset browser **type pills** (Patch / Snippet / Bank) now use three different color

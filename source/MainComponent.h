@@ -56,6 +56,7 @@ private:
     void choosePresetLibraryFolder();
     void applyEditorOptions(const EditorOptions& opts);
     void applyUiTheme(int index, bool persist);
+    void toggleWireframe();
     void togglePresetBrowser();
     void showPresetBrowser();
     void toggleKnobFloater();

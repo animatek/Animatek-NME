@@ -139,7 +139,11 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // Main layout
   mainLayout = std::make_unique<MainLayout>(moduleDescs);
-  mainLayout->setTheme(ThemeRegistry::get(editorOptions.uiThemeIndex).makeCanvas());
+  {
+    auto canvasScheme = ThemeRegistry::get(editorOptions.uiThemeIndex).makeCanvas();
+    canvasScheme.wireframe = editorOptions.wireframe;
+    mainLayout->setTheme(canvasScheme);
+  }
   addAndMakeVisible(mainLayout.get());
 
   // Wire connection manager status updates to UI
@@ -858,6 +862,11 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
         "Theme: " + ThemeRegistry::get(editorOptions.uiThemeIndex).name, 2500);
     return true;
   }
+  if (key == juce::KeyPress('w', juce::ModifierKeys::commandModifier, 0))
+  {
+    toggleWireframe();
+    return true;
+  }
   if (handleFloaterShortcut(key))
     return true;
   return mainLayout != nullptr
@@ -918,6 +927,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
       themeMenu.addItem(200 + i, ThemeRegistry::get(i).name, true,
                         i == editorOptions.uiThemeIndex);
     menu.addSubMenu("Theme\tCtrl+T", themeMenu);
+    menu.addItem(66, "Wireframe Modules\tCtrl+W", true, editorOptions.wireframe);
     menu.addSeparator();
     menu.addItem(80, "Knob Floater\tCtrl+5", true,
                  knobFloaterWindow != nullptr && knobFloaterWindow->isVisible());
@@ -1114,6 +1124,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 64:  // Shake Cables
     mainLayout->getCanvas().shakeCables();
+    break;
+  case 66:  // Wireframe Modules
+    toggleWireframe();
     break;
   case 80:  // Knob Floater
     toggleKnobFloater();
@@ -1566,7 +1579,9 @@ void MainComponent::applyUiTheme(int index, bool persist) {
 
   const auto& theme = ThemeRegistry::get(index);
   AppTheme::setPalette(theme.app);
-  mainLayout->setTheme(theme.makeCanvas());
+  auto canvasScheme = theme.makeCanvas();
+  canvasScheme.wireframe = editorOptions.wireframe;
+  mainLayout->setTheme(canvasScheme);
   mainLayout->applyTheme();
   if (presetBrowserWindow)
     presetBrowserWindow->applyTheme();
@@ -1580,6 +1595,15 @@ void MainComponent::applyUiTheme(int index, bool persist) {
 
   if (persist)
     editorOptions.save(appProperties.getUserSettings());
+}
+
+void MainComponent::toggleWireframe() {
+  editorOptions.wireframe = !editorOptions.wireframe;
+  // Re-apply the current theme so the canvas rebuilds with the new flag; persist.
+  applyUiTheme(editorOptions.uiThemeIndex, true);
+  if (mainLayout)
+    mainLayout->getStatusBar().showMessage(
+        editorOptions.wireframe ? "Wireframe: on" : "Wireframe: off", 2000);
 }
 
 void MainComponent::choosePresetLibraryFolder() {
@@ -2259,6 +2283,7 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Shift+Z             Reset zoom to 100%\n"
       "  Ctrl++ / Ctrl+-     Zoom in / out\n"
       "  Ctrl+T              Cycle color theme\n"
+      "  Ctrl+W              Toggle wireframe modules\n"
       "  S                   Shake cables\n"
       "  Middle-drag         Pan canvas\n"
       "\n"

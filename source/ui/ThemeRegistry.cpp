@@ -104,14 +104,6 @@ ColorScheme makeCanvas(const PaletteSpec& p)
     return s;
 }
 
-const PaletteSpec kCatppuccinMocha = {
-    juce::Colour(0xff11111b), juce::Colour(0xff181825), juce::Colour(0xff1e1e2e),
-    juce::Colour(0xff313244), juce::Colour(0xff45475a),
-    juce::Colour(0xffcdd6f4), juce::Colour(0xffa6adc8), juce::Colour(0xff6c7086),
-    juce::Colour(0xfff38ba8), juce::Colour(0xffa6e3a1), juce::Colour(0xfff9e2af),
-    juce::Colour(0xff89b4fa), juce::Colour(0xfffab387), juce::Colour(0xffcba6f7),
-};
-
 const PaletteSpec kTokyoNight = {
     juce::Colour(0xff16161e), juce::Colour(0xff1a1b26), juce::Colour(0xff24283b),
     juce::Colour(0xff292e42), juce::Colour(0xff414868),
@@ -144,42 +136,60 @@ const PaletteSpec kNord = {
     juce::Colour(0xff81a1c1), juce::Colour(0xffd08770), juce::Colour(0xffb48ead),
 };
 
-// Cyberpunk Neon (after Roboron3042/Cyberpunk-Neon): deep blue-black with cyan
-// text and saturated neon accents.
-const PaletteSpec kCyberpunkNeon = {
-    juce::Colour(0xff00040e), juce::Colour(0xff000b1e), juce::Colour(0xff06182f),
-    juce::Colour(0xff0c2747), juce::Colour(0xff1f4e8c),
-    juce::Colour(0xffd7f8ff), juce::Colour(0xff0abdc6), juce::Colour(0xff3a6d78),
-    juce::Colour(0xffff2a6d), juce::Colour(0xff05ffa1), juce::Colour(0xfffdf500),
-    juce::Colour(0xff00b7ff), juce::Colour(0xffff6b1a), juce::Colour(0xffd300c5),
+// --- Bitwig community themes (Berikai/awesome-bitwig-themes) -----------------
+// Palettes distilled from each theme's Bitwig Theme Editor file: the window
+// background seeds a synthetic 5-step ramp (preserving the tint), and the
+// "Panel Red/Green/Yellow/Blue/Orange/Purple" slots map onto our accents.
+
+const PaletteSpec kGhosty = {
+    juce::Colour(0xff121212), juce::Colour(0xff202020), juce::Colour(0xff323232),
+    juce::Colour(0xff444444), juce::Colour(0xff636363),
+    juce::Colour(0xffffffff), juce::Colour(0xffc1c1c1), juce::Colour(0xff8b8b8b),
+    juce::Colour(0xfff590b2), juce::Colour(0xffc4f0a2), juce::Colour(0xffffe7b4),
+    juce::Colour(0xff92deff), juce::Colour(0xfffec0ed), juce::Colour(0xffd4c0fe),
 };
 
-// Matrix: green-on-black terminal. Cable/morph hues are kept as distinguishable
-// greens/limes/cyans so signal types stay readable in a monochrome theme.
-const PaletteSpec kMatrix = {
-    juce::Colour(0xff000000), juce::Colour(0xff010a01), juce::Colour(0xff04140a),
-    juce::Colour(0xff0a280f), juce::Colour(0xff145214),
-    juce::Colour(0xff00ff41), juce::Colour(0xff00cc36), juce::Colour(0xff1f7a2e),
-    juce::Colour(0xff7fff55), juce::Colour(0xff00ff41), juce::Colour(0xffccff33),
-    juce::Colour(0xff00ffaa), juce::Colour(0xff88dd22), juce::Colour(0xff33cc88),
+// Frost: light/frost scheme (only light Bitwig theme here besides our own Light).
+const PaletteSpec kFrost = {
+    juce::Colour(0xffe7e8ea), juce::Colour(0xffcfd1d4), juce::Colour(0xffc5c7c9),
+    juce::Colour(0xffb4b6b8), juce::Colour(0xff919294),
+    juce::Colour(0xff141414), juce::Colour(0xff48494a), juce::Colour(0xff757678),
+    juce::Colour(0xffff1c40), juce::Colour(0xff4abc00), juce::Colour(0xffffde42),
+    juce::Colour(0xff5ca8ee), juce::Colour(0xffff7f17), juce::Colour(0xffc36eff),
 };
 
-// Light: clean white/grey scheme with readable saturated accents.
-const PaletteSpec kLight = {
-    juce::Colour(0xffffffff), juce::Colour(0xfff4f5f7), juce::Colour(0xffeceef1),
-    juce::Colour(0xffdadde2), juce::Colour(0xffb8bdc7),
-    juce::Colour(0xff1b1d21), juce::Colour(0xff4a4f57), juce::Colour(0xff8a909a),
-    juce::Colour(0xffd64545), juce::Colour(0xff2f9e44), juce::Colour(0xfff08c00),
-    juce::Colour(0xff1c7ed6), juce::Colour(0xffe8590c), juce::Colour(0xff9c36b5),
+const PaletteSpec kMagneticRevival = {
+    juce::Colour(0xff131313), juce::Colour(0xff222222), juce::Colour(0xff343434),
+    juce::Colour(0xff454545), juce::Colour(0xff646464),
+    juce::Colour(0xffe0e0e0), juce::Colour(0xffababab), juce::Colour(0xff7d7d7d),
+    juce::Colour(0xffc0392b), juce::Colour(0xff27ae60), juce::Colour(0xfff1c40f),
+    juce::Colour(0xff809bce), juce::Colour(0xffff6361), juce::Colour(0xffbc5090),
 };
 
-// Elegant: muted "midnight + gold" scheme with soft, sophisticated accents.
-const PaletteSpec kElegant = {
-    juce::Colour(0xff14161a), juce::Colour(0xff1a1d23), juce::Colour(0xff22262e),
-    juce::Colour(0xff2c313b), juce::Colour(0xff3e4552),
-    juce::Colour(0xffece8e1), juce::Colour(0xffb6b1a8), juce::Colour(0xff6f6a61),
-    juce::Colour(0xffc47b7b), juce::Colour(0xff93b08a), juce::Colour(0xffd8b673),
-    juce::Colour(0xff7fa0c4), juce::Colour(0xffcf9b6b), juce::Colour(0xffab92b5),
+// MothWig: teal-night base; "Light Text" is a pale moth-yellow by design.
+const PaletteSpec kMothWig = {
+    juce::Colour(0xff07171e), juce::Colour(0xff0d2937), juce::Colour(0xff203a47),
+    juce::Colour(0xff344b57), juce::Colour(0xff566973),
+    juce::Colour(0xfffff68f), juce::Colour(0xffbbbd76), juce::Colour(0xff818b61),
+    juce::Colour(0xffdc322f), juce::Colour(0xff859900), juce::Colour(0xfffff68f),
+    juce::Colour(0xff268bd2), juce::Colour(0xffcb4b16), juce::Colour(0xff6c71c4),
+};
+
+// Macchiato: the Catppuccin Macchiato variant (warmer/lighter than the original Mocha).
+const PaletteSpec kMacchiato = {
+    juce::Colour(0xff141520), juce::Colour(0xff24273a), juce::Colour(0xff36384a),
+    juce::Colour(0xff474a5a), juce::Colour(0xff666875),
+    juce::Colour(0xffcad3f5), juce::Colour(0xff9ca3c1), juce::Colour(0xff747a94),
+    juce::Colour(0xffed8796), juce::Colour(0xffa6da95), juce::Colour(0xffeed49f),
+    juce::Colour(0xff8aadf4), juce::Colour(0xfff5a97f), juce::Colour(0xffc6a0f6),
+};
+
+const PaletteSpec kCubitwig = {
+    juce::Colour(0xff202223), juce::Colour(0xff3a3d3f), juce::Colour(0xff4a4d4e),
+    juce::Colour(0xff5a5c5e), juce::Colour(0xff757779),
+    juce::Colour(0xffdddddd), juce::Colour(0xffafb0b1), juce::Colour(0xff888a8b),
+    juce::Colour(0xffff1c40), juce::Colour(0xff4abc00), juce::Colour(0xffffde42),
+    juce::Colour(0xff5ca8ee), juce::Colour(0xffff7f17), juce::Colour(0xffc36eff),
 };
 
 // Theme menu items use IDs 200+ in MainComponent's View menu (see getMenuForIndex
@@ -190,15 +200,16 @@ const std::vector<EditorTheme>& themes()
         { "Classic",          AppTheme::palette(AppThemeId::SoftDarkGrey), createClassicTheme },
         { "Dark",             AppTheme::palette(AppThemeId::SoftDarkGrey), createDarkTheme },
         { "Deep Dark",        AppTheme::palette(AppThemeId::DeepDarkGrey), createDarkTheme },
-        { "Catppuccin Mocha", makeApp(kCatppuccinMocha), []{ return makeCanvas(kCatppuccinMocha); } },
         { "Tokyo Night",      makeApp(kTokyoNight),      []{ return makeCanvas(kTokyoNight); } },
         { "Gruvbox Dark",     makeApp(kGruvboxDark),     []{ return makeCanvas(kGruvboxDark); } },
         { "Dracula",          makeApp(kDracula),         []{ return makeCanvas(kDracula); } },
         { "Nord",             makeApp(kNord),            []{ return makeCanvas(kNord); } },
-        { "Cyberpunk Neon",   makeApp(kCyberpunkNeon),   []{ return makeCanvas(kCyberpunkNeon); } },
-        { "Matrix",           makeApp(kMatrix),          []{ return makeCanvas(kMatrix); } },
-        { "Light",            makeApp(kLight),           []{ return makeCanvas(kLight); } },
-        { "Elegant",          makeApp(kElegant),         []{ return makeCanvas(kElegant); } },
+        { "Ghosty",           makeApp(kGhosty),          []{ return makeCanvas(kGhosty); } },
+        { "Frost",            makeApp(kFrost),           []{ return makeCanvas(kFrost); } },
+        { "Magnetic Revival", makeApp(kMagneticRevival), []{ return makeCanvas(kMagneticRevival); } },
+        { "MothWig",          makeApp(kMothWig),         []{ return makeCanvas(kMothWig); } },
+        { "Macchiato",        makeApp(kMacchiato),       []{ return makeCanvas(kMacchiato); } },
+        { "Cubitwig",         makeApp(kCubitwig),        []{ return makeCanvas(kCubitwig); } },
     };
     return list;
 }

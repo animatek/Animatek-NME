@@ -106,6 +106,11 @@ struct ColorScheme
     // SlotBar synth icon
     juce::Colour slotIconActive;
     juce::Colour slotIconInactive;
+
+    // Wireframe mode: when true, structural fills (module body, group boxes, knob
+    // bodies, displays, icon boxes) are drawn as outlines only — set independently
+    // of the theme palette (Editor Options toggle), not by the theme factories.
+    bool wireframe = false;
 };
 
 extern const ColorScheme kClassicTheme;

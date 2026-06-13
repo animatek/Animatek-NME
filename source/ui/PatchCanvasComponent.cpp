@@ -608,7 +608,7 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int sect
     // Decorations (signal-flow lines/symbols) sit beneath knobs and buttons so
     // overlapping controls (e.g. GainControl's shift button crossing dec-2) stay
     // visible on top.
-    paintStaticIcons(g, bounds, theme);
+    paintStaticIcons(g, m, bounds, theme);
     paintKnobs(g, m, bounds, theme);
     auto bgForButtons = activeScheme_.moduleBg.isOpaque()
         ? activeScheme_.moduleBg
@@ -721,15 +721,32 @@ juce::String PatchCanvas::getMorphOverlayText(const Parameter& param) const
     return {};
 }
 
+juce::Colour PatchCanvas::wireframeInk(const Module& m) const
+{
+    // Opaque-moduleBg themes (Dark, Nord, …) already use a light text colour that
+    // reads on the canvas. Classic-style themes leave moduleBg transparent and the
+    // text is dark (meant for the light module fill we no longer draw), so fall back
+    // to the module's own XML colour — brightened so thin strokes/labels stay legible.
+    if (activeScheme_.moduleBg.isOpaque())
+        return activeScheme_.moduleText;
+    return m.getDescriptor()->background.brighter(0.35f);
+}
+
 void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
 {
     auto bgColour = activeScheme_.moduleBg.isOpaque()
         ? activeScheme_.moduleBg
         : m.getDescriptor()->background;
 
-    // Module body (flat background, no title band)
-    g.setColour(bgColour);
-    g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
+    const bool wire = activeScheme_.wireframe;
+
+    // Module body (flat background, no title band). Wireframe: no fill — the
+    // canvas grid shows through and the edge lines below form the outline.
+    if (!wire)
+    {
+        g.setColour(bgColour);
+        g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
+    }
 
     // GroupBoxes — rounded rect section borders (e.g. PWidth in OscA)
     for (auto& gb : theme.groupBoxes)
@@ -739,15 +756,18 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
             static_cast<float>(bounds.getY() + gb.y),
             static_cast<float>(gb.width),
             static_cast<float>(gb.height));
-        g.setColour(bgColour.darker(0.25f));
-        g.fillRoundedRectangle(gbRect, 3.0f);
-        g.setColour(bgColour.darker(0.5f));
+        if (!wire)
+        {
+            g.setColour(bgColour.darker(0.25f));
+            g.fillRoundedRectangle(gbRect, 3.0f);
+        }
+        g.setColour(wire ? activeScheme_.groupBoxBorder : bgColour.darker(0.5f));
         g.drawRoundedRectangle(gbRect, 3.0f, 1.0f);
     }
 
     // Module name (no band, text directly on background)
     auto titleBar = juce::Rectangle<int>(bounds.getX(), bounds.getY() + 2, bounds.getWidth(), 12);
-    g.setColour(activeScheme_.moduleText);
+    g.setColour(wire ? wireframeInk(m) : activeScheme_.moduleText);
     g.setFont(juce::FontOptions("Fira Sans", 12.5f, juce::Font::bold));
     g.drawText(m.getTitle(), titleBar.reduced(4, 0), juce::Justification::centredLeft, true);
 
@@ -758,16 +778,27 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
         g.drawRoundedRectangle(bounds.toFloat().reduced(1.0f), 3.0f, 2.0f);
     }
 
-    // Subtle edge lines on all four sides
-    g.setColour(activeScheme_.moduleBorder);
-    float x1 = static_cast<float>(bounds.getX());
-    float y1 = static_cast<float>(bounds.getY());
-    float x2 = static_cast<float>(bounds.getRight());
-    float y2 = static_cast<float>(bounds.getBottom());
-    g.drawLine(x1, y1, x2, y1, 1.0f); // top
-    g.drawLine(x1, y2, x2, y2, 1.0f); // bottom
-    g.drawLine(x1, y1, x1, y2, 1.0f); // left
-    g.drawLine(x2, y1, x2, y2, 1.0f); // right
+    if (wire)
+    {
+        // Without a body fill the 1px edge lines vanish, so draw a crisp rounded
+        // frame in the (near-white) module text colour — brighter than the inner
+        // group-box outlines, so module bounds read clearly.
+        g.setColour(wireframeInk(m).withAlpha(0.7f));
+        g.drawRoundedRectangle(bounds.toFloat().reduced(0.5f), 3.0f, 1.2f);
+    }
+    else
+    {
+        // Subtle edge lines on all four sides
+        g.setColour(activeScheme_.moduleBorder);
+        float x1 = static_cast<float>(bounds.getX());
+        float y1 = static_cast<float>(bounds.getY());
+        float x2 = static_cast<float>(bounds.getRight());
+        float y2 = static_cast<float>(bounds.getBottom());
+        g.drawLine(x1, y1, x2, y1, 1.0f); // top
+        g.drawLine(x1, y2, x2, y2, 1.0f); // bottom
+        g.drawLine(x1, y1, x1, y2, 1.0f); // left
+        g.drawLine(x2, y1, x2, y2, 1.0f); // right
+    }
 
     // Selection: border-only highlight drawn in paintModules — no background fill here
     if (isSelected(&m))
@@ -960,7 +991,7 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
 
 void PatchCanvas::paintLabels(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
 {
-    g.setColour(activeScheme_.moduleText);
+    g.setColour(activeScheme_.wireframe ? wireframeInk(m) : activeScheme_.moduleText);
     g.setFont(juce::FontOptions(9.0f));
 
     static const juce::StringArray boldLabels { "OSC", "Noise Filter", "Bend" };
@@ -1047,9 +1078,14 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         float knobAngleDeg = kStartDeg + normalized * kRangedeg;
         float knobAngle    = knobAngleDeg * juce::MathConstants<float>::pi / 180.0f;
 
-        // Background circle — morph group color if assigned, grey otherwise
-        g.setColour(baseColor);
-        g.fillEllipse(rcx, rcy, rSz, rSz);
+        // Background circle — morph group color if assigned, grey otherwise.
+        // Wireframe: no fill — the ring (drawn below in baseColor) carries the
+        // morph-group color so assignments stay readable.
+        if (!activeScheme_.wireframe)
+        {
+            g.setColour(baseColor);
+            g.fillEllipse(rcx, rcy, rSz, rSz);
+        }
 
         // Morph wedge: starts at the knob's current position, sweeps by morphRange
         if (hasMorph && param != nullptr)
@@ -1072,8 +1108,10 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
             }
         }
 
-        // Outline
-        g.setColour(hasMorph ? baseColor.darker(0.4f) : activeScheme_.knobBorder);
+        // Outline — in wireframe, the (now unfilled) ring uses the full baseColor
+        // so morph-group hue and the knob shape both read clearly.
+        g.setColour(activeScheme_.wireframe ? baseColor
+                                            : (hasMorph ? baseColor.darker(0.4f) : activeScheme_.knobBorder));
         g.drawEllipse(rcx, rcy, rSz, rSz, 1.0f);
 
         // Travel-limit tick marks at -135° (7 o'clock) and +135° (5 o'clock)
@@ -1098,7 +1136,9 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         float sinA   = std::sin(knobAngle);
         float cosA   = std::cos(knobAngle);
 
-        g.setColour(activeScheme_.knobGrip);
+        // Grip indicator: knobGrip is a dark fill detail that disappears on an
+        // unfilled wireframe knob, so use the bright module text colour there.
+        g.setColour(activeScheme_.wireframe ? wireframeInk(m) : activeScheme_.knobGrip);
         g.drawLine(centerX + sinA * innerR, centerY - cosA * innerR,
                    centerX + sinA * outerR, centerY - cosA * outerR, 1.5f);
 
@@ -2187,8 +2227,11 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
         float renderH = juce::jmin(dh, 13.0f);
         float renderY = dy + (dh - renderH) * 0.5f;
 
-        g.setColour(activeScheme_.displayBg);
-        g.fillRect(dx, renderY, dw, renderH);
+        if (!activeScheme_.wireframe)
+        {
+            g.setColour(activeScheme_.displayBg);
+            g.fillRect(dx, renderY, dw, renderH);
+        }
 
         // Inner-bevel border: darker on top/left, slightly lighter on bottom/right
         g.setColour(activeScheme_.displayBorder);
@@ -2213,7 +2256,9 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
                 : param->getDescriptor()->formatter;
             displayStr = ValueFormatters::format(fmtName, val);
 
-            g.setColour(juce::Colours::white);
+            // White reads on the dark display fill; with no fill (wireframe) use
+            // the module text colour so it stays legible on any canvas.
+            g.setColour(activeScheme_.wireframe ? wireframeInk(m) : juce::Colours::white);
             g.setFont(juce::FontOptions(8.5f));
             g.drawText(displayStr,
                        static_cast<int>(dx), static_cast<int>(renderY),
@@ -2273,8 +2318,9 @@ void PatchCanvas::paintResetButtons(juce::Graphics& g, const Module& m, juce::Re
     }
 }
 
-void PatchCanvas::paintStaticIcons(juce::Graphics& g, juce::Rectangle<int> bounds, const ModuleTheme& theme)
+void PatchCanvas::paintStaticIcons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
 {
+    const juce::Colour iconInk = activeScheme_.wireframe ? wireframeInk(m) : activeScheme_.moduleText;
     for (auto& si : theme.staticIcons)
     {
         // Decoration and filter-curve icons: drawn at exact XML position/size, no box, no scale
@@ -2290,7 +2336,7 @@ void PatchCanvas::paintStaticIcons(juce::Graphics& g, juce::Rectangle<int> bound
             // the procedural drawer for icons we don't have a bitmap for.
             if (si.iconName.startsWith("decoration-"))
             {
-                auto img = getTintedDecoration(si.iconName, activeScheme_.moduleText);
+                auto img = getTintedDecoration(si.iconName, iconInk);
                 if (img.isValid())
                 {
                     g.drawImage(img, juce::Rectangle<float>(ix, iy, iw, ih),
@@ -2299,8 +2345,8 @@ void PatchCanvas::paintStaticIcons(juce::Graphics& g, juce::Rectangle<int> bound
                 }
             }
 
-            g.setColour(activeScheme_.moduleText);
-            drawButtonIcon(g, si.iconName, ix, iy, iw, ih, activeScheme_.moduleText);
+            g.setColour(iconInk);
+            drawButtonIcon(g, si.iconName, ix, iy, iw, ih, iconInk);
             continue;
         }
 
@@ -2324,14 +2370,19 @@ void PatchCanvas::paintStaticIcons(juce::Graphics& g, juce::Rectangle<int> bound
         float ix = bx + pad;
         float iy = by + pad;
 
-        // Semi-transparent black rounded box
-        g.setColour(juce::Colour(0x66000000));
-        g.fillRoundedRectangle(bx, by, bw, bh, 3.0f);
-        g.setColour(juce::Colour(0x66ffffff));
+        // Semi-transparent black rounded box (skipped in wireframe — outline only)
+        if (!activeScheme_.wireframe)
+        {
+            g.setColour(juce::Colour(0x66000000));
+            g.fillRoundedRectangle(bx, by, bw, bh, 3.0f);
+        }
+        g.setColour(activeScheme_.wireframe ? iconInk.withAlpha(0.6f)
+                                            : juce::Colour(0x66ffffff));
         g.drawRoundedRectangle(bx, by, bw, bh, 3.0f, 1.0f);
 
-        // Waveform icon in white
-        drawButtonIcon(g, si.iconName, ix, iy, iw, ih, juce::Colours::white);
+        // Waveform icon — white on the dark box; wireframe ink (per-module) otherwise.
+        drawButtonIcon(g, si.iconName, ix, iy, iw, ih,
+                       activeScheme_.wireframe ? iconInk : juce::Colours::white);
     }
 }
 

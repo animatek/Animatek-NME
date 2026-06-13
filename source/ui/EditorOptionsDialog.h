@@ -10,11 +10,12 @@ struct EditorOptions
     enum class CableStyle  { CurvedThick = 0, StraightThick, CurvedThin, StraightThin };
     enum class KnobControl { Horizontal = 0, Circular, Vertical };
 
-    int         uiThemeIndex   = 1;   // index into ThemeRegistry ("Dark")
+    int         uiThemeIndex   = 6;   // index into ThemeRegistry ("Nord")
     CableStyle  cableStyle     = CableStyle::CurvedThick;
     KnobControl knobControl    = KnobControl::Horizontal;
     bool        autoUpload     = true;
     bool        recycleWindows = true;
+    bool        wireframe      = false; // outline-only module rendering (theme-independent)
     float       cableOpacity   = 0.80f;
     int         sendRateIndex  = 1;   // index into sendRates() — synth param throughput
     juce::File  presetLibraryRoot;
@@ -81,6 +82,7 @@ private:
     juce::Label    behaviourLabel    { {}, "BEHAVIOUR" };
     juce::ToggleButton autoUploadToggle   { "Auto Upload  (send parameter changes to synth immediately)" };
     juce::ToggleButton recycleWinToggle   { "Recycle Windows  (reuse patch windows)" };
+    juce::ToggleButton wireframeToggle    { "Wireframe modules  (outline only — works with any theme)" };
     juce::Label    sendRateLabel     { {}, "Send speed" };
     juce::ComboBox sendRateSelector;
 
