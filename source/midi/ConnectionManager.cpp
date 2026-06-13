@@ -564,15 +564,14 @@ void ConnectionManager::queueParameter(int section, int moduleId, int parameterI
     paramQueue_[{ section, moduleId, parameterId }] = value;
 
     if (!paramQueueTimer_.isTimerRunning())
-        paramQueueTimer_.startTimer(20);
+        paramQueueTimer_.startTimer(paramDrainIntervalMs_);
 }
 
 void ConnectionManager::drainParamQueue()
 {
     if (!isConnected()) { clearParamQueue(); return; }
 
-    // 4 per 20ms (~200/s) — comfortably within the G1's SysEx input rate.
-    for (int i = 0; i < 4 && !paramQueue_.empty(); ++i)
+    for (int i = 0; i < paramDrainBatch_ && !paramQueue_.empty(); ++i)
     {
         auto it = paramQueue_.begin();
         sendParameter(it->first.section, it->first.module, it->first.param, it->second);
