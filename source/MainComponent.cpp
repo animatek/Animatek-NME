@@ -927,6 +927,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
                  patchNotesFloaterWindow != nullptr && patchNotesFloaterWindow->isVisible());
     menu.addItem(83, "Patch Mutator\tCtrl+8", true,
                  mutatorWindow != nullptr && mutatorWindow->isVisible());
+    menu.addItem(84, "SysEx Monitor\tCtrl+9", true,
+                 sysexMonitorWindow != nullptr && sysexMonitorWindow->isVisible());
   }
   else if (menuIndex == 3) // Device
   {
@@ -1124,6 +1126,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 83:  // Patch Mutator
     toggleMutatorWindow();
+    break;
+  case 84:  // SysEx Monitor
+    toggleSysexMonitor();
     break;
 
   default:
@@ -1695,6 +1700,7 @@ void MainComponent::saveFloaterState() {
   save(keyboardFloaterWindow.get(), "keyboardFloater");
   save(patchNotesFloaterWindow.get(), "patchNotesFloater");
   save(mutatorWindow.get(), "mutatorFloater");
+  save(sysexMonitorWindow.get(), "sysexMonitor");
   settings->saveIfNeeded();
 }
 
@@ -1711,6 +1717,8 @@ void MainComponent::restoreFloaterWindows() {
     togglePatchNotesFloater();
   if (settings->getBoolValue("mutatorFloaterOpen", false))
     toggleMutatorWindow();
+  if (settings->getBoolValue("sysexMonitorOpen", false))
+    toggleSysexMonitor();
 }
 
 void MainComponent::toggleKnobFloater() {
@@ -1816,6 +1824,7 @@ bool MainComponent::handleFloaterShortcut(const juce::KeyPress& key) {
     case '6': toggleKeyboardFloater(); return true;
     case '7': togglePatchNotesFloater(); return true;
     case '8': toggleMutatorWindow(); return true;
+    case '9': toggleSysexMonitor(); return true;
     default: return false;
   }
 }
@@ -1933,6 +1942,24 @@ void MainComponent::toggleMutatorWindow() {
   mainLayout->getHeaderBar().setMutatorOpen(true);
   mainLayout->getCanvas().repaintCanvas();
   showFloaterWindow(*mutatorWindow, "mutatorFloater");
+}
+
+void MainComponent::toggleSysexMonitor() {
+  if (sysexMonitorWindow && sysexMonitorWindow->isVisible()) {
+    sysexMonitorWindow->setVisible(false);  // stops capture+polling (zero overhead)
+    saveFloaterState();
+    return;
+  }
+
+  if (!sysexMonitorWindow) {
+    sysexMonitorWindow = std::make_unique<SysexMonitorWindow>();
+    sysexMonitorWindow->onClosed = [this]() { saveFloaterState(); };
+    sysexMonitorWindow->onGlobalKey =
+        [this](const juce::KeyPress& k) { return handleFloaterShortcut(k); };
+  }
+
+  sysexMonitorWindow->applyTheme();
+  showFloaterWindow(*sysexMonitorWindow, "sysexMonitor");
 }
 
 void MainComponent::handleConnectionRequest(const juce::String &inputId,

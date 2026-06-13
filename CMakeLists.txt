@@ -55,6 +55,7 @@ set(NME_SHARED_SOURCES
     source/ui/KeyboardFloaterWindow.cpp
     source/ui/PatchNotesFloaterWindow.cpp
     source/ui/MutatorWindow.cpp
+    source/ui/SysexMonitorWindow.cpp
 
     # MIDI/SysEx
     source/midi/SysExCodec.cpp
@@ -62,6 +63,7 @@ set(NME_SHARED_SOURCES
     source/midi/NmProtocol.cpp
     source/midi/MidiDeviceManager.cpp
     source/midi/ConnectionManager.cpp
+    source/midi/MidiMonitor.cpp
 
     # Protocol Messages
     source/protocol/SysExMessage.cpp

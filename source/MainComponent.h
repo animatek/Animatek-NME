@@ -20,6 +20,7 @@
 #include "ui/KeyboardFloaterWindow.h"
 #include "ui/PatchNotesFloaterWindow.h"
 #include "ui/MutatorWindow.h"
+#include "ui/SysexMonitorWindow.h"
 
 class SynthSettingsDialog;
 
@@ -61,6 +62,7 @@ private:
     void toggleKeyboardFloater();
     void togglePatchNotesFloater();
     void toggleMutatorWindow();
+    void toggleSysexMonitor();
     bool handleFloaterShortcut(const juce::KeyPress& key);  // Ctrl+1..8
     void showFloaterWindow(juce::DocumentWindow& window, const juce::String& settingsPrefix);
     void saveFloaterState();
@@ -118,6 +120,7 @@ private:
     std::unique_ptr<KeyboardFloaterWindow> keyboardFloaterWindow;
     std::unique_ptr<PatchNotesFloaterWindow> patchNotesFloaterWindow;
     std::unique_ptr<MutatorWindow> mutatorWindow;
+    std::unique_ptr<SysexMonitorWindow> sysexMonitorWindow;
 
     // Last-known global synth settings.
     SynthSettings cachedSynthSettings;

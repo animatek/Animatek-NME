@@ -1,4 +1,5 @@
 #include "MidiDeviceManager.h"
+#include "MidiMonitor.h"
 #include <cstdlib>
 #include <iostream>
 
@@ -69,6 +70,7 @@ void MidiDeviceManager::sendSysEx(const std::vector<uint8_t>& data)
             hex += juce::String::toHexString(b).paddedLeft('0', 2) + " ";
         DBG("TX SysEx [" + juce::String(data.size()) + "]: " + hex.trimEnd());
 #endif
+        MidiMonitor::instance().record(MidiMonitor::Direction::Tx, data.data(), data.size());
         midiOutput->sendMessageNow(juce::MidiMessage(data.data(), static_cast<int>(data.size())));
     }
 }
@@ -93,6 +95,11 @@ void MidiDeviceManager::handleIncomingMidiMessage(juce::MidiInput*, const juce::
     // getSysExData() strips the leading F0 which would break our decoder.
     auto* data = message.getRawData();
     auto size = message.getRawDataSize();
+
+    // Log every incoming SysEx (even non-Nord frames) before filtering, so the
+    // monitor can surface unexpected traffic.
+    MidiMonitor::instance().record(MidiMonitor::Direction::Rx,
+                                   data, static_cast<std::size_t>(size));
 
     // Wire format: F0 33 [header] 06 ...
     if (size < 5 || data[1] != 0x33 || data[3] != 0x06)
