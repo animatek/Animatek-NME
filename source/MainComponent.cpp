@@ -1894,7 +1894,7 @@ void MainComponent::toggleMutatorWindow() {
     };
 
     panel.onAudition = [this](const ParamSnapshot& snap, float seconds) {
-      // Debounce: rapid clicks would pile up throttled sendBatch timer chains
+      // Debounce: rapid clicks would needlessly churn the coalescing param queue
       static juce::uint32 lastAuditionMs = 0;
       const auto now = juce::Time::getMillisecondCounter();
       if (now - lastAuditionMs < 150) return;
@@ -2390,7 +2390,7 @@ void MainComponent::applySnapshot(const ParamSnapshot& snap, const juce::String&
         currentPatch()->morphValues = snap.morphValues;
         if (connectionManager.isConnected())
             for (int m = 0; m < 4; ++m)
-                connectionManager.sendParameter(2, 1, m, snap.morphValues[static_cast<size_t>(m)]);
+                connectionManager.queueParameter(2, 1, m, snap.morphValues[static_cast<size_t>(m)]);
         mainLayout->getHeaderBar().repaint();
     }
 }
@@ -2519,8 +2519,9 @@ void MainComponent::onInterpolationTick() {
         std::cout << "[SNAP] Tick: elapsed=" << interpolation.elapsedMs
                   << "ms t=" << t << " duration=" << interpolation.durationMs << "ms" << std::endl;
 
-    // Apply interpolated values and collect changed params for synth
-    auto toSend = std::make_shared<std::vector<RandomizeAction::ParamChange>>();
+    // Apply interpolated values and queue changed params for the synth. The
+    // connection's coalescing queue collapses repeated ticks on the same
+    // parameter to the latest value, so long interpolations stay smooth.
     for (size_t i = 0; i < interpolation.from.size(); ++i) {
         auto& f = interpolation.from[i];
         auto& toE = interpolation.to[i];
@@ -2536,13 +2537,7 @@ void MainComponent::onInterpolationTick() {
         int oldVal = param->getValue();
         param->setValue(interpolatedVal);
         if (oldVal != interpolatedVal)
-            toSend->push_back({f.section, f.moduleId, f.paramId, 0, interpolatedVal});
-    }
-
-    // Send changed params to synth (throttled)
-    if (connectionManager.isConnected() && !toSend->empty()) {
-        auto idx = std::make_shared<size_t>(0);
-        RandomizeAction::sendBatch(toSend, idx, connectionManager);
+            connectionManager.queueParameter(f.section, f.moduleId, f.paramId, interpolatedVal);
     }
 
     mainLayout->getCanvas().repaintCanvas();
@@ -2567,19 +2562,16 @@ void MainComponent::onInterpolationTick() {
             currentPatch()->morphValues = interpolation.targetMorphs;
             if (connectionManager.isConnected())
                 for (int m = 0; m < 4; ++m)
-                    connectionManager.sendParameter(2, 1, m,
+                    connectionManager.queueParameter(2, 1, m,
                         interpolation.targetMorphs[static_cast<size_t>(m)]);
             mainLayout->getHeaderBar().repaint();
         }
 
-        // Send all final values to synth
-        auto pending = std::make_shared<std::vector<RandomizeAction::ParamChange>>();
+        // Queue all final values so the synth lands exactly on the target sound.
         for (size_t i = 0; i < interpolation.to.size(); ++i) {
             auto& e = interpolation.to[i];
-            pending->push_back({e.section, e.moduleId, e.paramId, 0, e.value});
+            connectionManager.queueParameter(e.section, e.moduleId, e.paramId, e.value);
         }
-        auto idx = std::make_shared<size_t>(0);
-        RandomizeAction::sendBatch(pending, idx, connectionManager);
 
         mainLayout->getStatusBar().showMessage(
             interpolation.targetSnapshot >= 0

@@ -4,6 +4,7 @@
 #include "MidiDeviceManager.h"
 #include <atomic>
 #include <functional>
+#include <map>
 
 class Patch;
 
@@ -42,6 +43,10 @@ public:
     void requestSynthSettings();
     void sendSynthSettings(const SynthSettings& settings);
     void sendParameter(int section, int moduleId, int parameterId, int value);
+    // Throttled + coalesced parameter delivery. Use this for bulk changes
+    // (Mutator/Randomize snapshots) so a large patch does not flood the synth
+    // with hundreds of simultaneous messages and drop the connection.
+    void queueParameter(int section, int moduleId, int parameterId, int value);
     void sendPatchTitle(const juce::String& title);  // Change patch name in current slot (not saved to flash)
     void sendControllerSnapshot();  // Ask synth to emit current values of assigned MIDI CCs (read-only)
     // Play notes on the current slot via the editor protocol (Note, cc=0x17 sc=0x56).
@@ -162,6 +167,32 @@ private:
 
     std::shared_ptr<std::atomic<bool>> alive { std::make_shared<std::atomic<bool>>(true) };
     NmProtocol protocol;
+
+    // Coalesced, throttled outgoing parameter queue. Keyed by (section,module,param)
+    // so repeated changes to the same parameter (e.g. auditioning Mutator children
+    // quickly) collapse to the latest value. Drained a few at a time by one timer,
+    // so bulk snapshot applies never overlap or flood the synth.
+    struct ParamKey
+    {
+        int section, module, param;
+        bool operator<(const ParamKey& o) const
+        {
+            if (section != o.section) return section < o.section;
+            if (module  != o.module)  return module  < o.module;
+            return param < o.param;
+        }
+    };
+    std::map<ParamKey, int> paramQueue_;
+    struct ParamQueueTimer : juce::Timer
+    {
+        explicit ParamQueueTimer(ConnectionManager& o) : owner(o) {}
+        void timerCallback() override { owner.drainParamQueue(); }
+        ConnectionManager& owner;
+    };
+    ParamQueueTimer paramQueueTimer_ { *this };
+    void drainParamQueue();
+    void clearParamQueue();
+
     std::unique_ptr<MidiDeviceManager> midiDevice;
     Status status;
     StatusCallback statusCallback;

@@ -144,6 +144,7 @@ bool ConnectionManager::connect(const juce::String& inputId, const juce::String&
 void ConnectionManager::disconnect()
 {
     cancelHandshakeTimeout();
+    clearParamQueue();
     collectingSections = false;
     pendingBankLoadSlot = -1;
     pendingBankLoadGeneration++;
@@ -552,6 +553,40 @@ void ConnectionManager::sendParameter(int section, int moduleId, int parameterId
     // Parameter messages use cc=0x13, have checksum, no reply expected
     // IMPORTANT: Use currentSlot, not 0!
     protocol.sendMessage(NmCmd::ParameterChange, currentSlot, payload, /*expectsReply=*/false, /*addChecksum=*/true);
+}
+
+void ConnectionManager::queueParameter(int section, int moduleId, int parameterId, int value)
+{
+    if (!isConnected()) return;
+
+    // Coalesce: a later change to the same parameter overwrites the pending one,
+    // so rapid re-auditioning never builds an unbounded backlog.
+    paramQueue_[{ section, moduleId, parameterId }] = value;
+
+    if (!paramQueueTimer_.isTimerRunning())
+        paramQueueTimer_.startTimer(20);
+}
+
+void ConnectionManager::drainParamQueue()
+{
+    if (!isConnected()) { clearParamQueue(); return; }
+
+    // 4 per 20ms (~200/s) — comfortably within the G1's SysEx input rate.
+    for (int i = 0; i < 4 && !paramQueue_.empty(); ++i)
+    {
+        auto it = paramQueue_.begin();
+        sendParameter(it->first.section, it->first.module, it->first.param, it->second);
+        paramQueue_.erase(it);
+    }
+
+    if (paramQueue_.empty())
+        paramQueueTimer_.stopTimer();
+}
+
+void ConnectionManager::clearParamQueue()
+{
+    paramQueue_.clear();
+    paramQueueTimer_.stopTimer();
 }
 
 void ConnectionManager::sendPatchTitle(const juce::String& title)

@@ -824,24 +824,6 @@ public:
 
     int getSizeInUnits() override { return static_cast<int>(changes_.size()); }
 
-    /** Throttled async send of parameter changes to synth (4 per 20ms) */
-    static void sendBatch(std::shared_ptr<std::vector<ParamChange>> params,
-                          std::shared_ptr<size_t> pos,
-                          ConnectionManager& cm)
-    {
-        for (int i = 0; i < 4 && *pos < params->size(); ++i, ++(*pos))
-        {
-            auto& c = (*params)[*pos];
-            cm.sendParameter(c.section, c.moduleId, c.paramId, c.newValue);
-        }
-        if (*pos < params->size())
-        {
-            juce::Timer::callAfterDelay(20, [params, pos, &cm]() {
-                sendBatch(params, pos, cm);
-            });
-        }
-    }
-
 private:
     void applyValues(bool forward)
     {
@@ -857,18 +839,14 @@ private:
         }
         ctx_.repaint();
 
-        // 2. Send parameter changes to synth with throttled batches
-        //    using callAfterDelay chain (no self-deleting timer).
+        // 2. Hand the changes to the connection's coalesced, throttled queue.
+        //    One shared queue across all snapshot applies means rapid Mutator
+        //    auditions on large patches can never overlap and flood the synth.
         if (!ctx_.connMgr.isConnected()) return;
 
-        auto pending = std::make_shared<std::vector<ParamChange>>(changes_);
-        if (!forward) {
-            for (auto& c : *pending)
-                c.newValue = c.oldValue;
-        }
-
-        auto idx = std::make_shared<size_t>(0);
-        sendBatch(pending, idx, ctx_.connMgr);
+        for (auto& c : changes_)
+            ctx_.connMgr.queueParameter(c.section, c.moduleId, c.paramId,
+                                        forward ? c.newValue : c.oldValue);
     }
 
     UndoContext& ctx_;
