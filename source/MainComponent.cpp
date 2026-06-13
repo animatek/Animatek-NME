@@ -1889,6 +1889,11 @@ void MainComponent::toggleMutatorWindow() {
             const auto* pd = param->getDescriptor();
             if (!md || !pd) return true;
 
+            // Output modules (1/2/4 Output) set overall volume and routing,
+            // not timbre — never mutate them, even when Solo is active.
+            if (md->category == "In/Out" && md->name.endsWithIgnoreCase("Output"))
+              return true;
+
             if (anySolo) {
               for (int i = 0; i < kNumMutCategories; ++i)
                 if (gp.solo[i] && mutCategoryMatches(static_cast<MutCategory>(i), *md, *pd))
