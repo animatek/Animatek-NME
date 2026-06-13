@@ -7,8 +7,10 @@
 #define kSep    (AppTheme::palette().buttonActive)
 #define kText   (AppTheme::palette().textSecondary)
 #define kDim    (AppTheme::palette().textMuted)
-#define kPatchTag   (AppTheme::palette().textPrimary)
-#define kSnippetTag (AppTheme::palette().textSecondary)
+// Distinct per-theme accent for each entry kind (Patch/Snippet were both near-
+// white text colours before, hard to tell apart). All three follow the theme.
+#define kPatchTag   (AppTheme::palette().accentActive)
+#define kSnippetTag (AppTheme::palette().accentSuccess)
 #define kBankTag    (AppTheme::palette().accentWarning)
 
 static void styleButton(juce::TextButton& b)

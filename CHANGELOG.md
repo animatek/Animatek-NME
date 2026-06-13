@@ -6,6 +6,10 @@ Support this proyect: https://www.patreon.com/c/animatek
 
 ## Unreleased
 
+- The preset browser **type pills** (Patch / Snippet / Bank) now use three distinct theme
+  accent colors instead of two near-identical text colors, so Patches and Snippets are easy
+  to tell apart. All three follow the active color theme.
+
 - Added the **SysEx Monitor** floater (View menu, `Ctrl+9`): a live hex log of MIDI SysEx
   traffic to and from the synth (TX/RX with relative timestamps and byte counts). Built for
   diagnosing protocol issues in release builds with no console and on macOS/Windows. Toggles
