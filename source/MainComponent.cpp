@@ -780,9 +780,6 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   setSize(1280, 800);
 
-  // Keep floaters above the editor when it's clicked (compositor-independent)
-  juce::Desktop::getInstance().addGlobalMouseListener(&floaterRaiser);
-
   // Auto-connect after UI is set up (with delay to let ALSA enumerate devices)
   {
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -797,8 +794,6 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 }
 
 MainComponent::~MainComponent() {
-  juce::Desktop::getInstance().removeGlobalMouseListener(&floaterRaiser);
-
   // Stop interpolation timer before anything else
   if (interpolationTimer)
     interpolationTimer->stopTimer();
@@ -1811,28 +1806,6 @@ bool MainComponent::handleFloaterShortcut(const juce::KeyPress& key) {
     case '8': toggleMutatorWindow(); return true;
     default: return false;
   }
-}
-
-void MainComponent::FloaterRaiser::mouseDown(const juce::MouseEvent& e) {
-  // Only react to clicks that land in the main editor window
-  if (e.eventComponent == nullptr
-      || e.eventComponent->getTopLevelComponent() != owner.getTopLevelComponent())
-    return;
-  juce::Component::SafePointer<MainComponent> safe(&owner);
-  juce::MessageManager::callAsync([safe]() {
-    if (safe) safe->raiseFloatersAboveEditor();
-  });
-}
-
-void MainComponent::raiseFloatersAboveEditor() {
-  auto raise = [](juce::DocumentWindow* w) {
-    if (w != nullptr && w->isVisible() && !w->isMinimised())
-      w->toFront(false);  // raise without stealing focus from the editor
-  };
-  raise(knobFloaterWindow.get());
-  raise(keyboardFloaterWindow.get());
-  raise(patchNotesFloaterWindow.get());
-  raise(mutatorWindow.get());
 }
 
 void MainComponent::toggleMutatorWindow() {

@@ -599,7 +599,6 @@ MutatorWindow::MutatorWindow()
 {
     setUsingNativeTitleBar(false);
     setResizable(false, false);
-    setAlwaysOnTop(true);  // keep the mutator in front of the editor while breeding
     setContentNonOwned(&panel, true);
 }
 

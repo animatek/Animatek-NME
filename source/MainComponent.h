@@ -62,7 +62,6 @@ private:
     void togglePatchNotesFloater();
     void toggleMutatorWindow();
     bool handleFloaterShortcut(const juce::KeyPress& key);  // Ctrl+1..8
-    void raiseFloatersAboveEditor();
     void showFloaterWindow(juce::DocumentWindow& window, const juce::String& settingsPrefix);
     void saveFloaterState();
     void restoreFloaterWindows();  // reopen floaters that were open last session
@@ -119,16 +118,6 @@ private:
     std::unique_ptr<KeyboardFloaterWindow> keyboardFloaterWindow;
     std::unique_ptr<PatchNotesFloaterWindow> patchNotesFloaterWindow;
     std::unique_ptr<MutatorWindow> mutatorWindow;
-
-    // Re-raises floaters above the editor when it is clicked (alwaysOnTop is
-    // unreliable across Linux compositors)
-    struct FloaterRaiser : juce::MouseListener
-    {
-        explicit FloaterRaiser(MainComponent& o) : owner(o) {}
-        void mouseDown(const juce::MouseEvent& e) override;
-        MainComponent& owner;
-    };
-    FloaterRaiser floaterRaiser { *this };
 
     // Last-known global synth settings.
     SynthSettings cachedSynthSettings;
