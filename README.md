@@ -25,6 +25,9 @@ Animatek NME lets you edit Nord Modular G1 patches from a modern desktop applica
 - Save and import snippets as reusable `.pch` module groups.
 - Transfer whole banks: save a synth bank to a folder, send a folder of patches to a bank,
   or mirror-backup all 9 banks into the preset library in one action.
+- Breed new sounds interactively with the **Patch Mutator** (mutate / randomize / interpolate
+  / cross), and store up to 8 patch variations per slot.
+- Watch MIDI traffic live with the **SysEx Monitor** for protocol debugging.
 - Use contextual module help based on the original Nord Modular Editor documentation.
 
 ## Main Features
@@ -40,7 +43,11 @@ Animatek NME lets you edit Nord Modular G1 patches from a modern desktop applica
   (`Banks/Bank1`-`Bank9` mirror folders), all with progress and cancellation.
 - Disk preset browser with configurable preset library folder, recursive `.pch` scanning, search, and patch/snippet/bank filters. Bank backups load like any patch.
 - Randomize, initialize, parameter locks, snapshots, cable visibility tools, canvas zoom, and module help.
-- Dark and classic themes.
+- **Patch Mutator** (G2-style interactive sound breeder) with Gaussian mutation, harmonic
+  oscillator mutation, crossover, interpolation, Quick Locks, and 8 persistent patch variations.
+- **SysEx Monitor** floater for live TX/RX MIDI logging (works in console-less release builds).
+- Configurable synth **send speed** (parameter throughput) to balance responsiveness vs. reliability.
+- 8 color themes (cycled with `Ctrl+T`).
 - Experimental VST3/CLAP plugin targets.
 
 ## Documentation

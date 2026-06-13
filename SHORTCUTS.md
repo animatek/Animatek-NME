@@ -63,6 +63,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl+6` | Keyboard Floater |
 | `Ctrl+7` | Patch Notes |
 | `Ctrl+8` | Patch Mutator |
+| `Ctrl+9` | SysEx Monitor |
 
 ## Patch Mutator (window focused)
 

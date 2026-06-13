@@ -2270,6 +2270,7 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Ctrl+6              Keyboard Floater\n"
       "  Ctrl+7              Patch Notes\n"
       "  Ctrl+8              Patch Mutator\n"
+      "  Ctrl+9              SysEx Monitor\n"
       "\n"
       "PATCH MUTATOR (window focused)\n"
       "  1-8                 Focus Mother / Children / Father\n"

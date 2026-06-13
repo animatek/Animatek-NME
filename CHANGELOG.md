@@ -6,6 +6,40 @@ Support this proyect: https://www.patreon.com/c/animatek
 
 ## Unreleased
 
+- Added the **SysEx Monitor** floater (View menu, `Ctrl+9`): a live hex log of MIDI SysEx
+  traffic to and from the synth (TX/RX with relative timestamps and byte counts). Built for
+  diagnosing protocol issues in release builds with no console and on macOS/Windows. Toggles
+  for Enable, TX/RX filtering, and Auto-scroll, plus Clear and Copy. Capture and polling run
+  only while the window is open and enabled — when closed it costs nothing (the capture hook
+  in the MIDI path is a single atomic check when disabled). Captures every inbound SysEx,
+  even non-Nord frames, so unexpected traffic is visible too.
+
+- Added a **Send speed** selector in Editor Options (synth parameter throughput): Safe
+  (~160/s), Balanced (~400/s, default), Fast (~800/s), and Maximum (~1600/s). Higher is more
+  responsive for the Mutator but riskier on big patches; the setting applies immediately
+  without restarting and persists across sessions.
+
+- **Fixed the synth dropping the connection when mutating large patches.** Applying a
+  Mutator/Randomize snapshot or an interpolation used to spawn a fresh throttled send chain
+  per apply with nothing cancelling the previous one, so auditioning several children or
+  mutating repeatedly on a big patch stacked parallel chains (~1000 SysEx/s) and overran the
+  G1 until it stopped responding. Parameter delivery now goes through a single coalescing
+  queue keyed by parameter, so a newer value for a parameter overwrites the pending one
+  instead of piling up — no overlapping chains, smoother interpolations, and rapid auditions
+  discard intermediate values.
+
+- **Improved the Patch Mutator's musical results** using the papers Clavia's design drew on
+  (Karl Sims 1991; Palle Dahlstedt 2004):
+  - Mutation now uses a **Gaussian distribution** (small changes far more likely than large
+    ones) instead of uniform random offsets, and the default knobs match Sims' recommended
+    values (probability 0.20 / range 0.40).
+  - **Oscillator pitch mutations snap to musical intervals** (5th, octave, etc.) rather than
+    arbitrary values, preserving the harmonic ratios that make FM/modular patches usable.
+  - **Cross** has a new **independent per-gene** mode (Seq/Ind toggle) alongside the original
+    sequential crossover.
+  - The **1/2/4 Output modules are never mutated** (they set overall volume and routing, not
+    timbre), even with Solo active. Parameter-less modules were already left untouched.
+
 - Updated the **About → Animatek NME Website** menu link to the current
   `https://animatek.net/animatek-nme-eng/` page.
 
@@ -44,15 +78,17 @@ Support this proyect: https://www.patreon.com/c/animatek
     `N` randomize, `I` interpolate, `X` cross, `S` to temp storage, Shift+drag interpolates
     two sounds, Ctrl+drag crosses them.
 
-- Added **`Ctrl+5..8` shortcuts to toggle the floaters** (Knob, Keyboard, Patch Notes,
-  Patch Mutator). The shortcuts — including `Ctrl+1..4` slot switching — now also work while
-  a floater window has keyboard focus, so pressing the same shortcut again closes the
-  floater. Fixed `Ctrl+8` never matching on Linux: X11 delivers it as the legacy DEL control
-  character (0x7F) instead of the digit.
+- Added **`Ctrl+5..9` shortcuts to toggle the floaters** (Knob, Keyboard, Patch Notes,
+  Patch Mutator, SysEx Monitor). The shortcuts — including `Ctrl+1..4` slot switching — now
+  also work while a floater window has keyboard focus, so pressing the same shortcut again
+  closes the floater. Fixed `Ctrl+8` never matching on Linux: X11 delivers it as the legacy
+  DEL control character (0x7F) instead of the digit.
 
-- Floater windows now **stay in front of the editor**: clicking anywhere in the main window
-  re-raises all visible floaters without stealing keyboard focus (JUCE's always-on-top flag
-  is unreliable across Linux compositors).
+- **Lighter floater handling.** Floater windows are now plain windows: they come to front
+  when opened but no longer stay glued in front or re-raise on every click. The previous
+  always-on-top / per-click re-raise made context menus and right-clicks feel sluggish
+  (`toFront` and always-on-top are costly on Linux compositors). Floaters can now fall behind
+  the editor like normal windows.
 
 ## 0.6.0 — 2026-06-11
 
