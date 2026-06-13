@@ -33,6 +33,7 @@ AppThemePalette makeApp(const PaletteSpec& p)
         p.yellow,               // accentActive
         p.orange,               // accentWarning
         p.green,                // accentSuccess
+        p.blue,                 // accentInfo
     };
 }
 
@@ -143,8 +144,46 @@ const PaletteSpec kNord = {
     juce::Colour(0xff81a1c1), juce::Colour(0xffd08770), juce::Colour(0xffb48ead),
 };
 
-// Menu item IDs 70..79 are reserved for themes in MainComponent's View menu,
-// so the registry must not grow past 10 entries.
+// Cyberpunk Neon (after Roboron3042/Cyberpunk-Neon): deep blue-black with cyan
+// text and saturated neon accents.
+const PaletteSpec kCyberpunkNeon = {
+    juce::Colour(0xff00040e), juce::Colour(0xff000b1e), juce::Colour(0xff06182f),
+    juce::Colour(0xff0c2747), juce::Colour(0xff1f4e8c),
+    juce::Colour(0xffd7f8ff), juce::Colour(0xff0abdc6), juce::Colour(0xff3a6d78),
+    juce::Colour(0xffff2a6d), juce::Colour(0xff05ffa1), juce::Colour(0xfffdf500),
+    juce::Colour(0xff00b7ff), juce::Colour(0xffff6b1a), juce::Colour(0xffd300c5),
+};
+
+// Matrix: green-on-black terminal. Cable/morph hues are kept as distinguishable
+// greens/limes/cyans so signal types stay readable in a monochrome theme.
+const PaletteSpec kMatrix = {
+    juce::Colour(0xff000000), juce::Colour(0xff010a01), juce::Colour(0xff04140a),
+    juce::Colour(0xff0a280f), juce::Colour(0xff145214),
+    juce::Colour(0xff00ff41), juce::Colour(0xff00cc36), juce::Colour(0xff1f7a2e),
+    juce::Colour(0xff7fff55), juce::Colour(0xff00ff41), juce::Colour(0xffccff33),
+    juce::Colour(0xff00ffaa), juce::Colour(0xff88dd22), juce::Colour(0xff33cc88),
+};
+
+// Light: clean white/grey scheme with readable saturated accents.
+const PaletteSpec kLight = {
+    juce::Colour(0xffffffff), juce::Colour(0xfff4f5f7), juce::Colour(0xffeceef1),
+    juce::Colour(0xffdadde2), juce::Colour(0xffb8bdc7),
+    juce::Colour(0xff1b1d21), juce::Colour(0xff4a4f57), juce::Colour(0xff8a909a),
+    juce::Colour(0xffd64545), juce::Colour(0xff2f9e44), juce::Colour(0xfff08c00),
+    juce::Colour(0xff1c7ed6), juce::Colour(0xffe8590c), juce::Colour(0xff9c36b5),
+};
+
+// Elegant: muted "midnight + gold" scheme with soft, sophisticated accents.
+const PaletteSpec kElegant = {
+    juce::Colour(0xff14161a), juce::Colour(0xff1a1d23), juce::Colour(0xff22262e),
+    juce::Colour(0xff2c313b), juce::Colour(0xff3e4552),
+    juce::Colour(0xffece8e1), juce::Colour(0xffb6b1a8), juce::Colour(0xff6f6a61),
+    juce::Colour(0xffc47b7b), juce::Colour(0xff93b08a), juce::Colour(0xffd8b673),
+    juce::Colour(0xff7fa0c4), juce::Colour(0xffcf9b6b), juce::Colour(0xffab92b5),
+};
+
+// Theme menu items use IDs 200+ in MainComponent's View menu (see getMenuForIndex
+// / menuItemSelected), so the registry can grow freely.
 const std::vector<EditorTheme>& themes()
 {
     static const std::vector<EditorTheme> list = {
@@ -156,6 +195,10 @@ const std::vector<EditorTheme>& themes()
         { "Gruvbox Dark",     makeApp(kGruvboxDark),     []{ return makeCanvas(kGruvboxDark); } },
         { "Dracula",          makeApp(kDracula),         []{ return makeCanvas(kDracula); } },
         { "Nord",             makeApp(kNord),            []{ return makeCanvas(kNord); } },
+        { "Cyberpunk Neon",   makeApp(kCyberpunkNeon),   []{ return makeCanvas(kCyberpunkNeon); } },
+        { "Matrix",           makeApp(kMatrix),          []{ return makeCanvas(kMatrix); } },
+        { "Light",            makeApp(kLight),           []{ return makeCanvas(kLight); } },
+        { "Elegant",          makeApp(kElegant),         []{ return makeCanvas(kElegant); } },
     };
     return list;
 }

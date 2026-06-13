@@ -47,7 +47,7 @@ Animatek NME lets you edit Nord Modular G1 patches from a modern desktop applica
   oscillator mutation, crossover, interpolation, Quick Locks, and 8 persistent patch variations.
 - **SysEx Monitor** floater for live TX/RX MIDI logging (works in console-less release builds).
 - Configurable synth **send speed** (parameter throughput) to balance responsiveness vs. reliability.
-- 8 color themes (cycled with `Ctrl+T`).
+- 12 color themes (cycled with `Ctrl+T`), including Cyberpunk Neon, Matrix, Light, and Elegant.
 - Experimental VST3/CLAP plugin targets.
 
 ## Documentation

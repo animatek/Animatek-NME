@@ -27,6 +27,7 @@ struct AppThemePalette
     juce::Colour accentActive;
     juce::Colour accentWarning;
     juce::Colour accentSuccess;
+    juce::Colour accentInfo;     // cool accent (blue/cyan), distinct from the warm ones
 };
 
 namespace AppTheme

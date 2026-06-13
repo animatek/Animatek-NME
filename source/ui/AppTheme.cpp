@@ -24,6 +24,7 @@ AppThemePalette makeSoftDarkGrey()
         juce::Colour(0xffffcc44), // accentActive
         juce::Colour(0xffffaa44), // accentWarning
         juce::Colour(0xff44cc44), // accentSuccess
+        juce::Colour(0xff44aaff), // accentInfo
     };
 }
 
@@ -47,6 +48,7 @@ AppThemePalette makeDeepDarkGrey()
         juce::Colour(0xffffcc44), // accentActive
         juce::Colour(0xffffaa44), // accentWarning
         juce::Colour(0xff44cc44), // accentSuccess
+        juce::Colour(0xff44aaff), // accentInfo
     };
 }
 

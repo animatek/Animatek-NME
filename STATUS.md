@@ -24,7 +24,7 @@ This file tracks the current project state at a practical level. Detailed versio
 - Module help, Help Contents, About links, bug-report link, beta warning popup, themes, canvas zoom, parameter randomization, initialization, locks, and snapshots are implemented.
 - Dark-mode app icon and JUCE metadata are in place.
 - Knob Floater (interactive 18-knob + pedal/switch/aftertouch overview) and Keyboard Floater (virtual keyboard with drone/repeat modes) are implemented as View-menu floating windows with position persistence.
-- Eight rotating color themes (Ctrl+T) restyle the app chrome and patch canvas; the choice persists across sessions.
+- Twelve rotating color themes (Ctrl+T) restyle the app chrome and patch canvas — including Cyberpunk Neon, Matrix, Light, and Elegant; the choice persists across sessions.
 - Patch Variations: the 8 header snapshots persist in a `.var` sidecar (the `.pch` stays standard), with copy/init, morph capture, and write-through of live edits.
 - Patch Mutator (G2-style interactive evolution): Mother/Children/Father breeding with Mutate/Randomize/Interpolate/Cross, Quick Locks, temporary storage, variations row, per-module mutation exclusion, and timed audition morphing. Mutation uses a Gaussian distribution, oscillator pitch snaps to musical intervals, Cross has sequential/independent modes, and Output modules are excluded automatically (Sims 1991 / Dahlstedt 2004).
 - SysEx Monitor floater: live TX/RX hex log of MIDI traffic for protocol debugging in console-less release builds, with zero overhead when closed.

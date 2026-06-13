@@ -914,8 +914,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addCustomItem(65, std::make_unique<CableOpacitySlider>());
     menu.addSeparator();
     juce::PopupMenu themeMenu;
-    for (int i = 0; i < ThemeRegistry::count(); ++i)  // ids 70..79 reserved for themes
-      themeMenu.addItem(70 + i, ThemeRegistry::get(i).name, true,
+    for (int i = 0; i < ThemeRegistry::count(); ++i)  // ids 200+ reserved for themes
+      themeMenu.addItem(200 + i, ThemeRegistry::get(i).name, true,
                         i == editorOptions.uiThemeIndex);
     menu.addSubMenu("Theme\tCtrl+T", themeMenu);
     menu.addSeparator();
@@ -1132,8 +1132,8 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
 
   default:
-    if (menuItemID >= 70 && menuItemID < 70 + ThemeRegistry::count())
-      applyUiTheme(menuItemID - 70, true);
+    if (menuItemID >= 200 && menuItemID < 200 + ThemeRegistry::count())
+      applyUiTheme(menuItemID - 200, true);
     break;
   }
 }

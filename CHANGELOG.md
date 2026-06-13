@@ -6,9 +6,17 @@ Support this proyect: https://www.patreon.com/c/animatek
 
 ## Unreleased
 
-- The preset browser **type pills** (Patch / Snippet / Bank) now use three distinct theme
-  accent colors instead of two near-identical text colors, so Patches and Snippets are easy
-  to tell apart. All three follow the active color theme.
+- Added **4 more color themes** (12 total, cycled with `Ctrl+T` or in View → Theme):
+  **Cyberpunk Neon** (deep blue-black with cyan text and neon accents, after
+  Roboron3042/Cyberpunk-Neon), **Matrix** (green-on-black terminal), **Light** (clean
+  white/grey), and **Elegant** (muted midnight + gold). The theme menu now uses a wider id
+  range, so more themes can be added freely.
+
+- The preset browser **type pills** (Patch / Snippet / Bank) now use three different color
+  families — Patch = cool blue, Snippet = green, Bank = warm orange — so they no longer blur
+  together (Patch/Snippet were near-identical text colors, and Patch/Bank were both warm).
+  Added a cool `accentInfo` color to every theme palette to drive the Patch pill; all three
+  pills follow the active color theme.
 
 - Added the **SysEx Monitor** floater (View menu, `Ctrl+9`): a live hex log of MIDI SysEx
   traffic to and from the synth (TX/RX with relative timestamps and byte counts). Built for

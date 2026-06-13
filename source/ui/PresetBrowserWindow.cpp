@@ -7,9 +7,10 @@
 #define kSep    (AppTheme::palette().buttonActive)
 #define kText   (AppTheme::palette().textSecondary)
 #define kDim    (AppTheme::palette().textMuted)
-// Distinct per-theme accent for each entry kind (Patch/Snippet were both near-
-// white text colours before, hard to tell apart). All three follow the theme.
-#define kPatchTag   (AppTheme::palette().accentActive)
+// Distinct per-theme accent for each entry kind, from three different color
+// families so they never blur together: Patch = cool (blue), Snippet = green,
+// Bank = warm (orange). All three follow the active theme.
+#define kPatchTag   (AppTheme::palette().accentInfo)
 #define kSnippetTag (AppTheme::palette().accentSuccess)
 #define kBankTag    (AppTheme::palette().accentWarning)
 
