@@ -36,6 +36,18 @@ static void styleTextEditor (juce::TextEditor& e)
 
 // ─── EditorOptions persistence ───────────────────────────────────────────────
 
+const std::vector<EditorOptions::SendRate>& EditorOptions::sendRates()
+{
+    // batch params per 'intervalMs' tick. Approx rate = batch * 1000 / intervalMs.
+    static const std::vector<SendRate> rates {
+        { "Safe (~160/s)",     4, 25 },
+        { "Balanced (~400/s)", 8, 20 },
+        { "Fast (~800/s)",    12, 15 },
+        { "Maximum (~1600/s)",16, 10 },
+    };
+    return rates;
+}
+
 EditorOptions EditorOptions::load(juce::PropertiesFile* props)
 {
     EditorOptions o;
@@ -48,6 +60,8 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.autoUpload     = props->getBoolValue  ("autoUpload",     true);
     o.recycleWindows = props->getBoolValue  ("recycleWindows", true);
     o.cableOpacity   = static_cast<float>   (props->getDoubleValue("cableOpacity", 0.80));
+    o.sendRateIndex  = juce::jlimit (0, static_cast<int> (sendRates().size()) - 1,
+                                     props->getIntValue ("sendRateIndex", 1));
     auto libraryPath = props->getValue ("presetLibraryRoot", {});
     if (libraryPath.isNotEmpty())
         o.presetLibraryRoot = juce::File (libraryPath);
@@ -63,6 +77,7 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("autoUpload",      autoUpload);
     props->setValue ("recycleWindows",  recycleWindows);
     props->setValue ("cableOpacity",    static_cast<double>(cableOpacity));
+    props->setValue ("sendRateIndex",   sendRateIndex);
     props->setValue ("presetLibraryRoot", presetLibraryRoot.getFullPathName());
     props->saveIfNeeded();
 }
@@ -150,6 +165,22 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
     addAndMakeVisible (autoUploadToggle);
     addAndMakeVisible (recycleWinToggle);
 
+    // Send speed selector — synth parameter throughput (Mutator/Random)
+    styleLabel (sendRateLabel);
+    const auto& rates = EditorOptions::sendRates();
+    for (int i = 0; i < static_cast<int> (rates.size()); ++i)
+        sendRateSelector.addItem (rates[static_cast<size_t> (i)].label, i + 1);
+    sendRateSelector.setSelectedId (options.sendRateIndex + 1, juce::dontSendNotification);
+    sendRateSelector.setColour (juce::ComboBox::backgroundColourId, p().inputBackground);
+    sendRateSelector.setColour (juce::ComboBox::outlineColourId,    p().borderColor);
+    sendRateSelector.setColour (juce::ComboBox::textColourId,       p().textSecondary);
+    sendRateSelector.setColour (juce::ComboBox::arrowColourId,      p().accentWarning);
+    sendRateSelector.setTooltip ("How fast parameter changes are streamed to the synth. "
+                                 "Higher is more responsive for the Mutator but may overrun "
+                                 "the G1 on big patches — lower it if the connection drops.");
+    addAndMakeVisible (sendRateLabel);
+    addAndMakeVisible (sendRateSelector);
+
     // Preset library
     styleLabel (libraryLabel, true);
     styleTextEditor (libraryPath);
@@ -169,7 +200,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
     addAndMakeVisible (okButton);
     addAndMakeVisible (cancelButton);
 
-    setSize (560, 510);
+    setSize (560, 536);
 }
 
 void EditorOptionsDialog::populateThemeSelector()
@@ -200,7 +231,7 @@ void EditorOptionsDialog::paint (juce::Graphics& g)
     // Separators — positions match resized() math:
     // Separators match resized() section starts.
     const float x0 = 14.0f, x1 = static_cast<float> (getWidth() - 14);
-    for (int sy : { 104, 226, 326, 408, 472 })
+    for (int sy : { 104, 226, 326, 434, 498 })
     {
         g.setColour (p().buttonActive);
         g.drawHorizontalLine (sy, x0, x1);
@@ -257,6 +288,9 @@ void EditorOptionsDialog::resized()
     autoUploadToggle.setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
     y += rowH;
     recycleWinToggle.setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
+    y += rowH + 4;
+    sendRateLabel.setBounds (pad + 8, y, 80, rowH);
+    sendRateSelector.setBounds (pad + 92, y, getWidth() - pad * 2 - 100, rowH);
     y += rowH + 12;
 
     // ── Preset Library ───────────────────────────────────────
@@ -330,6 +364,7 @@ void EditorOptionsDialog::apply()
     options.uiThemeIndex   = themeSelector.getSelectedId() - 1;
     options.autoUpload     = autoUploadToggle.getToggleState();
     options.recycleWindows = recycleWinToggle .getToggleState();
+    options.sendRateIndex  = sendRateSelector.getSelectedId() - 1;
 
     if (onChange)
         onChange (options);

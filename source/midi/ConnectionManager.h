@@ -192,11 +192,16 @@ private:
     ParamQueueTimer paramQueueTimer_ { *this };
     void drainParamQueue();
     void clearParamQueue();
-    // Drain rate. With no overlapping chains the G1 tolerates a higher rate than
-    // the old 4/20ms; tune these against hardware if sends still feel slow or if
-    // the synth starts dropping messages on huge patches.
-    static constexpr int paramDrainBatch_      = 8;   // params per tick
-    static constexpr int paramDrainIntervalMs_ = 20;  // tick period  -> 400/s
+    // Drain rate, user-selectable via Editor Options (Send speed). With no
+    // overlapping chains the G1 tolerates a higher rate than the old 4/20ms.
+    int paramDrainBatch_      = 8;   // params per tick
+    int paramDrainIntervalMs_ = 20;  // tick period  -> 400/s default
+
+public:
+    /** Set the throttled parameter delivery rate (params per tick / tick ms). */
+    void setParamSendRate(int batchPerTick, int intervalMs);
+
+private:
 
     std::unique_ptr<MidiDeviceManager> midiDevice;
     Status status;

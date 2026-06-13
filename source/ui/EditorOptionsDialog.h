@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "FlatCloseButton.h"
 #include "AppTheme.h"
+#include <vector>
 
 struct EditorOptions
 {
@@ -15,7 +16,13 @@ struct EditorOptions
     bool        autoUpload     = true;
     bool        recycleWindows = true;
     float       cableOpacity   = 0.80f;
+    int         sendRateIndex  = 1;   // index into sendRates() — synth param throughput
     juce::File  presetLibraryRoot;
+
+    // Throttled parameter delivery presets (batch sent per tick / tick period).
+    // Higher = faster Mutator/Random response but more risk of overrunning the G1.
+    struct SendRate { juce::String label; int batch; int intervalMs; };
+    static const std::vector<SendRate>& sendRates();
 
     static EditorOptions load(juce::PropertiesFile* props);
     void save(juce::PropertiesFile* props) const;
@@ -74,6 +81,8 @@ private:
     juce::Label    behaviourLabel    { {}, "BEHAVIOUR" };
     juce::ToggleButton autoUploadToggle   { "Auto Upload  (send parameter changes to synth immediately)" };
     juce::ToggleButton recycleWinToggle   { "Recycle Windows  (reuse patch windows)" };
+    juce::Label    sendRateLabel     { {}, "Send speed" };
+    juce::ComboBox sendRateSelector;
 
     // Preset Library
     juce::Label      libraryLabel { {}, "PRESET LIBRARY" };

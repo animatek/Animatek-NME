@@ -74,6 +74,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   PatchCanvas::setKnobControl  (static_cast<int>(editorOptions.knobControl));
   PatchCanvas::setAutoUpload   (editorOptions.autoUpload);
   PatchCanvas::setCableOpacity (editorOptions.cableOpacity);
+  {
+    const auto& rates = EditorOptions::sendRates();
+    const int ri = juce::jlimit(0, static_cast<int>(rates.size()) - 1, editorOptions.sendRateIndex);
+    connectionManager.setParamSendRate(rates[static_cast<size_t>(ri)].batch,
+                                       rates[static_cast<size_t>(ri)].intervalMs);
+  }
   setWantsKeyboardFocus(true);
 
   // Helper: find a data file by probing multiple locations regardless of CWD.
@@ -1528,6 +1534,12 @@ void MainComponent::applyEditorOptions(const EditorOptions& opts) {
   PatchCanvas::setAutoUpload   (opts.autoUpload);
   PatchCanvas::setCableOpacity (opts.cableOpacity);
   applyUiTheme(editorOptions.uiThemeIndex, false);
+
+  // Synth parameter send speed (Mutator/Random throughput)
+  const auto& rates = EditorOptions::sendRates();
+  const int ri = juce::jlimit(0, static_cast<int>(rates.size()) - 1, opts.sendRateIndex);
+  connectionManager.setParamSendRate(rates[static_cast<size_t>(ri)].batch,
+                                     rates[static_cast<size_t>(ri)].intervalMs);
 
   if (editorOptions.presetLibraryRoot != juce::File()) {
     if (mainLayout)

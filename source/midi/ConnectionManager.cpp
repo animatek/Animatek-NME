@@ -588,6 +588,16 @@ void ConnectionManager::clearParamQueue()
     paramQueueTimer_.stopTimer();
 }
 
+void ConnectionManager::setParamSendRate(int batchPerTick, int intervalMs)
+{
+    paramDrainBatch_      = juce::jmax(1, batchPerTick);
+    paramDrainIntervalMs_ = juce::jlimit(5, 100, intervalMs);
+
+    // Apply the new period immediately if a drain is already in flight.
+    if (paramQueueTimer_.isTimerRunning())
+        paramQueueTimer_.startTimer(paramDrainIntervalMs_);
+}
+
 void ConnectionManager::sendPatchTitle(const juce::String& title)
 {
     if (!isConnected())
