@@ -11,6 +11,7 @@ jdk8u482-b08/
 # Build output
 build/
 build-debug/
+build-rel/
 build-release/
 build-win/
 build-win-release/

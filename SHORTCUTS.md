@@ -46,6 +46,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `Shift+Z` | Reset zoom to 100% |
 | `Ctrl++` / `Ctrl+-` | Zoom in / out |
 | `Ctrl+T` | Cycle color theme |
+| `Ctrl+W` | Toggle wireframe modules |
 | `S` | Shake cables |
 | Middle-drag | Pan the canvas |
 

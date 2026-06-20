@@ -7,11 +7,9 @@ to run on current macOS, Windows, and Linux systems without requiring an old Jav
 > Nord Modular is a trademark of Clavia DMI AB. This project is an independent,
 > community-developed editor and is not affiliated with or endorsed by Clavia.
 
-Support this proyect: https://www.patreon.com/c/animatek
+Support this project: https://www.patreon.com/c/animatek
 
-![animatek NME 0.6 ](https://animatek.net/wp-content/uploads/2026/06/Editor_animatek.png) 
-
-
+![Animatek NME editor](https://animatek.net/wp-content/uploads/2026/06/Editor_animatek.png)
 
 ## What It Does
 
@@ -47,7 +45,8 @@ Animatek NME lets you edit Nord Modular G1 patches from a modern desktop applica
   oscillator mutation, crossover, interpolation, Quick Locks, and 8 persistent patch variations.
 - **SysEx Monitor** floater for live TX/RX MIDI logging (works in console-less release builds).
 - Configurable synth **send speed** (parameter throughput) to balance responsiveness vs. reliability.
-- 12 color themes (cycled with `Ctrl+T`), including Cyberpunk Neon, Matrix, Light, and Elegant.
+- 13 color themes (cycled with `Ctrl+T`), with Nord as the default, plus a persistent
+  wireframe module mode (`Ctrl+W`).
 - Experimental VST3/CLAP plugin targets.
 
 ## Documentation
@@ -55,6 +54,7 @@ Animatek NME lets you edit Nord Modular G1 patches from a modern desktop applica
 - [STATUS.md](STATUS.md) - current implementation status and what is considered working now.
 - [ROADMAP.md](ROADMAP.md) - remaining real implementation work.
 - [CHANGELOG.md](CHANGELOG.md) - version history outside the README.
+- [RELEASE_NOTES_0.7.0.md](RELEASE_NOTES_0.7.0.md) - user-facing 0.7.0 release notes.
 - [MODULE_CHECKLIST.md](MODULE_CHECKLIST.md) - module rendering and behavior verification.
 - [RESEARCH.md](RESEARCH.md) - protocol, `.pch` format, PDL2, and original editor research.
 - [PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md) - parked notes for the experimental plugin direction.

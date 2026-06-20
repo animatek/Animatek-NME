@@ -3,6 +3,7 @@
 #include "NmProtocol.h"
 #include "MidiDeviceManager.h"
 #include <atomic>
+#include <cstdint>
 #include <functional>
 #include <map>
 
@@ -171,7 +172,8 @@ private:
     // Coalesced, throttled outgoing parameter queue. Keyed by (section,module,param)
     // so repeated changes to the same parameter (e.g. auditioning Mutator children
     // quickly) collapse to the latest value. Drained a few at a time by one timer,
-    // so bulk snapshot applies never overlap or flood the synth.
+    // so bulk snapshot applies never overlap or flood the synth. A context generation
+    // prevents queued values from crossing a slot switch or full patch replacement.
     struct ParamKey
     {
         int section, module, param;
@@ -192,6 +194,9 @@ private:
     ParamQueueTimer paramQueueTimer_ { *this };
     void drainParamQueue();
     void clearParamQueue();
+    void invalidateParamQueue(const char* reason);
+    std::uint64_t paramContextGeneration_ = 0;
+    std::uint64_t queuedParamGeneration_ = 0;
     // Drain rate, user-selectable via Editor Options (Send speed). With no
     // overlapping chains the G1 tolerates a higher rate than the old 4/20ms.
     int paramDrainBatch_      = 8;   // params per tick

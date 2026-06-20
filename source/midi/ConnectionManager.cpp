@@ -144,7 +144,7 @@ bool ConnectionManager::connect(const juce::String& inputId, const juce::String&
 void ConnectionManager::disconnect()
 {
     cancelHandshakeTimeout();
-    clearParamQueue();
+    invalidateParamQueue("disconnect");
     collectingSections = false;
     pendingBankLoadSlot = -1;
     pendingBankLoadGeneration++;
@@ -202,6 +202,10 @@ void ConnectionManager::requestPatch(int slot)
 {
     if (!isConnected())
         return;
+
+    // Any queued values describe the patch that was active before this fetch.
+    // They must never land on the patch that is about to replace it.
+    invalidateParamQueue("patch request");
 
     // A patch fetch must not interleave with the 891-message patch list
     // stream — the G1 firmware freezes on colliding request streams.
@@ -263,6 +267,9 @@ void ConnectionManager::selectSlot(int slot)
     if (!isConnected() || slot < 0 || slot > 3)
         return;
 
+    if (slot != currentSlot)
+        invalidateParamQueue("slot selection");
+
     // libnmProtocol sends slot-management commands with SysEx header slot 0.
     // The target slot lives in the payload.
     std::vector<uint8_t> selectedPayload;
@@ -289,6 +296,8 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
 {
     if (!isConnected())
         return;
+
+    invalidateParamQueue("bank patch load");
 
     // Loading while the patch list stream is in flight interleaves two
     // request/response streams and freezes the G1 — cancel the list first.
@@ -427,6 +436,7 @@ void ConnectionManager::sendNextUploadSection()
                           : "type=-1 (Unknown)")
                       << " — aborting upload" << std::endl;
             waitingForUploadAck = false;
+            invalidateParamQueue("upload timeout");
             uploadSections.clear();
             uploadSectionIndex = 0;
             setStatus(State::Connected, "Upload timeout at section " + juce::String(sentSection));
@@ -445,6 +455,9 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
 {
     if (!isConnected())
         return;
+
+    // The full upload supersedes all parameter deltas for the previous synth patch.
+    invalidateParamQueue("full patch upload");
 
     // Don't interleave the upload with the patch list request stream.
     cancelPatchListFetch("patch upload supersedes it");
@@ -534,6 +547,20 @@ void ConnectionManager::sendParameter(int section, int moduleId, int parameterId
         return;
     }
 
+    // Edits made while a full upload is in flight belong to the authoritative
+    // editor patch, but must wait until the section stream has completed.
+    if (waitingForUploadAck)
+    {
+        queueParameter(section, moduleId, parameterId, value);
+        return;
+    }
+
+    // A fetched patch is about to replace the editor model. Do not interleave a
+    // parameter message with that request/response stream or apply an edit to an
+    // uncertain patch context.
+    if (waitingForPatchAck || collectingSections)
+        return;
+
     ParameterChangeMessage msg;
     msg.pid = currentPatchId;
     msg.section = section;
@@ -559,6 +586,15 @@ void ConnectionManager::queueParameter(int section, int moduleId, int parameterI
 {
     if (!isConnected()) return;
 
+    if (waitingForPatchAck || collectingSections)
+        return;
+
+    // The first item binds this batch to the current patch context. Invalidation
+    // clears the map, but the generation check in drainParamQueue is a second line
+    // of defence against a transition path forgetting to clear it explicitly.
+    if (paramQueue_.empty())
+        queuedParamGeneration_ = paramContextGeneration_;
+
     // Coalesce: a later change to the same parameter overwrites the pending one,
     // so rapid re-auditioning never builds an unbounded backlog.
     paramQueue_[{ section, moduleId, parameterId }] = value;
@@ -570,6 +606,23 @@ void ConnectionManager::queueParameter(int section, int moduleId, int parameterI
 void ConnectionManager::drainParamQueue()
 {
     if (!isConnected()) { clearParamQueue(); return; }
+
+    if (waitingForPatchAck || collectingSections)
+    {
+        clearParamQueue();
+        return;
+    }
+
+    // Do not interleave parameter SysEx with a full patch upload. Changes made
+    // while the upload is running remain coalesced and drain once it completes.
+    if (waitingForUploadAck)
+        return;
+
+    if (queuedParamGeneration_ != paramContextGeneration_)
+    {
+        clearParamQueue();
+        return;
+    }
 
     for (int i = 0; i < paramDrainBatch_ && !paramQueue_.empty(); ++i)
     {
@@ -586,6 +639,17 @@ void ConnectionManager::clearParamQueue()
 {
     paramQueue_.clear();
     paramQueueTimer_.stopTimer();
+}
+
+void ConnectionManager::invalidateParamQueue(const char* reason)
+{
+    ++paramContextGeneration_;
+    if (!paramQueue_.empty())
+    {
+        std::cout << "[PARAM] Discarding " << paramQueue_.size()
+                  << " queued changes: " << reason << std::endl;
+    }
+    clearParamQueue();
 }
 
 void ConnectionManager::setParamSendRate(int batchPerTick, int intervalMs)
@@ -1171,6 +1235,7 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         {
             ++uploadAckGeneration;
             waitingForUploadAck = false;
+            invalidateParamQueue("upload rejected");
             uploadSections.clear();
             uploadSectionIndex = 0;
             setStatus(State::Connected,
@@ -1191,6 +1256,9 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
     {
         int activeSlot = msg.data[0] & 0x03;
         std::cout << "[SLOT] Active slot changed to " << activeSlot << std::endl;
+
+        if (activeSlot != currentSlot)
+            invalidateParamQueue("synth slot activation");
 
         currentSlot = activeSlot;
         slotDetected = true;

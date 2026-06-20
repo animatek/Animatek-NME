@@ -71,9 +71,12 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](CHANGELOG.md
 
 ## Parked / Future
 
-- [ ] **Community Patch Library**
-  - Browse bundled or downloaded community patches from inside the preset browser.
-  - Prefer bundled/offline packs first; live archive integration can come later.
+- [ ] **Community Patch Library — standby / decision pending**
+  - No editor integration or release target is currently planned.
+  - A private bootstrap repository exists at
+    `animatek/Animatek-NME-Community-Patches`, with CC0 documentation but no patches.
+  - Reassess the value, curation workload, submission flow, and maintenance cost before
+    making the repository public or implementing downloads in the preset browser.
 
 - [ ] **Plugin Productization**
   - VST3/CLAP targets currently exist but are experimental.

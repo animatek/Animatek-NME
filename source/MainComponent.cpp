@@ -1158,10 +1158,17 @@ void MainComponent::switchToSlot(int slot, bool notifySynth) {
   if (slot == activeSlot) {
     mainLayout->getSlotBar().setCurrentTab(slot);
     if (notifySynth && connectionManager.isConnected()
-        && connectionManager.getCurrentSlot() != slot)
+        && connectionManager.getCurrentSlot() != slot) {
+      stopInterpolation("synth slot realignment");
       connectionManager.selectSlot(slot);
+    }
     return;
   }
+
+  // Interpolation entries reference module indices in the previously active patch.
+  // Stop before activeSlot changes, otherwise the next timer tick could apply those
+  // entries to the new slot and queue them for the wrong synth patch.
+  stopInterpolation("slot switch");
 
   activeSlot = slot;
   mainLayout->getSlotBar().setCurrentTab(slot);
@@ -1233,6 +1240,8 @@ void MainComponent::switchToSlot(int slot, bool notifySynth) {
 }
 
 void MainComponent::newPatch() {
+  stopInterpolation("new patch");
+
   // CRITICAL: Destroy synchronizer BEFORE replacing patch
   currentSynchronizer().reset();
   mainLayout->getInspector().clearModule();
@@ -1324,6 +1333,8 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
     mainLayout->getStatusBar().showMessage("ERROR:Failed to load: " + file.getFileName(), 5000);
     return;
   }
+
+  stopInterpolation("disk patch load");
 
   // CRITICAL: Destroy synchronizer BEFORE replacing patch
   currentSynchronizer().reset();
@@ -2383,12 +2394,8 @@ void MainComponent::clearSnapshots(int slot) {
     if (slot < 0 || slot >= numSlots) return;
 
     // Stop interpolation if running on this slot
-    if (interpolation.active && slot == activeSlot) {
-        interpolation.active = false;
-        if (interpolationTimer) interpolationTimer->stopTimer();
-        interpolationTimer.reset();
-        mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
-    }
+    if (interpolation.active && slot == activeSlot)
+        stopInterpolation("patch snapshot reset");
 
     variations[slot].clear();
     if (slot == activeSlot)
@@ -2467,13 +2474,9 @@ void MainComponent::recallSnapshot(int index) {
     auto& snap = vars.slots[index];
     if (!snap.filled) return;
 
-    // Stop any running interpolation
-    if (interpolation.active) {
-        interpolation.active = false;
-        if (interpolationTimer) interpolationTimer->stopTimer();
-        interpolationTimer.reset();
-        mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
-    }
+    // Stop any running interpolation before applying an instant recall.
+    if (interpolation.active)
+        stopInterpolation("instant variation recall");
 
     // Mark active BEFORE applying so write-through into the recalled slot is a no-op
     vars.activeIndex = index;
@@ -2514,11 +2517,8 @@ void MainComponent::startInterpolationTo(const ParamSnapshot& toSnap, float seco
     if (!currentPatch() || !toSnap.filled) return;
 
     // Stop any running interpolation
-    if (interpolation.active) {
-        interpolation.active = false;
-        if (interpolationTimer)
-            interpolationTimer->stopTimer();
-    }
+    if (interpolation.active)
+        stopInterpolation("new interpolation");
 
     // Capture current state as "from"
     interpolation.from.clear();
@@ -2564,6 +2564,20 @@ void MainComponent::startInterpolationTo(const ParamSnapshot& toSnap, float seco
 
     interpolationTimer = std::make_unique<InterpTimer>(*this);
     interpolationTimer->startTimer(30);
+}
+
+void MainComponent::stopInterpolation(const char* reason) {
+    if (!interpolation.active && !interpolationTimer)
+        return;
+
+    std::cout << "[SNAP] Interpolation cancelled: " << reason << std::endl;
+    interpolation.active = false;
+    if (interpolationTimer)
+        interpolationTimer->stopTimer();
+    interpolationTimer.reset();
+    interpolation = {};
+    if (mainLayout)
+        mainLayout->getHeaderBar().setInterpolationProgress(-1.0f);
 }
 
 void MainComponent::onInterpolationTick() {

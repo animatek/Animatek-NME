@@ -89,6 +89,7 @@ private:
     // targetVariation >= 0 marks that variation active on completion; -1 = mutator audition
     void startInterpolationTo(const ParamSnapshot& snap, float seconds, int targetVariation);
     void onInterpolationTick();
+    void stopInterpolation(const char* reason);
     void handleConnectionRequest(const juce::String& inputId, const juce::String& outputId);
     void handleDisconnectionRequest();
     void onConnectionStatusChanged(const ConnectionManager::Status& status);

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(AnimatekNME VERSION 0.6.0 LANGUAGES C CXX)
+project(AnimatekNME VERSION 0.7.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -98,7 +98,7 @@ juce_add_gui_app(AnimatekNME
     COMPANY_NAME "Animatek"
     ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
     ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
-    VERSION "0.6.0"
+    VERSION "${PROJECT_VERSION}"
 )
 
 target_sources(AnimatekNME PRIVATE
@@ -122,7 +122,7 @@ if(NME_BUILD_PLUGIN)
         NEEDS_MIDI_OUTPUT TRUE
         EDITOR_WANTS_KEYBOARD_FOCUS TRUE
         VST3_CATEGORIES "Instrument" "Tools"
-        VERSION "0.6.0"
+        VERSION "${PROJECT_VERSION}"
     )
 
     target_sources(AnimatekNMEPlugin PRIVATE
@@ -177,7 +177,7 @@ foreach(target ${NME_TARGETS})
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
         JUCE_APPLICATION_NAME_STRING="Animatek NME"
-        JUCE_APPLICATION_VERSION_STRING="0.6.0"
+        JUCE_APPLICATION_VERSION_STRING="${PROJECT_VERSION}"
         JUCE_VST3_CAN_REPLACE_VST2=0
     )
 

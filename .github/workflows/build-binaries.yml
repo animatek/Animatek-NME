@@ -1,8 +1,8 @@
 name: Build Binaries
 
-# Manual trigger only — binaries are distributed through Patreon, never as
-# public GitHub Releases. Artifacts are short-lived and (when the
-# ARTIFACT_PASSWORD secret is set) wrapped in a password-protected zip.
+# Manual trigger only. Artifacts are short-lived and, when the
+# ARTIFACT_PASSWORD secret is set, wrapped in a password-protected zip.
+# Release maintainers may also attach selected unprotected packages to GitHub Releases.
 on:
   workflow_dispatch:
 

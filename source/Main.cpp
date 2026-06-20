@@ -8,7 +8,7 @@ class NmeApplication : public juce::JUCEApplication
 {
 public:
     const juce::String getApplicationName() override    { return "Animatek NME"; }
-    const juce::String getApplicationVersion() override { return "0.6.0"; }
+    const juce::String getApplicationVersion() override { return JUCE_APPLICATION_VERSION_STRING; }
     bool moreThanOneInstanceAllowed() override           { return false; }
 
     void initialise(const juce::String&) override

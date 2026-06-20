@@ -1,10 +1,16 @@
-Support this proyect: https://www.patreon.com/c/animatek
-
-![animatek NME 0.6 ](https://animatek.net/wp-content/uploads/2026/06/Editor_animatek.png) 
-
 # Changelog
 
 ## Unreleased
+
+## 0.7.0 — 2026-06-20
+
+- **Hardened Mutator/variation parameter delivery across patch transitions.** Pending
+  parameter changes are now invalidated before slot switches, patch requests, bank loads,
+  full uploads, and disconnects, with a context generation as a defensive backstop.
+  Interpolations stop before the active slot or patch changes, preventing their next timer
+  tick from applying old module indices to a different patch. Parameter edits made during a
+  full upload wait and coalesce until it completes; edits are suppressed during patch fetches
+  so they cannot interleave with the request stream.
 
 - Added a **Wireframe modules** mode — toggle in Editor Options → Behaviour, in View →
   Wireframe Modules, or with **Ctrl+W** (persisted, works with any color theme). When on, the
@@ -23,7 +29,8 @@ Support this proyect: https://www.patreon.com/c/animatek
   **Cubitwig**. The Bitwig palettes are distilled from each theme's Bitwig Theme Editor file
   (Berikai/awesome-bitwig-themes): the window background seeds a tinted 5-step ramp and the
   Bitwig "Panel" accent slots map onto our cable/accent colors. The theme menu uses a wider id
-  range, so more themes can be added freely.
+  range, so more themes can be added freely. Opening Editor Options no longer resets the
+  canvas theme.
 
 - The preset browser **type pills** (Patch / Snippet / Bank) now use three different color
   families — Patch = cool blue, Snippet = green, Bank = warm orange — so they no longer blur
@@ -68,14 +75,6 @@ Support this proyect: https://www.patreon.com/c/animatek
 - Updated the **About → Animatek NME Website** menu link to the current
   `https://animatek.net/animatek-nme-eng/` page.
 
-- Added **8 rotating color themes** cycled with `Ctrl+T` (and selectable in View → Theme or
-  Editor Options): Classic, Dark, Deep Dark, Catppuccin Mocha, Tokyo Night, Gruvbox Dark,
-  Dracula, and Nord. Each theme restyles both the app chrome and the patch canvas (modules,
-  knobs, cables, displays) while keeping the cable signal hues recognizable (red=audio,
-  blue=control, yellow=logic). The selected theme persists across sessions. Themes live in
-  `source/ui/ThemeRegistry.cpp`; adding one is a single palette table. Also fixed opening
-  Editor Options unconditionally resetting the canvas to the Dark theme.
-
 - The 8 header snapshots are now full **Patch Variations** (G2-style): they capture all
   parameter values plus the four morph knobs, persist in a `<patch>.var` sidecar file next
   to the `.pch` (which stays 100% compatible with the original editors), and reload when the
@@ -114,6 +113,16 @@ Support this proyect: https://www.patreon.com/c/animatek
   always-on-top / per-click re-raise made context menus and right-clicks feel sluggish
   (`toFront` and always-on-top are costly on Linux compositors). Floaters can now fall behind
   the editor like normal windows.
+
+### Known limitations
+
+- The desktop editor remains the supported product; VST3/CLAP targets are experimental.
+- Patch variations and mutation exclusions live in a `.var` sidecar. Keep it next to the
+  corresponding `.pch` when moving a patch if those extras should travel with it.
+- Balanced is the recommended synth send speed. Fast and Maximum depend on the MIDI interface
+  and patch size and may be less reliable on some setups.
+- MIDI notes stuck upstream of the PC port cannot be cleared by the editor; use the synth's
+  front-panel panic function.
 
 ## 0.6.0 — 2026-06-11
 
