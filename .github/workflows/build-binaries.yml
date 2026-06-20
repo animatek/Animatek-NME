@@ -5,21 +5,31 @@ name: Build Binaries
 # Release maintainers may also attach selected unprotected packages to GitHub Releases.
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - linux
+          - windows
+          - macos
+      protect_with_password:
+        description: Password-protect packages with ARTIFACT_PASSWORD
+        required: true
+        default: true
+        type: boolean
 
 jobs:
   build:
     name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.name == 'linux' && 'ubuntu-22.04' || matrix.name == 'windows' && 'windows-latest' || 'macos-latest' }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: linux
-            os: ubuntu-22.04
-          - name: windows
-            os: windows-latest
-          - name: macos
-            os: macos-latest
+        name: ${{ fromJSON(inputs.platform == 'all' && '["linux","windows","macos"]' || format('["{0}"]', inputs.platform)) }}
 
     steps:
       - uses: actions/checkout@v4
@@ -85,7 +95,7 @@ jobs:
       - name: Package
         shell: bash
         env:
-          ARTIFACT_PASSWORD: ${{ secrets.ARTIFACT_PASSWORD }}
+          ARTIFACT_PASSWORD: ${{ inputs.protect_with_password && secrets.ARTIFACT_PASSWORD || '' }}
         run: |
           out="AnimatekNME-${{ steps.version.outputs.version }}-${{ matrix.name }}.zip"
           cd stage
