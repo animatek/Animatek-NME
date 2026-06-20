@@ -133,9 +133,6 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Menu bar
   menuBar = std::make_unique<juce::MenuBarComponent>(this);
   addAndMakeVisible(menuBar.get());
-#if JUCE_MAC
-  juce::MenuBarModel::setMacMainMenu(this);
-#endif
 
   // Main layout
   mainLayout = std::make_unique<MainLayout>(moduleDescs);
@@ -801,6 +798,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     // Reopen floater windows that were open last session
     juce::Timer::callAfterDelay(600, [safeThis]() { if (safeThis) safeThis->restoreFloaterWindows(); });
   }
+
+#if JUCE_MAC
+  juce::MenuBarModel::setMacMainMenu(this);
+#endif
 }
 
 MainComponent::~MainComponent() {
