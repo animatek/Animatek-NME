@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(AnimatekNME VERSION 0.7.0 LANGUAGES C CXX)
+project(AnimatekNME VERSION 0.8.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -96,8 +96,8 @@ set(NME_SHARED_SOURCES
 juce_add_gui_app(AnimatekNME
     PRODUCT_NAME "AnimatekNME"
     COMPANY_NAME "Animatek"
-    ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
-    ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
+    ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon.png"
+    ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon.png"
     VERSION "${PROJECT_VERSION}"
 )
 
@@ -114,8 +114,8 @@ if(NME_BUILD_PLUGIN)
         FORMATS VST3 AU Standalone
         PRODUCT_NAME "Animatek NME"
         COMPANY_NAME "Animatek"
-        ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
-        ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-dark.png"
+        ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon.png"
+        ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon.png"
         IS_SYNTH TRUE
         IS_MIDI_EFFECT FALSE
         NEEDS_MIDI_INPUT TRUE
@@ -140,6 +140,7 @@ if(NME_BUILD_PLUGIN)
 endif()
 
 juce_add_binary_data(NmeData SOURCES
+    data/images/app-icon.png
     data/images/app-icon-dark.png
     data/modules.xml
     data/transformations.xml

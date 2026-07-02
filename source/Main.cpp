@@ -87,8 +87,8 @@ public:
     private:
         void applyWindowIcon()
         {
-            auto icon = juce::ImageFileFormat::loadFrom(BinaryData::appicondark_png,
-                                                        BinaryData::appicondark_pngSize);
+            auto icon = juce::ImageFileFormat::loadFrom(BinaryData::appicon_png,
+                                                        BinaryData::appicon_pngSize);
             if (!icon.isValid())
                 return;
 

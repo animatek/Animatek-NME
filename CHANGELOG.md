@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.8.0 — 2026-07-02
+
+- Updated the application icon to the new Animatek artwork from
+  `Implementaciones/icon.png`, wired through the JUCE app/plugin icon metadata, bundled
+  binary resources, and runtime window/taskbar icon.
+
 ## 0.7.0 — 2026-06-20
 
 - **Hardened Mutator/variation parameter delivery across patch transitions.** Pending
