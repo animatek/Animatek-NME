@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **Fixed slot handling to match the hardware's two-level slot model.** The synth
+  distinguishes *enabled* slots (fixed LED, several can be on at once) from the single
+  *selected* slot (blinking LED). A plain click now reproduces the panel's slot-button
+  rule: the newly selected slot is always enabled, the slot being left turns off unless
+  it was pinned, and pinned slots stay on. Ctrl+click enables/disables a slot without
+  selecting it (`SlotsSelected` with the full 4-slot mask), like Shift+button on the
+  panel and Ctrl+click in the original 3.3 editor.
+  Previously the editor rewrote the enable mask with a single bit on every slot change,
+  silently disabling every other enabled slot. The editor now tracks the real enable
+  mask (from `SlotsSelected` notifications and the extended synth settings on connect),
+  never sends a mask before the synth has reported its actual state, and the initial
+  patch fetch targets the really selected slot instead of always slot A.
+
+- The slot bar now shows a hardware-style LED per slot: fixed = enabled, blinking =
+  selected, off = disabled.
+
+- Patches fetched for a background slot (for example a `NewPatchInSlot` notification from
+  a non-focused slot) no longer hijack the editor's current slot — parameter edits keep
+  going to the slot you are working on.
+
 ## 0.8.0 — 2026-07-02
 
 - Updated the application icon to the new Animatek artwork from

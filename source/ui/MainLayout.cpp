@@ -10,6 +10,19 @@ constexpr const char* SlotBar::slotLetters[];
 SlotBar::SlotBar()
 {
     setInterceptsMouseClicks(true, false);
+    startTimer(450);  // hardware-style blink for the focused slot's LED
+}
+
+SlotBar::~SlotBar()
+{
+    stopTimer();
+}
+
+void SlotBar::timerCallback()
+{
+    blinkPhase = !blinkPhase;
+    for (int i = 0; i < numSlots; ++i)
+        repaint(ledBounds(i));
 }
 
 void SlotBar::setCurrentTab(int index)
@@ -28,6 +41,28 @@ void SlotBar::setSlotName(int slot, const juce::String& patchName)
         slotNames[slot] = patchName;
         repaint();
     }
+}
+
+void SlotBar::setSlotsEnabled(const std::array<bool, 4>& enabled)
+{
+    bool changed = false;
+    for (int i = 0; i < numSlots; ++i)
+    {
+        if (slotEnabledFlags[i] != enabled[static_cast<size_t>(i)])
+        {
+            slotEnabledFlags[i] = enabled[static_cast<size_t>(i)];
+            changed = true;
+        }
+    }
+    if (changed)
+        repaint();
+}
+
+juce::Rectangle<int> SlotBar::ledBounds(int slot) const
+{
+    // Small round LED at the right edge of the slot row
+    auto bounds = slotBounds[slot];
+    return { bounds.getRight() - 16, bounds.getCentreY() - 5, 10, 10 };
 }
 
 void SlotBar::resized()
@@ -99,8 +134,8 @@ void SlotBar::paint(juce::Graphics& g)
         auto iconArea = bounds.removeFromLeft(20).reduced(2);
         drawSlotIcon(g, iconArea, active);
 
-        // Text: "A : PatchName"
-        auto textArea = bounds.reduced(4, 0);
+        // Text: "A : PatchName" (leave room for the LED on the right)
+        auto textArea = bounds.reduced(4, 0).withTrimmedRight(16);
         juce::String label = juce::String(slotLetters[i]) + " : ";
         if (slotNames[i].isNotEmpty())
             label += slotNames[i];
@@ -108,6 +143,15 @@ void SlotBar::paint(juce::Graphics& g)
         g.setColour(active ? juce::Colours::white : juce::Colour(0xff999999));
         g.setFont(juce::FontOptions(12.0f));
         g.drawText(label, textArea, juce::Justification::centredLeft, true);
+
+        // Slot LED, mirroring the hardware: blinking = focused, fixed =
+        // enabled, off = disabled. Ctrl+click the row to toggle enable.
+        auto led = ledBounds(i).toFloat();
+        bool ledOn = active ? blinkPhase : slotEnabledFlags[i];
+        g.setColour(ledOn ? juce::Colour(0xff44cc44) : juce::Colour(0xff2a3a2a));
+        g.fillEllipse(led);
+        g.setColour(AppTheme::palette().borderColor);
+        g.drawEllipse(led, 1.0f);
 
         // Bottom separator
         g.setColour(AppTheme::palette().buttonActive);
@@ -122,17 +166,25 @@ void SlotBar::mouseDown(const juce::MouseEvent& e)
     auto pos = e.getPosition();
     for (int i = 0; i < numSlots; ++i)
     {
-        if (slotBounds[i].contains(pos))
+        if (!slotBounds[i].contains(pos))
+            continue;
+
+        // Ctrl+click toggles the slot's enable state without changing focus,
+        // matching the original 3.3 editor (like holding the slot button on
+        // the hardware). Plain click moves focus.
+        if (e.mods.isCtrlDown() || e.mods.isCommandDown())
         {
-            if (i != activeIndex)
-            {
-                activeIndex = i;
-                repaint();
-                if (onSlotChanged)
-                    onSlotChanged(i);
-            }
-            break;
+            if (onSlotEnableToggled)
+                onSlotEnableToggled(i);
         }
+        else if (i != activeIndex)
+        {
+            activeIndex = i;
+            repaint();
+            if (onSlotChanged)
+                onSlotChanged(i);
+        }
+        break;
     }
 }
 

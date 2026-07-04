@@ -770,6 +770,22 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     switchToSlot(slot);
   };
 
+  // Wire slot enable state (fixed LEDs on hardware; several can be on at once)
+  connectionManager.setSlotsEnabledCallback([this](const std::array<bool, 4>& enabled) {
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::MessageManager::callAsync([safeThis, enabled]() {
+      if (safeThis)
+        safeThis->mainLayout->getSlotBar().setSlotsEnabled(enabled);
+    });
+  });
+
+  // Clicking a slot's LED toggles its enable state on the synth (like holding
+  // the slot button on the hardware). The LED updates when the synth confirms.
+  mainLayout->getSlotBar().onSlotEnableToggled = [this](int slot) {
+    if (connectionManager.isConnected())
+      connectionManager.setSlotEnabled(slot, !connectionManager.isSlotEnabled(slot));
+  };
+
   // Wire synth slot changes (user presses slot button on hardware)
   connectionManager.setSlotChangedCallback([this](int slot) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -819,6 +835,7 @@ MainComponent::~MainComponent() {
   connectionManager.setParameterChangeCallback(nullptr);
   connectionManager.setSynthErrorCallback(nullptr);
   connectionManager.setSlotChangedCallback(nullptr);
+  connectionManager.setSlotsEnabledCallback(nullptr);
   connectionManager.setUploadCompleteCallback(nullptr);
   connectionManager.setLightMeterCallback(nullptr);
   connectionManager.setPatchListCallback(nullptr);

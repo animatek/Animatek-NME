@@ -2,6 +2,7 @@
 
 #include "NmProtocol.h"
 #include "MidiDeviceManager.h"
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <functional>
@@ -66,8 +67,16 @@ public:
     void deletePatchInBank(int section, int position);
 
     int getCurrentSlot() const;
-    void selectSlot(int slot);  // Tell synth to switch active slot
+    void selectSlot(int slot);  // Give a slot focus (blinking LED on hardware)
     int getCurrentPatchId() const { return currentPatchId; }
+
+    // Slot enable state (fixed LED on hardware; several slots can be enabled
+    // at once, independent of which one has focus)
+    void setSlotEnabled(int slot, bool enabled);  // Send full mask to synth
+    bool isSlotEnabled(int slot) const
+    {
+        return slot >= 0 && slot < 4 && slotEnabled[static_cast<size_t>(slot)];
+    }
 
     // Bank location of the last loaded patch (-1 = unknown, e.g. synth-side change)
     int getLastLoadedSection() const { return lastLoadedSection; }
@@ -98,6 +107,10 @@ public:
     // Called when synth changes active slot (user pressed slot button on hardware)
     using SlotChangedCallback = std::function<void(int slot)>;
     void setSlotChangedCallback(SlotChangedCallback cb) { slotChangedCallback = std::move(cb); }
+
+    // Called when the synth reports which slots are enabled (SlotsSelected mask)
+    using SlotsEnabledCallback = std::function<void(const std::array<bool, 4>&)>;
+    void setSlotsEnabledCallback(SlotsEnabledCallback cb) { slotsEnabledCallback = std::move(cb); }
 
     // Called when synth ACKs an uploadPatch() — safe to send StorePatch now
     using UploadCompleteCallback = std::function<void()>;
@@ -216,6 +229,7 @@ private:
     ParameterChangeCallback parameterChangeCallback;
     SynthErrorCallback synthErrorCallback;
     SlotChangedCallback slotChangedCallback;
+    SlotsEnabledCallback slotsEnabledCallback;
     UploadCompleteCallback uploadCompleteCallback;
     BankFetchCallback bankFetchCallback;
     BankUploadResultCallback bankUploadResultCallback;
@@ -244,7 +258,19 @@ private:
     static constexpr int uploadAckTimeoutMs = 5000;
     static constexpr int uploadInterSectionDelayMs = 40;
     int pendingPatchSlot = 0;
-    int currentSlot = 0;  // Track which slot is currently loaded
+    int currentSlot = 0;  // Slot with focus (blinking LED on hardware)
+    std::array<bool, 4> slotEnabled { false, false, false, false };  // Enable mask as reported by the synth
+    // Slots the user pinned (Ctrl+click here / Shift+button on the panel).
+    // Pinned slots stay enabled when the selection moves away; an unpinned
+    // slot is only enabled while selected. The mask we send is always
+    // pinned + selected. Synced from synth notifications in updateSlotPins().
+    std::array<bool, 4> slotPinned { false, false, false, false };
+    // True once the synth has told us its real enable mask (SlotsSelected or
+    // extended settings). Until then we must never send a mask of our own —
+    // a wrong guess disables slots on the synth.
+    bool slotEnableMaskKnown = false;
+    void updateSlotPinsFromMask(int selectedSlot);
+    void sendSlotMask();
     int pendingBankLoadSlot = -1;
     int pendingBankLoadGeneration = 0;
     int lastLoadedSection = -1;   // Bank section of last loadPatchFromBank (-1=unknown)

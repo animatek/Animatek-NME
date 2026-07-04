@@ -150,6 +150,10 @@ void ConnectionManager::disconnect()
     pendingBankLoadGeneration++;
     slotDetected = false;
     slotDetectGeneration++;
+    // Slot state can change while we're away — relearn it on reconnect
+    slotEnableMaskKnown = false;
+    slotEnabled.fill(false);
+    slotPinned.fill(false);
 
     if (midiDevice)
     {
@@ -270,15 +274,20 @@ void ConnectionManager::selectSlot(int slot)
     if (slot != currentSlot)
         invalidateParamQueue("slot selection");
 
-    // libnmProtocol sends slot-management commands with SysEx header slot 0.
-    // The target slot lives in the payload.
-    std::vector<uint8_t> selectedPayload;
-    selectedPayload.push_back(0x41);  // pid = PatchManagerCommand
-    selectedPayload.push_back(0x07);  // sc = SlotsSelected
-    // PDL: SlotsSelected := 0:4 slot0:1 slot1:1 slot2:1 slot3:1
-    selectedPayload.push_back(static_cast<uint8_t>(1 << (3 - slot)));
-    protocol.sendMessage(NmCmd::PatchHandling, 0, selectedPayload,
-                         /*expectsReply=*/true, /*addChecksum=*/true);
+    // Emulate the panel rule for a plain slot-button press: enable state is
+    // sticky for pinned slots and follows the selection otherwise, so the
+    // mask is always pinned + newly selected slot. The slot being left drops
+    // out only if it wasn't pinned. Never guess: without the synth's real
+    // state we'd disable pinned slots, so in that case send only the
+    // selection and ask for the state.
+    // libnmProtocol sends slot-management commands with SysEx header slot 0;
+    // the target slot lives in the payload.
+    currentSlot = slot;
+
+    if (slotEnableMaskKnown)
+        sendSlotMask();
+    else
+        requestSynthSettings();
 
     std::vector<uint8_t> activePayload;
     activePayload.push_back(0x41);  // pid = PatchManagerCommand
@@ -287,9 +296,65 @@ void ConnectionManager::selectSlot(int slot)
     protocol.sendMessage(NmCmd::PatchHandling, 0, activePayload,
                          /*expectsReply=*/true, /*addChecksum=*/true);
 
-    currentSlot = slot;
+    std::cout << "[SLOT] Sent " << (slotEnableMaskKnown ? "SlotsSelected + " : "")
+              << "SlotActivated: " << slot << std::endl;
+}
 
-    std::cout << "[SLOT] Sent SlotsSelected + SlotActivated: " << slot << std::endl;
+void ConnectionManager::sendSlotMask()
+{
+    // Enable mask = pinned slots + the selected slot (always enabled)
+    uint8_t mask = 0;
+    for (int i = 0; i < 4; ++i)
+        if (slotPinned[static_cast<size_t>(i)] || i == currentSlot)
+            mask |= static_cast<uint8_t>(1 << (3 - i));
+
+    std::vector<uint8_t> payload;
+    payload.push_back(0x41);  // pid = PatchManagerCommand
+    payload.push_back(0x07);  // sc = SlotsSelected
+    payload.push_back(mask);
+    protocol.sendMessage(NmCmd::PatchHandling, 0, payload,
+                         /*expectsReply=*/true, /*addChecksum=*/true);
+}
+
+void ConnectionManager::updateSlotPinsFromMask(int selectedSlot)
+{
+    // Derive pin state from a synth-reported enable mask. An enabled,
+    // non-selected slot is necessarily pinned; a disabled slot necessarily
+    // isn't. For the selected slot the mask can't tell pinned from
+    // enabled-by-selection, so our current belief is kept — it converges as
+    // soon as the selection moves.
+    for (int i = 0; i < 4; ++i)
+    {
+        if (!slotEnabled[static_cast<size_t>(i)])
+            slotPinned[static_cast<size_t>(i)] = false;
+        else if (i != selectedSlot)
+            slotPinned[static_cast<size_t>(i)] = true;
+    }
+}
+
+void ConnectionManager::setSlotEnabled(int slot, bool enabled)
+{
+    if (!isConnected() || slot < 0 || slot > 3)
+        return;
+
+    // Never guess the mask: with unknown state a toggle would send a
+    // single-bit mask and disable every other enabled slot on the synth.
+    if (!slotEnableMaskKnown)
+    {
+        std::cout << "[SLOT] Enable mask unknown — requesting synth settings first" << std::endl;
+        requestSynthSettings();
+        return;
+    }
+
+    // Ctrl+click pins/unpins the slot (Shift+button on the panel): pinned
+    // slots stay enabled when the selection moves elsewhere. Send the full
+    // resulting mask; the local enabled state is updated when the synth
+    // confirms with its own SlotsSelected notification.
+    slotPinned[static_cast<size_t>(slot)] = enabled;
+    sendSlotMask();
+
+    std::cout << "[SLOT] Sent SlotsSelected (slot " << slot
+              << (enabled ? " pinned" : " unpinned") << ")" << std::endl;
 }
 
 void ConnectionManager::loadPatchFromBank(int section, int position, int targetSlot)
@@ -1090,8 +1155,10 @@ void ConnectionManager::finalizePatch()
 
     const int completedSlot = pendingPatchSlot;
 
-    // Mark this slot as the current one
-    currentSlot = completedSlot;
+    // Note: currentSlot (focus) is deliberately NOT updated here. A patch can
+    // arrive for a background slot (NewPatchInSlot on a non-focused slot) and
+    // must not hijack where parameter edits are sent. Focus only moves via
+    // selectSlot() and the synth's SlotActivated notification.
 
     if (bankFetchCallback)
     {
@@ -1267,6 +1334,27 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         }
     }
 
+    if (msg.sc == 0x07 && !msg.data.empty())  // SlotsSelected: enable mask
+    {
+        // PDL: SlotsSelected := 0:4 slot0:1 slot1:1 slot2:1 slot3:1
+        int mask = msg.data[0] & 0x0f;
+        for (int i = 0; i < 4; ++i)
+            slotEnabled[static_cast<size_t>(i)] = (mask & (1 << (3 - i))) != 0;
+        slotEnableMaskKnown = true;
+        updateSlotPinsFromMask(currentSlot);
+
+        std::cout << "[SLOT] Enabled slots:";
+        for (int i = 0; i < 4; ++i)
+            if (slotEnabled[static_cast<size_t>(i)])
+                std::cout << " " << static_cast<char>('A' + i);
+        if (mask == 0)
+            std::cout << " (none)";
+        std::cout << std::endl;
+
+        if (slotsEnabledCallback)
+            slotsEnabledCallback(slotEnabled);
+    }
+
     if (msg.sc == 0x09 && !msg.data.empty())  // SlotActivated
     {
         int activeSlot = msg.data[0] & 0x03;
@@ -1293,8 +1381,8 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
             requestPatch(activeSlot);
     }
 
-    // Silently handle high-frequency messages (Lights, Meters, SlotsSelected)
-    // sc=0x39 (Lights), sc=0x3a (Meters), sc=0x07 (SlotsSelected)
+    // High-frequency messages sc=0x39 (Lights) and sc=0x3a (Meters) are
+    // handled above without logging.
 }
 
 void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
@@ -1320,6 +1408,32 @@ void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
         if (SynthSettingsMessage::decode(msg.patchData, settings))
         {
             std::cout << "[SYNTH] Received synth settings: name=\"" << settings.name << "\"" << std::endl;
+
+            // The extended settings block carries the initial slot state:
+            // enable mask (fixed LEDs) and the focused slot (blinking LED).
+            if (settings.hasExtended)
+            {
+                for (int i = 0; i < 4; ++i)
+                    slotEnabled[static_cast<size_t>(i)] = settings.slotSelected[i] != 0;
+                slotEnableMaskKnown = true;
+                updateSlotPinsFromMask(settings.activeSlot);
+                if (slotsEnabledCallback)
+                    slotsEnabledCallback(slotEnabled);
+
+                // Track focus, but leave slotDetected alone: the initial
+                // patch fetch is still driven by SlotActivated/NewPatchInSlot
+                // or by the detection fallback (which uses currentSlot).
+                if (settings.activeSlot >= 0 && settings.activeSlot <= 3
+                    && settings.activeSlot != currentSlot)
+                {
+                    currentSlot = settings.activeSlot;
+                    std::cout << "[SLOT] Focused slot from synth settings: "
+                              << static_cast<char>('A' + currentSlot) << std::endl;
+                    if (slotChangedCallback)
+                        slotChangedCallback(currentSlot);
+                }
+            }
+
             if (synthSettingsCallback)
             {
                 auto cb = synthSettingsCallback;
@@ -1427,8 +1541,11 @@ void ConnectionManager::startSlotDetectionFallback()
         if (generation == slotDetectGeneration && !slotDetected && isConnected()
             && !waitingForPatchAck && !collectingSections)
         {
-            std::cout << "[SLOT] No SlotActivated received — defaulting to slot 0" << std::endl;
-            requestPatch(0);
+            // currentSlot may already hold the real focus (seeded from the
+            // extended synth settings); fall back to it rather than slot 0.
+            std::cout << "[SLOT] No SlotActivated received — fetching slot "
+                      << static_cast<char>('A' + currentSlot) << std::endl;
+            requestPatch(currentSlot);
         }
     });
 }
