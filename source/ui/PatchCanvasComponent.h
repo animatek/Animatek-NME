@@ -181,6 +181,17 @@ private:
     // (poly modules come first, sorted by index; then common modules)
     int computeModuleLightIndex(const Module& m, int section, bool forMeters) const;
 
+    // Per-module slot ranges in the global light/meter arrays, in wire order
+    // (poly section first, then common, each sorted by container index).
+    struct ModuleLightRange
+    {
+        const Module* mod;
+        int section;
+        int lightBase, lightCount;
+        int meterBase, meterCount;
+    };
+    std::vector<ModuleLightRange> computeModuleLightRanges() const;
+
     // Dragging state
     struct DragState
     {

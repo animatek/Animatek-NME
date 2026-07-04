@@ -61,14 +61,47 @@ static juce::Image getTintedDecoration(const juce::String& iconName, juce::Colou
 
 void PatchCanvas::setLightMeterData(const int lights[128], const int meters[128])
 {
+    bool lightChanged[128], meterChanged[128];
+    bool any = false;
+    for (int i = 0; i < 128; ++i)
+    {
+        lightChanged[i] = lights[i] != globalLightValues[i];
+        meterChanged[i] = meters[i] != globalMeterValues[i];
+        any = any || lightChanged[i] || meterChanged[i];
+    }
+
+    // The synth streams these many times per second, mostly re-sending the
+    // same values; only the modules whose slots changed need a repaint.
+    if (!any)
+        return;
+
     std::copy(lights, lights + 128, globalLightValues);
     std::copy(meters, meters + 128, globalMeterValues);
-    repaint();
+
+    for (const auto& r : computeModuleLightRanges())
+    {
+        if (r.section != mySection)
+            continue;
+
+        bool dirty = false;
+        for (int i = 0; !dirty && i < r.lightCount && r.lightBase + i < 128; ++i)
+            dirty = lightChanged[r.lightBase + i];
+        for (int i = 0; !dirty && i < r.meterCount && r.meterBase + i < 128; ++i)
+            dirty = meterChanged[r.meterBase + i];
+
+        if (dirty)
+        {
+            auto rf = getModuleBounds(*r.mod, 0).toFloat();
+            rf *= zoomLevel;
+            repaint(rf.getSmallestIntegerContainer().expanded(2));
+        }
+    }
 }
 
-int PatchCanvas::computeModuleLightIndex(const Module& targetModule, int targetSection, bool forMeters) const
+std::vector<PatchCanvas::ModuleLightRange> PatchCanvas::computeModuleLightRanges() const
 {
-    if (patch == nullptr || themeData == nullptr) return 0;
+    std::vector<ModuleLightRange> ranges;
+    if (patch == nullptr || themeData == nullptr) return ranges;
 
     // Build sorted list: poly (section=1) first, then common (section=0), each sorted by containerIndex
     struct ModuleRef { const Module* mod; int section; };
@@ -88,11 +121,12 @@ int PatchCanvas::computeModuleLightIndex(const Module& targetModule, int targetS
     addSection(patch->getPolyVoiceArea(), 1);
     addSection(patch->getCommonArea(), 0);
 
-    int baseIndex = 0;
+    int lightBase = 0;
+    int meterBase = 0;
     for (auto& ref : ordered)
     {
-        if (ref.mod == &targetModule && ref.section == targetSection)
-            return baseIndex;
+        int lightCount = 0;
+        int meterCount = 0;
 
         // Count lights/meters for this module from its theme
         auto compId = ref.mod->getDescriptor() ? ref.mod->getDescriptor()->componentId : juce::String();
@@ -102,22 +136,35 @@ int PatchCanvas::computeModuleLightIndex(const Module& targetModule, int targetS
             int meterSlots = 0;
             for (auto& light : theme->lights)
             {
-                if (forMeters && (light.type == "meter" || light.type == "led-array"))
+                if (light.type == "meter" || light.type == "led-array")
                 {
                     hasMeterOrLedArray = true;
                     if (light.type == "meter")
                         ++meterSlots;
                 }
-                if (!forMeters && light.type == "led")  ++baseIndex;
+                if (light.type == "led")
+                    ++lightCount;
             }
 
             // NOMAD registers meters and sequencer led-arrays as MeterMessage
             // pairs. A single led-array/single meter still consumes two slots.
-            if (forMeters && hasMeterOrLedArray)
-                baseIndex += juce::jmax(2, meterSlots);
+            if (hasMeterOrLedArray)
+                meterCount = juce::jmax(2, meterSlots);
         }
+
+        ranges.push_back({ ref.mod, ref.section, lightBase, lightCount, meterBase, meterCount });
+        lightBase += lightCount;
+        meterBase += meterCount;
     }
-    return baseIndex;
+    return ranges;
+}
+
+int PatchCanvas::computeModuleLightIndex(const Module& targetModule, int targetSection, bool forMeters) const
+{
+    for (const auto& r : computeModuleLightRanges())
+        if (r.mod == &targetModule && r.section == targetSection)
+            return forMeters ? r.meterBase : r.lightBase;
+    return 0;
 }
 
 PatchCanvas::PatchCanvas()
@@ -4079,6 +4126,18 @@ void PatchCanvas::shakeCables()
 
 void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& container, int yOffset)
 {
+    if (cableOpacity < 0.01f)
+        return;
+
+    // Connector→module lookup built once per paint; scanning every module's
+    // connectors per cable made partial repaints needlessly expensive.
+    std::map<const Connector*, const Module*> owners;
+    for (auto& modulePtr : container.getModules())
+        for (auto& c : modulePtr->getConnectors())
+            owners[&c] = modulePtr.get();
+
+    const auto clip = g.getClipBounds();
+
     for (auto& conn : container.getConnections())
     {
         if (conn.output == nullptr || conn.input == nullptr)
@@ -4101,25 +4160,30 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
         }
 
         // Find the modules that own these connectors
-        const Module* srcModule = nullptr;
-        const Module* dstModule = nullptr;
-
-        for (auto& modulePtr : container.getModules())
-        {
-            for (auto& c : modulePtr->getConnectors())
-            {
-                if (&c == conn.output)
-                    srcModule = modulePtr.get();
-                if (&c == conn.input)
-                    dstModule = modulePtr.get();
-            }
-        }
-
-        if (srcModule == nullptr || dstModule == nullptr)
+        auto itSrc = owners.find(conn.output);
+        auto itDst = owners.find(conn.input);
+        if (itSrc == owners.end() || itDst == owners.end())
             continue;
+
+        const Module* srcModule = itSrc->second;
+        const Module* dstModule = itDst->second;
 
         auto srcPos = getConnectorPosition(*srcModule, *conn.output, yOffset);
         auto dstPos = getConnectorPosition(*dstModule, *conn.input, yOffset);
+
+        // Skip cables fully outside the clip region — the common case when a
+        // light/meter update repaints a single module's rectangle. The sag
+        // margin covers the deepest curve (shakeCables multiplier ≤ 1.6).
+        {
+            float baseSag = std::abs(static_cast<float>(srcPos.x - dstPos.x)) * 0.15f + 15.0f;
+            int sagMargin = juce::roundToInt(baseSag * 1.6f) + 8;
+            auto cableBounds = juce::Rectangle<int>::leftTopRightBottom(
+                    juce::jmin(srcPos.x, dstPos.x), juce::jmin(srcPos.y, dstPos.y),
+                    juce::jmax(srcPos.x, dstPos.x), juce::jmax(srcPos.y, dstPos.y))
+                .expanded(8, sagMargin);
+            if (!clip.intersects(cableBounds))
+                continue;
+        }
 
         juce::Colour cableCol = activeScheme_.cableAudio;
         switch (conn.output->getDescriptor()->signalType)
@@ -4132,9 +4196,6 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
             case SignalType::User2:       cableCol = activeScheme_.cableUser2;       break;
             default: cableCol = getSignalColour(conn.output->getDescriptor()->signalType); break;
         }
-
-        if (cableOpacity < 0.01f)
-            continue;
 
         // Build path — curved or straight depending on style
         juce::Path path;

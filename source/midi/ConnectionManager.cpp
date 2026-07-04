@@ -1206,10 +1206,15 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
 
     if (msg.sc == 0x39 && msg.lightStartIndex >= 0)  // LightMessage
     {
+        // The stream mostly re-sends unchanged values; don't wake the UI for those.
         int base = msg.lightStartIndex;
+        bool changed = false;
         for (int i = 0; i < 20 && (base + i) < 128; ++i)
+        {
+            changed = changed || globalLightValues[base + i] != msg.lightValues[i];
             globalLightValues[base + i] = msg.lightValues[i];
-        if (lightMeterCallback)
+        }
+        if (changed && lightMeterCallback)
             lightMeterCallback(globalLightValues, globalMeterValues);
     }
 
@@ -1220,12 +1225,21 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         // Which channel a given light reads is decided at the consumer
         // (PatchCanvas::paintLights), same as the Java pair semantics.
         int base = msg.meterStartIndex;
+        bool changed = false;
         for (int i = 0; i < 5; ++i)
         {
-            if ((base + i*2)   < 128) globalMeterValues[base + i*2]   = msg.meterValuesB[i];
-            if ((base + i*2+1) < 128) globalMeterValues[base + i*2+1] = msg.meterValuesA[i];
+            if ((base + i*2) < 128)
+            {
+                changed = changed || globalMeterValues[base + i*2] != msg.meterValuesB[i];
+                globalMeterValues[base + i*2] = msg.meterValuesB[i];
+            }
+            if ((base + i*2+1) < 128)
+            {
+                changed = changed || globalMeterValues[base + i*2+1] != msg.meterValuesA[i];
+                globalMeterValues[base + i*2+1] = msg.meterValuesA[i];
+            }
         }
-        if (lightMeterCallback)
+        if (changed && lightMeterCallback)
             lightMeterCallback(globalLightValues, globalMeterValues);
     }
 
