@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.8.1 — 2026-07-04
+
+- **Chained input→input cables**, matching the original editor: drag from a connected
+  input to another input to daisy-chain a net (e.g. OscA1 Pitch → OscA2 Pitch, or
+  2 Outputs L → R). The one-output-per-net hardware rule is enforced during drag and on
+  drop. Fixed the binary patch decoder, which misread chained cables fetched from the
+  synth (the type bit belongs to the source end; the destination is always an input),
+  and the serializer, which stripped the chain on upload.
+
+- **Rendering performance pass**: light/meter SysEx messages that re-send unchanged
+  values no longer wake the UI; when values do change, only the affected modules'
+  rectangles are repainted instead of the whole canvas; cable painting uses a
+  connector→module map built once per paint and skips cables outside the repaint
+  region. Large patches render dramatically faster and idle CPU drops to near zero.
+
 ## 0.8.0 — 2026-07-04
 
 - Saving a patch now writes the **current** values of custom module controls (sequencer
