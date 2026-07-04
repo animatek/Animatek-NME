@@ -230,12 +230,12 @@ void PatchParser::parseCableDump(BitStream& bs, Patch& patch)
         int secondConnectorIndex = static_cast<int>(bs.readBits(6));
         (void)color; // stored implicitly through connector signal types
 
-        // The binary CableDump carries a type bit only for the first connector.
-        // Clavia patches exist in both orders: strict 3.03 stores input first,
-        // while some factory 3.0x patches store output first. Normalize either
-        // encoding to the model convention: output connector first, input second.
+        // Binary cable record (per jpatch BitstreamPatchParser): the type bit
+        // belongs to the FIRST (source) end — 1 = output, 0 = a chained input
+        // (input→input cable) — and the second (destination) end is always an
+        // input.
         bool firstIsOutput = (firstConnectorType != 0);
-        bool secondIsOutput = !firstIsOutput;
+        bool secondIsOutput = false;
 
         auto* firstModule = container.getModuleByIndex(firstModuleIndex);
         auto* secondModule = container.getModuleByIndex(secondModuleIndex);
@@ -258,9 +258,9 @@ void PatchParser::parseCableDump(BitStream& bs, Patch& patch)
             continue;
         }
 
-        auto* outputConn = firstIsOutput ? firstConn : secondConn;
-        auto* inputConn = firstIsOutput ? secondConn : firstConn;
-        container.addConnection(outputConn, inputConn);
+        // Connection's "output" slot holds the source end — for a chained
+        // cable (type bit 0) that is itself an input connector.
+        container.addConnection(firstConn, secondConn);
     }
 }
 

@@ -484,13 +484,24 @@ void PatchCanvas::paint(juce::Graphics& g)
             }
         }
 
-        // Check if cursor is hovering a valid destination connector
+        // Check if cursor is hovering a valid destination connector.
+        // output→input and input→input (chained) are valid; output→output is not.
         auto hit = findConnectorAt(cablePreviewEnd);
         bool validTarget = hit.connector != nullptr
                         && hit.connector != dragState.sourceConnector
                         && hit.section == dragState.section
                         && srcDesc != nullptr
-                        && srcDesc->isOutput != hit.connector->getDescriptor()->isOutput;
+                        && !(srcDesc->isOutput && hit.connector->getDescriptor()->isOutput);
+
+        // Joining two nets that already have distinct driving outputs is invalid
+        if (validTarget && patch != nullptr)
+        {
+            auto& cont = patch->getContainer(dragState.section);
+            auto* drv1 = cont.findNetOutput(dragState.sourceConnector);
+            auto* drv2 = cont.findNetOutput(hit.connector);
+            if (drv1 != nullptr && drv2 != nullptr && drv1 != drv2)
+                validTarget = false;
+        }
 
         juce::Path path;
         path.startNewSubPath(srcPos.toFloat());
@@ -5681,11 +5692,24 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
             bool dstOut = dst->getDescriptor()->isOutput;
             auto& container = patch->getContainer(dragState.section);
 
-            // Connect output→input, auto-swap if needed
+            // Connect output→input (auto-swap if needed), or chain two inputs
+            // like the original editor: the Connection "output" slot then holds
+            // the drag-source input. Two outputs can never join.
             Connector* outConn = nullptr;
             Connector* inConn = nullptr;
             if (srcOut && !dstOut) { outConn = src; inConn = dst; }
             else if (!srcOut && dstOut) { outConn = dst; inConn = src; }
+            else if (!srcOut && !dstOut) { outConn = src; inConn = dst; }
+
+            // A net is driven by at most one output: refuse to join two nets
+            // that already have distinct outputs.
+            if (outConn && inConn)
+            {
+                auto* drv1 = container.findNetOutput(outConn);
+                auto* drv2 = container.findNetOutput(inConn);
+                if (drv1 != nullptr && drv2 != nullptr && drv1 != drv2)
+                    outConn = inConn = nullptr;
+            }
 
             if (outConn && inConn)
             {
@@ -5706,8 +5730,8 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
                     auto* inMod = findOwner(inConn);
                     if (outMod && inMod)
                         cableCreatedCallback(dragState.section,
-                            outMod->getContainerIndex(), outConn->getDescriptor()->index, true,
-                            inMod->getContainerIndex(), inConn->getDescriptor()->index, false);
+                            outMod->getContainerIndex(), outConn->getDescriptor()->index, outConn->getDescriptor()->isOutput,
+                            inMod->getContainerIndex(), inConn->getDescriptor()->index, inConn->getDescriptor()->isOutput);
                 }
             }
         }

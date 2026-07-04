@@ -1,5 +1,6 @@
 #include "Patch.h"
 #include "ModuleDescriptions.h"
+#include <set>
 
 // --- Module ---
 
@@ -200,6 +201,36 @@ void ModuleContainer::removeConnectionsForConnector(Connector* conn)
         std::remove_if(connections.begin(), connections.end(),
             [conn](const Connection& c) { return c.output == conn || c.input == conn; }),
         connections.end());
+}
+
+Connector* ModuleContainer::findNetOutput(Connector* start)
+{
+    if (start == nullptr)
+        return nullptr;
+
+    std::vector<Connector*> stack { start };
+    std::set<Connector*> visited { start };
+
+    while (!stack.empty())
+    {
+        auto* c = stack.back();
+        stack.pop_back();
+
+        if (c->getDescriptor()->isOutput)
+            return c;
+
+        for (const auto& conn : connections)
+        {
+            Connector* other = nullptr;
+            if (conn.output == c)      other = conn.input;
+            else if (conn.input == c)  other = conn.output;
+
+            if (other != nullptr && visited.insert(other).second)
+                stack.push_back(other);
+        }
+    }
+
+    return nullptr;
 }
 
 Module* ModuleContainer::getModuleByIndex(int containerIndex)

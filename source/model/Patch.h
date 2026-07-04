@@ -141,6 +141,12 @@ public:
     void removeConnection(Connector* output, Connector* input);
     void removeConnectionsForConnector(Connector* conn);
 
+    /** Walk the undirected cable net containing `start` and return the output
+     *  connector driving it, or nullptr for an undriven net. Cables may chain
+     *  input→input (the Connection "output" slot then holds an input), so a
+     *  net has at most one real output. */
+    Connector* findNetOutput(Connector* start);
+
     Module* getModuleByIndex(int containerIndex);
     const Module* getModuleByIndex(int containerIndex) const;
 

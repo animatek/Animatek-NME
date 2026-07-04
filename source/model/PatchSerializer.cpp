@@ -244,7 +244,9 @@ std::vector<uint8_t> PatchSerializer::serializeCableDump(const Patch& patch, int
         bs.writeBits(color, 3);
         bs.writeBits(srcModule, 7);
         bs.writeBits(srcConnIdx, 6);
-        bs.writeBits(1, 1);         // isOutput = 1 (source is always output)
+        // Source type bit: 0 when the source end is a chained input
+        // (input→input cable); the destination is always an input.
+        bs.writeBits(conn.output->getDescriptor()->isOutput ? 1 : 0, 1);
         bs.writeBits(dstModule, 7);
         bs.writeBits(dstConnIdx, 6);
     }
