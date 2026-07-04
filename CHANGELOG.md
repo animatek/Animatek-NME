@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Saving a patch now writes the **current** values of custom module controls (sequencer
+  events, clock-divider displays) instead of the values captured when the patch was
+  loaded — edits made to sequencer steps since loading are no longer reverted in the
+  saved .pch file.
+
+- Custom control values are applied after the whole patch is parsed (file loads and
+  synth fetches), so a CustomDump section arriving before its ModuleDump is no longer
+  silently dropped.
+
+- Legacy 2.10 patches: decoded the `Ih` cable field correctly — bit 6 distinguishes an
+  output source from a daisy-chained input source. Chained cables (about 5% of all
+  cables in real 2.10 patch libraries) previously connected to the wrong connector.
+
+- Track the synth patch id per slot. A patch fetch, upload or `NewPatchInSlot`
+  notification for a background slot no longer overwrites the focused slot's patch id,
+  and queued structural edits are stamped with the pid of the slot they were built for —
+  preventing cross-slot contamination when several slots are in use.
+
 - **Fixed slot handling to match the hardware's two-level slot model.** The synth
   distinguishes *enabled* slots (fixed LED, several can be on at once) from the single
   *selected* slot (blinking LED). A plain click now reproduces the panel's slot-button

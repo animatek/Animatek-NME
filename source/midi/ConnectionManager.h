@@ -276,7 +276,11 @@ private:
     int lastLoadedSection = -1;   // Bank section of last loadPatchFromBank (-1=unknown)
     int lastLoadedPosition = -1;  // Bank position of last loadPatchFromBank (-1=unknown)
     bool suppressNextLocationClear = false;  // Set by loadPatchFromBank, cleared on NewPatchInSlot
-    int currentPatchId = 0;  // Track the patch ID from ACK (used in parameter changes)
+    int currentPatchId = 0;  // Pid of the focused slot's patch (used in parameter changes)
+    // Pid per slot: patch generations advance independently per slot, and a
+    // background slot's fetch/NewPatchInSlot must not contaminate the pid
+    // used for the focused slot (or vice versa for queued structural edits).
+    std::array<int, 4> slotPatchIds { 0, 0, 0, 0 };
     int patchPacketsReceived = 0;
     std::function<void(int slot)> patchFetchCompleteCallback;
 
@@ -323,6 +327,7 @@ private:
     {
         std::vector<uint8_t> bytes;
         bool allowNewPatchInSlotReply = false;
+        int slot = 0;  // From the SysEx header at enqueue time; selects which slot's pid is patched in at send time
     };
 
     std::deque<QueuedSysEx> ackedQueue;

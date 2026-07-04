@@ -34,8 +34,8 @@ private:
     void parseNameDump(const juce::StringArray& lines, Patch& patch);
     std::unique_ptr<Patch> readLegacyFile(const juce::StringArray& lines, const juce::File& file);
     static void normalizeLegacyModulePositions(ModuleContainer& container);
-    static void connectLegacyCable(ModuleContainer& container, int sourceModule, int sourceOutput,
-                                   int targetModule, int targetInput);
+    static void connectLegacyCable(ModuleContainer& container, int sourceModule, int sourceConn,
+                                   bool sourceIsOutput, int targetModule, int targetInput);
 
     // Writer helpers
     void writeHeader(juce::String& out, const Patch& patch);
@@ -47,7 +47,7 @@ private:
     void writeKeyboardAssignment(juce::String& out, const Patch& patch);
     void writeKnobMapDump(juce::String& out, const Patch& patch);
     void writeCtrlMapDump(juce::String& out, const Patch& patch);
-    void writeCustomDump(juce::String& out, const Patch& patch, const ModuleContainer& container, int voiceAreaId);
+    void writeCustomDump(juce::String& out, const ModuleContainer& container, int voiceAreaId);
     void writeNameDump(juce::String& out, const ModuleContainer& container, int voiceAreaId);
     void writeNotes(juce::String& out, const Patch& patch);
 

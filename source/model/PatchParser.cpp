@@ -59,6 +59,13 @@ std::unique_ptr<Patch> PatchParser::parse(const std::vector<std::vector<uint8_t>
         }
     }
 
+    // Apply collected custom dumps now that every ModuleDump has been parsed
+    // (the synth does not guarantee section order across packets).
+    for (const auto& entry : patch->polyCustomDump)
+        patch->applyCustomDumpEntry(1, entry);
+    for (const auto& entry : patch->commonCustomDump)
+        patch->applyCustomDumpEntry(0, entry);
+
     DBG("PatchParser: done. Patch name: \"" + patch->getName() + "\"");
     DBG("  Poly modules: " + juce::String(patch->getPolyVoiceArea().getModules().size())
         + ", Common modules: " + juce::String(patch->getCommonArea().getModules().size()));
@@ -397,7 +404,8 @@ void PatchParser::parseCustomDump(BitStream& bs, Patch& patch)
         for (int j = 0; j < nparams; ++j)
             entry.values.push_back(static_cast<int>(bs.readBits(8)));
 
-        patch.applyCustomDumpEntry(section, entry);
+        // Only collect here — parse() applies the entries after all sections
+        // are in, so a CustomDump arriving before its ModuleDump still lands.
         dumpVec.push_back(std::move(entry));
     }
 }

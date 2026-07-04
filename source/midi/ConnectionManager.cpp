@@ -154,6 +154,7 @@ void ConnectionManager::disconnect()
     slotEnableMaskKnown = false;
     slotEnabled.fill(false);
     slotPinned.fill(false);
+    slotPatchIds.fill(0);
 
     if (midiDevice)
     {
@@ -283,6 +284,7 @@ void ConnectionManager::selectSlot(int slot)
     // libnmProtocol sends slot-management commands with SysEx header slot 0;
     // the target slot lives in the payload.
     currentSlot = slot;
+    currentPatchId = slotPatchIds[static_cast<size_t>(slot)];
 
     if (slotEnableMaskKnown)
         sendSlotMask();
@@ -370,6 +372,7 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
 
     int slot = (targetSlot >= 0) ? targetSlot : currentSlot;
     currentSlot = slot;
+    currentPatchId = slotPatchIds[static_cast<size_t>(slot & 0x03)];
     pendingPatchSlot = slot;
 
     // A browser load supersedes any patch fetch already in flight. Without this,
@@ -805,7 +808,10 @@ void ConnectionManager::sendAckedSysEx(const std::vector<uint8_t>& sysex, bool a
     if (!isConnected() || !midiDevice)
         return;
 
-    ackedQueue.push_back({ sysex, allowNewPatchInSlotReply });
+    // Remember which slot the message was built for (header byte 2 carries
+    // cc:5|slot:2) so the pid patched in at send time is that slot's pid.
+    const int slot = sysex.size() > 2 ? (sysex[2] & 0x03) : currentSlot;
+    ackedQueue.push_back({ sysex, allowNewPatchInSlotReply, slot });
     drainAckedQueue();
 }
 
@@ -819,7 +825,7 @@ void ConnectionManager::drainAckedQueue()
 
     if (msg.allowNewPatchInSlotReply && msg.bytes.size() > 4)
     {
-        msg.bytes[4] = static_cast<uint8_t>(currentPatchId & 0x7F);
+        msg.bytes[4] = static_cast<uint8_t>(slotPatchIds[static_cast<size_t>(msg.slot & 0x03)] & 0x7F);
 
         if (msg.bytes.size() > 6 && msg.bytes.front() == 0xF0 && msg.bytes.back() == 0xF7)
             msg.bytes[msg.bytes.size() - 2] = SysEx::checksum(msg.bytes.data(), msg.bytes.size() - 2);
@@ -863,6 +869,7 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
         std::cout << "[SYNC] Patch id resynced from ACK: " << currentPatchId
                   << " -> " << msg.pid1 << std::endl;
         currentPatchId = msg.pid1;
+        slotPatchIds[static_cast<size_t>(currentSlot & 0x03)] = msg.pid1;
     }
 
     // Unblock the acked queue — any pending edit messages can now be sent
@@ -877,8 +884,12 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
 
     if (waitingForUploadAck)
     {
-        // Synth ACK for current upload section — advance to next
-        currentPatchId = msg.pid1;
+        // Synth ACK for current upload section — advance to next.
+        // The pid belongs to the upload's target slot, which is not
+        // necessarily the focused one.
+        slotPatchIds[static_cast<size_t>(uploadSlot & 0x03)] = msg.pid1;
+        if (uploadSlot == currentSlot)
+            currentPatchId = msg.pid1;
         ++uploadAckGeneration;  // invalidate timeout for the section just ACKed
         uploadSectionIndex++;
         std::cout << "[UPLOAD] ACK for section " << (uploadSectionIndex - 1)
@@ -896,10 +907,14 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
     {
         waitingForPatchAck = false;
         collectingSections = true;
-        currentPatchId = msg.pid1;  // Store for use in parameter changes
+        // The pid belongs to the fetched slot — a background-slot fetch must
+        // not overwrite the focused slot's pid used for parameter changes.
+        slotPatchIds[static_cast<size_t>(pendingPatchSlot & 0x03)] = msg.pid1;
+        if (pendingPatchSlot == currentSlot)
+            currentPatchId = msg.pid1;
         DBG("Patch ACK for slot " + juce::String(pendingPatchSlot)
-            + ", patchId=" + juce::String(currentPatchId) + " — sending GetPatch for all 13 sections");
-        sendGetPatchMessages(currentPatchId, pendingPatchSlot);
+            + ", patchId=" + juce::String(msg.pid1) + " — sending GetPatch for all 13 sections");
+        sendGetPatchMessages(msg.pid1, pendingPatchSlot);
         startPatchTimeout();
         return;
     }
@@ -1227,8 +1242,18 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         DBG("New patch in slot " + juce::String(msg.newPatchSlot) + " pid=" + juce::String(msg.newPatchPid));
 
         // Update before unblocking queued structural edits; drainAckedQueue()
-        // patches their outgoing pid from currentPatchId at send time.
-        currentPatchId = msg.newPatchPid;
+        // patches each outgoing message's pid from its slot's entry. Only a
+        // notification for the focused slot may touch currentPatchId.
+        if (msg.newPatchSlot >= 0 && msg.newPatchSlot <= 3)
+        {
+            slotPatchIds[static_cast<size_t>(msg.newPatchSlot)] = msg.newPatchPid;
+            if (msg.newPatchSlot == currentSlot)
+                currentPatchId = msg.newPatchPid;
+        }
+        else
+        {
+            currentPatchId = msg.newPatchPid;
+        }
 
         // Structural edit messages such as CableInsert/ModuleInsert are
         // confirmed by NewPatchInSlot on some firmware paths instead of a
@@ -1364,6 +1389,7 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
             invalidateParamQueue("synth slot activation");
 
         currentSlot = activeSlot;
+        currentPatchId = slotPatchIds[static_cast<size_t>(activeSlot & 0x03)];
         slotDetected = true;
         slotDetectGeneration++;  // Cancel any pending fallback timer
 

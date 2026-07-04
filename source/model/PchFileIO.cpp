@@ -16,7 +16,8 @@ juce::StringArray PchFileIO::tokenize(const juce::String& line)
 struct LegacyCableEntry
 {
     int sourceModule = 0;
-    int sourceOutput = 0;
+    int sourceConn = 0;
+    bool sourceIsOutput = true;
     int targetModule = 0;
     int targetInput = 0;
 };
@@ -70,27 +71,30 @@ void PchFileIO::normalizeLegacyModulePositions(ModuleContainer& container)
     }
 }
 
-void PchFileIO::connectLegacyCable(ModuleContainer& container, int sourceModule, int sourceOutput,
-                                   int targetModule, int targetInput)
+void PchFileIO::connectLegacyCable(ModuleContainer& container, int sourceModule, int sourceConn,
+                                   bool sourceIsOutput, int targetModule, int targetInput)
 {
     auto* source = container.getModuleByIndex(sourceModule);
     auto* target = container.getModuleByIndex(targetModule);
     if (source == nullptr || target == nullptr)
         return;
 
-    auto* output = source->getConnector(sourceOutput, true);
+    // The source side may be another input (daisy-chained cable); pass it
+    // through as the "output" side just like parseCableDump does for the
+    // 3.0 format's input-input rows.
+    auto* src = source->getConnector(sourceConn, sourceIsOutput);
     auto* input = target->getConnector(targetInput, false);
 
-    if (output == nullptr || input == nullptr)
+    if (src == nullptr || input == nullptr)
     {
         DBG("PchFileIO: legacy cable missing connector src=" + juce::String(sourceModule)
-            + ":" + juce::String(sourceOutput)
+            + ":" + juce::String(sourceConn) + (sourceIsOutput ? " (out)" : " (in)")
             + " dst=" + juce::String(targetModule)
             + ":" + juce::String(targetInput));
         return;
     }
 
-    container.addConnection(output, input);
+    container.addConnection(src, input);
 }
 
 // =============================================================================
@@ -203,6 +207,13 @@ std::unique_ptr<Patch> PchFileIO::readFile(const juce::File& file)
         }
     }
 
+    // Apply collected custom dumps now that every ModuleDump has been parsed
+    // (section order in the file is not guaranteed).
+    for (const auto& entry : patch->polyCustomDump)
+        patch->applyCustomDumpEntry(1, entry);
+    for (const auto& entry : patch->commonCustomDump)
+        patch->applyCustomDumpEntry(0, entry);
+
     // Derive patch name from filename if not set from notes
     if (patch->getName() == "Init Patch")
         patch->setName(file.getFileNameWithoutExtension());
@@ -309,8 +320,15 @@ std::unique_ptr<Patch> PchFileIO::readLegacyFile(const juce::StringArray& allLin
                     if (sourceModule <= 0 || sourceOutputValue.isEmpty())
                         continue;
 
+                    // Ih = [output flag:bit6][connector index:bits0-5].
+                    // Bit 6 set: the source connector is an output; clear: it
+                    // is another input (daisy-chained cable, like the 3.0
+                    // CableDump's input-input rows). Observed values in real
+                    // 2.10 patches are only 0, 1 and 64-66.
+                    const int ih = sourceOutputValue.getIntValue();
                     pendingCables.push_back({ sourceModule,
-                                              sourceOutputValue.getIntValue() & 0x3f,
+                                              ih & 0x3f,
+                                              (ih & 0x40) != 0,
                                               moduleIndex,
                                               targetInput });
                 }
@@ -323,8 +341,8 @@ std::unique_ptr<Patch> PchFileIO::readLegacyFile(const juce::StringArray& allLin
     normalizeLegacyModulePositions(patch->getPolyVoiceArea());
 
     for (const auto& cable : pendingCables)
-        connectLegacyCable(patch->getPolyVoiceArea(), cable.sourceModule, cable.sourceOutput,
-                           cable.targetModule, cable.targetInput);
+        connectLegacyCable(patch->getPolyVoiceArea(), cable.sourceModule, cable.sourceConn,
+                           cable.sourceIsOutput, cable.targetModule, cable.targetInput);
 
     if (patch->getName() == "Init Patch")
         patch->setName(file.getFileNameWithoutExtension());
@@ -621,7 +639,8 @@ void PchFileIO::parseCustomDump(const juce::StringArray& lines, Patch& patch)
         for (int j = 0; j < nparams && (2 + j) < tokens.size(); ++j)
             entry.values.push_back(tokens[2 + j].getIntValue());
 
-        patch.applyCustomDumpEntry(voiceAreaId == 1 ? 1 : 0, entry);
+        // Only collect here — applied after all sections are parsed, so a
+        // CustomDump appearing before its ModuleDump is not silently lost.
         dumpVec.push_back(std::move(entry));
     }
 }
@@ -672,8 +691,8 @@ bool PchFileIO::writeFile(const Patch& patch, const juce::File& file)
     writeKeyboardAssignment(out, patch);
     writeKnobMapDump(out, patch);
     writeCtrlMapDump(out, patch);
-    writeCustomDump(out, patch, patch.getPolyVoiceArea(), 1);
-    writeCustomDump(out, patch, patch.getCommonArea(), 0);
+    writeCustomDump(out, patch.getPolyVoiceArea(), 1);
+    writeCustomDump(out, patch.getCommonArea(), 0);
     writeNameDump(out, patch.getPolyVoiceArea(), 1);
     writeNameDump(out, patch.getCommonArea(), 0);
 
@@ -890,49 +909,29 @@ void PchFileIO::writeCtrlMapDump(juce::String& out, const Patch& patch)
 }
 
 // --- CustomDump ---
-void PchFileIO::writeCustomDump(juce::String& out, const Patch& patch, const ModuleContainer& container, int voiceAreaId)
+void PchFileIO::writeCustomDump(juce::String& out, const ModuleContainer& container, int voiceAreaId)
 {
-    const auto& preExisting = (voiceAreaId == 1) ? patch.polyCustomDump : patch.commonCustomDump;
-
     out += "[CustomDump]\n";
     out += juce::String(voiceAreaId) + " \n";
 
-    // Build a map of pre-existing entries by module index
-    std::map<int, const Patch::CustomDumpEntry*> existingMap;
-    for (auto& entry : preExisting)
-        existingMap[entry.index] = &entry;
-
     for (auto& m : container.getModules())
     {
-        auto* desc = m->getDescriptor();
-        if (desc == nullptr) continue;
-
-        // Count "custom" class params
+        // Write the current values of the module's custom-class parameters
+        // (sequencer events, clock-divider displays, ...). Parameters are
+        // created 1:1 from the descriptor, so untouched modules still write
+        // their defaults — but edits made since loading are preserved,
+        // instead of reverting to the dump captured at load time.
         std::vector<int> customValues;
-        for (auto& pd : desc->parameters)
-        {
-            if (pd.paramClass != "custom") continue;
-            customValues.push_back(pd.defaultValue);
-        }
+        for (auto& p : m->getParameters())
+            if (p.getDescriptor()->paramClass == "custom")
+                customValues.push_back(p.getValue());
 
         if (customValues.empty()) continue;
 
-        int idx = m->getContainerIndex();
-
-        // Use pre-existing values if available, otherwise defaults
-        auto it = existingMap.find(idx);
-        if (it != existingMap.end() && it->second->values.size() == customValues.size())
-        {
-            out += juce::String(idx) + " " + juce::String(static_cast<int>(it->second->values.size()));
-            for (auto v : it->second->values)
-                out += " " + juce::String(v);
-        }
-        else
-        {
-            out += juce::String(idx) + " " + juce::String(static_cast<int>(customValues.size()));
-            for (auto v : customValues)
-                out += " " + juce::String(v);
-        }
+        out += juce::String(m->getContainerIndex()) + " "
+             + juce::String(static_cast<int>(customValues.size()));
+        for (auto v : customValues)
+            out += " " + juce::String(v);
         out += " \n";
     }
 
