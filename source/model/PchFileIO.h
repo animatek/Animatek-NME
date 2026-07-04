@@ -13,6 +13,12 @@ public:
     std::unique_ptr<Patch> readFile(const juce::File& file);
     bool writeFile(const Patch& patch, const juce::File& file);
 
+    // Nord Modular 2.10 text patches declare themselves in a Version= line
+    // near the top of the file. Shared by readFile dispatch and the preset
+    // browser so both agree on what counts as a legacy patch.
+    static bool isLegacyPatch210(const juce::File& file);
+    static bool isLegacyPatch210(const juce::StringArray& lines);
+
 private:
     // Reader helpers
     void parseHeader(const juce::StringArray& lines, Patch& patch);
@@ -26,6 +32,10 @@ private:
     void parseCtrlMapDump(const juce::StringArray& lines, Patch& patch);
     void parseCustomDump(const juce::StringArray& lines, Patch& patch);
     void parseNameDump(const juce::StringArray& lines, Patch& patch);
+    std::unique_ptr<Patch> readLegacyFile(const juce::StringArray& lines, const juce::File& file);
+    static void normalizeLegacyModulePositions(ModuleContainer& container);
+    static void connectLegacyCable(ModuleContainer& container, int sourceModule, int sourceOutput,
+                                   int targetModule, int targetInput);
 
     // Writer helpers
     void writeHeader(juce::String& out, const Patch& patch);
@@ -42,6 +52,7 @@ private:
     void writeNotes(juce::String& out, const Patch& patch);
 
     static juce::StringArray tokenize(const juce::String& line);
+    static juce::String getLegacyValue(const juce::StringArray& lines, const juce::String& key);
 
     const ModuleDescriptions& descs;
 };

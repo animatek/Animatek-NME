@@ -397,6 +397,7 @@ void PatchParser::parseCustomDump(BitStream& bs, Patch& patch)
         for (int j = 0; j < nparams; ++j)
             entry.values.push_back(static_cast<int>(bs.readBits(8)));
 
+        patch.applyCustomDumpEntry(section, entry);
         dumpVec.push_back(std::move(entry));
     }
 }

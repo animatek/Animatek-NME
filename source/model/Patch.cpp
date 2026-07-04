@@ -260,3 +260,24 @@ Module* Patch::createModule(int section, int typeId, int gridX, int gridY,
 
     return modulePtr;
 }
+
+void Patch::applyCustomDumpEntry(int section, const CustomDumpEntry& entry)
+{
+    auto* module = getContainer(section).getModuleByIndex(entry.index);
+    if (module == nullptr)
+        return;
+
+    // Dump values map onto the module's custom-class parameters in
+    // descriptor order (parameters are built 1:1 from the descriptor).
+    size_t valueIdx = 0;
+    for (auto& p : module->getParameters())
+    {
+        if (p.getDescriptor()->paramClass != "custom")
+            continue;
+
+        if (valueIdx >= entry.values.size())
+            break;
+
+        p.setValue(entry.values[valueIdx++]);
+    }
+}

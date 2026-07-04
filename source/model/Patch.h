@@ -266,6 +266,10 @@ public:
     std::vector<CustomDumpEntry> polyCustomDump;
     std::vector<CustomDumpEntry> commonCustomDump;
 
+    // Apply a custom dump entry to the matching module's custom-class
+    // parameters (sequencer events, clock-divider displays, ...)
+    void applyCustomDumpEntry(int section, const CustomDumpEntry& entry);
+
     // Notes
     std::vector<NoteSlot> notes;
 

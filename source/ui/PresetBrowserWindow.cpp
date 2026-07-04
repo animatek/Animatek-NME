@@ -1,4 +1,5 @@
 #include "PresetBrowserWindow.h"
+#include "../model/PchFileIO.h"
 #include "AppTheme.h"
 #include "BinaryData.h"
 
@@ -13,6 +14,11 @@
 #define kPatchTag   (AppTheme::palette().accentInfo)
 #define kSnippetTag (AppTheme::palette().accentSuccess)
 #define kBankTag    (AppTheme::palette().accentWarning)
+
+static juce::Colour legacyPatchTagColour()
+{
+    return juce::Colour(0xffb07cff);
+}
 
 static void styleButton(juce::TextButton& b)
 {
@@ -232,14 +238,15 @@ void DiskPresetBrowserPanel::paintListBoxItem(int row, juce::Graphics& g, int wi
     if (row < 0 || row >= getNumRows())
         return;
 
-    const auto& entry = allEntries[static_cast<size_t>(visibleEntryIndices[static_cast<size_t>(row)])];
+    auto& entry = allEntries[static_cast<size_t>(visibleEntryIndices[static_cast<size_t>(row)])];
 
     g.fillAll(selected ? AppTheme::palette().backgroundElevated : kPanel);
     g.setColour(selected ? juce::Colour(0xffd8dcdf) : kSep);
     g.drawHorizontalLine(height - 1, 0.0f, static_cast<float>(width));
 
     auto tagArea = juce::Rectangle<int>(6, 4, 48, height - 8);
-    auto tagColour = entry.type == Entry::Type::Patch   ? kPatchTag
+    auto tagColour = isLegacyPatch210(entry)            ? legacyPatchTagColour()
+                   : entry.type == Entry::Type::Patch   ? kPatchTag
                    : entry.type == Entry::Type::Snippet ? kSnippetTag
                                                         : kBankTag;
     g.setColour(tagColour.withAlpha(0.22f));
@@ -247,7 +254,7 @@ void DiskPresetBrowserPanel::paintListBoxItem(int row, juce::Graphics& g, int wi
     g.setColour(tagColour);
     g.drawRoundedRectangle(tagArea.toFloat(), 3.0f, 1.0f);
     g.setFont(juce::Font(juce::FontOptions(10.0f)).boldened());
-    g.drawText(getTypeLabel(entry.type), tagArea, juce::Justification::centred, true);
+    g.drawText(getTypeLabel(entry), tagArea, juce::Justification::centred, true);
 
     g.setColour(selected ? juce::Colours::white : kText);
     g.setFont(juce::Font(juce::FontOptions(12.0f)));
@@ -293,6 +300,20 @@ juce::String DiskPresetBrowserPanel::getTypeLabel(Entry::Type type) const
     return type == Entry::Type::Patch   ? "PATCH"
          : type == Entry::Type::Snippet ? "SNIP"
                                         : "BANK";
+}
+
+juce::String DiskPresetBrowserPanel::getTypeLabel(Entry& entry) const
+{
+    return isLegacyPatch210(entry) ? "PCH2" : getTypeLabel(entry.type);
+}
+
+bool DiskPresetBrowserPanel::isLegacyPatch210(Entry& entry)
+{
+    if (entry.legacyPatch210 < 0)
+        entry.legacyPatch210 = (entry.type == Entry::Type::Patch
+                                && PchFileIO::isLegacyPatch210(entry.file)) ? 1 : 0;
+
+    return entry.legacyPatch210 == 1;
 }
 
 bool DiskPresetBrowserPanel::entryPassesTypeFilter(const Entry& entry) const

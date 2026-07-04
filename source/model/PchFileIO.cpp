@@ -13,6 +13,122 @@ juce::StringArray PchFileIO::tokenize(const juce::String& line)
     return tokens;
 }
 
+struct LegacyCableEntry
+{
+    int sourceModule = 0;
+    int sourceOutput = 0;
+    int targetModule = 0;
+    int targetInput = 0;
+};
+
+juce::String PchFileIO::getLegacyValue(const juce::StringArray& lines, const juce::String& key)
+{
+    const auto prefix = key + "=";
+    for (const auto& line : lines)
+    {
+        const auto trimmed = line.trim();
+        if (trimmed.startsWithIgnoreCase(prefix))
+            return trimmed.substring(prefix.length()).trim();
+    }
+
+    return {};
+}
+
+void PchFileIO::normalizeLegacyModulePositions(ModuleContainer& container)
+{
+    struct ModulePos
+    {
+        Module* module = nullptr;
+        int x = 0;
+        int y = 0;
+    };
+
+    std::vector<ModulePos> modules;
+    for (const auto& module : container.getModules())
+    {
+        const auto pos = module->getPosition();
+        modules.push_back({ module.get(), pos.x, pos.y });
+    }
+
+    std::sort(modules.begin(), modules.end(), [](const ModulePos& a, const ModulePos& b) {
+        if (a.x != b.x) return a.x < b.x;
+        if (a.y != b.y) return a.y < b.y;
+        return a.module->getContainerIndex() < b.module->getContainerIndex();
+    });
+
+    std::map<int, int> nextFreeRowByColumn;
+    for (const auto& entry : modules)
+    {
+        if (entry.module == nullptr || entry.module->getDescriptor() == nullptr)
+            continue;
+
+        auto& nextFreeRow = nextFreeRowByColumn[entry.x];
+        const int normalizedY = juce::jmax(entry.y, nextFreeRow);
+        entry.module->setPosition({ entry.x, normalizedY });
+
+        nextFreeRow = normalizedY + entry.module->getDescriptor()->height + 1;
+    }
+}
+
+void PchFileIO::connectLegacyCable(ModuleContainer& container, int sourceModule, int sourceOutput,
+                                   int targetModule, int targetInput)
+{
+    auto* source = container.getModuleByIndex(sourceModule);
+    auto* target = container.getModuleByIndex(targetModule);
+    if (source == nullptr || target == nullptr)
+        return;
+
+    auto* output = source->getConnector(sourceOutput, true);
+    auto* input = target->getConnector(targetInput, false);
+
+    if (output == nullptr || input == nullptr)
+    {
+        DBG("PchFileIO: legacy cable missing connector src=" + juce::String(sourceModule)
+            + ":" + juce::String(sourceOutput)
+            + " dst=" + juce::String(targetModule)
+            + ":" + juce::String(targetInput));
+        return;
+    }
+
+    container.addConnection(output, input);
+}
+
+// =============================================================================
+// Legacy 2.10 detection
+// =============================================================================
+
+// The Version= marker sits within the first few lines of a 2.10 file.
+static constexpr int kLegacySniffLines = 12;
+
+static bool isLegacyVersionLine(const juce::String& rawLine)
+{
+    auto line = rawLine.trim();
+    return line.startsWithIgnoreCase("Version=")
+        && line.containsIgnoreCase("Nord Modular patch 2.10");
+}
+
+bool PchFileIO::isLegacyPatch210(const juce::File& file)
+{
+    auto stream = file.createInputStream();
+    if (stream == nullptr)
+        return false;
+
+    for (int i = 0; i < kLegacySniffLines && !stream->isExhausted(); ++i)
+        if (isLegacyVersionLine(stream->readNextLine()))
+            return true;
+
+    return false;
+}
+
+bool PchFileIO::isLegacyPatch210(const juce::StringArray& lines)
+{
+    for (int i = 0; i < kLegacySniffLines && i < lines.size(); ++i)
+        if (isLegacyVersionLine(lines[i]))
+            return true;
+
+    return false;
+}
+
 // =============================================================================
 // Reader
 // =============================================================================
@@ -28,6 +144,9 @@ std::unique_ptr<Patch> PchFileIO::readFile(const juce::File& file)
     // Split into lines, handling both \r\n and \n
     juce::StringArray allLines;
     allLines.addLines(text);
+
+    if (isLegacyPatch210(allLines))
+        return readLegacyFile(allLines, file);
 
     // Parse sections: find [SectionName] ... [/SectionName] blocks
     int i = 0;
@@ -89,6 +208,128 @@ std::unique_ptr<Patch> PchFileIO::readFile(const juce::File& file)
         patch->setName(file.getFileNameWithoutExtension());
 
     DBG("PchFileIO: loaded \"" + patch->getName() + "\" from " + file.getFileName());
+    DBG("  Poly modules: " + juce::String(patch->getPolyVoiceArea().getModules().size())
+        + ", Common modules: " + juce::String(patch->getCommonArea().getModules().size()));
+
+    return patch;
+}
+
+std::unique_ptr<Patch> PchFileIO::readLegacyFile(const juce::StringArray& allLines, const juce::File& file)
+{
+    auto patch = std::make_unique<Patch>();
+    auto& header = patch->getHeader();
+    std::vector<LegacyCableEntry> pendingCables;
+
+    int i = 0;
+    while (i < allLines.size())
+    {
+        const auto line = allLines[i].trim();
+        if (!line.startsWith("[") || !line.endsWith("]"))
+        {
+            ++i;
+            continue;
+        }
+
+        const auto sectionName = line.substring(1, line.length() - 1);
+        juce::StringArray sectionLines;
+        ++i;
+        while (i < allLines.size())
+        {
+            const auto sectionLine = allLines[i].trim();
+            if (sectionLine.startsWith("[") && sectionLine.endsWith("]"))
+                break;
+
+            sectionLines.add(allLines[i]);
+            ++i;
+        }
+
+        if (sectionName.equalsIgnoreCase("Header"))
+        {
+            const auto name = getLegacyValue(sectionLines, "Name");
+            if (name.isNotEmpty()) patch->setName(name);
+
+            auto assignInt = [&sectionLines](const char* key, int& target) {
+                const auto value = PchFileIO::getLegacyValue(sectionLines, key);
+                if (value.isNotEmpty()) target = value.getIntValue();
+            };
+
+            assignInt("KbRangeMin", header.keyRangeMin);
+            assignInt("KbRangeMax", header.keyRangeMax);
+            assignInt("VelRangeMin", header.velRangeMin);
+            assignInt("VelRangeMax", header.velRangeMax);
+            assignInt("BendRange", header.bendRange);
+            assignInt("PMTime", header.portamentoTime);
+            assignInt("Voices", header.voices);
+            assignInt("OctShift", header.octaveShift);
+            assignInt("Retrig", header.voiceRetriggerPoly);
+            header.voiceRetriggerCommon = header.voiceRetriggerPoly;
+
+            const auto pmMode = getLegacyValue(sectionLines, "PMMode");
+            if (pmMode.isNotEmpty()) header.portamento = pmMode.getIntValue() != 0;
+        }
+        else if (sectionName.startsWithIgnoreCase("Module "))
+        {
+            const int moduleIndex = sectionName.fromFirstOccurrenceOf(" ", false, false).getIntValue();
+            const int type = getLegacyValue(sectionLines, "Type").getIntValue();
+
+            if (auto* desc = descs.getModuleByIndex(type))
+            {
+                auto module = Module::createFromDescriptor(*desc);
+                module->setContainerIndex(moduleIndex);
+                module->setPosition({ getLegacyValue(sectionLines, "Col").getIntValue(),
+                                      getLegacyValue(sectionLines, "Row").getIntValue() });
+
+                const auto name = getLegacyValue(sectionLines, "Name");
+                if (name.isNotEmpty()) module->setTitle(name);
+
+                for (const auto& param : module->getParameters())
+                {
+                    if (param.getDescriptor()->paramClass != "parameter")
+                        continue;
+
+                    const auto value = getLegacyValue(sectionLines, "P" + juce::String(param.getDescriptor()->index));
+                    if (value.isNotEmpty())
+                        if (auto* mutableParam = module->getParameter(param.getDescriptor()->index))
+                            mutableParam->setValue(value.getIntValue());
+                }
+
+                for (const auto& cableLine : sectionLines)
+                {
+                    const auto trimmed = cableLine.trim();
+                    if (!trimmed.startsWithIgnoreCase("Im"))
+                        continue;
+
+                    const auto equals = trimmed.indexOfChar('=');
+                    if (equals < 0)
+                        continue;
+
+                    const int targetInput = trimmed.substring(2, equals).getIntValue();
+                    const int sourceModule = trimmed.substring(equals + 1).getIntValue();
+                    const auto sourceOutputValue = getLegacyValue(sectionLines, "Ih" + juce::String(targetInput));
+                    if (sourceModule <= 0 || sourceOutputValue.isEmpty())
+                        continue;
+
+                    pendingCables.push_back({ sourceModule,
+                                              sourceOutputValue.getIntValue() & 0x3f,
+                                              moduleIndex,
+                                              targetInput });
+                }
+
+                patch->getPolyVoiceArea().addModule(std::move(module));
+            }
+        }
+    }
+
+    normalizeLegacyModulePositions(patch->getPolyVoiceArea());
+
+    for (const auto& cable : pendingCables)
+        connectLegacyCable(patch->getPolyVoiceArea(), cable.sourceModule, cable.sourceOutput,
+                           cable.targetModule, cable.targetInput);
+
+    if (patch->getName() == "Init Patch")
+        patch->setName(file.getFileNameWithoutExtension());
+
+    DBG("PchFileIO: loaded legacy \"" + patch->getName() + "\" from " + file.getFileName());
     DBG("  Poly modules: " + juce::String(patch->getPolyVoiceArea().getModules().size())
         + ", Common modules: " + juce::String(patch->getCommonArea().getModules().size()));
 
@@ -380,6 +621,7 @@ void PchFileIO::parseCustomDump(const juce::StringArray& lines, Patch& patch)
         for (int j = 0; j < nparams && (2 + j) < tokens.size(); ++j)
             entry.values.push_back(tokens[2 + j].getIntValue());
 
+        patch.applyCustomDumpEntry(voiceAreaId == 1 ? 1 : 0, entry);
         dumpVec.push_back(std::move(entry));
     }
 }

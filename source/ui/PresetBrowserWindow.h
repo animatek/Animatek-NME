@@ -37,6 +37,7 @@ private:
         juce::File file;
         juce::String displayName;
         juce::String relativePath;
+        int legacyPatch210 = -1;  // -1 = not sniffed yet, 0 = no, 1 = yes
     };
 
     int getNumRows() override;
@@ -47,6 +48,10 @@ private:
     void rebuildVisibleEntries();
     void scanFolder(const juce::File& folder, Entry::Type type);
     juce::String getTypeLabel(Entry::Type type) const;
+    juce::String getTypeLabel(Entry& entry) const;
+    // Sniffs the file on first use and caches the result on the entry, so
+    // scanning a large library never touches file contents up front.
+    static bool isLegacyPatch210(Entry& entry);
     bool entryPassesTypeFilter(const Entry& entry) const;
 
     juce::Label searchLabel;
