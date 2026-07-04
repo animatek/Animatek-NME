@@ -1105,11 +1105,12 @@ void ConnectionManager::sendGetPatchMessages(int patchId, int slot)
     for (auto& m : msgs)
     {
         auto payload = m.encode();
-        // GetPatch uses PatchModification format (same cc=0x17).
-        // Responses come as PatchPacket (cc=0x1c-0x1f), not ACK,
-        // so don't set expectsReply — let them all queue and send freely.
+        // GetPatch uses PatchModification format (same cc=0x17). Responses
+        // come as PatchPacket (cc=0x1c-0x1f). Java GetPatchMessage sets
+        // expectsreply=true: each section request must wait for its reply,
+        // otherwise the burst overruns the synth and sections are dropped.
         protocol.sendMessage(NmCmd::PatchHandling, slot, payload,
-                             /*expectsReply=*/false, /*addChecksum=*/true);
+                             /*expectsReply=*/true, /*addChecksum=*/true);
     }
 }
 

@@ -25,6 +25,11 @@ void NmProtocol::sendMessage(int cc, int slot, const std::vector<uint8_t>& paylo
 {
     auto encoded = SysEx::encode(cc, slot, payload, addChecksum);
     sendQueue.push_back({ std::move(encoded), expectsReply });
+
+    // Send right away instead of waiting for the next timer tick. The original
+    // editor's ProtocolRunner thread drains its queue as soon as a message is
+    // enqueued; pacing knob moves at one message per tick adds audible lag.
+    flushSendQueue();
 }
 
 void NmProtocol::processIncoming(const uint8_t* data, size_t length)
@@ -32,8 +37,18 @@ void NmProtocol::processIncoming(const uint8_t* data, size_t length)
     auto msg = SysEx::decode(data, length);
     if (msg.valid)
     {
-        waitingForReply = false;
+        // Only genuine replies unblock the queue (jnmprotocol isReply()):
+        // streamed NMInfo traffic (meters/lights/voicecount) and panel knob
+        // ParameterChange messages arrive unsolicited and must not release a
+        // request that is still waiting for its answer.
+        if (msg.cc != NmCmd::ParameterChange && msg.cc != NmCmd::NMInfo)
+            waitingForReply = false;
+
         dispatchMessage(msg);
+
+        // The reply we were blocking on has arrived; resume sending without
+        // waiting up to a full timer tick.
+        flushSendQueue();
     }
 }
 
@@ -54,13 +69,25 @@ void NmProtocol::timerCallback()
             waitingForReply = false;
             // Could notify listeners of timeout here
         }
-        return;
+        else
+        {
+            return;
+        }
     }
 
-    // Send next queued message
-    if (!sendQueue.empty() && sendFn)
+    flushSendQueue();
+}
+
+void NmProtocol::flushSendQueue()
+{
+    if (!sendFn)
+        return;
+
+    // Drain until empty or a message that blocks on a reply has been sent.
+    while (!waitingForReply && !sendQueue.empty())
     {
-        auto& pending = sendQueue.front();
+        auto pending = std::move(sendQueue.front());
+        sendQueue.pop_front();
 
         // Debug: log outgoing message
         juce::String hexDump;
@@ -70,15 +97,13 @@ void NmProtocol::timerCallback()
             hexDump += "...";
         DBG("NmProtocol SEND: " + hexDump + " (size=" + juce::String(pending.encoded.size()) + ")");
 
-        sendFn(pending.encoded);
-
         if (pending.expectsReply)
         {
             waitingForReply = true;
             lastSendTime = juce::Time::getMillisecondCounter();
         }
 
-        sendQueue.pop_front();
+        sendFn(pending.encoded);
     }
 }
 

@@ -49,6 +49,7 @@ public:
 
 private:
     void timerCallback() override;
+    void flushSendQueue();
     void dispatchMessage(const SysEx::DecodedMessage& msg);
 
     struct PendingMessage
