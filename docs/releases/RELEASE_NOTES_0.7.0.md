@@ -35,7 +35,7 @@ Mutator use and patch transitions do not leave the Nord Modular unresponsive.
 - `Ctrl+8`: Patch Mutator.
 - `Ctrl+9`: SysEx Monitor.
 
-See [SHORTCUTS.md](SHORTCUTS.md) for the complete keyboard reference.
+See [SHORTCUTS.md](../../manual/07-shortcuts.md) for the complete keyboard reference.
 
 ## Known limitations
 

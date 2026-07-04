@@ -1,11 +1,11 @@
 # Animatek NME Status
 
-Current version: **0.7.0** (released 2026-06-20)
+Current version: **0.8.1** (released 2026-07-04)
 
 The project was renamed from **Nomad2026** to **Animatek NME — Nord Modular Editor G1** in 0.6.0.
 
 This file tracks the current project state at a practical level. Detailed version history lives in
-[CHANGELOG.md](CHANGELOG.md), and remaining work lives in [ROADMAP.md](ROADMAP.md).
+[CHANGELOG.md](../CHANGELOG.md), and remaining work lives in [ROADMAP.md](ROADMAP.md).
 
 ## Working Now
 
@@ -52,6 +52,6 @@ This file tracks the current project state at a practical level. Detailed versio
 ## Tracking Rule
 
 - Use [ROADMAP.md](ROADMAP.md) for planned implementation work.
-- Use [CHANGELOG.md](CHANGELOG.md) for released changes.
+- Use [CHANGELOG.md](../CHANGELOG.md) for released changes.
 - Use GitHub Issues for bugs, regressions, and focused tasks.
 - Keep this file as a readable snapshot of where the project stands.

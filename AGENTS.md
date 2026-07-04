@@ -35,7 +35,7 @@ JUCE lives at `JUCE/` as a local copy (not a submodule).
 
 ## Reference Material
 
-All reverse-engineering docs live in `RESEARCH.md` — protocol spec, patch format, module system, PDL2 grammar, and architecture of the original editor. This is the primary reference for implementation work.
+All reverse-engineering docs live in `docs/RESEARCH.md` — protocol spec, patch format, module system, PDL2 grammar, and architecture of the original editor. This is the primary reference for implementation work.
 
 ### Key data sources (gitignored, present locally)
 | Path | Content |

@@ -1,7 +1,7 @@
 # Animatek NME Roadmap
 
 This roadmap is intentionally limited to real remaining implementation work. Completed features and
-release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](CHANGELOG.md).
+release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](../CHANGELOG.md).
 
 ## High Priority
 
@@ -54,7 +54,7 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](CHANGELOG.md
 - [x] **Keyboard Shortcuts Audit** — done in 0.6.0: compared against the original
   nmedit/Nomad editor and added the missing set (Ctrl+A/X, Escape, arrow-key nudge,
   Ctrl+Shift+S, Ctrl+1..4 slot switch, S shake cables). Documented in
-  [SHORTCUTS.md](SHORTCUTS.md) and in-app (Help → Keyboard Shortcuts). The audit also
+  [SHORTCUTS.md](../manual/07-shortcuts.md) and in-app (Help → Keyboard Shortcuts). The audit also
   surfaced and fixed editor-initiated slot switches not loading the slot's patch.
 
 ## Verification

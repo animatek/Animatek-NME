@@ -235,7 +235,7 @@
   `Escape` (clear selection), arrow keys (nudge selected modules one grid cell, undoable),
   `Ctrl+Shift+S` (Save As), and `Ctrl+1..4` (switch slot A-D). The `S` shake-cables key the
   View menu advertised was never implemented — now it is. Full reference in
-  [SHORTCUTS.md](SHORTCUTS.md) and in-app under **Help → Keyboard Shortcuts**.
+  [manual/07-shortcuts.md](manual/07-shortcuts.md) and in-app under **Help → Keyboard Shortcuts**.
 - Fixed switching slots from the editor (slot bar or `Ctrl+1..4`) not loading the slot's
   patch: the immediate patch request raced the slot-command ACKs (the SlotsSelected ACK was
   mistaken for the patch-request ACK and the fetch derailed). The editor now lets the

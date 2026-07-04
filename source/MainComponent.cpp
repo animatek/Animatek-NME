@@ -2278,7 +2278,7 @@ private:
 };
 
 void MainComponent::showKeyboardShortcutsDialog() {
-  // Keep in sync with SHORTCUTS.md
+  // Keep in sync with manual/07-shortcuts.md
   static const char* shortcutsText =
       "FILE\n"
       "  Ctrl+N              New patch\n"

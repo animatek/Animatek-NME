@@ -51,13 +51,15 @@ Animatek NME lets you edit Nord Modular G1 patches from a modern desktop applica
 
 ## Documentation
 
-- [STATUS.md](STATUS.md) - current implementation status and what is considered working now.
-- [ROADMAP.md](ROADMAP.md) - remaining real implementation work.
-- [CHANGELOG.md](CHANGELOG.md) - version history outside the README.
-- [RELEASE_NOTES_0.7.0.md](RELEASE_NOTES_0.7.0.md) - user-facing 0.7.0 release notes.
-- [MODULE_CHECKLIST.md](MODULE_CHECKLIST.md) - module rendering and behavior verification.
-- [RESEARCH.md](RESEARCH.md) - protocol, `.pch` format, PDL2, and original editor research.
-- [PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md) - parked notes for the experimental plugin direction.
+- [manual/](manual/README.md) - the user manual: installation, interface tour, patch
+  editing, working with the synth, tools, file formats, shortcuts, and troubleshooting.
+- [CHANGELOG.md](CHANGELOG.md) - version history.
+- [docs/](docs/) - project documentation: [status](docs/STATUS.md),
+  [roadmap](docs/ROADMAP.md), [release notes](docs/releases/),
+  [module checklist](docs/MODULE_CHECKLIST.md),
+  [protocol/format research](docs/RESEARCH.md),
+  [release checklist](docs/RELEASE_CHECKLIST.md), and
+  [plugin architecture notes](docs/PLUGIN_ARCHITECTURE.md).
 
 Issues are the preferred place to track bugs and concrete follow-up work:
 https://github.com/animatek/Animatek-NME/issues
