@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 3.22)
 project(AnimatekNME VERSION 0.8.0 LANGUAGES C CXX)
 
+include(GNUInstallDirs)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_subdirectory(JUCE)
+add_subdirectory(JUCE EXCLUDE_FROM_ALL)
 option(NME_BUILD_PLUGIN "Build VST3/CLAP plugin targets" OFF)
 
 if(NME_BUILD_PLUGIN)
@@ -198,3 +200,25 @@ foreach(target ${NME_TARGETS})
         juce::juce_recommended_warning_flags
     )
 endforeach()
+
+if(UNIX AND NOT APPLE)
+    set(NME_DESKTOP_ID "com.animatek.AnimatekNME")
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/${NME_DESKTOP_ID}.desktop.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/${NME_DESKTOP_ID}.desktop"
+        @ONLY
+    )
+
+    install(TARGETS AnimatekNME
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+    )
+
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon-512.png"
+        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/512x512/apps"
+        RENAME "${NME_DESKTOP_ID}.png"
+    )
+
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${NME_DESKTOP_ID}.desktop"
+        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications"
+    )
+endif()

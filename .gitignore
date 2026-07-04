@@ -15,9 +15,11 @@ build-rel/
 build-release/
 build-win/
 build-win-release/
+build-appimage/
 cmake-build-*/
 Builds/
 dist/
+tools/
 JuceLibraryCode/
 CMakeUserPresets.json
 build.sh

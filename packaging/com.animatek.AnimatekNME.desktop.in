@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Animatek NME
+GenericName=Nord Modular Editor
+Comment=Editor for Clavia Nord Modular G1 patches
+Exec=AnimatekNME
+Icon=@NME_DESKTOP_ID@
+Terminal=false
+Categories=Audio;AudioVideo;Midi;Music;
+StartupNotify=true
