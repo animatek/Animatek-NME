@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.0 — 2026-07-04
+
 - Saving a patch now writes the **current** values of custom module controls (sequencer
   events, clock-divider displays) instead of the values captured when the patch was
   loaded — edits made to sequencer steps since loading are no longer reverted in the
@@ -39,8 +41,6 @@
 - Patches fetched for a background slot (for example a `NewPatchInSlot` notification from
   a non-focused slot) no longer hijack the editor's current slot — parameter edits keep
   going to the slot you are working on.
-
-## 0.8.0 — 2026-07-02
 
 - Updated the application icon to the new Animatek artwork from
   `Implementaciones/icon.png`, wired through the JUCE app/plugin icon metadata, bundled
