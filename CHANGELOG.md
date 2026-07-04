@@ -8,6 +8,35 @@
   `Implementaciones/icon.png`, wired through the JUCE app/plugin icon metadata, bundled
   binary resources, and runtime window/taskbar icon.
 
+- Fixed patch data loading issues reported in GitHub issues #13 and #14: synth/file
+  `CustomDump` values are now applied to custom module controls (sequencer events,
+  clock-divider displays, etc.), and legacy Nord Modular `2.10` `.pch` files with
+  `[Module N]` sections now load their modules, positions, names, parameters, and input
+  cables instead of opening as empty patches. Legacy module rows are normalized per column
+  so the old compact coordinates do not stack modules on top of each other in the modern
+  canvas.
+
+- Fixed the real-time meter channel ordering used by VU indicators (#12). Meter values
+  are stored in wire order (even slot = channel B, odd = channel A) exactly like NOMAD's
+  LightProcessor, and the per-light channel choice happens at render time: a stereo
+  module's left meter reads channel A and its right meter reads channel B, while modules
+  with a single light — sequencer step led-arrays and gain-reduction meters — read
+  channel B. This fixes both the swapped VU channels and erratic sequencer step LEDs.
+
+- The disk preset browser now marks legacy Nord Modular `2.10` patches with a distinct
+  purple `PCH2` tag so they can be distinguished from modern `.pch` files at a glance.
+
+- Legacy `2.10` detection is now shared between the file loader and the preset browser
+  (both look for the `Version=Nord Modular patch 2.10` header line), so a modern patch
+  whose notes mention `[Module` text is no longer misrouted to the legacy loader. The
+  browser also sniffs files lazily as rows become visible instead of reading every file
+  during the library scan, keeping large libraries snappy.
+
+- Fixed overlapping dB scale digits on the Audio In module: the renderer no longer draws
+  its synthetic meter scale when the classic theme already ships printed scale labels
+  between the meters. Modules without printed scales (PolyAreaIn, Expander, Compressor)
+  keep the synthetic scale.
+
 ## 0.7.0 — 2026-06-20
 
 - **Hardened Mutator/variation parameter delivery across patch transitions.** Pending

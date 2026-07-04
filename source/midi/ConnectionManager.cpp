@@ -751,6 +751,15 @@ void ConnectionManager::drainAckedQueue()
 
     auto msg = ackedQueue.front();
     ackedQueue.pop_front();
+
+    if (msg.allowNewPatchInSlotReply && msg.bytes.size() > 4)
+    {
+        msg.bytes[4] = static_cast<uint8_t>(currentPatchId & 0x7F);
+
+        if (msg.bytes.size() > 6 && msg.bytes.front() == 0xF0 && msg.bytes.back() == 0xF7)
+            msg.bytes[msg.bytes.size() - 2] = SysEx::checksum(msg.bytes.data(), msg.bytes.size() - 2);
+    }
+
     ackedQueueWaiting = true;
     ackedQueueWaitingAllowsNewPatchInSlot = msg.allowNewPatchInSlotReply;
     int generation = ++ackedQueueGeneration;
@@ -780,6 +789,16 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
     DBG("ACK received: pid1=" + juce::String(msg.pid1)
         + " type=0x" + juce::String::toHexString(msg.type)
         + " pid2=" + juce::String(msg.pid2));
+
+    // Plain ACKs carry the synth's pid for the focused patch. Resync before
+    // unblocking queued structural edits, otherwise the next queued message may
+    // be sent with the stale pid that caused the previous patch generation.
+    if (msg.type == 0x7f && msg.pid1 != currentPatchId)
+    {
+        std::cout << "[SYNC] Patch id resynced from ACK: " << currentPatchId
+                  << " -> " << msg.pid1 << std::endl;
+        currentPatchId = msg.pid1;
+    }
 
     // Unblock the acked queue — any pending edit messages can now be sent
     if (ackedQueueWaiting)
@@ -820,15 +839,6 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
         return;
     }
 
-    // Plain ACKs carry the synth's pid for the focused patch. Resync ours like
-    // the original editor does (libnmprotocol ActivePidListener stores pid1 of
-    // every ACK) — a stale pid makes the synth reject edits with error 5.
-    if (msg.type == 0x7f && msg.pid1 != currentPatchId)
-    {
-        std::cout << "[SYNC] Patch id resynced from ACK: " << currentPatchId
-                  << " -> " << msg.pid1 << std::endl;
-        currentPatchId = msg.pid1;
-    }
 }
 
 void ConnectionManager::cancelPatchListFetch(const char* reason)
@@ -1122,6 +1132,10 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
 
     if (msg.sc == 0x3a && msg.meterStartIndex >= 0)  // MeterMessage
     {
+        // Store in wire order, matching NOMAD's LightProcessor slot layout:
+        // even slot = channel B (first byte of each pair), odd slot = channel A.
+        // Which channel a given light reads is decided at the consumer
+        // (PatchCanvas::paintLights), same as the Java pair semantics.
         int base = msg.meterStartIndex;
         for (int i = 0; i < 5; ++i)
         {
@@ -1145,6 +1159,10 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
     {
         DBG("New patch in slot " + juce::String(msg.newPatchSlot) + " pid=" + juce::String(msg.newPatchPid));
 
+        // Update before unblocking queued structural edits; drainAckedQueue()
+        // patches their outgoing pid from currentPatchId at send time.
+        currentPatchId = msg.newPatchPid;
+
         // Structural edit messages such as CableInsert/ModuleInsert are
         // confirmed by NewPatchInSlot on some firmware paths instead of a
         // regular ACK. Treat it as a queue reply so subsequent edit messages
@@ -1160,9 +1178,6 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
 
         slotDetected = true;
         slotDetectGeneration++;  // Cancel any pending fallback timer
-
-        // Update the patch ID from the synth's notification
-        currentPatchId = msg.newPatchPid;
 
         if (msg.newPatchSlot >= 0
             && pendingBankLoadSlot == msg.newPatchSlot

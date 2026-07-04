@@ -2392,10 +2392,14 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
     int ledBase   = computeModuleLightIndex(m, section, false);
     int meterBase = computeModuleLightIndex(m, section, true);
 
-    // Build map of meter vertical centers (for LED alignment) and meter index per component-id
+    // Build map of meter vertical centers (for LED alignment) and meter index
+    // per component-id. NOMAD's LightProcessor gives every meter/led-array
+    // module a pair of global slots in wire order: even = channel B, odd =
+    // channel A. A stereo module's first light (left) reads A and its second
+    // (right) reads B; a module with a single meter light gets its value on B.
     std::map<juce::String, float> meterCenterY;
     std::map<juce::String, int>   meterGlobalIdx;
-    int meterCount = 0;
+    juce::StringArray meterIds;
     for (auto& tl : theme.lights)
     {
         if (tl.type == "meter")
@@ -2404,9 +2408,17 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
             // Only store first occurrence for center (multiple meters per channel use same id)
             if (meterCenterY.find(tl.componentId) == meterCenterY.end())
                 meterCenterY[tl.componentId] = cy;
-            meterGlobalIdx[tl.componentId] = meterBase + meterCount;
-            ++meterCount;
+            meterIds.addIfNotAlreadyThere(tl.componentId);
         }
+    }
+    if (meterIds.size() >= 2)
+    {
+        meterGlobalIdx[meterIds[0]] = meterBase + 1;  // left  -> channel A (odd slot)
+        meterGlobalIdx[meterIds[1]] = meterBase;      // right -> channel B (even slot)
+    }
+    else if (meterIds.size() == 1)
+    {
+        meterGlobalIdx[meterIds[0]] = meterBase;      // single light -> channel B
     }
 
     // Track LED index per component-id (LEDs and led-arrays share the slot space)
@@ -2539,19 +2551,38 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
             // dB scale below meter bar — only between meters (not after the last one)
             if (lw >= 60.0f && ly + lh + 12.0f < static_cast<float>(bounds.getBottom()))
             {
-                const int dbMarks[] = { 0, -6, -12, -18, -24, -30 };
-                g.setColour(activeScheme_.moduleText);
-                g.setFont(juce::FontOptions(6.0f));
-                for (int db : dbMarks)
+                // Some classic-theme modules (AudioIn) ship their own printed dB
+                // scale as numeric labels between the meters — drawing the
+                // synthetic scale on top produces overlapping digits.
+                bool themeHasPrintedScale = false;
+                for (auto& lbl : theme.labels)
                 {
-                    float t = 1.0f + db / 30.0f;   // 0 dB → t=1.0, -30 dB → t=0.0
-                    float tx = lx + lw * t;
-                    g.drawLine(tx, ly + lh, tx, ly + lh + 2.0f, 1.0f);
-                    juce::String label = (db == 0) ? "0" : juce::String(db);
-                    g.drawText(label,
-                               static_cast<int>(tx) - 8, static_cast<int>(ly + lh + 2),
-                               16, 8,
-                               juce::Justification::centred, false);
+                    if (lbl.text.isNotEmpty()
+                        && lbl.text.containsOnly("0123456789")
+                        && lbl.x >= tl.x - 8 && lbl.x <= tl.x + tl.width + 8
+                        && std::abs(lbl.y - tl.y) <= 16)
+                    {
+                        themeHasPrintedScale = true;
+                        break;
+                    }
+                }
+
+                if (!themeHasPrintedScale)
+                {
+                    const int dbMarks[] = { 0, -6, -12, -18, -24, -30 };
+                    g.setColour(activeScheme_.moduleText);
+                    g.setFont(juce::FontOptions(6.0f));
+                    for (int db : dbMarks)
+                    {
+                        float t = 1.0f + db / 30.0f;   // 0 dB → t=1.0, -30 dB → t=0.0
+                        float tx = lx + lw * t;
+                        g.drawLine(tx, ly + lh, tx, ly + lh + 2.0f, 1.0f);
+                        juce::String label = (db == 0) ? "0" : juce::String(db);
+                        g.drawText(label,
+                                   static_cast<int>(tx) - 8, static_cast<int>(ly + lh + 2),
+                                   16, 8,
+                                   juce::Justification::centred, false);
+                    }
                 }
             }
         }

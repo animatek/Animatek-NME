@@ -85,10 +85,13 @@ struct NMInfoMessage
     // LightMessage (sc=0x39): 20 LED values (2-bit each, 0-3), startIndex into global LED array
     int lightStartIndex = -1;
     int lightValues[20] = {};
-    // MeterMessage (sc=0x3A): 5 pairs of 7-bit values, startIndex into global meter array
+    // MeterMessage (sc=0x3A): 5 pairs of 7-bit values, startIndex into global meter array.
+    // Each meter/led-array module owns one (B, A) pair. Stereo modules: first
+    // light (left) reads A, second (right) reads B. Modules with a single
+    // light (sequencer led-arrays, gain-reduction meters) get their value on B.
     int meterStartIndex = -1;
-    int meterValuesA[5] = {};   // channel A (right/even)
-    int meterValuesB[5] = {};   // channel B (left/odd)
+    int meterValuesA[5] = {};   // second byte of each pair (odd global slot)
+    int meterValuesB[5] = {};   // first byte of each pair (even global slot)
 
     static NMInfoMessage decode(const uint8_t* payload, size_t length);
 };
