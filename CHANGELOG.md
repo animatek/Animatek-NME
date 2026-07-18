@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Windows**: the MSVC runtime is now statically linked, so the app no longer requires
+  the Visual C++ Redistributable 2015–2022 (x64/x86) to be installed on a fresh Windows
+  machine.
+
 ## 0.8.1 — 2026-07-04
 
 - **Chained input→input cables**, matching the original editor: drag from a connected

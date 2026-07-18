@@ -6,6 +6,12 @@ include(GNUInstallDirs)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Link the MSVC runtime statically so the Windows .exe runs on machines
+# without the Visual C++ Redistributable installed
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 add_subdirectory(JUCE EXCLUDE_FROM_ALL)
 option(NME_BUILD_PLUGIN "Build VST3/CLAP plugin targets" OFF)
 
