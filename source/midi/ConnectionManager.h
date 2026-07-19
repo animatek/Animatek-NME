@@ -290,6 +290,13 @@ private:
     // background slot's fetch/NewPatchInSlot must not contaminate the pid
     // used for the focused slot (or vice versa for queued structural edits).
     std::array<int, 4> slotPatchIds { 0, 0, 0, 0 };
+    // True when the editor holds a model for the slot that matches the synth
+    // (set by a complete fetch delivery or a finished editor upload). While
+    // set, SlotActivated skips its auto-fetch so switching slots reuses the
+    // in-memory model instead of re-downloading all 13 sections. Invalidated
+    // by a genuine NewPatchInSlot, by starting a fetch/upload, and on
+    // disconnect (the synth can change while we're away).
+    std::array<bool, 4> slotModelDelivered {};
     int patchPacketsReceived = 0;
     std::function<void(int slot)> patchFetchCompleteCallback;
 

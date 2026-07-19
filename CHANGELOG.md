@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Instant slot switching**: changing between slots A–D no longer re-downloads the
+  patch from the synth when the editor already holds a model that matches the
+  synth-side content (delivered by a complete fetch or a finished upload). The model
+  is still re-fetched when the patch in the slot genuinely changes on the synth
+  (program change, bank load) and on reconnect.
+
 - **Reliable patch fetches from a busy synth** (#15): a rack running at 99–100% DSP
   load answers patch-download requests slowly; the editor used to time out and
   silently keep a partial patch — cables and parameters went missing, editing desynced

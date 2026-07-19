@@ -192,6 +192,7 @@ void ConnectionManager::disconnect()
     slotEnabled.fill(false);
     slotPinned.fill(false);
     slotPatchIds.fill(0);
+    slotModelDelivered.fill(false);
 
     if (midiDevice)
     {
@@ -244,6 +245,11 @@ void ConnectionManager::requestPatch(int slot)
 {
     if (!isConnected())
         return;
+
+    // Until this fetch delivers, the editor's model for the slot (if any)
+    // can no longer be assumed to match the synth.
+    if (slot >= 0 && slot < 4)
+        slotModelDelivered[static_cast<size_t>(slot)] = false;
 
     // Any queued values describe the patch that was active before this fetch.
     // They must never land on the patch that is about to replace it.
@@ -507,10 +513,18 @@ void ConnectionManager::sendNextUploadSection()
             bankUploadResultCallback = nullptr;
             juce::MessageManager::callAsync([cb]() { cb(true); });
         }
-        else if (uploadCompleteCallback)
+        else
         {
-            auto cb = uploadCompleteCallback;
-            juce::MessageManager::callAsync([cb]() { cb(); });
+            // The editor model IS the patch we just uploaded — slot switches
+            // can reuse it without re-fetching. (Bank uploads excluded above:
+            // they push disk files, not the editor model.)
+            slotModelDelivered[static_cast<size_t>(uploadSlot & 0x03)] = true;
+
+            if (uploadCompleteCallback)
+            {
+                auto cb = uploadCompleteCallback;
+                juce::MessageManager::callAsync([cb]() { cb(); });
+            }
         }
         // Suppress the next auto-fetch triggered by NewPatchInSlot (sc=0x38).
         // currentPatch is already authoritative — it IS the patch we just uploaded.
@@ -566,6 +580,10 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
 {
     if (!isConnected())
         return;
+
+    // Not authoritative again until every section is ACKed.
+    if (slot >= 0 && slot < 4)
+        slotModelDelivered[static_cast<size_t>(slot)] = false;
 
     // The full upload supersedes all parameter deltas for the previous synth patch.
     invalidateParamQueue("full patch upload");
@@ -1264,12 +1282,21 @@ void ConnectionManager::finalizePatch()
 
     if (bankFetchCallback)
     {
+        // Bank transfer: sections go to disk, the editor model is untouched.
         auto cb = std::move(bankFetchCallback);
         bankFetchCallback = nullptr;
         cb(patchSections, completedSlot);
     }
     else if (patchDataCallback)
+    {
         patchDataCallback(patchSections, completedSlot);
+
+        // A complete delivery means the editor model now mirrors the synth,
+        // so slot switches can reuse it without re-fetching. Partial loads
+        // stay invalid — the next switch to that slot retries the download.
+        if (sectionsReceived >= totalSections && completedSlot >= 0 && completedSlot < 4)
+            slotModelDelivered[static_cast<size_t>(completedSlot)] = true;
+    }
 
     if (patchFetchCompleteCallback)
     {
@@ -1350,6 +1377,14 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
             slotPatchIds[static_cast<size_t>(msg.newPatchSlot)] = msg.newPatchPid;
             if (msg.newPatchSlot == currentSlot)
                 currentPatchId = msg.newPatchPid;
+
+            // A genuine patch change on the synth invalidates our model for
+            // that slot. Echoes of our own edits/uploads (the suppress flags
+            // below) don't — the model already reflects them.
+            const bool ownEcho = pendingSyncEchoes_ > 0 || suppressNewPatchInSlot_
+                              || suppressNextAutoFetch || waitingForUploadAck;
+            if (!ownEcho)
+                slotModelDelivered[static_cast<size_t>(msg.newPatchSlot)] = false;
         }
         else
         {
@@ -1503,9 +1538,19 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         if (slotChangedCallback)
             slotChangedCallback(activeSlot);
 
-        // Auto-load patch from the active slot (unless already loading or uploading)
+        // Auto-load patch from the active slot (unless already loading or
+        // uploading). If the editor already holds a model that matches the
+        // synth-side patch, reuse it: switching slots stays instant instead
+        // of re-downloading all 13 sections (the NewPatchInSlot handler
+        // invalidates the flag when the slot's content genuinely changes).
         if (isConnected() && !waitingForPatchAck && !collectingSections && !waitingForUploadAck)
-            requestPatch(activeSlot);
+        {
+            if (slotModelDelivered[static_cast<size_t>(activeSlot)])
+                std::cout << "[SLOT] Reusing in-memory patch for slot " << activeSlot
+                          << " — skipping re-fetch" << std::endl;
+            else
+                requestPatch(activeSlot);
+        }
     }
 
     // High-frequency messages sc=0x39 (Lights) and sc=0x3a (Meters) are
