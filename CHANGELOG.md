@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Reliable patch fetches from a busy synth** (#15): a rack running at 99–100% DSP
+  load answers patch-download requests slowly; the editor used to time out and
+  silently keep a partial patch — cables and parameters went missing, editing desynced
+  the rack, and saving produced broken .pch files with invalid cable nets. The editor
+  now re-requests only the missing sections (up to two retries), drops duplicated data
+  from slow replies, and shows a clear warning if the load is still incomplete. The
+  bank-backup watchdog was extended to cover the retry window.
+
 - **Windows**: the MSVC runtime is now statically linked, so the app no longer requires
   the Visual C++ Redistributable 2015–2022 (x64/x86) to be installed on a fresh Windows
   machine.

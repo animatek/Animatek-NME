@@ -93,7 +93,11 @@ private:
     Progress progress;
     ProgressCallback progressCallback;
 
-    static constexpr int fetchWatchdogMs = 12000;   // per-item fetch timeout
+    // Per-item fetch timeout. Must cover ConnectionManager's worst case of
+    // 1 + maxSectionRetries attempts at patchTimeoutMs each (a slow synth at
+    // full DSP load gets its missing sections re-requested), so the watchdog
+    // never abandons an item whose fetch is still recovering.
+    static constexpr int fetchWatchdogMs = 30000;
     static constexpr int interItemDelayMs = 150;    // breather between fetches
     static constexpr int postStoreDelayMs = 500;    // let StorePatch settle
     static constexpr int slotFocusDelayMs = 200;    // selectSlot → uploadPatch settle

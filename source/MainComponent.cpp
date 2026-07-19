@@ -399,6 +399,24 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     });
   });
 
+  // A fetch that still misses sections after the automatic retries delivers a
+  // patch without cables/parameters — editing or saving it would silently
+  // corrupt the user's work, so warn loudly (issue #15).
+  connectionManager.setPatchLoadIncompleteCallback([this](int slot, int received, int total) {
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::MessageManager::callAsync([safeThis, slot, received, total]() {
+      if (!safeThis) return;
+      safeThis->mainLayout->getStatusBar().clearProgress();
+      juce::AlertWindow::showMessageBoxAsync(
+          juce::MessageBoxIconType::WarningIcon, "Incomplete Patch Load",
+          "Slot " + juce::String(static_cast<char>('A' + slot)) + " received only "
+          + juce::String(received) + " of " + juce::String(total)
+          + " patch sections from the synth (it may be too busy).\n\n"
+          "Cables or parameters may be missing. Reload the patch from the synth "
+          "before editing or saving it.");
+    });
+  });
+
   // Wire parameter changes from canvas to synth (user turns knob in editor)
   mainLayout->getCanvas().setParameterChangeCallback(
       [this](int section, int moduleId, int parameterId, int value) {
@@ -840,6 +858,7 @@ MainComponent::~MainComponent() {
   connectionManager.setLightMeterCallback(nullptr);
   connectionManager.setPatchListCallback(nullptr);
   connectionManager.setPatchLoadProgressCallback(nullptr);
+  connectionManager.setPatchLoadIncompleteCallback(nullptr);
 
   // Tear down UI before members are destroyed
 #if JUCE_MAC

@@ -98,6 +98,43 @@ std::string describePdlSection(const std::vector<uint8_t>& section)
 
     return out.str();
 }
+
+// Identify which GetPatch request a completed PatchPacket entry answers, so a
+// stalled fetch can re-request exactly the missing sections. Entries are
+// 7-bit encoded and start at the PDL2 type field; area-scoped dumps carry a
+// poly/common bit right after the type. Returns a GetPatchMessage::Section
+// index, or -1 if the entry cannot be identified.
+int classifyGetPatchReply(const std::vector<uint8_t>& entry)
+{
+    Midi7BitReader reader(entry);
+    int type = -1;
+    if (!reader.readBits(8, type))
+        return -1;
+
+    auto areaSplit = [&reader](GetPatchMessage::Section poly, GetPatchMessage::Section common)
+    {
+        int area = 0;
+        if (!reader.readBits(1, area))
+            return -1;
+        return static_cast<int>(area != 0 ? poly : common);
+    };
+
+    switch (type)
+    {
+        case 33: case 55: case 39:  // Header, PatchName, PatchName2
+            return GetPatchMessage::Header;
+        case 74:  return areaSplit(GetPatchMessage::PolyModule,    GetPatchMessage::CommonModule);
+        case 82:  return areaSplit(GetPatchMessage::PolyCable,     GetPatchMessage::CommonCable);
+        case 77:  return areaSplit(GetPatchMessage::PolyParameter, GetPatchMessage::CommonParameter);
+        case 101: return GetPatchMessage::MorphMap;
+        case 98:  return GetPatchMessage::KnobMap;
+        case 96:  return GetPatchMessage::ControlMap;
+        case 91: case 90:  // CustomDump rides in front of NameDump in the same reply
+            return areaSplit(GetPatchMessage::PolyNameDump, GetPatchMessage::CommonNameDump);
+        case 105: return GetPatchMessage::Note;
+        default:  return -1;
+    }
+}
 }
 
 ConnectionManager::ConnectionManager()
@@ -233,6 +270,9 @@ void ConnectionManager::requestPatch(int slot)
     sectionAccumulator.clear();
     patchSections.clear();
     sectionsReceived = 0;
+    sectionSeen.fill(false);
+    fetchPatchId = -1;
+    sectionRetriesLeft = maxSectionRetries;
     patchTimeoutGeneration++;  // Invalidate any pending timeout
 
     RequestPatchMessage req;
@@ -384,6 +424,9 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
     sectionAccumulator.clear();
     patchSections.clear();
     sectionsReceived = 0;
+    sectionSeen.fill(false);
+    fetchPatchId = -1;
+    sectionRetriesLeft = maxSectionRetries;
     patchTimeoutGeneration++;
 
     lastLoadedSection = section;
@@ -1101,6 +1144,7 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
 
 void ConnectionManager::sendGetPatchMessages(int patchId, int slot)
 {
+    fetchPatchId = patchId;  // kept for per-section re-requests on a stalled fetch
     auto msgs = GetPatchMessage::forAllSections(patchId);
     for (auto& m : msgs)
     {
@@ -1126,8 +1170,8 @@ void ConnectionManager::startPatchTimeout()
         if (generation == patchTimeoutGeneration && collectingSections && sectionsReceived < totalSections)
         {
             DBG("Patch hard timeout: received " + juce::String(sectionsReceived) + "/" + juce::String(totalSections)
-                + " sections — parsing partial data");
-            finalizePatch();
+                + " sections");
+            retryMissingSections();
         }
     });
 }
@@ -1148,9 +1192,46 @@ void ConnectionManager::startSectionStaleTimeout()
         {
             DBG("Patch stale timeout: no new sections for " + juce::String(sectionStaleMs) + "ms"
                 + " (have " + juce::String(sectionsReceived) + "/" + juce::String(totalSections) + ")");
-            finalizePatch();
+            retryMissingSections();
         }
     });
+}
+
+void ConnectionManager::retryMissingSections()
+{
+    // A synth running at full DSP load answers GetPatch slowly and can stall
+    // mid-fetch. Re-request only the sections that never arrived; installing a
+    // partial patch here would silently drop cables/parameters (issue #15).
+    std::vector<int> missing;
+    for (int i = 0; i < totalSections; ++i)
+        if (!sectionSeen[static_cast<size_t>(i)])
+            missing.push_back(i);
+
+    if (missing.empty() || fetchPatchId < 0 || sectionRetriesLeft <= 0)
+    {
+        finalizePatch();
+        return;
+    }
+
+    --sectionRetriesLeft;
+    patchTimeoutGeneration++;  // invalidate the timers of the stalled attempt
+
+    std::cout << "[PATCH] Fetch stalled at " << sectionsReceived << "/" << totalSections
+              << " — re-requesting " << missing.size() << " missing sections ("
+              << (maxSectionRetries - sectionRetriesLeft) << "/" << maxSectionRetries
+              << " retries)" << std::endl;
+
+    for (int s : missing)
+    {
+        GetPatchMessage m;
+        m.pid = fetchPatchId;
+        m.section = static_cast<GetPatchMessage::Section>(s);
+        protocol.sendMessage(NmCmd::PatchHandling, pendingPatchSlot, m.encode(),
+                             /*expectsReply=*/true, /*addChecksum=*/true);
+    }
+
+    startPatchTimeout();
+    startSectionStaleTimeout();
 }
 
 void ConnectionManager::finalizePatch()
@@ -1159,6 +1240,11 @@ void ConnectionManager::finalizePatch()
 
     // If we have a partial accumulator (section in progress), discard it
     sectionAccumulator.clear();
+
+    // Retries exhausted and sections still missing: the delivered patch may
+    // lack cables/parameters. Warn the user before they edit or save it.
+    if (sectionsReceived < totalSections && patchLoadIncompleteCallback)
+        patchLoadIncompleteCallback(pendingPatchSlot, sectionsReceived, totalSections);
 
     if (patchSections.empty())
     {
@@ -1502,6 +1588,22 @@ void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
 
     if (msg.isLast)
     {
+        // A re-requested section can arrive twice when the original reply was
+        // merely slow rather than lost — parsing the duplicate would double
+        // every cable and parameter in the model, so drop it.
+        const int sectionKind = classifyGetPatchReply(sectionAccumulator);
+        if (sectionKind >= 0)
+        {
+            if (sectionSeen[static_cast<size_t>(sectionKind)])
+            {
+                DBG("Duplicate patch section (kind " + juce::String(sectionKind) + ") — dropped");
+                sectionAccumulator.clear();
+                startSectionStaleTimeout();
+                return;
+            }
+            sectionSeen[static_cast<size_t>(sectionKind)] = true;
+        }
+
         // Store completed section separately (each has independent 7-bit encoding)
         patchSections.push_back(std::move(sectionAccumulator));
         sectionAccumulator.clear();

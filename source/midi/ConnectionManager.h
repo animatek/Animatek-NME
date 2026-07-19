@@ -129,6 +129,13 @@ public:
     using PatchLoadProgressCallback = std::function<void(int sectionsDone, int totalSections)>;
     void setPatchLoadProgressCallback(PatchLoadProgressCallback cb) { patchLoadProgressCallback = std::move(cb); }
 
+    // Fired when a patch fetch finalizes without all sections despite retries
+    // (synth overloaded or connection flaky). The partial patch is still
+    // delivered, but it may be missing cables/parameters — the user must be
+    // warned before editing or saving it. May fire from the MIDI thread.
+    using PatchLoadIncompleteCallback = std::function<void(int slot, int sectionsReceived, int totalSections)>;
+    void setPatchLoadIncompleteCallback(PatchLoadIncompleteCallback cb) { patchLoadIncompleteCallback = std::move(cb); }
+
     // Patch list management
     using PatchListCallback = std::function<void(const std::vector<std::string>& names)>;
     void setPatchListCallback(PatchListCallback cb) { patchListCallback = std::move(cb); }
@@ -176,6 +183,7 @@ private:
     void sendGetPatchMessages(int patchId, int slot);
     void startPatchTimeout();
     void startSectionStaleTimeout();
+    void retryMissingSections();
     void finalizePatch();
     void storeLoadedSlotToBank(int slot, int section, int position, std::function<void()> afterStoreQueued = {});
 
@@ -236,6 +244,7 @@ private:
     LightMeterCallback lightMeterCallback;
     SynthSettingsCallback synthSettingsCallback;
     PatchLoadProgressCallback patchLoadProgressCallback;
+    PatchLoadIncompleteCallback patchLoadIncompleteCallback;
 
     // Global light/meter arrays updated by synth messages
     int globalLightValues[128] = {};
@@ -289,7 +298,19 @@ private:
     std::vector<std::vector<uint8_t>> patchSections;      // completed sections
     int sectionsReceived = 0;
     static constexpr int totalSections = 13;
-    // patchTimeoutMs: absolute upper bound for the full 13-section fetch.
+    // Which of the 13 GetPatch requests have been answered, keyed by
+    // GetPatchMessage::Section. Lets a stalled fetch re-request only the
+    // missing sections, and drops the duplicate when a retried request
+    // races its slow original reply (parsing a section twice would
+    // duplicate cables/parameters in the model).
+    std::array<bool, 13> sectionSeen {};
+    int fetchPatchId = -1;         // pid the in-flight GetPatch burst was sent with
+    int sectionRetriesLeft = 0;
+    // A synth at 99-100% DSP load answers GetPatch slowly and can stall for
+    // seconds mid-fetch (issue #15). Re-requesting the missing sections
+    // recovers the fetch instead of installing a partial patch.
+    static constexpr int maxSectionRetries = 2;
+    // patchTimeoutMs: upper bound for one fetch attempt (restarted per retry).
     // 8 s chosen empirically — a slow USB-MIDI round trip for 13 sections is ~2-3 s;
     // 8 s gives headroom for sluggish hosts without hanging the UI indefinitely.
     static constexpr int patchTimeoutMs = 8000;
