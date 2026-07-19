@@ -301,7 +301,15 @@ std::unique_ptr<Patch> PchFileIO::readLegacyFile(const juce::StringArray& allLin
                     const auto value = getLegacyValue(sectionLines, "P" + juce::String(param.getDescriptor()->index));
                     if (value.isNotEmpty())
                         if (auto* mutableParam = module->getParameter(param.getDescriptor()->index))
-                            mutableParam->setValue(value.getIntValue());
+                        {
+                            int paramValue = value.getIntValue();
+                            // 2.10 stores output destinations 1-based (1 = "1/2");
+                            // 3.0 is 0-based, so a verbatim copy lands every
+                            // factory patch on outputs 3/4 (issue #14 follow-up).
+                            if (param.getDescriptor()->role.contains("assign"))
+                                paramValue = juce::jmax(0, paramValue - 1);
+                            mutableParam->setValue(paramValue);
+                        }
                 }
 
                 for (const auto& cableLine : sectionLines)

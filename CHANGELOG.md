@@ -15,6 +15,11 @@
   the patch area — colored fill on the selected segment plus a thicker border — the
   same way knobs already did.
 
+- **Legacy 2.10 patches now play out of outputs 1/2** (#14 follow-up): the old 2.10
+  format stores output destinations 1-based, so importing them verbatim routed every
+  legacy patch to outputs 3/4 and they appeared silent. Destinations are remapped on
+  import; all 857 known factory patches load with the correct 1/2 routing.
+
 - **Windows**: the MSVC runtime is now statically linked, so the app no longer requires
   the Visual C++ Redistributable 2015–2022 (x64/x86) to be installed on a fresh Windows
   machine.
