@@ -10,6 +10,11 @@
   from slow replies, and shows a clear warning if the load is still incomplete. The
   bank-backup watchdog was extended to cover the retry window.
 
+- **Morph highlighting on every control type** (#16): 4-1 selector switches, toggles,
+  increment buttons and sliders assigned to a morph group now show the group color in
+  the patch area — colored fill on the selected segment plus a thicker border — the
+  same way knobs already did.
+
 - **Windows**: the MSVC runtime is now statically linked, so the app no longer requires
   the Visual C++ Redistributable 2015–2022 (x64/x86) to be installed on a fresh Windows
   machine.

@@ -1998,13 +1998,21 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
         auto* param = findParameter(m, tb.componentId);
         int val = (param != nullptr) ? param->getValue() : 0;
 
+        // Morph-assigned buttons get the group color, like knobs do (issue #16):
+        // selected segment filled with it and a thicker outer border around the
+        // control so the assignment reads at a glance.
+        int morphGroup = (param != nullptr) ? param->getMorphGroup() : -1;
+        bool hasMorph = (morphGroup >= 0 && morphGroup < 4);
+        juce::Colour morphCol = hasMorph ? activeScheme_.morphColor[morphGroup]
+                                         : activeScheme_.buttonBorder;
+
         // --- Increment buttons: draw arrow pairs ---
         if (tb.isIncrement)
         {
             g.setColour(activeScheme_.incrementBg);
             g.fillRect(bx, by, bw, bh);
-            g.setColour(activeScheme_.incrementBorder);
-            g.drawRect(bx, by, bw, bh, 1.0f);
+            g.setColour(hasMorph ? morphCol : activeScheme_.incrementBorder);
+            g.drawRect(bx, by, bw, bh, hasMorph ? 2.0f : 1.0f);
 
             g.setColour(activeScheme_.incrementFg);
             float cx = bx + bw * 0.5f;
@@ -2159,14 +2167,20 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
                 if (segLabel.isEmpty() && segIcon.isEmpty())
                     segLabel = juce::String(i);
 
-                juce::Colour base  = selected ? moduleBg.brighter(0.25f).withSaturation(0.5f) : moduleBg.darker(0.15f);
-                juce::Colour label = selected ? activeScheme_.buttonTextActive : activeScheme_.buttonText;
+                juce::Colour base  = selected ? (hasMorph ? morphCol
+                                                          : moduleBg.brighter(0.25f).withSaturation(0.5f))
+                                              : moduleBg.darker(0.15f);
+                // The four group colors span light and dark, so pick the label
+                // shade from the fill instead of the theme (yellow needs dark text)
+                juce::Colour label = selected ? (hasMorph ? morphCol.contrasting(0.8f)
+                                                          : activeScheme_.buttonTextActive)
+                                              : activeScheme_.buttonText;
                 drawBevelSegment(segX, segY, segW, segH, selected, base, segLabel, label, segIcon);
             }
 
             // Outer border
-            g.setColour(activeScheme_.buttonBorder);
-            g.drawRect(bx, by, bw, bh, 1.0f);
+            g.setColour(morphCol);
+            g.drawRect(bx, by, bw, bh, hasMorph ? 2.0f : 1.0f);
             continue;
         }
 
@@ -2203,18 +2217,22 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
             juce::Colour muteText = isOn ? juce::Colours::white : activeScheme_.buttonText;
             drawBevelSegment(sx, sy, sq, sq, isOn, muteBase, labelText, muteText, iconRef);
 
-            g.setColour(activeScheme_.buttonBorder);
-            g.drawRect(sx, sy, sq, sq, 1.0f);
+            g.setColour(morphCol);
+            g.drawRect(sx, sy, sq, sq, hasMorph ? 2.0f : 1.0f);
             continue;
         }
 
-        juce::Colour base      = isOn ? moduleBg.brighter(0.2f).withSaturation(0.4f) : moduleBg.darker(0.15f);
-        juce::Colour labelCol  = isOn ? activeScheme_.buttonTextActive : activeScheme_.buttonText;
+        juce::Colour base      = isOn ? (hasMorph ? morphCol
+                                                  : moduleBg.brighter(0.2f).withSaturation(0.4f))
+                                      : moduleBg.darker(0.15f);
+        juce::Colour labelCol  = isOn ? (hasMorph ? morphCol.contrasting(0.8f)
+                                                  : activeScheme_.buttonTextActive)
+                                      : activeScheme_.buttonText;
         drawBevelSegment(bx, by, bw, bh, isOn, base, labelText, labelCol, iconRef);
 
         // Outer border
-        g.setColour(activeScheme_.buttonBorder);
-        g.drawRect(bx, by, bw, bh, 1.0f);
+        g.setColour(morphCol);
+        g.drawRect(bx, by, bw, bh, hasMorph ? 2.0f : 1.0f);
     }
 }
 
@@ -2246,8 +2264,10 @@ void PatchCanvas::paintSliders(juce::Graphics& g, const Module& m, juce::Rectang
                 normalized = static_cast<float>(param->getValue() - pd->minValue) / static_cast<float>(range);
         }
 
-        // Draw grip
-        g.setColour(activeScheme_.resetText);
+        // Draw grip — morph-assigned sliders show the group color, like knobs
+        int morphGroup = (param != nullptr) ? param->getMorphGroup() : -1;
+        bool hasMorph = (morphGroup >= 0 && morphGroup < 4);
+        g.setColour(hasMorph ? activeScheme_.morphColor[morphGroup] : activeScheme_.resetText);
         bool vertical = (ts.orientation != "horizontal");
         if (vertical)
         {
