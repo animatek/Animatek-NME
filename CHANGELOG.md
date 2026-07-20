@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Background-prefetch every enabled slot on connect**: as soon as the editor learns
+  which of the 4 slots are actually populated on the synth, it downloads their patches
+  in the background (one at a time, same as the original Nomad editor), not just the
+  focused one. Switching to any of them for the first time after connecting is now
+  instant instead of triggering a 13-section fetch. A genuine slot activation (pressing
+  a slot button on the rack) always takes priority over this background work.
+
 - **Fixed the preset browser only showing the first few banks on startup**: connecting
   starts an 891-patch name fetch, but the synth's slot-activation notification (which
   triggers loading the current patch) arrives a moment later and aborted the name fetch

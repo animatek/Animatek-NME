@@ -194,6 +194,8 @@ void ConnectionManager::disconnect()
     slotPatchIds.fill(0);
     slotModelDelivered.fill(false);
     patchListInterruptedByFetch = false;
+    slotPrefetchQueue.clear();
+    backgroundPrefetchSlot = -1;
 
     if (midiDevice)
     {
@@ -538,6 +540,9 @@ void ConnectionManager::sendNextUploadSection()
             }
 
             resumePatchListIfInterrupted();
+            if (backgroundPrefetchSlot == (uploadSlot & 0x03))
+                backgroundPrefetchSlot = -1;
+            continueSlotPrefetchQueue();
         }
         // Suppress the next auto-fetch triggered by NewPatchInSlot (sc=0x38).
         // currentPatch is already authoritative — it IS the patch we just uploaded.
@@ -1030,6 +1035,59 @@ void ConnectionManager::resumePatchListIfInterrupted()
     });
 }
 
+void ConnectionManager::startEnabledSlotPrefetch()
+{
+    slotPrefetchQueue.clear();
+    for (int i = 0; i < 4; ++i)
+        if (slotEnabled[static_cast<size_t>(i)] && i != currentSlot
+            && !slotModelDelivered[static_cast<size_t>(i)])
+            slotPrefetchQueue.push_back(i);
+
+    if (slotPrefetchQueue.empty())
+        return;
+
+    std::cout << "[SLOT] Background-prefetching " << slotPrefetchQueue.size()
+              << " enabled slot(s) after connect" << std::endl;
+    continueSlotPrefetchQueue();
+}
+
+void ConnectionManager::continueSlotPrefetchQueue()
+{
+    if (slotPrefetchQueue.empty() || !isConnected())
+    {
+        slotPrefetchQueue.clear();
+        backgroundPrefetchSlot = -1;
+        return;
+    }
+
+    // Never start over something already using the wire — a focused-slot
+    // activation, a manual reload, a bank operation, or the patch-list fetch.
+    // Retry shortly instead of colliding with it.
+    if (waitingForPatchAck || collectingSections || waitingForUploadAck || fetchingPatchList)
+    {
+        auto aliveFlag = alive;
+        juce::Timer::callAfterDelay(300, [this, aliveFlag]() {
+            if (*aliveFlag) continueSlotPrefetchQueue();
+        });
+        return;
+    }
+
+    int slot = slotPrefetchQueue.front();
+    slotPrefetchQueue.erase(slotPrefetchQueue.begin());
+
+    if (slot == currentSlot || slotModelDelivered[static_cast<size_t>(slot)])
+    {
+        // Became the focused slot, or got delivered by something else
+        // (a manual browser load, say) while it sat in the queue.
+        continueSlotPrefetchQueue();
+        return;
+    }
+
+    std::cout << "[SLOT] Background-prefetching slot " << static_cast<char>('A' + slot) << std::endl;
+    backgroundPrefetchSlot = slot;
+    requestPatch(slot);
+}
+
 void ConnectionManager::requestPatchList()
 {
     std::cout << "[PATCHLIST] requestPatchList called, connected=" << isConnected() << std::endl;
@@ -1330,6 +1388,9 @@ void ConnectionManager::finalizePatch()
             slotModelDelivered[static_cast<size_t>(completedSlot)] = true;
 
         resumePatchListIfInterrupted();
+        if (backgroundPrefetchSlot == completedSlot)
+            backgroundPrefetchSlot = -1;
+        continueSlotPrefetchQueue();
     }
 
     if (patchFetchCompleteCallback)
@@ -1577,13 +1638,35 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         // synth-side patch, reuse it: switching slots stays instant instead
         // of re-downloading all 13 sections (the NewPatchInSlot handler
         // invalidates the flag when the slot's content genuinely changes).
-        if (isConnected() && !waitingForPatchAck && !collectingSections && !waitingForUploadAck)
+        if (isConnected() && !waitingForUploadAck)
         {
-            if (slotModelDelivered[static_cast<size_t>(activeSlot)])
-                std::cout << "[SLOT] Reusing in-memory patch for slot " << activeSlot
-                          << " — skipping re-fetch" << std::endl;
-            else
+            const bool needsFetch = !slotModelDelivered[static_cast<size_t>(activeSlot)];
+
+            if (needsFetch && (waitingForPatchAck || collectingSections) && backgroundPrefetchSlot >= 0)
+            {
+                // The wire is occupied by our own background prefetch (see
+                // startEnabledSlotPrefetch), not a manual reload or bank
+                // operation — safe to abort it and requeue it: a genuine
+                // slot activation always takes priority.
+                int interrupted = backgroundPrefetchSlot;
+                backgroundPrefetchSlot = -1;
+                std::cout << "[SLOT] Focused-slot activation pre-empts background prefetch of slot "
+                          << static_cast<char>('A' + interrupted) << std::endl;
+                if (std::find(slotPrefetchQueue.begin(), slotPrefetchQueue.end(), interrupted)
+                    == slotPrefetchQueue.end())
+                    slotPrefetchQueue.push_back(interrupted);
                 requestPatch(activeSlot);
+            }
+            else if (!waitingForPatchAck && !collectingSections)
+            {
+                if (needsFetch)
+                    requestPatch(activeSlot);
+                else
+                    std::cout << "[SLOT] Reusing in-memory patch for slot " << activeSlot
+                              << " — skipping re-fetch" << std::endl;
+            }
+            // else: busy with something else (manual reload, bank op) — skip,
+            // same as before phase 2's background prefetch existed.
         }
     }
 
@@ -1638,6 +1721,12 @@ void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
                     if (slotChangedCallback)
                         slotChangedCallback(currentSlot);
                 }
+
+                // Now that we know which slots are actually populated on the
+                // synth, background-fetch the ones we're not focused on too
+                // — mirrors the original Nomad editor's connect-time
+                // behaviour, so the first switch to any of them is instant.
+                startEnabledSlotPrefetch();
             }
 
             if (synthSettingsCallback)

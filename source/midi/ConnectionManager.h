@@ -187,6 +187,8 @@ private:
     void retryMissingSections();
     void finalizePatch();
     void storeLoadedSlotToBank(int slot, int section, int position, std::function<void()> afterStoreQueued = {});
+    void startEnabledSlotPrefetch();   // Queue every enabled-but-unfocused slot after connect
+    void continueSlotPrefetchQueue();  // Fetch the next queued slot once the wire is free
 
     std::shared_ptr<std::atomic<bool>> alive { std::make_shared<std::atomic<bool>>(true) };
     NmProtocol protocol;
@@ -330,6 +332,17 @@ private:
     // Slot detection: synth sends SlotActivated after handshake
     bool slotDetected = false;
     int slotDetectGeneration = 0;  // Invalidate fallback timer when slot is detected
+
+    // Phase 2: prefetch every enabled-but-not-focused slot right after
+    // connecting (mirrors the original Nomad editor's `if (slot.isEnabled())
+    // slot.requestPatch()` loop), so the first switch to any of them is also
+    // instant instead of incurring a 13-section fetch. One fetch at a time —
+    // the G1 can't handle overlapping GetPatch streams. backgroundPrefetchSlot
+    // marks the slot the CURRENTLY in-flight fetch is for, if any, so a real
+    // SlotActivated for a different slot can tell "safe to abort and requeue"
+    // (this) apart from "a manual reload/bank op is running" (must not abort).
+    std::vector<int> slotPrefetchQueue;
+    int backgroundPrefetchSlot = -1;
 
     // Patch list retrieval state
     bool fetchingPatchList = false;
