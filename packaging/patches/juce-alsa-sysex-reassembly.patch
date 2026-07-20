@@ -1,0 +1,47 @@
+diff --git a/modules/juce_audio_devices/native/juce_Midi_linux.cpp b/modules/juce_audio_devices/native/juce_Midi_linux.cpp
+index 058e0c65cc..895a934bfb 100644
+--- a/modules/juce_audio_devices/native/juce_Midi_linux.cpp
++++ b/modules/juce_audio_devices/native/juce_Midi_linux.cpp
+@@ -197,12 +197,42 @@ struct AlsaMidiHelpers
+                 return;
+             }
+ 
++            // ALSA delivers large SysEx messages split across several sequencer
++            // events (roughly 256-byte chunks). The UMP conversion downstream can
++            // only translate complete MIDI messages, so reassemble the chunks
++            // into a single message before forwarding.
++            if (numBytes > 0)
++            {
++                auto& pending = sysexAccumulators[seqEvent->dest.port];
++                const auto firstByte = (uint8_t) buffer[0];
++                const auto lastByte  = (uint8_t) buffer[(size_t) numBytes - 1];
++
++                if (firstByte == 0xf0 || (! pending.empty() && (firstByte < 0x80 || firstByte == 0xf7)))
++                {
++                    if (firstByte == 0xf0)
++                        pending.clear();
++
++                    pending.insert (pending.end(), buffer.data(), buffer.data() + numBytes);
++
++                    if (lastByte == 0xf7)
++                    {
++                        const Span assembled (pending.data(), pending.size());
++                        inputCallback.pushBytes (seqEvent->dest.port,
++                                                 { assembled, computeTimestampWithConvertedBase (seqEvent) });
++                        pending.clear();
++                    }
++
++                    return;
++                }
++            }
++
+             const Span bytes (buffer.data(), (size_t) numBytes);
+             inputCallback.pushBytes (seqEvent->dest.port,
+                                      { bytes, computeTimestampWithConvertedBase (seqEvent) });
+         }
+ 
+         static constexpr auto maxEventSize = 16 * 1024;
++        std::map<int, std::vector<std::byte>> sysexAccumulators;
+         snd_seq_t* seqHandle = nullptr;
+         int queueId = seqHandle != nullptr ? snd_seq_alloc_queue (seqHandle) : -1;
+         InputCallback& inputCallback;

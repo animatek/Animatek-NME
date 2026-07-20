@@ -12,6 +12,29 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
+# JUCE 8's ALSA input drops SysEx messages larger than one sequencer event
+# (~256 bytes): chunks are fed to the UMP converter as if they were complete
+# messages and everything after the first chunk is lost, truncating patch
+# downloads from the Nord Modular. Apply our reassembly patch to the vendored
+# submodule until it is fixed upstream (idempotent: skipped when present).
+if(UNIX AND NOT APPLE)
+    execute_process(
+        COMMAND grep -q sysexAccumulators
+                ${CMAKE_CURRENT_SOURCE_DIR}/JUCE/modules/juce_audio_devices/native/juce_Midi_linux.cpp
+        RESULT_VARIABLE NME_JUCE_PATCH_MISSING)
+    if(NME_JUCE_PATCH_MISSING)
+        execute_process(
+            COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/packaging/patches/juce-alsa-sysex-reassembly.patch
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/JUCE
+            RESULT_VARIABLE NME_JUCE_PATCH_RESULT)
+        if(NME_JUCE_PATCH_RESULT EQUAL 0)
+            message(STATUS "Applied JUCE ALSA SysEx reassembly patch")
+        else()
+            message(FATAL_ERROR "Failed to apply packaging/patches/juce-alsa-sysex-reassembly.patch to JUCE")
+        endif()
+    endif()
+endif()
+
 add_subdirectory(JUCE EXCLUDE_FROM_ALL)
 option(NME_BUILD_PLUGIN "Build VST3/CLAP plugin targets" OFF)
 

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Fixed large patches losing cables and modules on Linux** (root cause behind #15's
+  hidden cables on complex patches): JUCE 8's ALSA MIDI input feeds each ~256-byte
+  sequencer event straight to its MIDI-2.0 (UMP) conversion layer, which only handles
+  complete messages — a SysEx patch section bigger than one chunk was silently
+  truncated after the first chunk. Real patches routinely exceed this: a 65-cable
+  CableDump section is delivered in several ALSA chunks, and only the first ~57 cables
+  ever reached the parser, with no error reported to the user. Patched the vendored
+  JUCE submodule (`packaging/patches/juce-alsa-sysex-reassembly.patch`, auto-applied by
+  CMake) to reassemble chunked SysEx into a single message before decoding.
+
 - **Instant slot switching**: changing between slots A–D no longer re-downloads the
   patch from the synth when the editor already holds a model that matches the
   synth-side content (delivered by a complete fetch or a finished upload). The model
