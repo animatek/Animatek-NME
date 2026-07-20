@@ -1363,6 +1363,9 @@ void MainComponent::savePatchAs() {
 }
 
 void MainComponent::loadPatchFromFile(const juce::File &file) {
+  std::cout << "===== LOAD PATCH: slot=" << static_cast<char>('A' + activeSlot)
+            << " source=file \"" << file.getFileName() << "\" =====" << std::endl;
+
   PchFileIO io(moduleDescs);
   auto patch = io.readFile(file);
 

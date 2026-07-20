@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Console log now marks each patch load** with a `===== LOAD PATCH: slot=X source=... =====`
+  line (synth fetch, bank load, or disk file), making it easy to isolate one load's log
+  lines when copying console output between patches for a bug report.
+
 - **Fixed large patches losing cables and modules on Linux** (root cause behind #15's
   hidden cables on complex patches): JUCE 8's ALSA MIDI input feeds each ~256-byte
   sequencer event straight to its MIDI-2.0 (UMP) conversion layer, which only handles

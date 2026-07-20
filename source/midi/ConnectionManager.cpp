@@ -246,6 +246,12 @@ void ConnectionManager::requestPatch(int slot)
     if (!isConnected())
         return;
 
+    // Unconditional (not gated behind DBG/JUCE_DEBUG) so it always marks a
+    // fetch boundary in the console — makes it easy to isolate one patch
+    // load's log lines when copying a session's output for a bug report.
+    std::cout << "===== LOAD PATCH: slot=" << static_cast<char>('A' + (slot & 0x03))
+              << " source=synth-fetch =====" << std::endl;
+
     // Until this fetch delivers, the editor's model for the slot (if any)
     // can no longer be assumed to match the synth.
     if (slot >= 0 && slot < 4)
@@ -409,6 +415,10 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
 {
     if (!isConnected())
         return;
+
+    std::cout << "===== LOAD PATCH: slot=" << static_cast<char>('A' + ((targetSlot >= 0 ? targetSlot : currentSlot) & 0x03))
+              << " source=bank(section=" << (section + 1) << ",pos=" << (position + 1)
+              << ") =====" << std::endl;
 
     invalidateParamQueue("bank patch load");
 
