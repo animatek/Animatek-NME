@@ -570,9 +570,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         if (!currentPatch()) return;
         currentPatch()->morphKeyboard[static_cast<size_t>(morphIndex)] = keyboard;
         if (connectionManager.isConnected()) {
+          // Must address activeSlot, not the hardware-focused slot — every
+          // sibling callback here was already updated to do this; this one
+          // was missed (found in code review).
           MorphKeyboardAssignmentMessage msg(
-              connectionManager.getCurrentPatchId(), morphIndex, keyboard);
-          auto sysex = msg.toSysEx(connectionManager.getCurrentSlot());
+              connectionManager.getPatchId(activeSlot), morphIndex, keyboard);
+          auto sysex = msg.toSysEx(activeSlot);
           connectionManager.sendAckedSysEx(sysex);
         }
       });
@@ -1432,8 +1435,14 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   updateDspLoadDisplay();
 
   if (connectionManager.isConnected()) {
-    // Send loaded patch to synth so it plays immediately
-    int slot = connectionManager.getCurrentSlot();
+    // Send loaded patch to synth so it plays immediately. Must be activeSlot
+    // (the tab that just received this file), not getCurrentSlot() (whatever
+    // slot happens to have hardware focus) — those can differ since slot
+    // switching stopped forcing hardware focus to follow every tab change;
+    // uploading to the wrong one silently overwrote an unrelated slot while
+    // the synchronizer below stayed correctly bound to activeSlot (found in
+    // code review).
+    int slot = activeSlot;
     connectionManager.selectSlot(slot);
     std::cout << "[FILE] Focusing synth slot " << slot << " before disk patch upload" << std::endl;
     mainLayout->getStatusBar().showMessage(

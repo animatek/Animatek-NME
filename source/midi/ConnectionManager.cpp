@@ -260,9 +260,20 @@ void ConnectionManager::requestPatch(int slot)
     if (slot >= 0 && slot < 4)
         slotModelDelivered[static_cast<size_t>(slot)] = false;
 
+    // If this fetch isn't the background-prefetch queue continuing itself
+    // (continueSlotPrefetchQueue sets backgroundPrefetchSlot to this exact
+    // slot right before calling requestPatch), some other caller — a manual
+    // reload, a genuine slot activation — has taken over the fetch pipeline.
+    // Leaving the stale flag set let a later SlotActivated mistake this
+    // unrelated fetch for our own abortable prefetch and corrupt it (found
+    // in code review).
+    if (backgroundPrefetchSlot != slot)
+        backgroundPrefetchSlot = -1;
+
     // Any queued values describe the patch that was active before this fetch.
-    // They must never land on the patch that is about to replace it.
-    invalidateParamQueue("patch request");
+    // They must never land on the patch that is about to replace it — but
+    // only for THIS slot, other slots' queued edits are unaffected.
+    invalidateParamQueue("patch request", slot);
 
     // A patch fetch must not interleave with the 891-message patch list
     // stream — the G1 firmware freezes on colliding request streams.
@@ -423,16 +434,21 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
               << " source=bank(section=" << (section + 1) << ",pos=" << (position + 1)
               << ") =====" << std::endl;
 
-    invalidateParamQueue("bank patch load");
-
     // Loading while the patch list stream is in flight interleaves two
     // request/response streams and freezes the G1 — cancel the list first.
     cancelPatchListFetch("bank load supersedes it");
 
     int slot = (targetSlot >= 0) ? targetSlot : currentSlot;
+    invalidateParamQueue("bank patch load", slot);
     currentSlot = slot;
     currentPatchId = slotPatchIds[static_cast<size_t>(slot & 0x03)];
     pendingPatchSlot = slot;
+
+    // A bank load is never part of the background-prefetch queue (that only
+    // ever calls plain requestPatch) — it always takes over the fetch
+    // pipeline from whatever the stale flag claimed (found in code review,
+    // same class of bug as requestPatch's guard above).
+    backgroundPrefetchSlot = -1;
 
     // A browser load supersedes any patch fetch already in flight. Without this,
     // late packets from the previous request can finish after the double-click
@@ -579,7 +595,7 @@ void ConnectionManager::sendNextUploadSection()
                           : "type=-1 (Unknown)")
                       << " — aborting upload" << std::endl;
             waitingForUploadAck = false;
-            invalidateParamQueue("upload timeout");
+            invalidateParamQueue("upload timeout", uploadSlot);
             uploadSections.clear();
             uploadSectionIndex = 0;
             setStatus(State::Connected, "Upload timeout at section " + juce::String(sentSection));
@@ -603,8 +619,9 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
     if (slot >= 0 && slot < 4)
         slotModelDelivered[static_cast<size_t>(slot)] = false;
 
-    // The full upload supersedes all parameter deltas for the previous synth patch.
-    invalidateParamQueue("full patch upload");
+    // The full upload supersedes all parameter deltas for the previous synth
+    // patch — for this slot only, other slots' queued edits are unaffected.
+    invalidateParamQueue("full patch upload", slot);
 
     // Don't interleave the upload with the patch list request stream.
     cancelPatchListFetch("patch upload supersedes it");
@@ -757,16 +774,15 @@ void ConnectionManager::drainParamQueue()
 {
     if (!isConnected()) { clearParamQueue(); return; }
 
-    if (waitingForPatchAck || collectingSections)
-    {
-        clearParamQueue();
-        return;
-    }
-
-    // Do not interleave parameter SysEx with a full patch upload. Changes made
-    // while the upload is running remain coalesced and drain once it completes.
-    if (waitingForUploadAck)
-        return;
+    // A fetch/upload in flight must not be interleaved with a parameter send
+    // for the SAME slot (the G1 can't handle that), but it says nothing about
+    // OTHER slots' queued edits (e.g. from a background SlotWindow) — those
+    // still drain normally. Held entries just wait for the next tick instead
+    // of being dropped (found in code review: this used to clear the whole
+    // queue for any in-flight fetch/upload, regardless of slot).
+    const int busySlot = (waitingForPatchAck || collectingSections) ? pendingPatchSlot
+                        : waitingForUploadAck                       ? uploadSlot
+                                                                     : -1;
 
     if (queuedParamGeneration_ != paramContextGeneration_)
     {
@@ -774,11 +790,13 @@ void ConnectionManager::drainParamQueue()
         return;
     }
 
-    for (int i = 0; i < paramDrainBatch_ && !paramQueue_.empty(); ++i)
+    int sent = 0;
+    for (auto it = paramQueue_.begin(); it != paramQueue_.end() && sent < paramDrainBatch_; )
     {
-        auto it = paramQueue_.begin();
+        if (it->first.slot == busySlot) { ++it; continue; }  // hold, retry next tick
         sendParameter(it->first.slot, it->first.section, it->first.module, it->first.param, it->second);
-        paramQueue_.erase(it);
+        it = paramQueue_.erase(it);
+        ++sent;
     }
 
     if (paramQueue_.empty())
@@ -791,15 +809,27 @@ void ConnectionManager::clearParamQueue()
     paramQueueTimer_.stopTimer();
 }
 
-void ConnectionManager::invalidateParamQueue(const char* reason)
+void ConnectionManager::invalidateParamQueue(const char* reason, int slot)
 {
-    ++paramContextGeneration_;
-    if (!paramQueue_.empty())
+    if (slot < 0 || slot > 3)
     {
-        std::cout << "[PARAM] Discarding " << paramQueue_.size()
-                  << " queued changes: " << reason << std::endl;
+        ++paramContextGeneration_;
+        if (!paramQueue_.empty())
+            std::cout << "[PARAM] Discarding " << paramQueue_.size()
+                      << " queued changes (all slots): " << reason << std::endl;
+        clearParamQueue();
+        return;
     }
-    clearParamQueue();
+
+    size_t before = paramQueue_.size();
+    for (auto it = paramQueue_.begin(); it != paramQueue_.end(); )
+        it = (it->first.slot == slot) ? paramQueue_.erase(it) : std::next(it);
+
+    if (paramQueue_.size() != before)
+        std::cout << "[PARAM] Discarding " << (before - paramQueue_.size())
+                  << " queued changes for slot " << slot << ": " << reason << std::endl;
+    if (paramQueue_.empty())
+        paramQueueTimer_.stopTimer();
 }
 
 void ConnectionManager::setParamSendRate(int batchPerTick, int intervalMs)
@@ -1577,7 +1607,7 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         {
             ++uploadAckGeneration;
             waitingForUploadAck = false;
-            invalidateParamQueue("upload rejected");
+            invalidateParamQueue("upload rejected", uploadSlot);
             uploadSections.clear();
             uploadSectionIndex = 0;
             setStatus(State::Connected,

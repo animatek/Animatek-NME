@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Post-release code review fixes** (found during a review pass right after 0.8.2's
+  work): a stale internal flag could let a real patch fetch get mistaken for an
+  abandoned background prefetch and corrupted; opening a `.pch` file while viewing a
+  slot that didn't have hardware focus could silently upload it to the wrong physical
+  slot; a queued batch of parameter changes for one slot (e.g. a Mutator audition in a
+  background window) could be wiped out by an unrelated fetch on a different slot;
+  morph keyboard (velocity/note) assignment could target the wrong slot; and importing
+  a legacy 2.10 patch with a morph keyboard assignment set could silently corrupt that
+  assignment (an over-broad string match also caught it, not just the intended output
+  routing fix).
+
 ## 0.8.2 — 2026-07-20
 
 - **Pop-out windows for editing 2+ slots at once**: right-click a slot row in the slot
