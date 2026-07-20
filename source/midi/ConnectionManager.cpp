@@ -193,6 +193,7 @@ void ConnectionManager::disconnect()
     slotPinned.fill(false);
     slotPatchIds.fill(0);
     slotModelDelivered.fill(false);
+    patchListInterruptedByFetch = false;
 
     if (midiDevice)
     {
@@ -535,6 +536,8 @@ void ConnectionManager::sendNextUploadSection()
                 auto cb = uploadCompleteCallback;
                 juce::MessageManager::callAsync([cb]() { cb(); });
             }
+
+            resumePatchListIfInterrupted();
         }
         // Suppress the next auto-fetch triggered by NewPatchInSlot (sc=0x38).
         // currentPatch is already authoritative — it IS the patch we just uploaded.
@@ -1000,12 +1003,31 @@ void ConnectionManager::cancelPatchListFetch(const char* reason)
     fetchingPatchList = false;
     patchListGeneration++;  // Invalidate the in-flight request chain
     lastListCancelMs = juce::Time::getMillisecondCounter();
+    patchListInterruptedByFetch = true;
     std::cout << "[PATCHLIST] Fetch cancelled: " << reason << std::endl;
 
     // Deliver what we have so any UI waiting on the list leaves its
-    // loading state. The user can refresh for a complete list later.
+    // loading state — resumePatchListIfInterrupted() replaces it with the
+    // full list once the interrupting operation finishes.
     if (patchListCallback)
         patchListCallback(patchListNames);
+}
+
+void ConnectionManager::resumePatchListIfInterrupted()
+{
+    if (!patchListInterruptedByFetch)
+        return;
+    patchListInterruptedByFetch = false;
+
+    if (!isConnected() || fetchingPatchList)
+        return;
+
+    std::cout << "[PATCHLIST] Resuming list fetch aborted by a patch operation" << std::endl;
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(listRestartCooldownMs, [this, aliveFlag]() {
+        if (*aliveFlag && isConnected() && !fetchingPatchList)
+            requestPatchList();
+    });
 }
 
 void ConnectionManager::requestPatchList()
@@ -1306,6 +1328,8 @@ void ConnectionManager::finalizePatch()
         // stay invalid — the next switch to that slot retries the download.
         if (sectionsReceived >= totalSections && completedSlot >= 0 && completedSlot < 4)
             slotModelDelivered[static_cast<size_t>(completedSlot)] = true;
+
+        resumePatchListIfInterrupted();
     }
 
     if (patchFetchCompleteCallback)

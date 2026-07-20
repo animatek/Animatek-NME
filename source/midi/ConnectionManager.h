@@ -141,6 +141,7 @@ public:
     void setPatchListCallback(PatchListCallback cb) { patchListCallback = std::move(cb); }
     void requestPatchList();  // Start loading all 891 patch names from synth
     void cancelPatchListFetch(const char* reason);  // Abort in-flight list fetch (delivers partial names)
+    void resumePatchListIfInterrupted();  // Restart the list fetch if a patch op aborted it earlier
     const std::vector<std::string>& getPatchList() const { return patchListNames; }
     bool isPatchListLoaded() const { return patchListLoaded; }
 
@@ -345,6 +346,13 @@ private:
     // drain before a new fetch starts, or they get filed at wrong positions.
     static constexpr juce::uint32 listRestartCooldownMs = 400;
     juce::uint32 lastListCancelMs = 0;
+    // Set when a patch fetch/upload cancels an in-flight list fetch (most
+    // commonly: connecting starts the list fetch, then the synth's
+    // SlotActivated notification triggers the initial patch load a moment
+    // later, aborting the list partway through — e.g. only banks 1-6 show up
+    // until the user manually hits refresh). Cleared once the interrupting
+    // operation finishes and the list fetch is restarted automatically.
+    bool patchListInterruptedByFetch = false;
 
     // Outgoing message queue with ACK-wait (mirrors Java NmProtocol send queue).
     // Messages sent via sendAckedSysEx() are queued and sent one at a time;

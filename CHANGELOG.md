@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Fixed the preset browser only showing the first few banks on startup**: connecting
+  starts an 891-patch name fetch, but the synth's slot-activation notification (which
+  triggers loading the current patch) arrives a moment later and aborted the name fetch
+  partway through — commonly leaving only banks 1–6 populated until the user manually
+  hit refresh. The name fetch now resumes automatically once the interrupting patch
+  load finishes, instead of silently staying partial.
+
 - **Console log now marks each patch load** with a `===== LOAD PATCH: slot=X source=... =====`
   line (synth fetch, bank load, or disk file), making it easy to isolate one load's log
   lines when copying console output between patches for a bug report.
