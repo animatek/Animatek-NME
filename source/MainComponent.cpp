@@ -340,12 +340,16 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             if (safeThis->patchNotesFloaterWindow)
               safeThis->patchNotesFloaterWindow->setPatch(nullptr);
           }
+          // Same, for an open SlotWindow: its inspector may hold a Module*
+          // into the patch object that's about to be destroyed below.
+          if (safeThis->slotWindows[targetSlot])
+            safeThis->slotWindows[targetSlot]->getContent().getInspector().clearModule();
 
           safeThis->slotPatches[targetSlot] = std::move(p);
           if (safeThis->slotPatches[targetSlot]) {
             if (safeThis->connectionManager.isConnected()) {
               safeThis->slotSynchronizers[targetSlot] = std::make_unique<PatchSynchronizer>(
-                  *safeThis->slotPatches[targetSlot], safeThis->connectionManager);
+                  *safeThis->slotPatches[targetSlot], safeThis->connectionManager, targetSlot);
             }
 
             safeThis->slotUndoManagers[targetSlot].clearUndoHistory();
@@ -369,6 +373,18 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
               int lp = safeThis->connectionManager.getLastLoadedPosition();
               if (ls >= 0 && lp >= 0)
                   safeThis->mainLayout->getPatchBrowser().setLoadedPatch(ls, lp);
+            }
+
+            // Re-point an open SlotWindow at the new patch object too — it
+            // has its own canvas/header/inspector, independent of whether
+            // this slot is the one currently active in the main window.
+            if (safeThis->slotWindows[targetSlot]) {
+              auto& swContent = safeThis->slotWindows[targetSlot]->getContent();
+              swContent.getCanvas().setPatch(safeThis->slotPatches[targetSlot].get(),
+                                             &safeThis->moduleDescs, &safeThis->themeData);
+              swContent.getHeaderBar().setPatch(safeThis->slotPatches[targetSlot].get());
+              swContent.getInspector().setPatch(safeThis->slotPatches[targetSlot].get());
+              safeThis->updateSlotWindowDspLoad(targetSlot);
             }
 
             // Update slot bar with patch name
@@ -409,7 +425,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       safeThis->mainLayout->getStatusBar().clearProgress();
       juce::AlertWindow::showMessageBoxAsync(
           juce::MessageBoxIconType::WarningIcon, "Incomplete Patch Load",
-          "Slot " + juce::String(static_cast<char>('A' + slot)) + " received only "
+          "Slot " + juce::String::charToString(static_cast<char>('A' + slot)) + " received only "
           + juce::String(received) + " of " + juce::String(total)
           + " patch sections from the synth (it may be too busy).\n\n"
           "Cables or parameters may be missing. Reload the patch from the synth "
@@ -420,7 +436,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire parameter changes from canvas to synth (user turns knob in editor)
   mainLayout->getCanvas().setParameterChangeCallback(
       [this](int section, int moduleId, int parameterId, int value) {
-        connectionManager.sendParameter(section, moduleId, parameterId, value);
+        connectionManager.sendParameter(activeSlot, section, moduleId, parameterId, value);
         if (knobFloaterWindow && knobFloaterWindow->isVisible())
           knobFloaterWindow->refresh();
       });
@@ -584,7 +600,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // parameter=0-3
   mainLayout->getHeaderBar().setMorphChangeCallback(
       [this](int morphIndex, int value) {
-        connectionManager.sendParameter(2, 1, morphIndex, value);
+        connectionManager.sendParameter(activeSlot, 2, 1, morphIndex, value);
       });
 
   // Wire patch name changes to send to synth
@@ -788,6 +804,11 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     switchToSlot(slot);
   };
 
+  // Right-click a slot row: pop it out into its own window
+  mainLayout->onSlotWindowRequested = [this](int slot) {
+    toggleSlotWindow(slot);
+  };
+
   // Wire slot enable state (fixed LEDs on hardware; several can be on at once)
   connectionManager.setSlotsEnabledCallback([this](const std::array<bool, 4>& enabled) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -816,6 +837,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       }
       safeThis->mainLayout->getSlotBar().setCurrentTab(slot);
       safeThis->switchToSlot(slot, /*notifySynth=*/false);
+      safeThis->updateSlotWindowFocusIndicators();
     });
   });
 
@@ -1304,8 +1326,8 @@ void MainComponent::newPatch() {
 
   if (connectionManager.isConnected()) {
     // Upload empty patch to synth so it resets too
-    connectionManager.uploadPatch(connectionManager.getCurrentSlot(), *currentPatch());
-    currentSynchronizer() = std::make_unique<PatchSynchronizer>(*currentPatch(), connectionManager);
+    connectionManager.uploadPatch(activeSlot, *currentPatch());
+    currentSynchronizer() = std::make_unique<PatchSynchronizer>(*currentPatch(), connectionManager, activeSlot);
   }
 
   undoManager().clearUndoHistory();
@@ -1439,7 +1461,7 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
     });
 
     currentSynchronizer() = std::make_unique<PatchSynchronizer>(
-        *currentPatch(), connectionManager);
+        *currentPatch(), connectionManager, activeSlot);
     std::cout << "[SYNC] Patch synchronizer enabled after file load" << std::endl;
   }
 
@@ -1642,6 +1664,8 @@ void MainComponent::applyUiTheme(int index, bool persist) {
     keyboardFloaterWindow->applyTheme();
   if (patchNotesFloaterWindow)
     patchNotesFloaterWindow->applyTheme();
+  for (auto& sw : slotWindows)
+    if (sw) { sw->getContent().setTheme(canvasScheme); sw->repaint(); }
   mainLayout->repaint();
 
   if (persist)
@@ -1776,6 +1800,8 @@ void MainComponent::saveFloaterState() {
   save(patchNotesFloaterWindow.get(), "patchNotesFloater");
   save(mutatorWindow.get(), "mutatorFloater");
   save(sysexMonitorWindow.get(), "sysexMonitor");
+  for (int i = 0; i < numSlots; ++i)
+    save(slotWindows[i].get(), "slotWindow" + juce::String::charToString(static_cast<char>('A' + i)));
   settings->saveIfNeeded();
 }
 
@@ -1794,6 +1820,9 @@ void MainComponent::restoreFloaterWindows() {
     toggleMutatorWindow();
   if (settings->getBoolValue("sysexMonitorOpen", false))
     toggleSysexMonitor();
+  for (int i = 0; i < numSlots; ++i)
+    if (settings->getBoolValue("slotWindow" + juce::String::charToString(static_cast<char>('A' + i)) + "Open", false))
+      toggleSlotWindow(i);
 }
 
 void MainComponent::toggleKnobFloater() {
@@ -1812,7 +1841,7 @@ void MainComponent::toggleKnobFloater() {
     // Same path as the canvas parameter callbacks (live change + undo on drag end)
     knobFloaterWindow->onParameterChanged =
         [this](int section, int moduleId, int parameterId, int value) {
-          connectionManager.sendParameter(section, moduleId, parameterId, value);
+          connectionManager.sendParameter(activeSlot, section, moduleId, parameterId, value);
           mainLayout->getCanvas().repaintCanvas();
         };
     knobFloaterWindow->onParameterDragComplete =
@@ -1823,7 +1852,7 @@ void MainComponent::toggleKnobFloater() {
               *undoContext(), section, moduleId, parameterId, oldValue, newValue));
         };
     knobFloaterWindow->onMorphChanged = [this](int morphIndex, int value) {
-      connectionManager.sendParameter(2, 1, morphIndex, value);
+      connectionManager.sendParameter(activeSlot, 2, 1, morphIndex, value);
       mainLayout->getHeaderBar().repaint();
     };
     knobFloaterWindow->onReassignRequested = [this](int fromKnob, int toKnob) {
@@ -1900,6 +1929,14 @@ bool MainComponent::handleFloaterShortcut(const juce::KeyPress& key) {
     case '7': togglePatchNotesFloater(); return true;
     case '8': toggleMutatorWindow(); return true;
     case '9': toggleSysexMonitor(); return true;
+    case 't':
+      // Ctrl+T cycles the theme from the main window (MainComponent::
+      // keyPressed) — forward it here too so it also works while a floater
+      // or slot window has keyboard focus instead of only the main one.
+      applyUiTheme(editorOptions.uiThemeIndex + 1, true);
+      mainLayout->getStatusBar().showMessage(
+          "Theme: " + ThemeRegistry::get(editorOptions.uiThemeIndex).name, 2500);
+      return true;
     default: return false;
   }
 }
@@ -2037,6 +2074,315 @@ void MainComponent::toggleSysexMonitor() {
   showFloaterWindow(*sysexMonitorWindow, "sysexMonitor");
 }
 
+void MainComponent::toggleSlotWindow(int slot) {
+  if (slot < 0 || slot >= numSlots) return;
+
+  if (slotWindows[slot] && slotWindows[slot]->isVisible()) {
+    slotWindows[slot]->setVisible(false);
+    saveFloaterState();
+    return;
+  }
+
+  if (!slotWindows[slot]) {
+    slotWindows[slot] = std::make_unique<SlotWindow>(slot);
+    slotWindows[slot]->onClosed = [this]() { saveFloaterState(); };
+    slotWindows[slot]->onGlobalKey =
+        [this](const juce::KeyPress& k) { return handleFloaterShortcut(k); };
+    wireSlotWindowContent(*slotWindows[slot], slot);
+  }
+
+  // Match the main canvas's current color scheme. Editing (cables, modules,
+  // parameters, undo/redo) is wired below via wireSlotWindowContent(); live
+  // updates arriving FROM the synth for this slot still only reach the main
+  // canvas if it's the focused one (that fan-out is a later milestone).
+  const auto& theme = ThemeRegistry::get(editorOptions.uiThemeIndex);
+  auto canvasScheme = theme.makeCanvas();
+  canvasScheme.wireframe = editorOptions.wireframe;
+  auto& content = slotWindows[slot]->getContent();
+  content.setTheme(canvasScheme);
+  content.getCanvas().setPatch(slotPatches[slot].get(), &moduleDescs, &themeData);
+  content.getHeaderBar().setPatch(slotPatches[slot].get());
+  content.getInspector().setPatch(slotPatches[slot].get());
+  updateSlotWindowDspLoad(slot);
+  updateSlotWindowFocusIndicators();
+
+  showFloaterWindow(*slotWindows[slot],
+                    "slotWindow" + juce::String::charToString(static_cast<char>('A' + slot)));
+}
+
+// Slot-scoped equivalent of updateDspLoadDisplay(), which only ever touches
+// the main window's header bar — a SlotWindow has its own header bar and
+// must recompute load from THAT slot's patch, not currentPatch()/activeSlot.
+void MainComponent::updateSlotWindowDspLoad(int slot) {
+  if (!slotWindows[slot]) return;
+  auto& headerBar = slotWindows[slot]->getContent().getHeaderBar();
+  auto* p = slotPatches[slot].get();
+  if (!p) { headerBar.setLoadValues(-1.0f, -1.0f); return; }
+
+  double polyCycles = 0.0;
+  for (auto& mod : p->getPolyVoiceArea().getModules())
+    if (mod && mod->getDescriptor()) polyCycles += mod->getDescriptor()->cycles;
+  double commonCycles = 0.0;
+  for (auto& mod : p->getCommonArea().getModules())
+    if (mod && mod->getDescriptor()) commonCycles += mod->getDescriptor()->cycles;
+  double total = polyCycles + commonCycles;
+  headerBar.setLoadValues(static_cast<float>(polyCycles / 100.0), static_cast<float>(total / 100.0));
+}
+
+// With N windows potentially open at once, it's not obvious at a glance
+// which slot currently has the synth's front-panel focus (the one that gets
+// live parameter/light/meter updates, per the multi-window plan) — mirrors
+// the original Nomad editor highlighting the focused patch's title bar.
+// Marks the title of whichever open SlotWindow matches
+// connectionManager.getCurrentSlot() and brings it to front (per Javier:
+// the original editor's equivalent left the window wherever it was, but in
+// practice that meant the just-focused slot's window could stay hidden
+// behind others — bringing it forward matches the hardware's own behavior
+// more usefully, at the cost of possibly interrupting whatever window the
+// user was in; worth a second look if that turns out to be annoying).
+void MainComponent::updateSlotWindowFocusIndicators() {
+  const int focused = connectionManager.getCurrentSlot();
+  for (int i = 0; i < numSlots; ++i) {
+    if (!slotWindows[i]) continue;
+    // juce::String has no dedicated char constructor — juce::String(char)
+    // silently resolves to the int overload and prints the ASCII value
+    // instead of the letter (bit us before in the #15 alert; bit us again
+    // here). Always use charToString for a single character.
+    juce::String base = "Slot " + juce::String::charToString(static_cast<char>('A' + i));
+    slotWindows[i]->setName(i == focused ? base + " - Focused" : base);
+    if (i == focused && slotWindows[i]->isVisible())
+      slotWindows[i]->toFront(true);
+  }
+}
+
+// Editing wiring for one SlotWindow, called once when it's first created.
+// Deliberately NOT shared with the ~250-line block that wires the main
+// canvas (MainComponent constructor, above): the main wiring's lambdas
+// close over the mutable `activeSlot` and read it at call time (correct
+// there, since it changes on every tab switch), while a SlotWindow's slot
+// is fixed for its whole lifetime — unifying the two would need threading a
+// slot-getter through every lambda for one-time code reuse, more risk than
+// it's worth against the proven main-window wiring. Every action here reads
+// slotPatches[slot]/slotUndoManagers[slot]/slotUndoContexts[slot] directly
+// instead of the currentPatch()/undoManager()/undoContext() convenience
+// accessors, which are activeSlot-only.
+//
+// Scope: the core editing chain (selection, parameters, cables, modules,
+// morph/knob/CC assignment, rename, undo/redo). Deliberately NOT wired:
+// file commands (Ctrl+N/O/S have no clear meaning for a window bound to one
+// already-loaded slot — Ctrl+1..9/T for slot-switch/floaters/theme still
+// work via SlotWindow's onGlobalKey, since PatchCanvas::keyPressed only
+// handles those itself when setFileCommandCallback is non-null); the
+// morph-keyboard/snapshot/mutator buttons (tied to the single shared
+// keyboard/mutator floaters and activeSlot-scoped variations — a separate
+// design question, not needed for basic patch editing); snippet save/drop.
+void MainComponent::wireSlotWindowContent(SlotWindow& window, int slot) {
+  auto& content = window.getContent();
+  auto& canvas = content.getCanvas();
+  auto& inspector = content.getInspector();
+  auto& headerBar = content.getHeaderBar();
+
+  auto patch = [this, slot]() -> Patch* { return slotPatches[slot].get(); };
+  auto ctx    = [this, slot]() -> UndoContext* { return slotUndoContexts[slot].get(); };
+  auto undoMgr = [this, slot]() -> juce::UndoManager& { return slotUndoManagers[slot]; };
+
+  auto updateLoad = [this, slot]() { updateSlotWindowDspLoad(slot); };
+
+  // Selection -> inspector
+  canvas.setModuleSelectedCallback([&inspector](Module* module, int section) {
+    if (module) inspector.setModule(module, section);
+    else inspector.clearModule();
+  });
+
+  // Inspector-originated edits
+  inspector.onNameChanged = [&canvas](int, Module*, const juce::String&) {
+    canvas.repaintCanvas();
+  };
+  inspector.onMorphGroupChanged = [this, slot, patch, ctx, undoMgr]
+      (int section, Module* module, int paramIndex, int morphGroup) {
+    if (!patch() || !module || !ctx()) return;
+    int moduleId = module->getContainerIndex();
+    int oldGroup = -1, oldRange = 0;
+    for (auto& ma : patch()->morphAssignments)
+      if (ma.section == section && ma.module == moduleId && ma.param == paramIndex)
+      { oldGroup = ma.morph; oldRange = ma.range; break; }
+    undoMgr().beginNewTransaction("Morph Assign");
+    undoMgr().perform(new MorphAssignAction(*ctx(), section, moduleId, paramIndex, morphGroup, oldGroup, oldRange));
+  };
+  inspector.onMorphRangeChanged = [patch, ctx, undoMgr]
+      (int section, Module* module, int paramIndex, int span, int dir) {
+    if (!module || !patch() || !ctx()) return;
+    int moduleId = module->getContainerIndex();
+    int newRange = (dir == 0) ? span : -span;
+    int oldRange = 0;
+    for (auto& ma : patch()->morphAssignments)
+      if (ma.section == section && ma.module == moduleId && ma.param == paramIndex)
+      { oldRange = ma.range; break; }
+    undoMgr().beginNewTransaction("Morph Range");
+    undoMgr().perform(new MorphRangeChangeAction(*ctx(), section, moduleId, paramIndex, oldRange, newRange));
+  };
+  inspector.onKnobRemoved = [patch, ctx, undoMgr](int section, int moduleId, int paramId, int) {
+    if (!patch() || !ctx()) return;
+    int prevKnob = -1;
+    for (int k = 0; k < 23; ++k) {
+      auto& ka = patch()->knobAssignments[static_cast<size_t>(k)];
+      if (ka.assigned && ka.section == section && ka.module == moduleId && ka.param == paramId)
+      { prevKnob = k; break; }
+    }
+    if (prevKnob < 0) return;
+    undoMgr().beginNewTransaction("Knob Deassign");
+    undoMgr().perform(new KnobAssignAction(*ctx(), section, moduleId, paramId, -1, prevKnob));
+  };
+  inspector.onMidiCtrlRemoved = [patch, ctx, undoMgr](int section, int moduleId, int paramId, int) {
+    if (!patch() || !ctx()) return;
+    int prevCtrl = -1;
+    for (auto& ca : patch()->ctrlAssignments)
+      if (ca.section == section && ca.module == moduleId && ca.param == paramId)
+      { prevCtrl = ca.control; break; }
+    if (prevCtrl < 0) return;
+    undoMgr().beginNewTransaction("MIDI CC Deassign");
+    undoMgr().perform(new MidiCtrlAssignAction(*ctx(), section, moduleId, paramId, -1, prevCtrl));
+  };
+
+  // Canvas -> synth (live parameter changes) and canvas -> undo (structural edits)
+  canvas.setParameterChangeCallback([this, slot](int section, int moduleId, int parameterId, int value) {
+    connectionManager.sendParameter(slot, section, moduleId, parameterId, value);
+  });
+  canvas.setParameterDragCompleteCallback([ctx, undoMgr]
+      (int section, int moduleId, int parameterId, int oldValue, int newValue) {
+    if (!ctx()) return;
+    undoMgr().beginNewTransaction("Parameter Change");
+    undoMgr().perform(new ParameterChangeAction(*ctx(), section, moduleId, parameterId, oldValue, newValue));
+  });
+  canvas.setModuleDropCallback([patch, ctx, undoMgr, updateLoad]
+      (int typeId, int section, int gridX, int gridY, const juce::String& name) {
+    if (!patch() || !ctx()) return;
+    if (!undoMgr().perform(new AddModuleAction(*ctx(), section, typeId, gridX, gridY, name)))
+      std::cout << "[SLOTWIN] Failed to add module - check synth memory/limits" << std::endl;
+    updateLoad();
+  });
+  canvas.setDeleteModuleCallback([patch, ctx, undoMgr, updateLoad](int section, Module* module) {
+    if (!patch() || !ctx() || !module) return;
+    undoMgr().perform(new DeleteModuleAction(*ctx(), section, module));
+    updateLoad();
+  });
+  canvas.setModuleMoveCallback([patch, ctx, undoMgr]
+      (int section, int moduleIndex, juce::Point<int> oldPos, juce::Point<int> newPos) {
+    if (!patch() || !ctx()) return;
+    undoMgr().perform(new MoveModuleAction(*ctx(), section, moduleIndex, oldPos, newPos));
+  });
+  canvas.setRenameModuleCallback([](int, Module*, const juce::String& newName) {
+    std::cout << "[SLOTWIN] Module renamed to: " << newName.toStdString() << std::endl;
+  });
+  canvas.setMorphAssignCallback([patch, ctx, undoMgr]
+      (int section, int moduleId, int paramId, int morphGroup) {
+    if (!patch() || !ctx()) return;
+    int oldGroup = -1, oldRange = 0;
+    for (auto& ma : patch()->morphAssignments)
+      if (ma.section == section && ma.module == moduleId && ma.param == paramId)
+      { oldGroup = ma.morph; oldRange = ma.range; break; }
+    undoMgr().beginNewTransaction("Morph Assign");
+    undoMgr().perform(new MorphAssignAction(*ctx(), section, moduleId, paramId, morphGroup, oldGroup, oldRange));
+  });
+  canvas.setMorphRangeChangeCallback([patch, ctx, undoMgr]
+      (int section, int moduleId, int paramId, int span, int direction) {
+    if (!patch() || !ctx()) return;
+    int newSignedRange = (direction == 0) ? span : -span;
+    int oldSignedRange = 0;
+    for (auto& ma : patch()->morphAssignments)
+      if (ma.section == section && ma.module == moduleId && ma.param == paramId)
+      { oldSignedRange = ma.range; break; }
+    undoMgr().beginNewTransaction("Morph Range");
+    undoMgr().perform(new MorphRangeChangeAction(*ctx(), section, moduleId, paramId, oldSignedRange, newSignedRange));
+  });
+  auto wireKnobAssign = [patch, ctx, undoMgr](int section, int moduleId, int paramId, int knobIndex) {
+    if (!patch() || !ctx()) return;
+    int prevKnob = -1;
+    for (int k = 0; k < 23; ++k) {
+      auto& ka = patch()->knobAssignments[static_cast<size_t>(k)];
+      if (ka.assigned && ka.section == section && ka.module == moduleId && ka.param == paramId)
+      { prevKnob = k; break; }
+    }
+    if (knobIndex == prevKnob) return;
+    undoMgr().beginNewTransaction("Knob Assign");
+    undoMgr().perform(new KnobAssignAction(*ctx(), section, moduleId, paramId, knobIndex, prevKnob));
+  };
+  canvas.setKnobAssignCallback(wireKnobAssign);
+  headerBar.setKnobAssignCallback(wireKnobAssign);
+  auto wireMidiCtrlAssign = [patch, ctx, undoMgr](int section, int moduleId, int paramId, int midiCC) {
+    if (!patch() || !ctx()) return;
+    int prevCtrl = -1;
+    for (auto& ca : patch()->ctrlAssignments)
+      if (ca.section == section && ca.module == moduleId && ca.param == paramId)
+      { prevCtrl = ca.control; break; }
+    if (midiCC == prevCtrl) return;
+    undoMgr().beginNewTransaction("MIDI CC Assign");
+    undoMgr().perform(new MidiCtrlAssignAction(*ctx(), section, moduleId, paramId, midiCC, prevCtrl));
+  };
+  canvas.setMidiCtrlAssignCallback(wireMidiCtrlAssign);
+  headerBar.setMidiCtrlAssignCallback(wireMidiCtrlAssign);
+
+  canvas.setCableCreatedCallback([patch, ctx, undoMgr]
+      (int section, int outModIdx, int outConnIdx, bool outIsOut,
+       int inModIdx, int inConnIdx, bool inIsOut) {
+    if (!patch() || !ctx()) return;
+    undoMgr().perform(new AddCableAction(*ctx(), section,
+        outModIdx, outConnIdx, outIsOut, inModIdx, inConnIdx, inIsOut, true));
+  });
+  canvas.setCableDeletedCallback([patch, ctx, undoMgr]
+      (int section, int outModIdx, int outConnIdx, bool outIsOut,
+       int inModIdx, int inConnIdx, bool inIsOut) {
+    if (!patch() || !ctx()) return;
+    undoMgr().perform(new DeleteCableAction(*ctx(), section,
+        outModIdx, outConnIdx, outIsOut, inModIdx, inConnIdx, inIsOut, true));
+  });
+
+  // Header bar: morph knob live change, patch rename (also updates the main
+  // window's SlotBar label, since there's only one of those), cable
+  // visibility / shake cosmetic toggles (self-contained, no slot needed)
+  headerBar.setMorphChangeCallback([this, slot](int morphIndex, int value) {
+    connectionManager.sendParameter(slot, 2, 1, morphIndex, value);
+  });
+  headerBar.setNameChangeCallback([this, slot, patch, ctx](const juce::String& newName) {
+    if (!patch() || !ctx()) return;
+    juce::String oldName = patch()->getName();
+    if (oldName == newName) return;
+    slotUndoManagers[slot].beginNewTransaction("Rename Patch");
+    slotUndoManagers[slot].perform(new RenamePatchAction(*ctx(), oldName, newName));
+    mainLayout->getSlotBar().setSlotName(slot, newName);
+  });
+  headerBar.setCableVisibilityCallback([&canvas]() { canvas.repaintCanvas(); });
+  headerBar.setShakeCablesCallback([&canvas]() { canvas.shakeCables(); });
+
+  // Undo/redo keyboard shortcuts (Ctrl+Z/Shift+Ctrl+Z), scoped to this slot
+  canvas.setUndoCallback([this, slot, updateLoad]() { slotUndoManagers[slot].undo(); updateLoad(); });
+  canvas.setRedoCallback([this, slot, updateLoad]() { slotUndoManagers[slot].redo(); updateLoad(); });
+  canvas.setUndoManager(&slotUndoManagers[slot]);
+
+  canvas.setInitModuleCallback([patch, ctx, undoMgr, updateLoad, &canvas]
+      (int section, Module* module) {
+    if (!module || !patch() || !ctx()) return;
+    std::vector<RandomizeAction::ParamChange> changes;
+    for (auto& param : module->getParameters()) {
+      if (param.isLocked()) continue;
+      auto* pd = param.getDescriptor();
+      if (!pd || pd->paramClass != "parameter") continue;
+      int oldVal = param.getValue();
+      int newVal = pd->defaultValue;
+      if (oldVal != newVal)
+        changes.push_back({section, module->getContainerIndex(), pd->index, oldVal, newVal});
+    }
+    if (changes.empty()) return;
+    if (!undoMgr().isPerformingUndoRedo())
+      undoMgr().beginNewTransaction("Initialize Module");
+    undoMgr().perform(new RandomizeAction(*ctx(), std::move(changes)));
+    canvas.repaintCanvas();
+    updateLoad();
+  });
+
+  updateLoad();  // Show the slot's actual DSP load as soon as the window opens
+}
+
 void MainComponent::handleConnectionRequest(const juce::String &inputId,
                                             const juce::String &outputId) {
   lastInputId = inputId;
@@ -2067,7 +2413,7 @@ void MainComponent::onConnectionStatusChanged(
     // Enable synchronizer if we have a patch loaded
     if (currentPatch() && !currentSynchronizer()) {
       currentSynchronizer() = std::make_unique<PatchSynchronizer>(
-          *currentPatch(), connectionManager);
+          *currentPatch(), connectionManager, activeSlot);
       std::cout << "[SYNC] Patch synchronizer enabled on connection" << std::endl;
     }
 
@@ -2396,12 +2742,30 @@ void MainComponent::rebuildUndoContext(int slot)
     slotUndoContexts[slot] = std::make_unique<UndoContext>(UndoContext{
         *slotPatches[slot], connectionManager, slotSynchronizers[slot],
         moduleDescs,
-        [this]() {
-            mainLayout->getCanvas().repaintCanvas();
-            mainLayout->getInspector().refreshMorphList();
-            mainLayout->getHeaderBar().repaint();
-            if (knobFloaterWindow)
-                knobFloaterWindow->refresh();
+        // This UndoContext (and its repaint callback) is shared by BOTH the
+        // main window (when this slot happens to be the active tab) and this
+        // slot's own pop-out SlotWindow if one is open — an edit made in
+        // either place must repaint whichever surface(s) are actually
+        // displaying it, not unconditionally the main window. Without the
+        // `slot == activeSlot` guard, editing a slot only open in its own
+        // window repainted the main window's (unrelated) canvas instead,
+        // and the SlotWindow's own canvas was never told to redraw — the
+        // model updated correctly, but nothing visibly changed until some
+        // unrelated event (e.g. clicking the window) forced a repaint.
+        [this, slot]() {
+            if (slot == activeSlot) {
+                mainLayout->getCanvas().repaintCanvas();
+                mainLayout->getInspector().refreshMorphList();
+                mainLayout->getHeaderBar().repaint();
+                if (knobFloaterWindow)
+                    knobFloaterWindow->refresh();
+            }
+            if (slotWindows[slot] && slotWindows[slot]->isVisible()) {
+                auto& content = slotWindows[slot]->getContent();
+                content.getCanvas().repaintCanvas();
+                content.getInspector().refreshMorphList();
+                content.getHeaderBar().repaint();
+            }
         },
         [this, slot, syncGen = std::make_shared<int>(0)]() {
             if (!connectionManager.isConnected() || !slotPatches[slot]) return;
@@ -2424,7 +2788,8 @@ void MainComponent::rebuildUndoContext(int slot)
         },
         [this, slot](int section, int moduleId, int paramId, int value) {
             variations[slot].updateValue(section, moduleId, paramId, value);
-        }
+        },
+        slot
     });
 }
 
@@ -2502,7 +2867,7 @@ void MainComponent::applySnapshot(const ParamSnapshot& snap, const juce::String&
         currentPatch()->morphValues = snap.morphValues;
         if (connectionManager.isConnected())
             for (int m = 0; m < 4; ++m)
-                connectionManager.queueParameter(2, 1, m, snap.morphValues[static_cast<size_t>(m)]);
+                connectionManager.queueParameter(activeSlot, 2, 1, m, snap.morphValues[static_cast<size_t>(m)]);
         mainLayout->getHeaderBar().repaint();
     }
 }
@@ -2656,7 +3021,7 @@ void MainComponent::onInterpolationTick() {
         int oldVal = param->getValue();
         param->setValue(interpolatedVal);
         if (oldVal != interpolatedVal)
-            connectionManager.queueParameter(f.section, f.moduleId, f.paramId, interpolatedVal);
+            connectionManager.queueParameter(activeSlot, f.section, f.moduleId, f.paramId, interpolatedVal);
     }
 
     mainLayout->getCanvas().repaintCanvas();
@@ -2681,7 +3046,7 @@ void MainComponent::onInterpolationTick() {
             currentPatch()->morphValues = interpolation.targetMorphs;
             if (connectionManager.isConnected())
                 for (int m = 0; m < 4; ++m)
-                    connectionManager.queueParameter(2, 1, m,
+                    connectionManager.queueParameter(activeSlot, 2, 1, m,
                         interpolation.targetMorphs[static_cast<size_t>(m)]);
             mainLayout->getHeaderBar().repaint();
         }
@@ -2689,7 +3054,7 @@ void MainComponent::onInterpolationTick() {
         // Queue all final values so the synth lands exactly on the target sound.
         for (size_t i = 0; i < interpolation.to.size(); ++i) {
             auto& e = interpolation.to[i];
-            connectionManager.queueParameter(e.section, e.moduleId, e.paramId, e.value);
+            connectionManager.queueParameter(activeSlot, e.section, e.moduleId, e.paramId, e.value);
         }
 
         mainLayout->getStatusBar().showMessage(

@@ -36,6 +36,7 @@ struct UndoContext
     // Deliberately NOT fired by bulk actions (recall/randomize) so undoing a
     // variation recall can't overwrite the stored variation itself.
     std::function<void(int section, int moduleId, int paramId, int value)> onParamEdited;
+    int slot;  // which slot this context (and any edits sent below) belongs to
 };
 
 // ============================================================================
@@ -486,7 +487,7 @@ public:
         auto* param = mod->getParameter(paramId_);
         if (!param) return false;
         param->setValue(newValue_);
-        ctx_.connMgr.sendParameter(section_, moduleId_, paramId_, newValue_);
+        ctx_.connMgr.sendParameter(ctx_.slot, section_, moduleId_, paramId_, newValue_);
         if (ctx_.onParamEdited) ctx_.onParamEdited(section_, moduleId_, paramId_, newValue_);
         ctx_.repaint();
         return true;
@@ -500,7 +501,7 @@ public:
         auto* param = mod->getParameter(paramId_);
         if (!param) return false;
         param->setValue(oldValue_);
-        ctx_.connMgr.sendParameter(section_, moduleId_, paramId_, oldValue_);
+        ctx_.connMgr.sendParameter(ctx_.slot, section_, moduleId_, paramId_, oldValue_);
         if (ctx_.onParamEdited) ctx_.onParamEdited(section_, moduleId_, paramId_, oldValue_);
         ctx_.repaint();
         return true;
@@ -574,8 +575,8 @@ private:
 
             if (ctx_.connMgr.isConnected())
             {
-                int pid = ctx_.connMgr.getCurrentPatchId();
-                int slot = ctx_.connMgr.getCurrentSlot();
+                int pid = ctx_.connMgr.getPatchId(ctx_.slot);
+                int slot = ctx_.slot;
                 MorphAssignmentMessage msg(pid, section_, moduleId_, paramId_, group);
                 ctx_.connMgr.sendRawSysEx(msg.toSysEx(slot));
                 MorphRangeChangeMessage rangeMsg(pid, section_, moduleId_, paramId_,
@@ -631,8 +632,8 @@ private:
                 ma.range = signedRange;
                 if (ctx_.connMgr.isConnected())
                 {
-                    int pid = ctx_.connMgr.getCurrentPatchId();
-                    int slot = ctx_.connMgr.getCurrentSlot();
+                    int pid = ctx_.connMgr.getPatchId(ctx_.slot);
+                    int slot = ctx_.slot;
                     int span = std::abs(signedRange);
                     int dir = signedRange < 0 ? 1 : 0;
                     MorphRangeChangeMessage msg(pid, section_, moduleId_, paramId_, span, dir);
@@ -669,8 +670,8 @@ public:
 private:
     bool applyKnob(int targetKnob, int fromKnob)
     {
-        int pid = ctx_.connMgr.getCurrentPatchId();
-        int slot = ctx_.connMgr.getCurrentSlot();
+        int pid = ctx_.connMgr.getPatchId(ctx_.slot);
+        int slot = ctx_.slot;
 
         if (fromKnob >= 0)
             ctx_.patch.knobAssignments[static_cast<size_t>(fromKnob)].assigned = false;
@@ -722,8 +723,8 @@ public:
 private:
     bool applyCC(int targetCC, int fromCC)
     {
-        int pid = ctx_.connMgr.getCurrentPatchId();
-        int slot = ctx_.connMgr.getCurrentSlot();
+        int pid = ctx_.connMgr.getPatchId(ctx_.slot);
+        int slot = ctx_.slot;
         auto& ctrls = ctx_.patch.ctrlAssignments;
 
         // Remove old
@@ -777,7 +778,7 @@ public:
     bool perform() override
     {
         ctx_.patch.setName(newName_);
-        ctx_.connMgr.sendPatchTitle(newName_);
+        ctx_.connMgr.sendPatchTitle(ctx_.slot, newName_);
         ctx_.repaint();
         return true;
     }
@@ -785,7 +786,7 @@ public:
     bool undo() override
     {
         ctx_.patch.setName(oldName_);
-        ctx_.connMgr.sendPatchTitle(oldName_);
+        ctx_.connMgr.sendPatchTitle(ctx_.slot, oldName_);
         ctx_.repaint();
         return true;
     }
@@ -845,7 +846,7 @@ private:
         if (!ctx_.connMgr.isConnected()) return;
 
         for (auto& c : changes_)
-            ctx_.connMgr.queueParameter(c.section, c.moduleId, c.paramId,
+            ctx_.connMgr.queueParameter(ctx_.slot, c.section, c.moduleId, c.paramId,
                                         forward ? c.newValue : c.oldValue);
     }
 

@@ -44,12 +44,17 @@ public:
     void uploadPatch(int slot, const Patch& patch);  // Upload full patch to synth working slot
     void requestSynthSettings();
     void sendSynthSettings(const SynthSettings& settings);
-    void sendParameter(int section, int moduleId, int parameterId, int value);
+    // slot is explicit (not the hardware-focused slot) — confirmed on real
+    // hardware 2026-07-20 that the G1 applies a ParameterChange addressed to
+    // a slot other than the one with front-panel focus, which is what makes
+    // simultaneous multi-window editing viable (see the multi-window plan).
+    void sendParameter(int slot, int section, int moduleId, int parameterId, int value);
+
     // Throttled + coalesced parameter delivery. Use this for bulk changes
     // (Mutator/Randomize snapshots) so a large patch does not flood the synth
     // with hundreds of simultaneous messages and drop the connection.
-    void queueParameter(int section, int moduleId, int parameterId, int value);
-    void sendPatchTitle(const juce::String& title);  // Change patch name in current slot (not saved to flash)
+    void queueParameter(int slot, int section, int moduleId, int parameterId, int value);
+    void sendPatchTitle(int slot, const juce::String& title);  // Change patch name (not saved to flash)
     void sendControllerSnapshot();  // Ask synth to emit current values of assigned MIDI CCs (read-only)
     // Play notes on the current slot via the editor protocol (Note, cc=0x17 sc=0x56).
     // The editor talks to the synth's PC port, which ignores regular MIDI notes.
@@ -69,6 +74,9 @@ public:
     int getCurrentSlot() const;
     void selectSlot(int slot);  // Give a slot focus (blinking LED on hardware)
     int getCurrentPatchId() const { return currentPatchId; }
+    // Pid for a specific slot, independent of hardware focus — use this (not
+    // getCurrentPatchId) when addressing an edit at a particular slot.
+    int getPatchId(int slot) const { return slotPatchIds[static_cast<size_t>(slot & 0x03)]; }
 
     // Slot enable state (fixed LED on hardware; several slots can be enabled
     // at once, independent of which one has focus)
@@ -193,16 +201,19 @@ private:
     std::shared_ptr<std::atomic<bool>> alive { std::make_shared<std::atomic<bool>>(true) };
     NmProtocol protocol;
 
-    // Coalesced, throttled outgoing parameter queue. Keyed by (section,module,param)
+    // Coalesced, throttled outgoing parameter queue. Keyed by (slot,section,module,param)
     // so repeated changes to the same parameter (e.g. auditioning Mutator children
-    // quickly) collapse to the latest value. Drained a few at a time by one timer,
-    // so bulk snapshot applies never overlap or flood the synth. A context generation
-    // prevents queued values from crossing a slot switch or full patch replacement.
+    // quickly) collapse to the latest value, and two different slots' queued edits
+    // (e.g. from two open slot windows) can never collide or overwrite each other.
+    // Drained a few at a time by one timer, so bulk snapshot applies never overlap
+    // or flood the synth. A context generation prevents queued values from crossing
+    // a slot switch or full patch replacement.
     struct ParamKey
     {
-        int section, module, param;
+        int slot, section, module, param;
         bool operator<(const ParamKey& o) const
         {
+            if (slot    != o.slot)    return slot    < o.slot;
             if (section != o.section) return section < o.section;
             if (module  != o.module)  return module  < o.module;
             return param < o.param;

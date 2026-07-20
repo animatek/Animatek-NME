@@ -686,7 +686,7 @@ void ConnectionManager::sendSynthSettings(const SynthSettings& settings)
     });
 }
 
-void ConnectionManager::sendParameter(int section, int moduleId, int parameterId, int value)
+void ConnectionManager::sendParameter(int slot, int section, int moduleId, int parameterId, int value)
 {
     if (!isConnected())
     {
@@ -698,7 +698,7 @@ void ConnectionManager::sendParameter(int section, int moduleId, int parameterId
     // editor patch, but must wait until the section stream has completed.
     if (waitingForUploadAck)
     {
-        queueParameter(section, moduleId, parameterId, value);
+        queueParameter(slot, section, moduleId, parameterId, value);
         return;
     }
 
@@ -709,7 +709,7 @@ void ConnectionManager::sendParameter(int section, int moduleId, int parameterId
         return;
 
     ParameterChangeMessage msg;
-    msg.pid = currentPatchId;
+    msg.pid = getPatchId(slot);
     msg.section = section;
     msg.module = moduleId;
     msg.parameter = parameterId;
@@ -717,19 +717,20 @@ void ConnectionManager::sendParameter(int section, int moduleId, int parameterId
 
     auto payload = msg.encode();
 
-    DBG("sendParameter: slot=" + juce::String(currentSlot)
-        + " pid=" + juce::String(currentPatchId)
+    DBG("sendParameter: slot=" + juce::String(slot)
+        + " pid=" + juce::String(msg.pid)
         + " section=" + juce::String(section)
         + " module=" + juce::String(moduleId)
         + " param=" + juce::String(parameterId)
         + " value=" + juce::String(value));
 
-    // Parameter messages use cc=0x13, have checksum, no reply expected
-    // IMPORTANT: Use currentSlot, not 0!
-    protocol.sendMessage(NmCmd::ParameterChange, currentSlot, payload, /*expectsReply=*/false, /*addChecksum=*/true);
+    // Parameter messages use cc=0x13, have checksum, no reply expected.
+    // Addressed to the owning slot, not necessarily the hardware-focused one
+    // (confirmed on real hardware that the G1 applies it regardless).
+    protocol.sendMessage(NmCmd::ParameterChange, slot, payload, /*expectsReply=*/false, /*addChecksum=*/true);
 }
 
-void ConnectionManager::queueParameter(int section, int moduleId, int parameterId, int value)
+void ConnectionManager::queueParameter(int slot, int section, int moduleId, int parameterId, int value)
 {
     if (!isConnected()) return;
 
@@ -743,8 +744,10 @@ void ConnectionManager::queueParameter(int section, int moduleId, int parameterI
         queuedParamGeneration_ = paramContextGeneration_;
 
     // Coalesce: a later change to the same parameter overwrites the pending one,
-    // so rapid re-auditioning never builds an unbounded backlog.
-    paramQueue_[{ section, moduleId, parameterId }] = value;
+    // so rapid re-auditioning never builds an unbounded backlog. Keying by slot
+    // too means two different slots' queued edits (e.g. two open slot windows)
+    // can never collide.
+    paramQueue_[{ slot, section, moduleId, parameterId }] = value;
 
     if (!paramQueueTimer_.isTimerRunning())
         paramQueueTimer_.startTimer(paramDrainIntervalMs_);
@@ -774,7 +777,7 @@ void ConnectionManager::drainParamQueue()
     for (int i = 0; i < paramDrainBatch_ && !paramQueue_.empty(); ++i)
     {
         auto it = paramQueue_.begin();
-        sendParameter(it->first.section, it->first.module, it->first.param, it->second);
+        sendParameter(it->first.slot, it->first.section, it->first.module, it->first.param, it->second);
         paramQueue_.erase(it);
     }
 
@@ -809,7 +812,7 @@ void ConnectionManager::setParamSendRate(int batchPerTick, int intervalMs)
         paramQueueTimer_.startTimer(paramDrainIntervalMs_);
 }
 
-void ConnectionManager::sendPatchTitle(const juce::String& title)
+void ConnectionManager::sendPatchTitle(int slot, const juce::String& title)
 {
     if (!isConnected())
     {
@@ -817,12 +820,13 @@ void ConnectionManager::sendPatchTitle(const juce::String& title)
         return;
     }
 
-    SetPatchTitleMessage msg(currentSlot, currentPatchId, title);
-    auto sysex = msg.toSysEx(currentSlot);
+    const int pid = getPatchId(slot);
+    SetPatchTitleMessage msg(slot, pid, title);
+    auto sysex = msg.toSysEx(slot);
     sendRawSysEx(sysex);
 
-    DBG("sendPatchTitle: slot=" + juce::String(currentSlot)
-        + " pid=" + juce::String(currentPatchId)
+    DBG("sendPatchTitle: slot=" + juce::String(slot)
+        + " pid=" + juce::String(pid)
         + " title=\"" + title + "\"");
 }
 

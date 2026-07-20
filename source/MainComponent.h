@@ -21,6 +21,7 @@
 #include "ui/PatchNotesFloaterWindow.h"
 #include "ui/MutatorWindow.h"
 #include "ui/SysexMonitorWindow.h"
+#include "ui/SlotWindow.h"
 
 class SynthSettingsDialog;
 
@@ -64,7 +65,11 @@ private:
     void togglePatchNotesFloater();
     void toggleMutatorWindow();
     void toggleSysexMonitor();
-    bool handleFloaterShortcut(const juce::KeyPress& key);  // Ctrl+1..8
+    void toggleSlotWindow(int slot);  // Open/reuse the pop-out window for one slot
+    void wireSlotWindowContent(SlotWindow& window, int slot);  // Editing callbacks, wired once per window
+    void updateSlotWindowDspLoad(int slot);  // Slot-scoped equivalent of updateDspLoadDisplay()
+    void updateSlotWindowFocusIndicators();  // Mark which open slot window has synth hardware focus
+    bool handleFloaterShortcut(const juce::KeyPress& key);  // Ctrl+1..9, T
     void showFloaterWindow(juce::DocumentWindow& window, const juce::String& settingsPrefix);
     void saveFloaterState();
     void restoreFloaterWindows();  // reopen floaters that were open last session
@@ -112,6 +117,7 @@ private:
     std::unique_ptr<PatchSynchronizer> slotSynchronizers[numSlots];
     juce::UndoManager slotUndoManagers[numSlots];
     std::unique_ptr<UndoContext> slotUndoContexts[numSlots];
+    std::unique_ptr<SlotWindow> slotWindows[numSlots];  // Optional pop-out view per slot
 
     int activeSlot = 0;  // Which slot is currently displayed in the UI
     int pendingBrowserLoadSlot = -1;  // Directed browser load target, while patch data is in flight

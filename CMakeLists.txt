@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(AnimatekNME VERSION 0.8.1 LANGUAGES C CXX)
+project(AnimatekNME VERSION 0.8.2 LANGUAGES C CXX)
 
 include(GNUInstallDirs)
 
@@ -93,6 +93,8 @@ set(NME_SHARED_SOURCES
     source/ui/PatchNotesFloaterWindow.cpp
     source/ui/MutatorWindow.cpp
     source/ui/SysexMonitorWindow.cpp
+    source/ui/SlotWindowContent.cpp
+    source/ui/SlotWindow.cpp
 
     # MIDI/SysEx
     source/midi/SysExCodec.cpp

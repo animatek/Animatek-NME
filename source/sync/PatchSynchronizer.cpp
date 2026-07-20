@@ -8,8 +8,8 @@
 #include <iostream>
 #include <iomanip>
 
-PatchSynchronizer::PatchSynchronizer(Patch& patch, ConnectionManager& connMgr)
-    : patch_(patch), connMgr_(connMgr)
+PatchSynchronizer::PatchSynchronizer(Patch& patch, ConnectionManager& connMgr, int slot)
+    : patch_(patch), connMgr_(connMgr), slot_(slot)
 {
     enable();
 }
@@ -118,18 +118,18 @@ void PatchSynchronizer::onCableAdded(int section, Connector* output, Connector* 
 
     // Create and send message
     // Protocol convention (from Java reference): destination (input) first, source (output) second
-    int pid = connMgr_.getCurrentPatchId();
+    int pid = connMgr_.getPatchId(slot_);
     NewCableMessage msg(pid, section, color,
                        inModIdx, inIsOutput, inConnIdx,
                        outModIdx, outIsOutput, outConnIdx);
 
-    auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
+    auto sysex = msg.toSysEx(slot_);
     connMgr_.expectSyncEcho();
     connMgr_.sendAckedSysEx(sysex, true);
 
     // Debug logging with hex dump
     std::cout << "[SYNC] Sent CableInsert: "
-        << "slot=" << connMgr_.getCurrentSlot()
+        << "slot=" << slot_
         << " section=" << section
         << " color=" << (int)color
         << " dst=" << inModIdx << "(" << (inIsOutput ? "out" : "in") << ":" << inConnIdx << ")"
@@ -171,18 +171,18 @@ void PatchSynchronizer::onCableRemoved(int section, Connector* output, Connector
 
     // Create and send message
     // Protocol convention (from Java reference): destination (input) first, source (output) second
-    int pid = connMgr_.getCurrentPatchId();
+    int pid = connMgr_.getPatchId(slot_);
     DeleteCableMessage msg(pid, section, color,
                           inModIdx, inIsOutput, inConnIdx,
                           outModIdx, outIsOutput, outConnIdx);
 
-    auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
+    auto sysex = msg.toSysEx(slot_);
     connMgr_.expectSyncEcho();
     connMgr_.sendAckedSysEx(sysex, true);
 
     // Debug logging with hex dump
     std::cout << "[SYNC] Sent CableDelete: "
-        << "slot=" << connMgr_.getCurrentSlot()
+        << "slot=" << slot_
         << " section=" << section
         << " dst=" << inModIdx << "(" << (inIsOutput ? "out" : "in") << ":" << inConnIdx << ")"
         << " src=" << outModIdx << "(" << (outIsOutput ? "out" : "in") << ":" << outConnIdx << ")"
@@ -202,14 +202,14 @@ void PatchSynchronizer::onModuleMoved(int section, Module* module, int oldX, int
     int moduleIdx = module->getContainerIndex();
     auto pos = module->getPosition();
 
-    int pid = connMgr_.getCurrentPatchId();
+    int pid = connMgr_.getPatchId(slot_);
     MoveModuleMessage msg(pid, section, moduleIdx, pos.x, pos.y);
-    auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
+    auto sysex = msg.toSysEx(slot_);
     connMgr_.sendAckedSysEx(sysex);
 
     // Debug logging with hex dump
     std::cout << "[SYNC] Sent ModuleMove: "
-        << "slot=" << connMgr_.getCurrentSlot()
+        << "slot=" << slot_
         << " section=" << section
         << " module=" << moduleIdx
         << " pos=(" << pos.x << "," << pos.y << ")"
@@ -256,7 +256,7 @@ void PatchSynchronizer::onModuleAdded(int section, Module* module)
         return;
     }
 
-    int pid = connMgr_.getCurrentPatchId();
+    int pid = connMgr_.getPatchId(slot_);
     int typeId = descriptor->index;
     int moduleIndex = module->getContainerIndex();
     auto pos = module->getPosition();
@@ -279,7 +279,7 @@ void PatchSynchronizer::onModuleAdded(int section, Module* module)
                               pos.x, pos.y, name.toStdString(),
                               paramValues, customValues);
 
-    auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
+    auto sysex = msg.toSysEx(slot_);
     connMgr_.expectSyncEcho();
     connMgr_.sendAckedSysEx(sysex, true);
 
@@ -289,7 +289,7 @@ void PatchSynchronizer::onModuleAdded(int section, Module* module)
     });
 
     std::cout << "[SYNC] NewModule sent:"
-        << " slot=" << connMgr_.getCurrentSlot()
+        << " slot=" << slot_
         << " section=" << section
         << " type=" << typeId << " (" << descriptor->name << ")"
         << " index=" << moduleIndex
@@ -315,17 +315,17 @@ void PatchSynchronizer::onModuleRemoved(int section, Module* module)
         return;
     }
 
-    int pid = connMgr_.getCurrentPatchId();
+    int pid = connMgr_.getPatchId(slot_);
     int moduleIndex = module->getContainerIndex();
 
     // Build and send DeleteModuleMessage
     DeleteModuleMessage msg(pid, section, moduleIndex);
-    auto sysex = msg.toSysEx(connMgr_.getCurrentSlot());
+    auto sysex = msg.toSysEx(slot_);
     connMgr_.expectSyncEcho();
     connMgr_.sendAckedSysEx(sysex, true);
 
     std::cout << "[SYNC] DeleteModule sent:"
-        << " slot=" << connMgr_.getCurrentSlot()
+        << " slot=" << slot_
         << " section=" << section
         << " index=" << moduleIndex
         << " (was " << descriptor->name << ")"

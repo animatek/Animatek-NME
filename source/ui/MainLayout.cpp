@@ -172,10 +172,19 @@ void SlotBar::mouseDown(const juce::MouseEvent& e)
         // Ctrl+click toggles the slot's enable state without changing focus,
         // matching the original 3.3 editor (like holding the slot button on
         // the hardware). Plain click moves focus.
+        // Ctrl/Cmd+click keeps its existing meaning (enable toggle) even on
+        // platforms where that combination is itself reported as a popup-menu
+        // click — check it first so a plain right-click (no modifier) is the
+        // only thing that pops the slot out into its own window.
         if (e.mods.isCtrlDown() || e.mods.isCommandDown())
         {
             if (onSlotEnableToggled)
                 onSlotEnableToggled(i);
+        }
+        else if (e.mods.isPopupMenu())
+        {
+            if (onSlotWindowRequested)
+                onSlotWindowRequested(i);
         }
         else if (i != activeIndex)
         {
@@ -197,6 +206,10 @@ MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
     slotBar.onSlotChanged = [this](int idx) {
         if (onSlotChanged)
             onSlotChanged(idx);
+    };
+    slotBar.onSlotWindowRequested = [this](int idx) {
+        if (onSlotWindowRequested)
+            onSlotWindowRequested(idx);
     };
 
     midiButton.onClick = [this]() { if (onMidiSettingsClicked) onMidiSettingsClicked(); };

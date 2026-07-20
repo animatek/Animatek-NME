@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.8.2 — 2026-07-20
+
+- **Pop-out windows for editing 2+ slots at once**: right-click a slot row in the slot
+  bar to open that slot's patch in its own window — cables, modules, parameters, morph/
+  knob/MIDI-CC assignment, rename and undo/redo all work independently there, alongside
+  the main window's A–D tabs (which keep working exactly as before). Edits made in a
+  background slot's window land correctly even without hardware focus — confirmed on
+  real hardware that the synth accepts a parameter/cable edit addressed to a
+  non-focused slot. When the synth's own front-panel focus changes to a slot that has
+  a window open, that window is brought forward and its title marked "- Focused",
+  mirroring the original Nomad editor's highlighted title bar for the focused patch.
+
 - **Background-prefetch every enabled slot on connect**: as soon as the editor learns
   which of the 4 slots are actually populated on the synth, it downloads their patches
   in the background (one at a time, same as the original Nomad editor), not just the

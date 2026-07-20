@@ -32,6 +32,7 @@ public:
 
     std::function<void(int)> onSlotChanged;
     std::function<void(int)> onSlotEnableToggled;  // Ctrl+click on this slot
+    std::function<void(int)> onSlotWindowRequested;  // Right-click: pop out this slot
 
 private:
     void timerCallback() override;
@@ -74,6 +75,7 @@ public:
     void showDiskPresetBrowser();
 
     std::function<void(int)> onSlotChanged;  // called with slot index 0-3
+    std::function<void(int)> onSlotWindowRequested;  // right-click a slot row: pop it out
     std::function<void()> onMidiSettingsClicked;
     std::function<void()> onStoreToBankClicked;
     std::function<void()> onLibraryFolderClicked;

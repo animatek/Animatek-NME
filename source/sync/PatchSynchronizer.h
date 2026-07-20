@@ -15,7 +15,11 @@
 class PatchSynchronizer
 {
 public:
-    PatchSynchronizer(Patch& patch, ConnectionManager& connMgr);
+    // slot is the slot this synchronizer's patch belongs to — sent edits are
+    // always addressed to it, independent of which slot has hardware focus
+    // (confirmed on real hardware that the G1 applies edits addressed to a
+    // non-focused slot; this is what makes background-slot editing correct).
+    PatchSynchronizer(Patch& patch, ConnectionManager& connMgr, int slot);
     ~PatchSynchronizer();
 
     void enable();
@@ -45,6 +49,7 @@ private:
 
     Patch& patch_;
     ConnectionManager& connMgr_;
+    int slot_;
     bool enabled_ = false;
     bool suppressed_ = false;
 };
