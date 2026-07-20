@@ -17,6 +17,12 @@ endif()
 # messages and everything after the first chunk is lost, truncating patch
 # downloads from the Nord Modular. Apply our reassembly patch to the vendored
 # submodule until it is fixed upstream (idempotent: skipped when present).
+#
+# This only runs at configure time. `cmake --build` alone will NOT reapply a
+# reverted patch, and a plain incremental build recompiles whatever the .cpp
+# on disk currently says — so `git checkout` on the JUCE working tree silently
+# ships an unpatched binary next rebuild. Never revert this file to "clean up"
+# git status; a dirty submodule ("m JUCE") is the expected, correct state.
 if(UNIX AND NOT APPLE)
     execute_process(
         COMMAND grep -q sysexAccumulators
