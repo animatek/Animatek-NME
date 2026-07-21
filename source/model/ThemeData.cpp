@@ -310,6 +310,7 @@ void ThemeData::parseButton(const juce::XmlElement& elem, ModuleTheme& theme)
         tb.componentId = param->getStringAttribute("component-id");
 
     // Collect button labels indexed by btn index
+    std::vector<juce::String> docLabels, docImageRefs;
     for (auto* btn = elem.getFirstChildElement(); btn != nullptr;
          btn = btn->getNextElement())
     {
@@ -337,7 +338,20 @@ void ThemeData::parseButton(const juce::XmlElement& elem, ModuleTheme& theme)
             while (static_cast<int>(tb.imageRefs.size()) <= idx)
                 tb.imageRefs.push_back("");
             tb.imageRefs[static_cast<size_t>(idx)] = imageRef;
+
+            docLabels.push_back(text);
+            docImageRefs.push_back(imageRef);
         }
+    }
+
+    // Reversed vertical selectors are written top-to-bottom in document order,
+    // and some blocks (LFOA/LFOB) number their btn indices the other way round
+    // from the parameter value. Document order is the only consistent signal,
+    // so re-key the labels by value: the first <btn> is the highest value.
+    if (tb.reversed && docLabels.size() > 1)
+    {
+        tb.labels.assign(docLabels.rbegin(), docLabels.rend());
+        tb.imageRefs.assign(docImageRefs.rbegin(), docImageRefs.rend());
     }
 
     // Detect <call component="..." method="rnd"> (Vocoder Rnd button)
@@ -367,6 +381,9 @@ void ThemeData::parseLabel(const juce::XmlElement& elem, ModuleTheme& theme)
     ThemeLabel tl;
     tl.x = elem.getIntAttribute("x");
     tl.y = elem.getIntAttribute("y");
+    tl.width = elem.getIntAttribute("width", tl.width);
+    tl.height = elem.getIntAttribute("height", tl.height);
+    tl.centred = (elem.getStringAttribute("align") == "centre");
     tl.text = elem.getAllSubText().trim().replace("\\n", "\n");
 
     theme.labels.push_back(tl);

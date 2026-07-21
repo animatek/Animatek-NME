@@ -47,6 +47,8 @@ struct ThemeButton
 struct ThemeLabel
 {
     int x = 0, y = 0;
+    int width = 120, height = 12;   // drawing box; defaults leave text left-aligned and roomy
+    bool centred = false;           // align="centre" centres the text inside width
     juce::String text;
 };
 
@@ -193,3 +195,4 @@ private:
 
     std::map<juce::String, ModuleTheme> themes;
 };
+

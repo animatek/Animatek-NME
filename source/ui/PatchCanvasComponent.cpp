@@ -1089,8 +1089,9 @@ void PatchCanvas::paintLabels(juce::Graphics& g, const Module& m, juce::Rectangl
         {
             g.drawText(label.text,
                        bounds.getX() + label.x, bounds.getY() + label.y,
-                       120, 12,
-                       juce::Justification::centredLeft, true);
+                       label.width, label.height,
+                       label.centred ? juce::Justification::centred
+                                     : juce::Justification::centredLeft, true);
         }
     }
 }

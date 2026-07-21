@@ -2118,22 +2118,22 @@ label{fill:#000;}
 		<label x="217" y="60">Link</label>
 		<label x="217" y="75">Gclk</label>
 		<label x="218" y="90">Out</label>
-		<label x="28" y="19">1</label>
-		<label x="39" y="19">2</label>
-		<label x="52" y="19">3</label>
-		<label x="63" y="19">4</label>
-		<label x="74" y="19">5</label>
-		<label x="87" y="19">6</label>
-		<label x="98" y="19">7</label>
-		<label x="109" y="19">8</label>
-		<label x="121" y="19">9</label>
-		<label x="132" y="19">10</label>
-		<label x="145" y="19">11</label>
-		<label x="158" y="19">12</label>
-		<label x="169" y="19">13</label>
-		<label x="181" y="19">14</label>
-		<label x="193" y="19">15</label>
-		<label x="205" y="19">16</label>
+		<label x="24" y="19" width="11" height="10" align="centre">1</label>
+		<label x="36" y="19" width="11" height="10" align="centre">2</label>
+		<label x="48" y="19" width="11" height="10" align="centre">3</label>
+		<label x="60" y="19" width="11" height="10" align="centre">4</label>
+		<label x="72" y="19" width="11" height="10" align="centre">5</label>
+		<label x="84" y="19" width="11" height="10" align="centre">6</label>
+		<label x="96" y="19" width="11" height="10" align="centre">7</label>
+		<label x="108" y="19" width="11" height="10" align="centre">8</label>
+		<label x="120" y="19" width="11" height="10" align="centre">9</label>
+		<label x="132" y="19" width="11" height="10" align="centre">10</label>
+		<label x="144" y="19" width="11" height="10" align="centre">11</label>
+		<label x="156" y="19" width="11" height="10" align="centre">12</label>
+		<label x="168" y="19" width="11" height="10" align="centre">13</label>
+		<label x="180" y="19" width="11" height="10" align="centre">14</label>
+		<label x="192" y="19" width="11" height="10" align="centre">15</label>
+		<label x="204" y="19" width="11" height="10" align="centre">16</label>
 		
 		
 		<light component-id="ledStep1-16" type="led-array" x="24" y="30" width="192" height="7" />
@@ -4492,24 +4492,24 @@ label{fill:#000;}
 		<label x="2" y="75">Sync</label>
 		<label x="219" y="41">Link</label>
 		<label x="235" y="75">Out</label>
-		<label x="27" y="19">1</label>
-		<label x="38" y="19">2</label>
-		<label x="50" y="19">3</label>
-		<label x="63" y="19">4</label>
-		<label x="74" y="19">5</label>
-		<label x="86" y="19">6</label>
-		<label x="98" y="19">7</label>
-		<label x="110" y="19">8</label>
-		<label x="122" y="19">9</label>
-		<label x="132" y="19">10</label>
-		<label x="145" y="19">11</label>
-		<label x="156" y="19">12</label>
-		<label x="169" y="19">13</label>
-		<label x="181" y="19">14</label>
-		<label x="192" y="19">15</label>
-		<label x="204" y="19">16</label>
+		<label x="24" y="19" width="11" height="10" align="centre">1</label>
+		<label x="36" y="19" width="11" height="10" align="centre">2</label>
+		<label x="48" y="19" width="11" height="10" align="centre">3</label>
+		<label x="60" y="19" width="11" height="10" align="centre">4</label>
+		<label x="72" y="19" width="11" height="10" align="centre">5</label>
+		<label x="84" y="19" width="11" height="10" align="centre">6</label>
+		<label x="96" y="19" width="11" height="10" align="centre">7</label>
+		<label x="108" y="19" width="11" height="10" align="centre">8</label>
+		<label x="120" y="19" width="11" height="10" align="centre">9</label>
+		<label x="132" y="19" width="11" height="10" align="centre">10</label>
+		<label x="144" y="19" width="11" height="10" align="centre">11</label>
+		<label x="156" y="19" width="11" height="10" align="centre">12</label>
+		<label x="168" y="19" width="11" height="10" align="centre">13</label>
+		<label x="180" y="19" width="11" height="10" align="centre">14</label>
+		<label x="192" y="19" width="11" height="10" align="centre">15</label>
+		<label x="204" y="19" width="11" height="10" align="centre">16</label>
 		
-		<light component-id="ledStep1-16" type="led-array" x="24" y="25" width="192" height="7" />
+		<light component-id="ledStep1-16" type="led-array" x="24" y="30" width="192" height="7" />
 
 		<slider x="24" y="37" width="11" height="47" orientation="vertical">
 			<parameter component-id="p1" alt="xy" />

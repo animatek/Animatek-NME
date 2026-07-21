@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Sequencer step numbers line up with their steps**: the 1–16 labels above the
+  sequencer rows were drawn from a fixed left edge into an oversized box, so they
+  drifted out of alignment with the LEDs below them. Labels can now carry their own
+  size and centring, and the sequencer numbers are centred over their own step.
+
+- **Reversed vertical selectors show the right labels**: on blocks whose selector is
+  drawn bottom-to-top (LFOA/LFOB among others), the theme numbers its entries the
+  opposite way round from the parameter value, so the displayed label could belong to
+  a different setting than the one selected. Labels are now keyed by document order.
+
 - **Patches with heavy editing no longer run out of module slots**: module indices are
   stored in seven bits, but new modules always took "highest existing index + 1", so a
   long session of adding and deleting modules could walk that counter past 127 and start
