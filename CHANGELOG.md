@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.0 — 2026-07-21
+
 - **Collapsible inspector in slot pop-out windows**: a slot's own window can now hide
   its Inspector panel (morph/knob/MIDI-CC assignments) to give the canvas the full
   width of the window — click the thin arrow strip at the canvas's left edge, or press
