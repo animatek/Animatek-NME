@@ -66,6 +66,12 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl+8` | Patch Mutator |
 | `Ctrl+9` | SysEx Monitor |
 
+## Slot Window (window focused)
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+I` | Toggle inspector panel |
+
 ## Patch Mutator (window focused)
 
 | Shortcut | Action |

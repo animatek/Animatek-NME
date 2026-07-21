@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Collapsible inspector in slot pop-out windows**: a slot's own window can now hide
+  its Inspector panel (morph/knob/MIDI-CC assignments) to give the canvas the full
+  width of the window — click the thin arrow strip at the canvas's left edge, or press
+  `Ctrl+I` while the window is focused, to toggle it back and forth.
+
 - **Post-release code review fixes** (found during a review pass right after 0.8.2's
   work): a stale internal flag could let a real patch fetch get mistaken for an
   abandoned background prefetch and corrupted; opening a `.pch` file while viewing a

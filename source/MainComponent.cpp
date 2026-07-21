@@ -2096,7 +2096,18 @@ void MainComponent::toggleSlotWindow(int slot) {
     slotWindows[slot] = std::make_unique<SlotWindow>(slot);
     slotWindows[slot]->onClosed = [this]() { saveFloaterState(); };
     slotWindows[slot]->onGlobalKey =
-        [this](const juce::KeyPress& k) { return handleFloaterShortcut(k); };
+        [this, slot](const juce::KeyPress& k) {
+          // Ctrl+I toggles this window's own inspector - handled here rather
+          // than in handleFloaterShortcut() since that's shared by every
+          // floater and has no notion of which slot's window is asking.
+          if (k.getModifiers().isCommandDown() && !k.getModifiers().isShiftDown()
+              && k.getKeyCode() == 'i') {
+            auto& content = slotWindows[slot]->getContent();
+            content.setInspectorVisible(!content.isInspectorVisible());
+            return true;
+          }
+          return handleFloaterShortcut(k);
+        };
     wireSlotWindowContent(*slotWindows[slot], slot);
   }
 
@@ -2702,6 +2713,9 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Ctrl+7              Patch Notes\n"
       "  Ctrl+8              Patch Mutator\n"
       "  Ctrl+9              SysEx Monitor\n"
+      "\n"
+      "SLOT WINDOW (window focused)\n"
+      "  Ctrl+I              Toggle inspector panel\n"
       "\n"
       "PATCH MUTATOR (window focused)\n"
       "  1-8                 Focus Mother / Children / Father\n"

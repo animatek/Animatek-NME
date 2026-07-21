@@ -18,6 +18,9 @@ public:
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void mouseDown(const juce::MouseEvent& e) override;
+    void mouseMove(const juce::MouseEvent& e) override;
+    void mouseExit(const juce::MouseEvent& e) override;
 
     PatchCanvasComponent& getCanvas()     { return canvas; }
     InspectorPanel&       getInspector()  { return inspector; }
@@ -25,13 +28,25 @@ public:
 
     void setTheme(const ColorScheme& cs) { canvas.setTheme(cs); }
 
+    // Lets the inspector (macro/knob assignments) be hidden so the canvas
+    // can use the window's full width - handy once a slot window is
+    // resized narrow. Toggled via the thin strip left of the canvas.
+    void setInspectorVisible(bool visible);
+    bool isInspectorVisible() const { return inspectorVisible; }
+
 private:
+    juce::Rectangle<int> getToggleStripBounds() const { return toggleStripBounds_; }
+
     PatchHeaderBar headerBar;
     InspectorPanel inspector;
     PatchCanvasComponent canvas;
 
+    bool inspectorVisible = true;
+    juce::Rectangle<int> toggleStripBounds_;
+
     static constexpr int headerBarHeight = 48;
     static constexpr int inspectorWidth = 210;
+    static constexpr int toggleStripWidth = 16;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SlotWindowContent)
 };
