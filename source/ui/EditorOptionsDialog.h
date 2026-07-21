@@ -16,6 +16,7 @@ struct EditorOptions
     bool        autoUpload     = true;
     bool        recycleWindows = true;
     bool        wireframe      = false; // outline-only module rendering (theme-independent)
+    bool        mcpBridgeEnabled = true; // embedded MCP control socket (source/mcp/), if built in
     float       cableOpacity   = 0.80f;
     int         sendRateIndex  = 1;   // index into sendRates() — synth param throughput
     juce::File  presetLibraryRoot;
@@ -33,10 +34,18 @@ struct EditorOptions
     bool ensureLibraryFolders() const;
 };
 
+// Status of the embedded MCP bridge at the moment the dialog is opened -
+// computed by MainComponent (mirrors how MidiSettingsDialog is handed a
+// ConnectionManager::Status snapshot at open time, not a live subscription).
+enum class McpBridgeStatusKind { Disabled, Listening, Failed };
+
 class EditorOptionsDialog : public juce::Component
 {
 public:
-    explicit EditorOptionsDialog(const EditorOptions& current);
+    EditorOptionsDialog(const EditorOptions& current,
+                        McpBridgeStatusKind mcpStatus,
+                        const juce::String& mcpStatusText,
+                        const juce::String& mcpCommand);
 
     std::function<void(const EditorOptions&)> onChange;
 
@@ -48,6 +57,9 @@ public:
 
     static void show(juce::Component* parent,
                      const EditorOptions& current,
+                     McpBridgeStatusKind mcpStatus,
+                     const juce::String& mcpStatusText,
+                     const juce::String& mcpCommand,
                      std::function<void(const EditorOptions&)> onChangeCb);
 
 private:
@@ -55,6 +67,17 @@ private:
     void apply();
     void browseLibraryRoot();
     void populateThemeSelector();
+
+    // Single source of truth for the whole layout: places every component
+    // (only if `apply` is true) and always (re)fills sectionSeparatorsY with
+    // the y of each section-boundary line, so paint() can draw exactly
+    // where resized() actually put things instead of a second, hand-kept-
+    // in-sync list of magic numbers. Returns the total content height
+    // (bottom of the OK/Cancel row + margin), used once at construction
+    // time to size the dialog before the first real resized() call.
+    int layoutComponents(bool apply);
+    std::vector<int> sectionSeparatorsY;
+    static constexpr int dialogWidth = 560;
 
     EditorOptions options;
     juce::ComponentDragger dragger;
@@ -85,6 +108,13 @@ private:
     juce::ToggleButton wireframeToggle    { "Wireframe modules  (outline only — works with any theme)" };
     juce::Label    sendRateLabel     { {}, "Send speed" };
     juce::ComboBox sendRateSelector;
+
+    // MCP Bridge
+    juce::Label    mcpBridgeLabel    { {}, "MCP BRIDGE" };
+    juce::ToggleButton mcpBridgeToggle { "Enable MCP bridge" };
+    juce::Label    mcpBridgeStatusLabel;
+    juce::TextEditor mcpBridgeCommand;  // read-only, selectable - the stdio command to register a client
+    juce::TextButton mcpBridgeCopyButton { "Copy" };
 
     // Preset Library
     juce::Label      libraryLabel { {}, "PRESET LIBRARY" };

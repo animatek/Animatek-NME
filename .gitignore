@@ -79,3 +79,11 @@ docs/superpowers/
 *.vst3
 *.clap
 *.component
+
+# mcp-bridge/ (Python) local environment/build artifacts
+mcp-bridge/.venv/
+mcp-bridge/__pycache__/
+mcp-bridge/*.egg-info/
+
+# MCP client registration - holds absolute paths to this checkout
+opencode.json

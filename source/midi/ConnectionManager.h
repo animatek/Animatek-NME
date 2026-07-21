@@ -65,6 +65,7 @@ public:
                         bool allowNewPatchInSlotReply = false); // Queued, waits for ACK before next
     bool isAckedQueueIdle() const { return ackedQueue.empty() && !ackedQueueWaiting; }
     bool isFetchingPatch() const { return waitingForPatchAck || collectingSections; }
+    bool isUploadingPatch() const { return waitingForUploadAck; }
 
     // Bank operations (high-level)
     void copyPatchInBank(int srcSection, int srcPosition, int dstSection, int dstPosition, int tempSlot);

@@ -72,6 +72,7 @@ public:
     void openQuickAddAtMouse();
 
     void setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td = nullptr);
+    void clearModuleSelection() { clearSelection(); repaint(); }
     void setLightMeterData(const int lights[128], const int meters[128]);
 
     /** Returns list of currently selected modules as (module*, section) pairs */
@@ -371,6 +372,11 @@ public:
     bool keyPressed(const juce::KeyPress& key) override;
 
     void setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td = nullptr);
+    void clearModuleSelection()
+    {
+        polyCanvas.clearModuleSelection();
+        commonCanvas.clearModuleSelection();
+    }
 
     // --- Callbacks forwarded to both section canvases ---
 

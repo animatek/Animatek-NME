@@ -22,6 +22,9 @@
 #include "ui/MutatorWindow.h"
 #include "ui/SysexMonitorWindow.h"
 #include "ui/SlotWindow.h"
+#if NME_MCP_BRIDGE
+#include "mcp/McpBridgeServer.h"
+#endif
 
 class SynthSettingsDialog;
 
@@ -42,6 +45,25 @@ public:
 
     ModuleDescriptions& getModuleDescriptions() { return moduleDescs; }
 
+    // Small slot-indexed accessors for McpRequestHandler (source/mcp/), which
+    // needs to reach a specific slot's model/undo state without duplicating
+    // MainComponent's own slot-lookup logic or requiring friend access.
+    int getActiveSlot() const { return activeSlot; }
+    Patch* getSlotPatch(int slot) const { return slotPatches[slot].get(); }
+    const juce::File& getSlotPatchFile(int slot) const { return slotPatchFiles[slot]; }
+    juce::UndoManager& getSlotUndoManager(int slot) { return slotUndoManagers[slot]; }
+    UndoContext* getSlotUndoContext(int slot) const { return slotUndoContexts[slot].get(); }
+    bool isPatchTransferInProgress() const
+    {
+        return connectionManager.isUploadingPatch() || connectionManager.isFetchingPatch();
+    }
+    const juce::File& getPresetLibraryRoot() const { return editorOptions.presetLibraryRoot; }
+    bool createEmptyPatchInSlot(int slot, const juce::String& name, bool activate,
+                                juce::String& error);
+    bool loadPatchFileIntoSlot(int slot, const juce::File& file, bool activate,
+                               juce::String& error);
+    void prepareSlotModuleDeletion(int slot);
+
 private:
     void newPatch();
     void openPatch();
@@ -49,6 +71,9 @@ private:
     void savePatchAs();
     void storePatchToBank();
     void loadPatchFromFile(const juce::File& file);
+    bool replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
+                            const juce::File& sourceFile, bool activate,
+                            bool loadVariations, juce::String& error);
     bool savePatchToFile(const juce::File& file);
     void importSnippet();
     void importSnippetFromFile(const juce::File& file);
@@ -56,6 +81,13 @@ private:
     void saveSnippet(SnipData snip);
     void choosePresetLibraryFolder();
     void applyEditorOptions(const EditorOptions& opts);
+#if NME_MCP_BRIDGE
+    void setMcpBridgeEnabled(bool enabled);
+    // The exact stdio command an MCP client (Claude Code, Claude Desktop,
+    // etc.) needs to register mcp-bridge/server.py - searched relative to
+    // the running executable so it works from any checkout location.
+    juce::String getMcpBridgeCommand() const;
+#endif
     void applyUiTheme(int index, bool persist);
     void toggleWireframe();
     void togglePresetBrowser();
@@ -129,6 +161,13 @@ private:
     std::unique_ptr<PatchNotesFloaterWindow> patchNotesFloaterWindow;
     std::unique_ptr<MutatorWindow> mutatorWindow;
     std::unique_ptr<SysexMonitorWindow> sysexMonitorWindow;
+
+    // Local control socket for the MCP bridge (source/mcp/, mcp-bridge/) -
+    // built and started at the end of the constructor once slots/moduleDescs
+    // exist, torn down first thing in the destructor.
+#if NME_MCP_BRIDGE
+    std::unique_ptr<McpBridgeServer> mcpBridgeServer;
+#endif
 
     // Last-known global synth settings.
     SynthSettings cachedSynthSettings;

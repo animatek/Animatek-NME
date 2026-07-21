@@ -76,6 +76,11 @@ public:
 
     int getSizeInUnits() override { return 1; }
 
+    // containerIndex assigned by createModule(), valid after a successful
+    // perform() - lets callers that don't already hold the Module* (e.g. the
+    // MCP bridge) report which index the new module landed on.
+    int getContainerIndex() const { return containerIndex_; }
+
 private:
     UndoContext& ctx_;
     int section_, typeId_, gridX_, gridY_;

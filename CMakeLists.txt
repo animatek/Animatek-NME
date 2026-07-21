@@ -43,6 +43,7 @@ endif()
 
 add_subdirectory(JUCE EXCLUDE_FROM_ALL)
 option(NME_BUILD_PLUGIN "Build VST3/CLAP plugin targets" OFF)
+option(NME_MCP_BRIDGE "Build embedded MCP control-socket bridge (localhost-only, lets an MCP client add/connect modules in the live editor)" ON)
 
 if(NME_BUILD_PLUGIN)
     set(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -144,6 +145,20 @@ target_sources(AnimatekNME PRIVATE
     source/Main.cpp
     ${NME_SHARED_SOURCES}
 )
+
+# MCP bridge is standalone-app-only (deliberately NOT in NME_SHARED_SOURCES):
+# multiple simultaneous plugin instances would fight over the same fixed
+# localhost port, and "the live editor" isn't a meaningful concept for a
+# plugin instance. juce::StreamingSocket lives in juce_core in this JUCE
+# version (networking was folded into core, there's no separate juce_network
+# module here) - already linked below, nothing extra needed.
+if(NME_MCP_BRIDGE)
+    target_sources(AnimatekNME PRIVATE
+        source/mcp/McpBridgeServer.cpp
+        source/mcp/McpRequestHandler.cpp
+    )
+endif()
+target_compile_definitions(AnimatekNME PRIVATE NME_MCP_BRIDGE=$<BOOL:${NME_MCP_BRIDGE}>)
 
 if(NME_BUILD_PLUGIN)
     # --- VST3/AU Plugin ---

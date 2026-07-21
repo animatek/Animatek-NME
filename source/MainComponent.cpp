@@ -858,12 +858,24 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     juce::Timer::callAfterDelay(600, [safeThis]() { if (safeThis) safeThis->restoreFloaterWindows(); });
   }
 
+#if NME_MCP_BRIDGE
+  mcpBridgeServer = std::make_unique<McpBridgeServer>(*this);
+  if (editorOptions.mcpBridgeEnabled)
+    mcpBridgeServer->start();
+#endif
+
 #if JUCE_MAC
   juce::MenuBarModel::setMacMainMenu(this);
 #endif
 }
 
 MainComponent::~MainComponent() {
+#if NME_MCP_BRIDGE
+  // Stop accepting/handling MCP requests before anything else they could
+  // touch (Patch/UndoManager/etc.) starts being torn down.
+  mcpBridgeServer.reset();
+#endif
+
   // Stop interpolation timer before anything else
   if (interpolationTimer)
     interpolationTimer->stopTimer();
@@ -1301,6 +1313,137 @@ void MainComponent::switchToSlot(int slot, bool notifySynth) {
   std::cout << "[SLOT] Switched to slot " << slot << std::endl;
 }
 
+bool MainComponent::replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
+                                       const juce::File& sourceFile, bool activate,
+                                       bool loadVariations, juce::String& error) {
+  if (slot < 0 || slot >= numSlots) {
+    error = "slot must be 0-3 (A-D)";
+    return false;
+  }
+  if (!patch) {
+    error = "The replacement patch is invalid";
+    return false;
+  }
+  if (connectionManager.isUploadingPatch() || connectionManager.isFetchingPatch()) {
+    error = "A patch transfer is already in progress; retry when it completes";
+    return false;
+  }
+  if (!connectionManager.isAckedQueueIdle()) {
+    error = "A structural edit is still waiting for acknowledgement; retry when it completes";
+    return false;
+  }
+
+  if (slot == activeSlot)
+    stopInterpolation("MCP patch replacement");
+
+  // Every synchronizer and editor surface stores pointers into its Patch.
+  // Detach them before replacing the owning unique_ptr.
+  slotSynchronizers[slot].reset();
+  if (slot == activeSlot) {
+    mainLayout->getInspector().clearModule();
+    if (knobFloaterWindow)
+      knobFloaterWindow->setPatch(nullptr);
+    if (patchNotesFloaterWindow)
+      patchNotesFloaterWindow->setPatch(nullptr);
+  }
+  if (slotWindows[slot])
+    slotWindows[slot]->getContent().getInspector().clearModule();
+
+  slotPatches[slot] = std::move(patch);
+  slotPatchFiles[slot] = sourceFile;
+  clearSnapshots(slot);
+
+  if (loadVariations && sourceFile.existsAsFile()) {
+    if (loadVarFile(variations[slot], sourceFile.withFileExtension("var"))) {
+      for (auto& [section, moduleIndex] : variations[slot].mutationExcluded)
+        if (auto* module = slotPatches[slot]->getContainer(section).getModuleByIndex(moduleIndex))
+          module->setExcludedFromMutation(true);
+    }
+  }
+
+  slotUndoManagers[slot].clearUndoHistory();
+  if (connectionManager.isConnected()) {
+    // Upload messages carry their destination slot in the SysEx envelope, so
+    // changing hardware focus first is unnecessary and introduces competing ACKs.
+    connectionManager.uploadPatch(slot, *slotPatches[slot]);
+    slotSynchronizers[slot] = std::make_unique<PatchSynchronizer>(
+        *slotPatches[slot], connectionManager, slot);
+  }
+  rebuildUndoContext(slot);
+
+  if (activate && slot != activeSlot)
+    switchToSlot(slot, false);
+
+  if (slot == activeSlot) {
+    mainLayout->getCanvas().setPatch(slotPatches[slot].get(), &moduleDescs, &themeData);
+    mainLayout->getHeaderBar().setPatch(slotPatches[slot].get());
+    mainLayout->getInspector().setPatch(slotPatches[slot].get());
+    if (sourceFile == juce::File())
+      mainLayout->getHeaderBar().clearCurrentLocation();
+    if (knobFloaterWindow)
+      knobFloaterWindow->setPatch(slotPatches[slot].get());
+    if (patchNotesFloaterWindow)
+      patchNotesFloaterWindow->setPatch(slotPatches[slot].get());
+    refreshSnapshotUi();
+    updateDspLoadDisplay();
+  }
+
+  if (slotWindows[slot]) {
+    auto& content = slotWindows[slot]->getContent();
+    content.getCanvas().setPatch(slotPatches[slot].get(), &moduleDescs, &themeData);
+    content.getHeaderBar().setPatch(slotPatches[slot].get());
+    content.getInspector().setPatch(slotPatches[slot].get());
+    updateSlotWindowDspLoad(slot);
+  }
+
+  mainLayout->getSlotBar().setSlotName(slot, slotPatches[slot]->getName());
+  mainLayout->getStatusBar().showMessage(
+      (sourceFile.existsAsFile() ? "Loaded: " + sourceFile.getFileName()
+                                 : "New patch: " + slotPatches[slot]->getName()),
+      3000);
+  return true;
+}
+
+bool MainComponent::createEmptyPatchInSlot(int slot, const juce::String& name,
+                                           bool activate, juce::String& error) {
+  auto patch = std::make_unique<Patch>();
+  if (name.isNotEmpty())
+    patch->setName(name);
+  return replacePatchInSlot(slot, std::move(patch), {}, activate, false, error);
+}
+
+bool MainComponent::loadPatchFileIntoSlot(int slot, const juce::File& file,
+                                          bool activate, juce::String& error) {
+  if (!file.existsAsFile()) {
+    error = "Patch file does not exist: " + file.getFullPathName();
+    return false;
+  }
+  if (!file.hasFileExtension(".pch")) {
+    error = "Patch file must have a .pch extension";
+    return false;
+  }
+
+  PchFileIO io(moduleDescs);
+  auto patch = io.readFile(file);
+  if (!patch) {
+    error = "Failed to parse patch: " + file.getFullPathName();
+    return false;
+  }
+  return replacePatchInSlot(slot, std::move(patch), file, activate, true, error);
+}
+
+void MainComponent::prepareSlotModuleDeletion(int slot) {
+  if (slot == activeSlot) {
+    mainLayout->getCanvas().clearModuleSelection();
+    mainLayout->getInspector().clearModule();
+  }
+  if (slot >= 0 && slot < numSlots && slotWindows[slot]) {
+    auto& content = slotWindows[slot]->getContent();
+    content.getCanvas().clearModuleSelection();
+    content.getInspector().clearModule();
+  }
+}
+
 void MainComponent::newPatch() {
   stopInterpolation("new patch");
 
@@ -1620,7 +1763,26 @@ void MainComponent::showMidiSettingsDialog() {
 }
 
 void MainComponent::showEditorOptionsDialog() {
-  EditorOptionsDialog::show(this, editorOptions, [this](const EditorOptions& opts) {
+#if NME_MCP_BRIDGE
+  McpBridgeStatusKind mcpStatus = McpBridgeStatusKind::Disabled;
+  juce::String mcpStatusText = "Disabled";
+  if (editorOptions.mcpBridgeEnabled && mcpBridgeServer) {
+    if (mcpBridgeServer->isListening()) {
+      mcpStatus = McpBridgeStatusKind::Listening;
+      mcpStatusText = "Listening on 127.0.0.1:" + juce::String(mcpBridgeServer->getPort());
+    } else {
+      mcpStatus = McpBridgeStatusKind::Failed;
+      mcpStatusText = "Failed to bind port " + juce::String(mcpBridgeServer->getPort());
+    }
+  }
+  juce::String mcpCommand = getMcpBridgeCommand();
+#else
+  McpBridgeStatusKind mcpStatus = McpBridgeStatusKind::Disabled;
+  juce::String mcpStatusText = "Not built with MCP bridge support";
+  juce::String mcpCommand;
+#endif
+  EditorOptionsDialog::show(this, editorOptions, mcpStatus, mcpStatusText, mcpCommand,
+                            [this](const EditorOptions& opts) {
     applyEditorOptions(opts);
   });
 }
@@ -1652,7 +1814,36 @@ void MainComponent::applyEditorOptions(const EditorOptions& opts) {
       mainLayout->getStatusBar().showMessage(
           "ERROR: Could not create Patches/Snippets folders", 5000);
   }
+
+#if NME_MCP_BRIDGE
+  setMcpBridgeEnabled(editorOptions.mcpBridgeEnabled);
+#endif
 }
+
+#if NME_MCP_BRIDGE
+void MainComponent::setMcpBridgeEnabled(bool enabled) {
+  if (!mcpBridgeServer) return;
+  if (enabled && !mcpBridgeServer->isRunning())
+    mcpBridgeServer->start();
+  else if (!enabled && mcpBridgeServer->isRunning())
+    mcpBridgeServer->stop();
+}
+
+juce::String MainComponent::getMcpBridgeCommand() const {
+  auto dir = juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory();
+  for (int i = 0; i < 6; ++i) {
+    auto serverPy = dir.getChildFile("mcp-bridge/server.py");
+    if (serverPy.existsAsFile()) {
+      auto venvPython = dir.getChildFile("mcp-bridge/.venv/bin/python");
+      juce::String pythonCmd = venvPython.existsAsFile() ? venvPython.getFullPathName()
+                                                          : juce::String("python3");
+      return pythonCmd + " " + serverPy.getFullPathName();
+    }
+    dir = dir.getParentDirectory();
+  }
+  return {};
+}
+#endif
 
 void MainComponent::applyUiTheme(int index, bool persist) {
   const int n = ThemeRegistry::count();

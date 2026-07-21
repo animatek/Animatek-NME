@@ -1,0 +1,8 @@
+[project]
+name = "animatek-nme-mcp-bridge"
+version = "0.1.0"
+description = "MCP bridge for Animatek NME - lets an MCP client add modules and connect cables in the live editor"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.2.0",
+]

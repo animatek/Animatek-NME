@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **MCP bridge — drive the editor from an AI assistant**: the standalone editor can now
+  expose a local control channel that lets an MCP client (Claude Code, Claude Desktop,
+  OpenCode…) work the patch as if it were you at the canvas — adding and moving modules,
+  connecting and cutting cables, setting parameters, creating patches and opening them
+  from your preset library. Everything goes through the normal undo system, so an
+  assistant's edits are reviewable and undoable exactly like your own.
+
+  Enable it under *Editor Options → MCP Bridge*, where the panel also shows whether the
+  bridge is listening and gives you the exact command to register it with your client.
+  It listens on `127.0.0.1` only, is off the wire entirely when the toggle is off, and
+  can be compiled out completely with `-DNME_MCP_BRIDGE=OFF`. The bridge is
+  standalone-app-only — it is deliberately not built into the plugin, where several
+  instances would contend for the same port.
+
 - **Sequencer step numbers line up with their steps**: the 1–16 labels above the
   sequencer rows were drawn from a fixed left edge into an oversized box, so they
   drifted out of alignment with the LEDs below them. Labels can now carry their own

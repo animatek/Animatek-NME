@@ -61,6 +61,7 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.autoUpload     = props->getBoolValue  ("autoUpload",     true);
     o.recycleWindows = props->getBoolValue  ("recycleWindows", true);
     o.wireframe      = props->getBoolValue  ("wireframe",      false);
+    o.mcpBridgeEnabled = props->getBoolValue("mcpBridgeEnabled", true);
     o.cableOpacity   = static_cast<float>   (props->getDoubleValue("cableOpacity", 0.80));
     o.sendRateIndex  = juce::jlimit (0, static_cast<int> (sendRates().size()) - 1,
                                      props->getIntValue ("sendRateIndex", 1));
@@ -79,6 +80,7 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("autoUpload",      autoUpload);
     props->setValue ("recycleWindows",  recycleWindows);
     props->setValue ("wireframe",       wireframe);
+    props->setValue ("mcpBridgeEnabled", mcpBridgeEnabled);
     props->setValue ("cableOpacity",    static_cast<double>(cableOpacity));
     props->setValue ("sendRateIndex",   sendRateIndex);
     props->setValue ("presetLibraryRoot", presetLibraryRoot.getFullPathName());
@@ -114,7 +116,10 @@ bool EditorOptions::ensureLibraryFolders() const
 
 // ─── EditorOptionsDialog ─────────────────────────────────────────────────────
 
-EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
+EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
+                                         McpBridgeStatusKind mcpStatus,
+                                         const juce::String& mcpStatusText,
+                                         const juce::String& mcpCommand)
     : options(current)
 {
     setOpaque (true);
@@ -187,6 +192,41 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
     addAndMakeVisible (sendRateLabel);
     addAndMakeVisible (sendRateSelector);
 
+    // MCP Bridge
+    styleLabel (mcpBridgeLabel, true);
+    styleToggle (mcpBridgeToggle);
+    mcpBridgeToggle.setToggleState (options.mcpBridgeEnabled, juce::dontSendNotification);
+    mcpBridgeToggle.setTooltip ("Lets an MCP client (e.g. an AI agent) add modules and connect "
+                                "cables in the live patch over a localhost-only control socket. "
+                                "See mcp-bridge/README.md.");
+    styleLabel (mcpBridgeStatusLabel);
+    mcpBridgeStatusLabel.setText (mcpStatusText, juce::dontSendNotification);
+    {
+        juce::Colour col = p().textMuted;
+        if (mcpStatus == McpBridgeStatusKind::Listening) col = p().accentSuccess;
+        else if (mcpStatus == McpBridgeStatusKind::Failed) col = p().accentWarning;
+        mcpBridgeStatusLabel.setColour (juce::Label::textColourId, col);
+    }
+    addAndMakeVisible (mcpBridgeLabel);
+    addAndMakeVisible (mcpBridgeToggle);
+    addAndMakeVisible (mcpBridgeStatusLabel);
+
+    styleTextEditor (mcpBridgeCommand);
+    mcpBridgeCommand.setText (mcpCommand, juce::dontSendNotification);
+    mcpBridgeCommand.setTextToShowWhenEmpty ("mcp-bridge/server.py not found next to the executable", p().textMuted);
+    mcpBridgeCommand.setTooltip ("The stdio command an MCP client (Claude Code, Claude Desktop, ...) "
+                                 "needs to register this bridge. Select all + copy, or use the button.");
+    styleBtn (mcpBridgeCopyButton);
+    mcpBridgeCopyButton.onClick = [this]() {
+        juce::SystemClipboard::copyTextToClipboard (mcpBridgeCommand.getText());
+        mcpBridgeCopyButton.setButtonText ("Copied!");
+        juce::Timer::callAfterDelay (1500, [safeThis = juce::Component::SafePointer<EditorOptionsDialog> (this)]() {
+            if (safeThis) safeThis->mcpBridgeCopyButton.setButtonText ("Copy");
+        });
+    };
+    addAndMakeVisible (mcpBridgeCommand);
+    addAndMakeVisible (mcpBridgeCopyButton);
+
     // Preset library
     styleLabel (libraryLabel, true);
     styleTextEditor (libraryPath);
@@ -206,7 +246,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current)
     addAndMakeVisible (okButton);
     addAndMakeVisible (cancelButton);
 
-    setSize (560, 558);
+    setSize (dialogWidth, layoutComponents (false));
 }
 
 void EditorOptionsDialog::populateThemeSelector()
@@ -234,87 +274,119 @@ void EditorOptionsDialog::paint (juce::Graphics& g)
     g.setColour (p().buttonActive);
     g.fillRect (0, 31, getWidth(), 1);
 
-    // Separators — positions match resized() math:
-    // Separators match resized() section starts.
+    // Separators are computed by layoutComponents() (the same pass that
+    // places every component), never hand-copied here - so a line can never
+    // drift out of sync with what resized() actually did.
     const float x0 = 14.0f, x1 = static_cast<float> (getWidth() - 14);
-    for (int sy : { 104, 226, 326, 456, 520 })
-    {
-        g.setColour (p().buttonActive);
+    g.setColour (p().buttonActive);
+    for (int sy : sectionSeparatorsY)
         g.drawHorizontalLine (sy, x0, x1);
-    }
 }
 
 // ─── resized ─────────────────────────────────────────────────────────────────
 
 void EditorOptionsDialog::resized()
 {
+    layoutComponents (true);
+}
+
+int EditorOptionsDialog::layoutComponents (bool apply)
+{
     constexpr int pad   = 14;
     constexpr int rowH  = 22;
     constexpr int secH  = 16;
     constexpr int secGap = 8;   // padding before/after a section label
-    constexpr int sepGap = 8;   // padding after a separator
+    constexpr int sepGap = 8;   // padding before a separator line
+    const int w = dialogWidth;
 
-    closeButton.setBounds (getWidth() - 32, 2, 28, 28);
+    sectionSeparatorsY.clear();
+    auto place = [apply] (juce::Component& c, int x, int y, int cw, int ch) {
+        if (apply) c.setBounds (x, y, cw, ch);
+    };
+    // Marks a section boundary: adds the gap, records where the divider
+    // line goes, and returns the (possibly updated) y - call right before
+    // laying out each section's header label (except the very first one).
+    auto sectionSep = [this, &sepGap] (int yIn) {
+        int y = yIn + sepGap;
+        sectionSeparatorsY.push_back (y);
+        return y;
+    };
+
+    if (apply) closeButton.setBounds (w - 32, 2, 28, 28);
 
     int y = 32 + secGap;  // below title bar
 
     // ── Appearance ───────────────────────────────────────────
-    appearanceLabel.setBounds (pad, y, getWidth() - pad * 2, secH);
+    place (appearanceLabel, pad, y, w - pad * 2, secH);
     y += secH + 6;
-    themeLabel.setBounds (pad + 8, y, 80, rowH);
-    themeSelector.setBounds (pad + 92, y, getWidth() - pad * 2 - 100, rowH);
+    place (themeLabel,    pad + 8,  y, 80, rowH);
+    place (themeSelector, pad + 92, y, w - pad * 2 - 100, rowH);
     y += rowH + secGap;
 
     // ── Cable Style ──────────────────────────────────────────
-    y += sepGap;
-    cableStyleLabel.setBounds (pad, y, getWidth() - pad * 2, secH);
+    y = sectionSep (y);
+    place (cableStyleLabel, pad, y, w - pad * 2, secH);
     y += secH + 2;
     for (auto* b : { &cableCurvedThick, &cableStraightThick, &cableCurvedThin, &cableStraightThin })
     {
-        b->setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
+        place (*b, pad + 8, y, w - pad * 2 - 8, rowH);
         y += rowH;
     }
     y += secGap;
 
     // ── Knob Control ─────────────────────────────────────────
-    y += sepGap;
-    knobControlLabel.setBounds (pad, y, getWidth() - pad * 2, secH);
+    y = sectionSep (y);
+    place (knobControlLabel, pad, y, w - pad * 2, secH);
     y += secH + 2;
     for (auto* b : { &knobHorizontal, &knobCircular, &knobVertical })
     {
-        b->setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
+        place (*b, pad + 8, y, w - pad * 2 - 8, rowH);
         y += rowH;
     }
     y += secGap;
 
     // ── Behaviour ────────────────────────────────────────────
-    y += sepGap;
-    behaviourLabel.setBounds (pad, y, getWidth() - pad * 2, secH);
+    y = sectionSep (y);
+    place (behaviourLabel, pad, y, w - pad * 2, secH);
     y += secH + 2;
-    autoUploadToggle.setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
+    place (autoUploadToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH;
-    recycleWinToggle.setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
+    place (recycleWinToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH;
-    wireframeToggle.setBounds (pad + 8, y, getWidth() - pad * 2 - 8, rowH);
+    place (wireframeToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH + 4;
-    sendRateLabel.setBounds (pad + 8, y, 80, rowH);
-    sendRateSelector.setBounds (pad + 92, y, getWidth() - pad * 2 - 100, rowH);
+    place (sendRateLabel,    pad + 8,  y, 80, rowH);
+    place (sendRateSelector, pad + 92, y, w - pad * 2 - 100, rowH);
     y += rowH + 12;
 
-    // ── Preset Library ───────────────────────────────────────
-    y += sepGap;
-    libraryLabel.setBounds (pad, y, getWidth() - pad * 2, secH);
+    // ── MCP Bridge ────────────────────────────────────────────
+    y = sectionSep (y);
+    place (mcpBridgeLabel, pad, y, w - pad * 2, secH);
     y += secH + 2;
-    auto libraryRow = juce::Rectangle<int> (pad + 8, y, getWidth() - pad * 2 - 8, 26);
-    browseLibraryButton.setBounds (libraryRow.removeFromRight (92));
-    libraryPath.setBounds (libraryRow.removeFromLeft (libraryRow.getWidth() - 8));
+    place (mcpBridgeToggle, pad + 8, y, w - pad * 2 - 8, rowH);
+    y += rowH;
+    place (mcpBridgeStatusLabel, pad + 8, y, w - pad * 2 - 8, rowH);
+    y += rowH + 6;
+    place (mcpBridgeCopyButton, w - pad - 72, y, 72, 26);
+    place (mcpBridgeCommand,    pad + 8, y, w - pad * 2 - 8 - 72 - 8, 26);
+    y += 26 + secGap;
+
+    // ── Preset Library ───────────────────────────────────────
+    y = sectionSep (y);
+    place (libraryLabel, pad, y, w - pad * 2, secH);
+    y += secH + 2;
+    place (browseLibraryButton, w - pad - 92, y, 92, 26);
+    place (libraryPath,         pad + 8, y, w - pad * 2 - 8 - 92 - 8, 26);
     y += 26 + 12;
 
     // ── OK / Cancel ──────────────────────────────────────────
     y += 10;
     const int btnW = 80, btnH = 26;
-    cancelButton.setBounds (getWidth() - pad - btnW,          y, btnW, btnH);
-    okButton    .setBounds (getWidth() - pad - btnW * 2 - 8,  y, btnW, btnH);
+    place (cancelButton, w - pad - btnW,         y, btnW, btnH);
+    place (okButton,     w - pad - btnW * 2 - 8, y, btnW, btnH);
+    y += btnH;
+
+    return y + pad;
 }
 
 // ─── interaction ─────────────────────────────────────────────────────────────
@@ -374,6 +446,7 @@ void EditorOptionsDialog::apply()
     options.recycleWindows = recycleWinToggle .getToggleState();
     options.wireframe      = wireframeToggle  .getToggleState();
     options.sendRateIndex  = sendRateSelector.getSelectedId() - 1;
+    options.mcpBridgeEnabled = mcpBridgeToggle.getToggleState();
 
     if (onChange)
         onChange (options);
@@ -385,9 +458,12 @@ void EditorOptionsDialog::apply()
 
 void EditorOptionsDialog::show(juce::Component* parent,
                                const EditorOptions& current,
+                               McpBridgeStatusKind mcpStatus,
+                               const juce::String& mcpStatusText,
+                               const juce::String& mcpCommand,
                                std::function<void(const EditorOptions&)> onChangeCb)
 {
-    auto* dlg = new EditorOptionsDialog (current);
+    auto* dlg = new EditorOptionsDialog (current, mcpStatus, mcpStatusText, mcpCommand);
     dlg->onChange = std::move (onChangeCb);
 
     if (parent != nullptr)
