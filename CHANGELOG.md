@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Patches with heavy editing no longer run out of module slots**: module indices are
+  stored in seven bits, but new modules always took "highest existing index + 1", so a
+  long session of adding and deleting modules could walk that counter past 127 and start
+  producing patches the synth would reject. New modules now reuse the lowest free index,
+  so add/delete cycles are no longer bounded by how many modules you ever created.
+
 ## 0.9.0 — 2026-07-21
 
 - **Collapsible inspector in slot pop-out windows**: a slot's own window can now hide

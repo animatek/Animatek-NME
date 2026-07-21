@@ -266,15 +266,20 @@ Module* Patch::createModule(int section, int typeId, int gridX, int gridY,
     if (!container.canAdd(*descriptor))
         return nullptr;
 
-    // Generate unique container index (find max existing + 1, starting from 1)
-    int maxIndex = 0;
+    // Module indices are serialized in seven bits. Reuse the lowest free one
+    // so repeated add/delete cycles cannot overflow past 127.
+    std::array<bool, 128> usedIndices {};
     for (auto& m : container.getModules())
     {
-        int idx = m->getContainerIndex();
-        if (idx > maxIndex)
-            maxIndex = idx;
+        const int index = m->getContainerIndex();
+        if (index >= 1 && index <= 127)
+            usedIndices[static_cast<size_t>(index)] = true;
     }
-    int newIndex = maxIndex + 1;
+    int newIndex = 1;
+    while (newIndex <= 127 && usedIndices[static_cast<size_t>(newIndex)])
+        ++newIndex;
+    if (newIndex > 127)
+        return nullptr;
 
     // Create module from descriptor
     auto module = Module::createFromDescriptor(*descriptor);
