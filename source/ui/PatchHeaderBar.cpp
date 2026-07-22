@@ -352,7 +352,10 @@ void PatchHeaderBar::drawLoadBar(juce::Graphics& g, int x, int y, int w, int h,
 
         g.setColour(juce::Colours::white);
         g.setFont(juce::FontOptions(8.0f));
-        g.drawText(juce::String(static_cast<int>(percent * 100)) + "%",
+        // One decimal, matching the original Clavia editor (e.g. "47.6%"); the
+        // load is a client-side estimate so a truncated integer read a hair high
+        // (a 99.5%-cycle patch showing "100%").
+        g.drawText(juce::String(percent * 100.0f, 1) + "%",
                    barX, y, barW, h, juce::Justification::centred);
     }
     else

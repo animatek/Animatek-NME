@@ -16,7 +16,7 @@ struct EditorOptions
     bool        autoUpload     = true;
     bool        recycleWindows = true;
     bool        wireframe      = false; // outline-only module rendering (theme-independent)
-    bool        mcpBridgeEnabled = true; // embedded MCP control socket (source/mcp/), if built in
+    bool        mcpBridgeEnabled = false; // embedded MCP control socket (source/mcp/), if built in; opt-in so no localhost port opens unless asked
     float       cableOpacity   = 0.80f;
     int         sendRateIndex  = 1;   // index into sendRates() — synth param throughput
     juce::File  presetLibraryRoot;

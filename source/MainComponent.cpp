@@ -1868,6 +1868,11 @@ void MainComponent::applyUiTheme(int index, bool persist) {
     if (sw) { sw->getContent().setTheme(canvasScheme); sw->repaint(); }
   mainLayout->repaint();
 
+  // Refresh the menu bar so the Theme submenu's checkmark follows the change
+  // (the native macOS menu keeps the stale tick otherwise). Covers every path:
+  // View menu, Ctrl+T cycle, and the Editor Options dialog.
+  menuItemsChanged();
+
   if (persist)
     editorOptions.save(appProperties.getUserSettings());
 }

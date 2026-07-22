@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **DSP load shown with one decimal**: the Load meters (PVA / Σ) now read to one decimal
+  place — e.g. `47.6%` — matching the original Nord Modular editor. The figure is a
+  client-side estimate (the synth doesn't report its own load), so the previous whole-number
+  rounding could nudge a 99.5%-cycle patch up to a misleading `100%`.
+
+- **Theme menu checkmark follows the active theme**: switching themes (View menu, Ctrl+T or
+  Editor Options) now moves the checkmark in the Theme submenu to the theme actually in use;
+  on macOS the native menu previously kept the tick on the initially-selected theme.
+
 - **MCP bridge — drive the editor from an AI assistant**: the standalone editor can now
   expose a local control channel that lets an MCP client (Claude Code, Claude Desktop,
   OpenCode…) work the patch as if it were you at the canvas — adding and moving modules,
@@ -9,8 +18,9 @@
   from your preset library. Everything goes through the normal undo system, so an
   assistant's edits are reviewable and undoable exactly like your own.
 
-  Enable it under *Editor Options → MCP Bridge*, where the panel also shows whether the
-  bridge is listening and gives you the exact command to register it with your client.
+  It is **off by default** — no port is opened unless you ask for it. Enable it under
+  *Editor Options → MCP Bridge*, where the panel also shows whether the bridge is
+  listening and gives you the exact command to register it with your client.
   It listens on `127.0.0.1` only, is off the wire entirely when the toggle is off, and
   can be compiled out completely with `-DNME_MCP_BRIDGE=OFF`. The bridge is
   standalone-app-only — it is deliberately not built into the plugin, where several

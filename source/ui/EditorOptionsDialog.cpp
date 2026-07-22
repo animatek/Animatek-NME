@@ -61,7 +61,7 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.autoUpload     = props->getBoolValue  ("autoUpload",     true);
     o.recycleWindows = props->getBoolValue  ("recycleWindows", true);
     o.wireframe      = props->getBoolValue  ("wireframe",      false);
-    o.mcpBridgeEnabled = props->getBoolValue("mcpBridgeEnabled", true);
+    o.mcpBridgeEnabled = props->getBoolValue("mcpBridgeEnabled", false);
     o.cableOpacity   = static_cast<float>   (props->getDoubleValue("cableOpacity", 0.80));
     o.sendRateIndex  = juce::jlimit (0, static_cast<int> (sendRates().size()) - 1,
                                      props->getIntValue ("sendRateIndex", 1));
