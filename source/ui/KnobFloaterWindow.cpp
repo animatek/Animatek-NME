@@ -8,7 +8,10 @@
 #define kText      (AppTheme::palette().textPrimary)
 #define kTextDim   (AppTheme::palette().textMuted)
 #define kAccent    (AppTheme::palette().accentActive)
-#define kLedOn     (AppTheme::palette().accentSuccess)
+// A lit assignment lamp is a hardware colour, not a palette role — accentSuccess
+// is deliberately darkened on light themes so status text stays readable, which
+// left assigned knobs looking unlit. Same fixed green as the Inspector's knob map.
+#define kLedOn     (juce::Colour(0xff3ddc7a))
 
 namespace
 {

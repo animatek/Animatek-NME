@@ -743,11 +743,17 @@ void InspectorPanel::paint(juce::Graphics& g)
 
                     if (assigned)
                     {
-                        g.setColour(theme.accentSuccess.withAlpha(0.18f));
+                        // A lit lens is a hardware colour, not a palette role: the
+                        // accent green is deliberately darkened on light themes so
+                        // status TEXT stays readable, which is the opposite of what
+                        // a lamp needs — it made assigned knobs look unlit on Nord
+                        // Classic. Fixed bright green instead, matching the fixed
+                        // unlit colour below, with a rim highlight for the glass.
+                        g.setColour(juce::Colour(0xff3ddc7a).withAlpha(0.28f));
                         g.fillEllipse(led.expanded(2.0f));
-                        g.setColour(theme.accentSuccess);
+                        g.setColour(juce::Colour(0xff3ddc7a));
                         g.fillEllipse(led);
-                        g.setColour(theme.textPrimary.withAlpha(0.4f));
+                        g.setColour(juce::Colour(0xffc8ffdf).withAlpha(0.75f));
                         g.drawEllipse(led.reduced(0.5f), 0.7f);
                     }
                     else
