@@ -13,6 +13,22 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](../CHANGELOG
   `ModuleBrowserPanel` emits. Design notes, asset paths and open questions:
   [MODULE_ICON_BAR.md](MODULE_ICON_BAR.md).
 
+- [ ] **Slot selection dialog on patch load**
+  ([#21](https://github.com/animatek/Animatek-NME/issues/21)) — the original editor asks
+  which slot an opened `.pch` goes to, listing A/B/C/D with each slot's current patch name
+  (`Unknown` for slots it has not fetched yet) plus a separate **Local** option that loads
+  into the editor without touching the synth. ANME has neither: a file load always targets
+  the active slot and always uploads when connected (`MainComponent.cpp:1618`), so there is
+  no way to open a patch without overwriting synth state, and no way to load into a slot
+  you have not visited. Reference screenshots (gitignored):
+  `Implementaciones/Dialogo de carga de slots selection.png`.
+
+- [ ] **Slot windows: live fan-out and global commands**
+  ([#22](https://github.com/animatek/Animatek-NME/issues/22)) — editing *from* a slot window
+  is hardware-verified, but front-panel knob moves, lights and meters never reach it
+  (milestone 5 of the multi-window plan, `MainComponent.cpp:2325`), and `Ctrl+R` /
+  Mutator / snapshots silently do nothing there (`MainComponent.cpp:2406`).
+
 - [x] **Bank Upload from Synth** — implemented in 0.6.0 as "Save Bank to Disk" plus
   "Backup All Banks to Library" (Device menu). Position metadata is preserved in the
   `NN - Name.pch` filename. Verified against real hardware.
