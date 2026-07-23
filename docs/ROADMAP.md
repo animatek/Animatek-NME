@@ -23,6 +23,14 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](../CHANGELOG
   you have not visited. Reference screenshots (gitignored):
   `Implementaciones/Dialogo de carga de slots selection.png`.
 
+- [ ] **MCP bridge: no way to save, store or rename from a client**
+  ([#23](https://github.com/animatek/Animatek-NME/issues/23)) — building a patch through the
+  bridge works, but nothing can be persisted from it (no `save_patch`, no `store_to_bank`),
+  so an assistant-composed patch lives in memory until the user saves it by hand. Renaming
+  existing modules is also missing, and is blocked by the editor itself: module renames are
+  not undoable (`MainComponent.cpp:478` only logs; there is no `RenameModuleAction`), which
+  is worth fixing on its own. Module names also never reach the synth.
+
 - [ ] **Slot windows: live fan-out and global commands**
   ([#22](https://github.com/animatek/Animatek-NME/issues/22)) — editing *from* a slot window
   is hardware-verified, but front-panel knob moves, lights and meters never reach it
