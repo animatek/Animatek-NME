@@ -97,13 +97,10 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](../CHANGELOG
 
 Tracked as GitHub issues; the detail lives there.
 
-- [ ] **Resource usage reads a flat 100%** where the original editor shows 99.5% / 97.7%
-  ([#18](https://github.com/animatek/Animatek-NME/issues/18)) — not display rounding; the
-  cycle accounting in `MainComponent::updateSlotWindowDspLoad()` has no voice-count scaling.
-
-- [ ] **Theme submenu checkmark sticks on the initial theme**
-  ([#19](https://github.com/animatek/Animatek-NME/issues/19)) — the theme applies, only the
-  menu tick is stale.
+- [x] **Resource usage reads a flat 100%** ([#18](https://github.com/animatek/Animatek-NME/issues/18))
+  and **theme submenu checkmark sticks on the initial theme**
+  ([#19](https://github.com/animatek/Animatek-NME/issues/19)) — both were already fixed after
+  0.9.0 and shipped in 0.10.0; they were reported against an older build. Close on release.
 
 ## Parked / Future
 

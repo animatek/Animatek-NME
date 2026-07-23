@@ -1,6 +1,6 @@
 # Animatek NME Status
 
-Current version: **0.9.0** (released 2026-07-21)
+Current version: **0.10.0** (released 2026-07-23)
 
 The project was renamed from **Nomad2026** to **Animatek NME — Nord Modular Editor G1** in 0.6.0.
 
@@ -24,8 +24,10 @@ This file tracks the current project state at a practical level. Detailed versio
 - Module help, Help Contents, About links, bug-report link, beta warning popup, themes, canvas zoom, parameter randomization, initialization, locks, and snapshots are implemented.
 - Dark-mode app icon and JUCE metadata are in place.
 - Knob Floater (interactive 18-knob + pedal/switch/aftertouch overview) and Keyboard Floater (virtual keyboard with drone/repeat modes) are implemented as View-menu floating windows with position persistence.
-- Thirteen rotating color themes (`Ctrl+T`) restyle the app chrome and patch canvas, with
-  Nord as the default. Wireframe module mode (`Ctrl+W`) works with every theme; both choices
+- An optional MCP bridge (off by default, `127.0.0.1` only, standalone app only) lets an
+  MCP client drive the live editor through the normal undo system.
+- Rotating color themes (`Ctrl+T`) restyle the app chrome and patch canvas, with
+  Nord as the default and "Nord Classic" reproducing the original Clavia editor's look. Wireframe module mode (`Ctrl+W`) works with every theme; both choices
   persist across sessions.
 - Patch Variations: the 8 header snapshots persist in a `.var` sidecar (the `.pch` stays standard), with copy/init, morph capture, and write-through of live edits.
 - Patch Mutator (G2-style interactive evolution): Mother/Children/Father breeding with Mutate/Randomize/Interpolate/Cross, Quick Locks, temporary storage, variations row, per-module mutation exclusion, and timed audition morphing. Mutation uses a Gaussian distribution, oscillator pitch snaps to musical intervals, Cross has sequential/independent modes, and Output modules are excluded automatically (Sims 1991 / Dahlstedt 2004).
@@ -42,6 +44,11 @@ This file tracks the current project state at a practical level. Detailed versio
 
 ## Recent Milestones
 
+- **0.10.0**: "Nord Classic" theme and canvas grain, opt-in MCP bridge, theme-aware chrome
+  and unified dialog controls, Inspector knob-assignment map, and slot-scoped parameter
+  delivery so one slot's transfer no longer blocks another's edits.
+- **0.8.2**: multi-window slot editing, the JUCE ALSA SysEx reassembly fix behind the
+  missing-cables reports, instant slot switching, and background prefetch.
 - **0.7.0**: Patch Mutator, persistent variations, SysEx Monitor,
   configurable/coalesced parameter delivery, 13 themes, wireframe mode, and hardened
   slot/patch transitions that prevent queued Mutator changes from reaching the wrong patch.

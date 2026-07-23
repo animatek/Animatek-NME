@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.10.0 — 2026-07-23
+
+- **Editing one slot is no longer blocked by another slot's transfer**: a patch upload
+  held back parameter edits for *every* slot until it finished, and a patch fetch discarded
+  them outright — so with a slot window open, turning a knob in slot A while slot B was
+  uploading or downloading did nothing, or was silently swallowed. Only the slot actually
+  transferring is held now. A related fix stops an upload or fetch acknowledgement meant for
+  a background slot from overwriting the focused slot's patch identifier, which could send
+  subsequent edits against the wrong patch. Verified on hardware, including a patch running
+  at 100% DSP load with two slot windows open.
 
 - **Calmer, consistent controls across every theme**: ordinary buttons, pressed labels,
   menu highlights, combo arrows, toggles and editable values now use neutral palette roles
@@ -13,8 +22,9 @@
 
 - **Hardware knob-assignment map in the Inspector**: a compact four-panel, 18-LED diagram
   mirrors the physical Nord Modular knob layout beside the Assignments heading. Assigned
-  knobs glow green and free knobs retain the hardware's dark-green unlit-lens colour, staying
-  visible even on Deep Dark; the map updates immediately after edits and undo/redo.
+  knobs glow a bright lamp green and free knobs retain the hardware's dark-green unlit-lens
+  colour, so both states read correctly on light and dark themes alike; the map updates
+  immediately after edits and undo/redo. The Knob Floater's assignment lamps match.
   Morph-knob pointers now choose black or white against each knob's actual fill colour, while
   the Disk browser's oversized text filters have become compact vector-icon toggles that fit
   the narrow embedded panel.
