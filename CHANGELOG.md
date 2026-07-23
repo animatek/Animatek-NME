@@ -13,7 +13,8 @@
 
 - **Hardware knob-assignment map in the Inspector**: a compact four-panel, 18-LED diagram
   mirrors the physical Nord Modular knob layout beside the Assignments heading. Assigned
-  knobs glow green and free knobs remain dim, updating immediately after edits and undo/redo.
+  knobs glow green and free knobs retain the hardware's dark-green unlit-lens colour, staying
+  visible even on Deep Dark; the map updates immediately after edits and undo/redo.
   Morph-knob pointers now choose black or white against each knob's actual fill colour, while
   the Disk browser's oversized text filters have become compact vector-icon toggles that fit
   the narrow embedded panel.

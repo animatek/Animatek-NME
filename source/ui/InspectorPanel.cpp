@@ -752,9 +752,11 @@ void InspectorPanel::paint(juce::Graphics& g)
                     }
                     else
                     {
-                        g.setColour(theme.backgroundMain);
+                        // The hardware's unlit lenses retain a deep green tint;
+                        // using it consistently also keeps them visible on dark themes.
+                        g.setColour(juce::Colour(0xff0b241d));
                         g.fillEllipse(led);
-                        g.setColour(theme.textMuted.withAlpha(0.55f));
+                        g.setColour(juce::Colour(0xff285044));
                         g.drawEllipse(led.reduced(0.5f), 0.7f);
                     }
                 }
