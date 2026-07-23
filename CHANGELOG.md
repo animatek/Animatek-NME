@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **Calmer, consistent controls across every theme**: ordinary buttons, pressed labels,
+  menu highlights, combo arrows, toggles and editable values now use neutral palette roles
+  instead of unrelated green, orange or red accents. Patch Settings, Synth Settings,
+  Editor Options, MIDI Settings, Store to Bank and bank-transfer dialogs now share the same
+  button treatment; their section dividers are derived from the real control bounds so they
+  no longer cross labels or fields. Editor Options also follows the standard `Ctrl+,`
+  shortcut, and Inspector text is refreshed correctly when switching between light and dark
+  themes.
+
+- **Hardware knob-assignment map in the Inspector**: a compact four-panel, 18-LED diagram
+  mirrors the physical Nord Modular knob layout beside the Assignments heading. Assigned
+  knobs glow green and free knobs remain dim, updating immediately after edits and undo/redo.
+  Morph-knob pointers now choose black or white against each knob's actual fill colour, while
+  the Disk browser's oversized text filters have become compact vector-icon toggles that fit
+  the narrow embedded panel.
+
 - **New "Nord Classic" theme**: a light, warm-grey theme echoing the look of the original
   Clavia Nord Modular editor — flat grey module bodies (light `#bfbfbf`) over a darker
   lavender-grey canvas, black labels, grey knobs, indigo LCD-style value readouts and the

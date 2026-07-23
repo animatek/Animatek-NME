@@ -24,8 +24,17 @@ private:
         RefreshIconButton();
         void paintButton(juce::Graphics& g, bool highlighted, bool down) override;
 
+    };
+
+    class FilterIconButton : public juce::Button
+    {
+    public:
+        enum class Icon { All, Patch, Snippet, Bank, Legacy };
+        FilterIconButton(const juce::String& name, Icon iconType);
+        void paintButton(juce::Graphics& g, bool highlighted, bool down) override;
+
     private:
-        std::unique_ptr<juce::Drawable> icon;
+        Icon icon;
     };
 
     enum class TypeFilter { All, Patches, Snippets, Banks };
@@ -56,11 +65,11 @@ private:
 
     juce::Label searchLabel;
     juce::TextEditor searchBox;
-    juce::TextButton allButton { "All" };
-    juce::TextButton patchesButton { "Patches" };
-    juce::TextButton snippetsButton { "Snippets" };
-    juce::TextButton banksButton { "Banks" };
-    juce::TextButton hidePch2Button { "PCH2" };  // toggle: hide legacy 2.10 patches
+    FilterIconButton allButton { "All presets", FilterIconButton::Icon::All };
+    FilterIconButton patchesButton { "Patches", FilterIconButton::Icon::Patch };
+    FilterIconButton snippetsButton { "Snippets", FilterIconButton::Icon::Snippet };
+    FilterIconButton banksButton { "Banks", FilterIconButton::Icon::Bank };
+    FilterIconButton hidePch2Button { "Hide PCH2", FilterIconButton::Icon::Legacy };
     RefreshIconButton refreshButton;
     juce::Label statusLabel;
     juce::ListBox listBox { "Disk Presets", this };

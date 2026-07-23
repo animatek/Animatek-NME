@@ -16,6 +16,7 @@ public:
     void paint(juce::Graphics& g) override;
     void paintOverChildren(juce::Graphics& g) override;
     void resized() override;
+    void applyTheme();
 
     // Set the current patch (for patch-wide morph view when no module selected)
     void setPatch(Patch* patch);

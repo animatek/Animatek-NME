@@ -7,7 +7,6 @@
 #define kBg     (AppTheme::palette().backgroundMain)
 #define kSep    (AppTheme::palette().buttonActive)
 #define kGold   (AppTheme::palette().accentActive)
-#define kAmber  (AppTheme::palette().accentWarning)
 #define kText   (AppTheme::palette().textSecondary)
 #define kDim    (AppTheme::palette().textMuted)
 #define kCtrlBg (AppTheme::palette().inputBackground)
@@ -15,12 +14,9 @@
 #define kBtnBg  (AppTheme::palette().buttonBackground)
 #define kBtnOn  (AppTheme::palette().buttonActive)
 
-static const juce::Colour kOkBg   { 0xff1e3a1e };
-static const juce::Colour kOkOn   { 0xff2a5a2a };
-
 static void styleSlider (juce::Slider& s, int tbW = 44)
 {
-    s.setColour (juce::Slider::textBoxTextColourId,       kAmber);
+    s.setColour (juce::Slider::textBoxTextColourId,       AppTheme::palette().textPrimary);
     s.setColour (juce::Slider::textBoxBackgroundColourId, kCtrlBg);
     s.setColour (juce::Slider::textBoxOutlineColourId,    kCtrlBd);
     s.setColour (juce::Slider::textBoxHighlightColourId,  kBtnOn);
@@ -31,7 +27,7 @@ static void styleSlider (juce::Slider& s, int tbW = 44)
 static void styleToggle (juce::ToggleButton& b)
 {
     b.setColour (juce::ToggleButton::textColourId,         kText);
-    b.setColour (juce::ToggleButton::tickColourId,         kAmber);
+    b.setColour (juce::ToggleButton::tickColourId,         AppTheme::palette().textPrimary);
     b.setColour (juce::ToggleButton::tickDisabledColourId, kDim);
 }
 
@@ -43,11 +39,12 @@ static void styleLabel (juce::Label& l, bool section = false)
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
 
-static void styleBtn (juce::TextButton& b, bool isOk = false)
+static void styleBtn (juce::TextButton& b)
 {
-    b.setColour (juce::TextButton::buttonColourId,   isOk ? kOkBg : kBtnBg);
-    b.setColour (juce::TextButton::buttonOnColourId, isOk ? kOkOn : kBtnOn);
-    b.setColour (juce::TextButton::textColourOffId,  isOk ? juce::Colour (0xffaaffaa) : kText);
+    b.setColour (juce::TextButton::buttonColourId,   kBtnBg);
+    b.setColour (juce::TextButton::buttonOnColourId, kBtnOn);
+    b.setColour (juce::TextButton::textColourOffId,  kText);
+    b.setColour (juce::TextButton::textColourOnId,   AppTheme::palette().textPrimary);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,7 +63,7 @@ SynthSettingsDialog::SynthSettingsDialog (const SynthSettings& current, Callback
     nameEditor.setText (working.name, juce::dontSendNotification);
     nameEditor.setInputRestrictions (16);
     nameEditor.setColour (juce::TextEditor::backgroundColourId,  kCtrlBg);
-    nameEditor.setColour (juce::TextEditor::textColourId,        kAmber);
+    nameEditor.setColour (juce::TextEditor::textColourId,        AppTheme::palette().textPrimary);
     nameEditor.setColour (juce::TextEditor::outlineColourId,     kCtrlBd);
     nameEditor.setColour (juce::TextEditor::focusedOutlineColourId, kGold);
 
@@ -155,8 +152,8 @@ SynthSettingsDialog::SynthSettingsDialog (const SynthSettings& current, Callback
         addAndMakeVisible (*t);
 
     // ── OK / Cancel ──────────────────────────────────────────────────────────
-    styleBtn (okButton, true);
-    styleBtn (cancelButton, false);
+    styleBtn (okButton);
+    styleBtn (cancelButton);
     okButton.onClick = [this]()
     {
         if (okCallback)
@@ -269,11 +266,11 @@ void SynthSettingsDialog::paint (juce::Graphics& g)
     g.setFont (juce::Font (juce::FontOptions (14.0f)).boldened());
     g.drawText ("Synth Settings", 10, 0, W - 44, 32, juce::Justification::centredLeft);
 
-    sep (74);   // after synth row
-    sep (122);  // after channels
-    sep (188);  // after MIDI
-    sep (236);  // after clock
-    sep (310);  // after behavior
+    sep (masterTuneSlider.getBottom() + 5);
+    sep (chanSliders[0].getBottom() + 5);
+    sep (localOnTgl.getBottom() + 5);
+    sep (globalSyncTgl.getBottom() + 5);
+    sep (kbSelected.getBottom() + 5);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

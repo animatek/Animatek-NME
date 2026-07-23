@@ -562,28 +562,21 @@ InspectorPanel::InspectorPanel()
 {
     titleLabel.setText("Inspector", juce::dontSendNotification);
     titleLabel.setFont(juce::Font(juce::FontOptions(13.0f).withStyle("Bold")));
-    titleLabel.setColour(juce::Label::textColourId, AppTheme::palette().textPrimary);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(titleLabel);
 
     nameLabel.setText("Name", juce::dontSendNotification);
     nameLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
-    nameLabel.setColour(juce::Label::textColourId, AppTheme::palette().textMuted);
     nameLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(nameLabel);
 
     nameEditor.setFont(juce::Font(juce::FontOptions(13.0f)));
-    nameEditor.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().inputBackground);
-    nameEditor.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-    nameEditor.setColour(juce::TextEditor::outlineColourId, AppTheme::palette().borderColor);
-    nameEditor.setColour(juce::TextEditor::focusedOutlineColourId, AppTheme::palette().borderColor);
     nameEditor.setInputRestrictions(16);
     nameEditor.addListener(this);
     nameEditor.setEnabled(false);
     addAndMakeVisible(nameEditor);
 
     sectionLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
-    sectionLabel.setColour(juce::Label::textColourId, AppTheme::palette().borderColor);
     sectionLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(sectionLabel);
 
@@ -615,9 +608,27 @@ InspectorPanel::InspectorPanel()
     morphViewport.setScrollBarsShown(true, false);
     morphViewport.setScrollBarThickness(6);
     addAndMakeVisible(morphViewport);
+
+    applyTheme();
 }
 
 InspectorPanel::~InspectorPanel() = default;
+
+void InspectorPanel::applyTheme()
+{
+    const auto& theme = AppTheme::palette();
+    titleLabel.setColour(juce::Label::textColourId, theme.textPrimary);
+    nameLabel.setColour(juce::Label::textColourId, theme.textMuted);
+    sectionLabel.setColour(juce::Label::textColourId, theme.textMuted);
+    nameEditor.setColour(juce::TextEditor::backgroundColourId, theme.inputBackground);
+    nameEditor.setColour(juce::TextEditor::textColourId, theme.textPrimary);
+    nameEditor.setColour(juce::TextEditor::outlineColourId, theme.borderColor);
+    nameEditor.setColour(juce::TextEditor::focusedOutlineColourId, theme.buttonActive);
+    morphViewport.sendLookAndFeelChange();
+    if (assignmentsList)
+        assignmentsList->repaint();
+    repaint();
+}
 
 void InspectorPanel::setPatch(Patch* p)
 {
@@ -688,15 +699,73 @@ void InspectorPanel::refreshMorphList()
 {
     assignmentsList->rebuild();
     resized();
+    repaint();
 }
 
 void InspectorPanel::paint(juce::Graphics& g)
 {
-    g.fillAll(AppTheme::palette().backgroundPanel);
+    const auto& theme = AppTheme::palette();
+    g.fillAll(theme.backgroundPanel);
+
+    // Miniature of the Nord Modular front-panel knob layout. The first 18
+    // assignment slots map directly to the six physical columns, top-to-bottom.
+    if (currentPatch != nullptr && getWidth() >= 170)
+    {
+        constexpr float mapW = 108.0f;
+        constexpr float mapH = 38.0f;
+        constexpr float groupGap = 3.0f;
+        constexpr float cellW = 12.0f;
+        constexpr float groupPad = 3.0f;
+        const int groupColumns[] = { 2, 2, 1, 1 };
+        auto map = juce::Rectangle<float>(static_cast<float>(getWidth() - margin) - mapW,
+                                          static_cast<float>(margin), mapW, mapH);
+        float x = map.getX();
+        int knobColumn = 0;
+
+        for (int columns : groupColumns)
+        {
+            const float groupW = groupPad * 2.0f + columns * cellW;
+            auto group = juce::Rectangle<float>(x, map.getY(), groupW, mapH);
+            g.setColour(theme.inputBackground);
+            g.fillRoundedRectangle(group, 3.0f);
+            g.setColour(theme.borderColor.withAlpha(0.75f));
+            g.drawRoundedRectangle(group.reduced(0.5f), 3.0f, 1.0f);
+
+            for (int col = 0; col < columns; ++col, ++knobColumn)
+            {
+                for (int row = 0; row < 3; ++row)
+                {
+                    const int knob = knobColumn * 3 + row;
+                    const bool assigned = currentPatch->knobAssignments[static_cast<size_t>(knob)].assigned;
+                    const float cx = group.getX() + groupPad + cellW * (static_cast<float>(col) + 0.5f);
+                    const float cy = group.getY() + 7.0f + static_cast<float>(row) * 12.0f;
+                    auto led = juce::Rectangle<float>(cx - 2.5f, cy - 2.5f, 5.0f, 5.0f);
+
+                    if (assigned)
+                    {
+                        g.setColour(theme.accentSuccess.withAlpha(0.18f));
+                        g.fillEllipse(led.expanded(2.0f));
+                        g.setColour(theme.accentSuccess);
+                        g.fillEllipse(led);
+                        g.setColour(theme.textPrimary.withAlpha(0.4f));
+                        g.drawEllipse(led.reduced(0.5f), 0.7f);
+                    }
+                    else
+                    {
+                        g.setColour(theme.backgroundMain);
+                        g.fillEllipse(led);
+                        g.setColour(theme.textMuted.withAlpha(0.55f));
+                        g.drawEllipse(led.reduced(0.5f), 0.7f);
+                    }
+                }
+            }
+            x += groupW + groupGap;
+        }
+    }
 
     if (currentModule != nullptr)
     {
-        g.setColour(AppTheme::palette().inputBackground);
+        g.setColour(theme.inputBackground);
         g.fillRect(0, margin + rowH + 2 + 14 + 14 + margin * 2 + rowH + 4, getWidth(), 1);
     }
 }
@@ -716,7 +785,8 @@ void InspectorPanel::resized()
     int w = getWidth() - margin * 2;
     int y = margin;
 
-    titleLabel.setBounds(x, y, w, rowH);   y += rowH + 2;
+    const int knobMapSpace = currentPatch != nullptr && getWidth() >= 170 ? 116 : 0;
+    titleLabel.setBounds(x, y, juce::jmax(0, w - knobMapSpace), rowH);   y += rowH + 2;
     sectionLabel.setBounds(x, y, w, 14);   y += 14 + 4;
 
     if (currentModule != nullptr)

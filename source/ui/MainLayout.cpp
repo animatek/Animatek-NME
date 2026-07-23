@@ -264,6 +264,7 @@ void MainLayout::applyTheme()
 
     patchBrowserPanel.applyTheme();
     diskPresetBrowserPanel.applyTheme();
+    inspectorPanel.applyTheme();
     repaint();
 }
 

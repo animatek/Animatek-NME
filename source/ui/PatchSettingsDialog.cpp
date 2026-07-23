@@ -3,8 +3,6 @@
 
 #define kBg     (AppTheme::palette().backgroundMain)
 #define kSep    (AppTheme::palette().buttonActive)
-#define kGold   (AppTheme::palette().accentActive)
-#define kAmber  (AppTheme::palette().accentWarning)
 #define kText   (AppTheme::palette().textSecondary)
 #define kDim    (AppTheme::palette().textMuted)
 #define kCtrlBg (AppTheme::palette().inputBackground)
@@ -12,12 +10,9 @@
 #define kBtnBg  (AppTheme::palette().buttonBackground)
 #define kBtnOn  (AppTheme::palette().buttonActive)
 
-static const juce::Colour kOkBg   { 0xff1e3a1e };
-static const juce::Colour kOkOn   { 0xff2a5a2a };
-
 static void styleSlider (juce::Slider& s, int tbW = 50)
 {
-    s.setColour (juce::Slider::textBoxTextColourId,       kAmber);
+    s.setColour (juce::Slider::textBoxTextColourId,       AppTheme::palette().textPrimary);
     s.setColour (juce::Slider::textBoxBackgroundColourId, kCtrlBg);
     s.setColour (juce::Slider::textBoxOutlineColourId,    kCtrlBd);
     s.setColour (juce::Slider::textBoxHighlightColourId,  kBtnOn);
@@ -27,7 +22,7 @@ static void styleSlider (juce::Slider& s, int tbW = 50)
 static void styleToggle (juce::ToggleButton& b)
 {
     b.setColour (juce::ToggleButton::textColourId,         kText);
-    b.setColour (juce::ToggleButton::tickColourId,         kAmber);
+    b.setColour (juce::ToggleButton::tickColourId,         AppTheme::palette().textPrimary);
     b.setColour (juce::ToggleButton::tickDisabledColourId, kDim);
 }
 static void styleLabel (juce::Label& l, bool section = false)
@@ -37,11 +32,12 @@ static void styleLabel (juce::Label& l, bool section = false)
     l.setColour (juce::Label::textColourId,       section ? AppTheme::palette().textPrimary : kText);
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
-static void styleBtn (juce::TextButton& b, bool isOk = false)
+static void styleBtn (juce::TextButton& b)
 {
-    b.setColour (juce::TextButton::buttonColourId,   isOk ? kOkBg : kBtnBg);
-    b.setColour (juce::TextButton::buttonOnColourId, isOk ? kOkOn : kBtnOn);
-    b.setColour (juce::TextButton::textColourOffId,  isOk ? juce::Colour (0xffaaffaa) : kText);
+    b.setColour (juce::TextButton::buttonColourId,   kBtnBg);
+    b.setColour (juce::TextButton::buttonOnColourId, kBtnOn);
+    b.setColour (juce::TextButton::textColourOffId,  kText);
+    b.setColour (juce::TextButton::textColourOnId,   AppTheme::palette().textPrimary);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -124,8 +120,8 @@ PatchSettingsDialog::PatchSettingsDialog (const PatchHeader& header, Callback on
     addAndMakeVisible (retrigPoly);  addAndMakeVisible (retrigCommon);
 
     // OK / Cancel
-    styleBtn (okButton, true);
-    styleBtn (cancelButton, false);
+    styleBtn (okButton);
+    styleBtn (cancelButton);
     okButton.onClick = [this]()
     {
         if (okCallback)
@@ -184,9 +180,11 @@ void PatchSettingsDialog::paint (juce::Graphics& g)
     g.setColour (kSep);
     g.fillRect (0, 31, getWidth(), 1);
 
-    // Section separators — positions mirror resized() math
+    // Derive dividers from the laid-out rows so they cannot cross controls.
     const float x0 = 14.0f, x1 = static_cast<float>(getWidth() - 14);
-    for (int sy : { 71, 165, 215, 265, 315 })
+    for (int sy : { voicesSlider.getBottom() + 7, keyMaxSlider.getBottom() + 8,
+                    bendSlider.getBottom() + 7, portaTimeSlider.getBottom() + 7,
+                    octaveButtons[0].getBottom() + 8 })
     {
         g.setColour (kSep);
         g.drawHorizontalLine (sy, x0, x1);

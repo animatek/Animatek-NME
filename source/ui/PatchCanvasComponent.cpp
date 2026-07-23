@@ -7,6 +7,12 @@
 #include <set>
 #include <unordered_map>
 
+static juce::Colour contrastingInk(juce::Colour background)
+{
+    return background.getPerceivedBrightness() > 0.5f
+        ? juce::Colours::black : juce::Colours::white;
+}
+
 // Decoration bitmap cache: iconName ("decoration-N") → loaded juce::Image.
 // PNGs are embedded via juce_add_binary_data in CMakeLists.txt.
 static juce::Image loadDecorationImage(const juce::String& iconName)
@@ -1228,7 +1234,9 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
 
         // Grip indicator: knobGrip is a dark fill detail that disappears on an
         // unfilled wireframe knob, so use the bright module text colour there.
-        g.setColour(activeScheme_.wireframe ? wireframeInk(m) : activeScheme_.knobGrip);
+        g.setColour(activeScheme_.wireframe ? wireframeInk(m)
+                                            : hasMorph ? contrastingInk(baseColor)
+                                                       : activeScheme_.knobGrip);
         g.drawLine(centerX + sinA * innerR, centerY - cosA * innerR,
                    centerX + sinA * outerR, centerY - cosA * outerR, 1.5f);
 

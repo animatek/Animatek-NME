@@ -11,9 +11,6 @@
 #define kCtrlBd (AppTheme::palette().borderColor)
 #define kBtnBg  (AppTheme::palette().buttonBackground)
 #define kBtnOn  (AppTheme::palette().buttonActive)
-static const juce::Colour kOkBg { 0xff1e3a1e };
-static const juce::Colour kOkOn { 0xff2a5a2a };
-
 static void styleLabel(juce::Label& l)
 {
     l.setFont(juce::Font(juce::FontOptions(10.0f, juce::Font::bold)));
@@ -30,11 +27,12 @@ static void styleCombo(juce::ComboBox& c)
     c.setColour(juce::ComboBox::focusedOutlineColourId, kGold);
 }
 
-static void styleBtn(juce::TextButton& b, bool isOk = false)
+static void styleBtn(juce::TextButton& b)
 {
-    b.setColour(juce::TextButton::buttonColourId,   isOk ? kOkBg : kBtnBg);
-    b.setColour(juce::TextButton::buttonOnColourId, isOk ? kOkOn : kBtnOn);
-    b.setColour(juce::TextButton::textColourOffId,  isOk ? juce::Colour(0xffaaffaa) : kText);
+    b.setColour(juce::TextButton::buttonColourId,   kBtnBg);
+    b.setColour(juce::TextButton::buttonOnColourId, kBtnOn);
+    b.setColour(juce::TextButton::textColourOffId,  kText);
+    b.setColour(juce::TextButton::textColourOnId,   AppTheme::palette().textPrimary);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -109,7 +107,7 @@ BankTransferDialog::BankTransferDialog(Mode mode, BankTransferManager& mgr,
     progressBar.setColour(juce::ProgressBar::backgroundColourId, kCtrlBg);
     addAndMakeVisible(progressBar);
 
-    styleBtn(startButton, true);
+    styleBtn(startButton);
     styleBtn(cancelButton);
     startButton.onClick  = [this]() { startTransfer(); };
     cancelButton.onClick = [this]()

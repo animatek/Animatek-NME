@@ -1,7 +1,6 @@
 #include "PresetBrowserWindow.h"
 #include "../model/PchFileIO.h"
 #include "AppTheme.h"
-#include "BinaryData.h"
 
 #define kBg     (AppTheme::palette().backgroundMain)
 #define kPanel  (AppTheme::palette().backgroundPanel)
@@ -20,28 +19,15 @@ static juce::Colour legacyPatchTagColour()
     return juce::Colour(0xffb07cff);
 }
 
-static void styleButton(juce::TextButton& b)
+static juce::Colour iconInkFor(juce::Colour background)
 {
-    b.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
-    b.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().buttonActive);
-    b.setColour(juce::TextButton::textColourOffId, kText);
-}
-
-static void styleFilterButton(juce::TextButton& b)
-{
-    styleButton(b);
-    b.setClickingTogglesState(true);
-    b.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().buttonActive);
+    return background.getPerceivedBrightness() > 0.5f ? juce::Colours::black : juce::Colours::white;
 }
 
 DiskPresetBrowserPanel::RefreshIconButton::RefreshIconButton()
     : juce::Button("Refresh")
 {
     setTooltip("Refresh disk presets");
-    icon = juce::Drawable::createFromImageData(BinaryData::refreshicon_svg,
-                                               BinaryData::refreshicon_svgSize);
-    if (icon)
-        icon->replaceColour(juce::Colours::black, juce::Colour(0xffc9cdd1));
 }
 
 void DiskPresetBrowserPanel::RefreshIconButton::paintButton(juce::Graphics& g, bool highlighted, bool down)
@@ -56,20 +42,79 @@ void DiskPresetBrowserPanel::RefreshIconButton::paintButton(juce::Graphics& g, b
     g.setColour(AppTheme::palette().borderColor);
     g.drawRoundedRectangle(area, 4.0f, 1.0f);
 
-    if (icon)
-    {
-        icon->drawWithin(g, area.reduced(7.0f), juce::RectanglePlacement::centred, down ? 0.75f : 1.0f);
-        return;
-    }
-
-    // Fallback if BinaryData fails to provide the SVG.
     auto iconArea = area.reduced(7.0f);
     juce::Path p;
     p.addCentredArc(iconArea.getCentreX(), iconArea.getCentreY(),
                     iconArea.getWidth() * 0.42f, iconArea.getHeight() * 0.42f,
                     0.0f, juce::degreesToRadians(35.0f), juce::degreesToRadians(325.0f), true);
-    g.setColour(juce::Colour(0xffc9cdd1));
+    g.setColour(AppTheme::palette().textSecondary.withAlpha(down ? 0.75f : 1.0f));
     g.strokePath(p, juce::PathStrokeType(1.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+}
+
+DiskPresetBrowserPanel::FilterIconButton::FilterIconButton(const juce::String& name, Icon iconType)
+    : juce::Button(name), icon(iconType)
+{
+    setClickingTogglesState(true);
+    setTooltip(name);
+}
+
+void DiskPresetBrowserPanel::FilterIconButton::paintButton(juce::Graphics& g, bool highlighted, bool down)
+{
+    const bool selected = getToggleState();
+    auto area = getLocalBounds().toFloat().reduced(2.0f);
+    auto background = selected || down ? AppTheme::palette().buttonActive
+                                      : highlighted ? AppTheme::palette().buttonHover
+                                                    : AppTheme::palette().inputBackground;
+    g.setColour(background);
+    g.fillRoundedRectangle(area, 3.0f);
+    g.setColour(selected ? AppTheme::palette().buttonActive : AppTheme::palette().borderColor);
+    g.drawRoundedRectangle(area, 3.0f, 1.0f);
+
+    g.setColour(selected ? iconInkFor(background) : AppTheme::palette().textSecondary);
+    auto a = area.reduced(7.0f);
+    const float stroke = 1.5f;
+
+    if (icon == Icon::All)
+    {
+        const float cell = juce::jmin(a.getWidth(), a.getHeight()) * 0.34f;
+        const float gap = 2.0f;
+        const float x = a.getCentreX() - cell - gap * 0.5f;
+        const float y = a.getCentreY() - cell - gap * 0.5f;
+        for (int row = 0; row < 2; ++row)
+            for (int col = 0; col < 2; ++col)
+                g.drawRoundedRectangle(x + col * (cell + gap), y + row * (cell + gap), cell, cell, 1.0f, stroke);
+    }
+    else if (icon == Icon::Patch)
+    {
+        auto doc = a.withSizeKeepingCentre(12.0f, 15.0f);
+        g.drawRoundedRectangle(doc, 1.0f, stroke);
+        g.drawLine(doc.getX() + 3.0f, doc.getY() + 6.0f, doc.getRight() - 3.0f, doc.getY() + 6.0f, stroke);
+        g.drawLine(doc.getX() + 3.0f, doc.getY() + 10.0f, doc.getRight() - 3.0f, doc.getY() + 10.0f, stroke);
+    }
+    else if (icon == Icon::Snippet)
+    {
+        const float cx = a.getCentreX(), cy = a.getCentreY();
+        g.drawLine(cx - 7.0f, cy - 6.0f, cx - 7.0f, cy + 6.0f, stroke);
+        g.drawLine(cx - 7.0f, cy - 6.0f, cx - 3.0f, cy - 6.0f, stroke);
+        g.drawLine(cx - 7.0f, cy + 6.0f, cx - 3.0f, cy + 6.0f, stroke);
+        g.drawLine(cx + 7.0f, cy - 6.0f, cx + 7.0f, cy + 6.0f, stroke);
+        g.drawLine(cx + 3.0f, cy - 6.0f, cx + 7.0f, cy - 6.0f, stroke);
+        g.drawLine(cx + 3.0f, cy + 6.0f, cx + 7.0f, cy + 6.0f, stroke);
+        g.fillEllipse(cx - 2.0f, cy - 2.0f, 4.0f, 4.0f);
+    }
+    else if (icon == Icon::Bank)
+    {
+        for (int i = 0; i < 3; ++i)
+            g.drawRoundedRectangle(a.getCentreX() - 7.0f + i * 2.0f,
+                                   a.getCentreY() - 7.0f + i * 2.0f,
+                                   11.0f, 11.0f, 1.0f, stroke);
+    }
+    else
+    {
+        g.setFont(juce::FontOptions(11.0f).withStyle("Bold"));
+        g.drawText("2", a.toNearestInt(), juce::Justification::centred, false);
+        g.drawLine(a.getX() + 2.0f, a.getBottom() - 2.0f, a.getRight() - 2.0f, a.getY() + 2.0f, stroke);
+    }
 }
 
 DiskPresetBrowserPanel::DiskPresetBrowserPanel()
@@ -85,7 +130,6 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
 
     for (auto* b : { &allButton, &patchesButton, &snippetsButton, &banksButton })
     {
-        styleFilterButton(*b);
         b->setRadioGroupId(11);
         addAndMakeVisible(*b);
     }
@@ -95,8 +139,6 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     snippetsButton.onClick = [this]() { typeFilter = TypeFilter::Snippets; rebuildVisibleEntries(); };
     banksButton.onClick = [this]() { typeFilter = TypeFilter::Banks; rebuildVisibleEntries(); };
 
-    styleFilterButton(hidePch2Button);
-    hidePch2Button.setClickingTogglesState(true);
     hidePch2Button.setTooltip("Hide legacy 2.10 (.pch2) patches");
     hidePch2Button.onClick = [this]() {
         hidePch2 = hidePch2Button.getToggleState();
@@ -129,8 +171,8 @@ void DiskPresetBrowserPanel::applyTheme()
     listBox.setColour(juce::ListBox::outlineColourId, kSep);
 
     for (auto* b : { &allButton, &patchesButton, &snippetsButton, &banksButton, &hidePch2Button })
-        styleFilterButton(*b);
-
+        b->repaint();
+    refreshButton.repaint();
     listBox.repaint();
     repaint();
 }
@@ -230,11 +272,9 @@ void DiskPresetBrowserPanel::resized()
     searchBox.setBounds(searchRow.reduced(2));
 
     auto filterRow = area.removeFromTop(26);
-    allButton.setBounds(filterRow.removeFromLeft(48).reduced(2));
-    patchesButton.setBounds(filterRow.removeFromLeft(78).reduced(2));
-    snippetsButton.setBounds(filterRow.removeFromLeft(82).reduced(2));
-    banksButton.setBounds(filterRow.removeFromLeft(64).reduced(2));
-    hidePch2Button.setBounds(filterRow.removeFromLeft(56).reduced(2));
+    const int filterWidth = filterRow.getWidth() / 5;
+    for (auto* button : { &allButton, &patchesButton, &snippetsButton, &banksButton, &hidePch2Button })
+        button->setBounds(filterRow.removeFromLeft(filterWidth).reduced(1));
 
     statusLabel.setBounds(area.removeFromTop(24));
     area.removeFromTop(4);

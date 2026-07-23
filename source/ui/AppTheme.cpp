@@ -106,24 +106,33 @@ void AppTheme::applyLookAndFeel()
     lf.setColour(juce::PopupMenu::textColourId,                  t.textSecondary);
     lf.setColour(juce::PopupMenu::headerTextColourId,            t.accentActive);
     lf.setColour(juce::PopupMenu::highlightedBackgroundColourId, t.buttonActive);
-    lf.setColour(juce::PopupMenu::highlightedTextColourId,       t.accentActive);
+    lf.setColour(juce::PopupMenu::highlightedTextColourId,       t.textPrimary);
 
     lf.setColour(juce::ComboBox::backgroundColourId,             t.inputBackground);
     lf.setColour(juce::ComboBox::outlineColourId,                t.borderColor);
     lf.setColour(juce::ComboBox::textColourId,                   t.textSecondary);
-    lf.setColour(juce::ComboBox::arrowColourId,                  t.accentWarning);
-    lf.setColour(juce::ComboBox::focusedOutlineColourId,         t.accentActive);
+    lf.setColour(juce::ComboBox::arrowColourId,                  t.textSecondary);
+    lf.setColour(juce::ComboBox::focusedOutlineColourId,         t.buttonActive);
 
     lf.setColour(juce::TextButton::buttonColourId,               t.buttonBackground);
     lf.setColour(juce::TextButton::buttonOnColourId,             t.buttonActive);
     lf.setColour(juce::TextButton::textColourOffId,              t.textSecondary);
-    lf.setColour(juce::TextButton::textColourOnId,               t.accentActive);
+    lf.setColour(juce::TextButton::textColourOnId,               t.textPrimary);
+
+    lf.setColour(juce::Label::textColourId,                      t.textSecondary);
+    lf.setColour(juce::TextEditor::backgroundColourId,           t.inputBackground);
+    lf.setColour(juce::TextEditor::textColourId,                 t.textPrimary);
+    lf.setColour(juce::TextEditor::outlineColourId,              t.borderColor);
+    lf.setColour(juce::TextEditor::focusedOutlineColourId,       t.buttonActive);
+    lf.setColour(juce::Slider::textBoxTextColourId,              t.textPrimary);
+    lf.setColour(juce::Slider::textBoxBackgroundColourId,        t.inputBackground);
+    lf.setColour(juce::Slider::textBoxOutlineColourId,           t.borderColor);
 
     lf.setColour(juce::ScrollBar::thumbColourId,                 t.borderColor);
     lf.setColour(juce::ScrollBar::trackColourId,                 t.backgroundMain);
 
     lf.setColour(juce::ToggleButton::textColourId,               t.textSecondary);
-    lf.setColour(juce::ToggleButton::tickColourId,               t.accentWarning);
+    lf.setColour(juce::ToggleButton::tickColourId,               t.textPrimary);
     lf.setColour(juce::ToggleButton::tickDisabledColourId,       t.textMuted);
 
     lf.setColour(juce::AlertWindow::backgroundColourId,          t.backgroundMain);

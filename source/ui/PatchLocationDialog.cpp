@@ -4,19 +4,15 @@
 #define kBg     (AppTheme::palette().backgroundMain)
 #define kSep    (AppTheme::palette().buttonActive)
 #define kGold   (AppTheme::palette().accentActive)
-#define kAmber  (AppTheme::palette().accentWarning)
 #define kText   (AppTheme::palette().textSecondary)
 #define kCtrlBg (AppTheme::palette().inputBackground)
 #define kCtrlBd (AppTheme::palette().borderColor)
 #define kBtnBg  (AppTheme::palette().buttonBackground)
 #define kBtnOn  (AppTheme::palette().buttonActive)
-static const juce::Colour kOkBg   { 0xff1e3a1e };
-static const juce::Colour kOkOn   { 0xff2a5a2a };
-
 static void styleLabel (juce::Label& l)
 {
     l.setFont (juce::Font (juce::FontOptions (10.0f, juce::Font::bold)));
-    l.setColour (juce::Label::textColourId,       kGold);
+    l.setColour (juce::Label::textColourId,       AppTheme::palette().textPrimary);
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
 
@@ -25,15 +21,16 @@ static void styleCombo (juce::ComboBox& c)
     c.setColour (juce::ComboBox::backgroundColourId,      kCtrlBg);
     c.setColour (juce::ComboBox::outlineColourId,         kCtrlBd);
     c.setColour (juce::ComboBox::textColourId,            kText);
-    c.setColour (juce::ComboBox::arrowColourId,           kAmber);
+    c.setColour (juce::ComboBox::arrowColourId,           kText);
     c.setColour (juce::ComboBox::focusedOutlineColourId,  kGold);
 }
 
-static void styleBtn (juce::TextButton& b, bool isOk = false)
+static void styleBtn (juce::TextButton& b)
 {
-    b.setColour (juce::TextButton::buttonColourId,   isOk ? kOkBg : kBtnBg);
-    b.setColour (juce::TextButton::buttonOnColourId, isOk ? kOkOn : kBtnOn);
-    b.setColour (juce::TextButton::textColourOffId,  isOk ? juce::Colour (0xffaaffaa) : kText);
+    b.setColour (juce::TextButton::buttonColourId,   kBtnBg);
+    b.setColour (juce::TextButton::buttonOnColourId, kBtnOn);
+    b.setColour (juce::TextButton::textColourOffId,  kText);
+    b.setColour (juce::TextButton::textColourOnId,   AppTheme::palette().textPrimary);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,7 +82,7 @@ PatchLocationDialog::PatchLocationDialog(const juce::String& title,
     updatePositionItems();
 
     // Buttons
-    styleBtn (okButton, true);
+    styleBtn (okButton);
     styleBtn (cancelButton);
     okButton    .onClick = [this]() { confirm(); };
     cancelButton.onClick = [this]() { cancel();  };
@@ -149,7 +146,7 @@ void PatchLocationDialog::paint (juce::Graphics& g)
 {
     g.fillAll (kBg);
 
-    g.setColour (kGold);
+    g.setColour (AppTheme::palette().textPrimary);
     g.setFont (juce::Font (juce::FontOptions (14.0f)).boldened());
     g.drawText (title_, 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
 

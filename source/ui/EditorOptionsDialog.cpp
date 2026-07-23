@@ -3,13 +3,10 @@
 
 // ─── Color palette ───────────────────────────────────────────────────────────
 static const AppThemePalette& p() { return AppTheme::palette(); }
-static const juce::Colour kOkBg { 0xff1e3a1e };
-static const juce::Colour kOkOn { 0xff2a5a2a };
-
 static void styleToggle (juce::ToggleButton& b)
 {
     b.setColour (juce::ToggleButton::textColourId,         p().textSecondary);
-    b.setColour (juce::ToggleButton::tickColourId,         p().accentWarning);
+    b.setColour (juce::ToggleButton::tickColourId,         p().textPrimary);
     b.setColour (juce::ToggleButton::tickDisabledColourId, p().textMuted);
 }
 static void styleLabel (juce::Label& l, bool section = false)
@@ -19,11 +16,12 @@ static void styleLabel (juce::Label& l, bool section = false)
     l.setColour (juce::Label::textColourId,       section ? p().textPrimary : p().textSecondary);
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
-static void styleBtn (juce::TextButton& b, bool isOk = false)
+static void styleBtn (juce::TextButton& b)
 {
-    b.setColour (juce::TextButton::buttonColourId,   isOk ? kOkBg : p().buttonBackground);
-    b.setColour (juce::TextButton::buttonOnColourId, isOk ? kOkOn : p().buttonActive);
-    b.setColour (juce::TextButton::textColourOffId,  isOk ? juce::Colour (0xffaaffaa) : p().textSecondary);
+    b.setColour (juce::TextButton::buttonColourId,   p().buttonBackground);
+    b.setColour (juce::TextButton::buttonOnColourId, p().buttonActive);
+    b.setColour (juce::TextButton::textColourOffId,  p().textSecondary);
+    b.setColour (juce::TextButton::textColourOnId,   p().textPrimary);
 }
 static void styleTextEditor (juce::TextEditor& e)
 {
@@ -31,7 +29,7 @@ static void styleTextEditor (juce::TextEditor& e)
     e.setColour (juce::TextEditor::backgroundColourId, p().inputBackground);
     e.setColour (juce::TextEditor::textColourId,       p().textSecondary);
     e.setColour (juce::TextEditor::outlineColourId,    p().borderColor);
-    e.setColour (juce::TextEditor::focusedOutlineColourId, p().accentWarning);
+    e.setColour (juce::TextEditor::focusedOutlineColourId, p().buttonActive);
 }
 
 // ─── EditorOptions persistence ───────────────────────────────────────────────
@@ -185,7 +183,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     sendRateSelector.setColour (juce::ComboBox::backgroundColourId, p().inputBackground);
     sendRateSelector.setColour (juce::ComboBox::outlineColourId,    p().borderColor);
     sendRateSelector.setColour (juce::ComboBox::textColourId,       p().textSecondary);
-    sendRateSelector.setColour (juce::ComboBox::arrowColourId,      p().accentWarning);
+    sendRateSelector.setColour (juce::ComboBox::arrowColourId,      p().textSecondary);
     sendRateSelector.setTooltip ("How fast parameter changes are streamed to the synth. "
                                  "Higher is more responsive for the Mutator but may overrun "
                                  "the G1 on big patches — lower it if the connection drops.");
@@ -239,7 +237,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     addAndMakeVisible (browseLibraryButton);
 
     // Buttons
-    styleBtn (okButton, true);
+    styleBtn (okButton);
     styleBtn (cancelButton);
     okButton    .onClick = [this]() { apply(); };
     cancelButton.onClick = [this]() { close(); };
@@ -258,7 +256,7 @@ void EditorOptionsDialog::populateThemeSelector()
     themeSelector.setColour(juce::ComboBox::backgroundColourId, p().inputBackground);
     themeSelector.setColour(juce::ComboBox::outlineColourId, p().borderColor);
     themeSelector.setColour(juce::ComboBox::textColourId, p().textSecondary);
-    themeSelector.setColour(juce::ComboBox::arrowColourId, p().accentWarning);
+    themeSelector.setColour(juce::ComboBox::arrowColourId, p().textSecondary);
 }
 
 // ─── paint ───────────────────────────────────────────────────────────────────
@@ -309,7 +307,7 @@ int EditorOptionsDialog::layoutComponents (bool apply)
     auto sectionSep = [this, &sepGap] (int yIn) {
         int y = yIn + sepGap;
         sectionSeparatorsY.push_back (y);
-        return y;
+        return y + 4;
     };
 
     if (apply) closeButton.setBounds (w - 32, 2, 28, 28);

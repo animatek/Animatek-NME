@@ -23,6 +23,12 @@ namespace
         juce::Colour(0xffEEEEEE)   // None (White)
     };
 
+    juce::Colour contrastingInk(juce::Colour background)
+    {
+        return background.getPerceivedBrightness() > 0.5f
+            ? juce::Colours::black : juce::Colours::white;
+    }
+
     // Layout constants for section widths
     constexpr int padL = 8;
     constexpr int sepGap = 14;
@@ -302,9 +308,9 @@ void PatchHeaderBar::drawMorphKnob(juce::Graphics& g, float cx, float cy, float 
     g.setColour(colour);
     g.fillEllipse(cx, cy, size, size);
 
-    // Outline/pointer: dark on light themes, light-grey on dark themes, so the
-    // dial stays defined on any chrome (pure black vanishes on dark themes).
-    const auto ink = AppTheme::palette().textSecondary;
+    // Contrast against the dial itself; the four morph fills span both light
+    // and dark colours independently of the selected UI theme.
+    const auto ink = contrastingInk(colour);
     g.setColour(ink);
     g.drawEllipse(cx + 1.0f, cy + 1.0f, size - 2.0f, size - 2.0f, 1.5f);
 
@@ -494,11 +500,11 @@ void PatchHeaderBar::paint(juce::Graphics& g)
     // --- Shake Cables Button ("S") ---
     {
         auto sb = getShakeButtonBounds();
-        g.setColour(juce::Colour(0xff555555));
+        g.setColour(AppTheme::palette().buttonBackground);
         g.fillRoundedRectangle(sb, 3.0f);
-        g.setColour(juce::Colour(0xff888888));
+        g.setColour(AppTheme::palette().borderColor);
         g.drawRoundedRectangle(sb.reduced(0.5f), 3.0f, 1.0f);
-        g.setColour(juce::Colours::white);
+        g.setColour(AppTheme::palette().textSecondary);
         g.setFont(juce::FontOptions(10.0f).withStyle("Bold"));
         g.drawText("S", sb.toNearestInt(), juce::Justification::centred, false);
     }
@@ -506,11 +512,11 @@ void PatchHeaderBar::paint(juce::Graphics& g)
     // --- Bug Report Button ---
     {
         auto bb = getBugButtonBounds();
-        g.setColour(juce::Colour(0xff663333));
+        g.setColour(AppTheme::palette().buttonBackground);
         g.fillRoundedRectangle(bb, 3.0f);
-        g.setColour(juce::Colour(0xffaa6666));
+        g.setColour(AppTheme::palette().borderColor);
         g.drawRoundedRectangle(bb.reduced(0.5f), 3.0f, 1.0f);
-        g.setColour(juce::Colour(0xffddaaaa));
+        g.setColour(AppTheme::palette().textSecondary);
         g.setFont(juce::FontOptions(10.0f).withStyle("Bold"));
         g.drawText("Report a bug", bb.toNearestInt(), juce::Justification::centred, false);
     }
@@ -525,21 +531,19 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             bool active = (i == activeSnapshot);
 
             // Background
-            if (active)
-                g.setColour(juce::Colour(0xffD4A020));  // gold for active
-            else if (filled)
-                g.setColour(AppTheme::palette().borderColor);  // grey for filled
-            else
-                g.setColour(juce::Colour(0xff3a3a3a));  // dark gray for empty
-
+            const auto fill = active ? AppTheme::palette().buttonActive
+                                     : filled ? AppTheme::palette().borderColor
+                                              : AppTheme::palette().buttonBackground;
+            g.setColour(fill);
             g.fillRoundedRectangle(sb, 2.0f);
 
             // Border
-            g.setColour(active ? juce::Colour(0xffE8C840) : juce::Colour(0xff666666));
+            g.setColour(active ? AppTheme::palette().textMuted : AppTheme::palette().borderColor);
             g.drawRoundedRectangle(sb.reduced(0.5f), 2.0f, 1.0f);
 
             // Number label
-            g.setColour(active || filled ? juce::Colours::white : juce::Colour(0xff888888));
+            g.setColour(active ? contrastingInk(fill)
+                               : filled ? AppTheme::palette().textPrimary : AppTheme::palette().textMuted);
             g.drawText(juce::String(i + 1), sb.toNearestInt(), juce::Justification::centred, false);
         }
 
@@ -551,7 +555,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             g.setFont(juce::FontOptions(9.0f));
             if (snapshotInterpSeconds > 0.0f)
             {
-                g.setColour(juce::Colour(0xffD4A020));
+                g.setColour(AppTheme::palette().textSecondary);
                 juce::String timeLabel = (snapshotInterpSeconds < 10.0f)
                     ? juce::String(snapshotInterpSeconds, 0) + "s"
                     : juce::String(juce::roundToInt(snapshotInterpSeconds)) + "s";
@@ -563,13 +567,13 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         // Patch Mutator quick-access button
         {
             auto mb = getMutatorButtonBounds();
-            g.setColour(mutatorOpen ? juce::Colour(0xffD4A020)
+            g.setColour(mutatorOpen ? AppTheme::palette().buttonActive
                                     : AppTheme::palette().buttonBackground);
             g.fillRoundedRectangle(mb, 2.0f);
-            g.setColour(mutatorOpen ? juce::Colour(0xffE8C840)
+            g.setColour(mutatorOpen ? AppTheme::palette().textMuted
                                     : AppTheme::palette().borderColor);
             g.drawRoundedRectangle(mb.reduced(0.5f), 2.0f, 1.0f);
-            g.setColour(mutatorOpen ? juce::Colours::black
+            g.setColour(mutatorOpen ? contrastingInk(AppTheme::palette().buttonActive)
                                     : AppTheme::palette().textSecondary);
             g.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
             g.drawText("MUT", mb.toNearestInt(), juce::Justification::centred, false);
@@ -583,9 +587,9 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             float barY = first.getBottom() + 1.0f;
             float barW = last.getRight() - first.getX();
             float barH = 2.0f;
-            g.setColour(juce::Colour(0xff333333));
+            g.setColour(AppTheme::palette().inputBackground);
             g.fillRect(first.getX(), barY, barW, barH);
-            g.setColour(juce::Colour(0xffD4A020));
+            g.setColour(AppTheme::palette().textSecondary);
             g.fillRect(first.getX(), barY, barW * interpolationProgress, barH);
         }
     }

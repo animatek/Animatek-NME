@@ -3,8 +3,6 @@
 
 #define kBg     (AppTheme::palette().backgroundMain)
 #define kSep    (AppTheme::palette().buttonActive)
-#define kGold   (AppTheme::palette().accentActive)
-#define kAmber  (AppTheme::palette().accentWarning)
 #define kText   (AppTheme::palette().textSecondary)
 #define kDim    (AppTheme::palette().textMuted)
 #define kCtrlBg (AppTheme::palette().inputBackground)
@@ -27,8 +25,8 @@ static void styleCombo (juce::ComboBox& c)
     c.setColour (juce::ComboBox::backgroundColourId, kCtrlBg);
     c.setColour (juce::ComboBox::outlineColourId,    kCtrlBd);
     c.setColour (juce::ComboBox::textColourId,       kText);
-    c.setColour (juce::ComboBox::arrowColourId,      kAmber);
-    c.setColour (juce::ComboBox::focusedOutlineColourId, kGold);
+    c.setColour (juce::ComboBox::arrowColourId,      kText);
+    c.setColour (juce::ComboBox::focusedOutlineColourId, kBtnOn);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,7 +56,8 @@ MidiSettingsDialog::MidiSettingsDialog()
     connectButton.setButtonText ("Connect");
     connectButton.setColour (juce::TextButton::buttonColourId,  kBtnBg);
     connectButton.setColour (juce::TextButton::buttonOnColourId,kBtnOn);
-    connectButton.setColour (juce::TextButton::textColourOffId, AppTheme::palette().accentSuccess);
+    connectButton.setColour (juce::TextButton::textColourOffId, kText);
+    connectButton.setColour (juce::TextButton::textColourOnId,  AppTheme::palette().textPrimary);
     connectButton.onClick = [this]()
     {
         if (connected)
@@ -125,14 +124,16 @@ void MidiSettingsDialog::updateButtonState()
         connectButton.setButtonText ("Disconnect");
         connectButton.setColour (juce::TextButton::buttonColourId,  kBtnBg);
         connectButton.setColour (juce::TextButton::buttonOnColourId,kBtnOn);
-        connectButton.setColour (juce::TextButton::textColourOffId, kAmber);
+        connectButton.setColour (juce::TextButton::textColourOffId, kText);
+        connectButton.setColour (juce::TextButton::textColourOnId,  AppTheme::palette().textPrimary);
     }
     else
     {
         connectButton.setButtonText ("Connect");
         connectButton.setColour (juce::TextButton::buttonColourId,  kBtnBg);
         connectButton.setColour (juce::TextButton::buttonOnColourId,kBtnOn);
-        connectButton.setColour (juce::TextButton::textColourOffId, AppTheme::palette().accentSuccess);
+        connectButton.setColour (juce::TextButton::textColourOffId, kText);
+        connectButton.setColour (juce::TextButton::textColourOnId,  AppTheme::palette().textPrimary);
     }
 }
 

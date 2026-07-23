@@ -926,7 +926,7 @@ void MainComponent::resized() {
 }
 
 bool MainComponent::keyPressed(const juce::KeyPress& key) {
-  if (key == juce::KeyPress('e', juce::ModifierKeys::commandModifier, 0))
+  if (key == juce::KeyPress(',', juce::ModifierKeys::commandModifier, 0))
   {
     showEditorOptionsDialog();
     return true;
@@ -975,7 +975,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addSeparator();
     menu.addItem(8, "Patch Settings...\tCtrl+P", currentPatch() != nullptr);
     menu.addItem(9, "Synth Settings...\tCtrl+G");
-    menu.addItem(11, "Editor Options...\tCtrl+E");
+    menu.addItem(11, "Editor Options...\tCtrl+,");
     menu.addSeparator();
     menu.addItem(10, "Quit\tCtrl+Q");
   } else if (menuIndex == 1) // Edit
@@ -2886,7 +2886,7 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Ctrl+B              Preset browser\n"
       "  Ctrl+P              Patch settings\n"
       "  Ctrl+G              Synth settings\n"
-      "  Ctrl+E              Editor options\n"
+      "  Ctrl+,              Editor options\n"
       "  Ctrl+Q              Quit\n"
       "\n"
       "EDIT\n"
