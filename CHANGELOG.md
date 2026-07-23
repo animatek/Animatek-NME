@@ -16,8 +16,13 @@
 - **Chrome text is now theme-aware**: labels across the header, status bar, slot list,
   inspector (knob/CC/morph rows) and the module browser used hard-coded light greys that
   were unreadable on a light theme; they now follow the palette, so text stays legible in
-  both light and dark themes. The empty-canvas "Press Enter to add modules" hint and the
-  header morph knobs (previously near-black) were fixed the same way.
+  both light and dark themes. The empty-canvas "Press Enter to add modules" hint was fixed
+  the same way. Settings-dialog titles/section headers (MIDI, Synth, Editor Options, Patch)
+  drop the yellow accent for plain adaptive text — the bold weight already carries them — and
+  the MIDI dialog's Connect/Disconnect button and status text now use themed colours instead
+  of a hard-coded dark red/green. The header's morph (macro) knobs are filled with their
+  group colour and outlined in a theme-aware ink so they read on any background, and the
+  inspector gained a right-edge divider so adjacent modules don't blend into it.
 
 - **Add-module search pops up at the mouse, not on another monitor**: on a multi-monitor
   setup the Quick-Add popup (Enter / double-click on the canvas) was clamped to the primary

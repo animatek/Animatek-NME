@@ -14,6 +14,7 @@ public:
     ~InspectorPanel() override;
 
     void paint(juce::Graphics& g) override;
+    void paintOverChildren(juce::Graphics& g) override;
     void resized() override;
 
     // Set the current patch (for patch-wide morph view when no module selected)

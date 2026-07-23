@@ -297,14 +297,16 @@ void PatchHeaderBar::drawMorphKnob(juce::Graphics& g, float cx, float cy, float 
                                     float normalized, const juce::String& label,
                                     juce::Colour colour)
 {
-    // Knob body: theme-aware grey (medium on light themes, dark on dark ones) so
-    // it isn't a near-black blob on the light Nord Classic chrome.
-    g.setColour(AppTheme::palette().backgroundElevated);
+    // Body always filled with the morph colour so the macro reads at a glance,
+    // regardless of the theme background; a black outline + pointer define the dial.
+    g.setColour(colour);
     g.fillEllipse(cx, cy, size, size);
 
-    // Colored ring
-    g.setColour(colour);
-    g.drawEllipse(cx + 1.0f, cy + 1.0f, size - 2.0f, size - 2.0f, 2.0f);
+    // Outline/pointer: dark on light themes, light-grey on dark themes, so the
+    // dial stays defined on any chrome (pure black vanishes on dark themes).
+    const auto ink = AppTheme::palette().textSecondary;
+    g.setColour(ink);
+    g.drawEllipse(cx + 1.0f, cy + 1.0f, size - 2.0f, size - 2.0f, 1.5f);
 
     // Grip line
     float angle = (-135.0f + normalized * 270.0f) * (juce::MathConstants<float>::pi / 180.0f);
@@ -313,7 +315,7 @@ void PatchHeaderBar::drawMorphKnob(juce::Graphics& g, float cx, float cy, float 
     float sinA = std::sin(angle);
     float cosA = std::cos(angle);
 
-    g.setColour(colour.brighter(0.4f));
+    g.setColour(ink);
     g.drawLine(centerX + sinA * size * 0.15f, centerY - cosA * size * 0.15f,
                centerX + sinA * size * 0.4f, centerY - cosA * size * 0.4f, 2.0f);
 

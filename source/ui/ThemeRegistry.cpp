@@ -249,6 +249,12 @@ AppThemePalette makeNordClassicApp()
     a.backgroundMain       = chromeGrey;
     a.backgroundPanel      = chromeGrey;
     a.backgroundSecondary  = chromeGrey;
+    // Accents that stay legible on the light chrome. The canvas keeps the bright
+    // cable colours; as UI accents (status text, mutator highlights, ticks) the
+    // bright yellow/green wash out on light grey, so use deeper shades here.
+    a.accentActive  = juce::Colour(0xff9a7a00);  // dark amber (was bright yellow)
+    a.accentSuccess = juce::Colour(0xff2e7d32);  // deeper green ("Connected …")
+    a.accentWarning = juce::Colour(0xffb5651d);  // deeper amber-orange
     return a;
 }
 

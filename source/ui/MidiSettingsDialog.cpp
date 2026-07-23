@@ -12,16 +12,13 @@
 #define kBtnBg  (AppTheme::palette().buttonBackground)
 #define kBtnOn  (AppTheme::palette().buttonActive)
 
-static const juce::Colour kOkBg   { 0xff1e3a1e };
-static const juce::Colour kOkOn   { 0xff2a5a2a };
-static const juce::Colour kWarnBg { 0xff3a1e1e };
-static const juce::Colour kWarnOn { 0xff5a2a2a };
-
 static void styleLabel (juce::Label& l, bool section = false)
 {
     l.setFont (section ? juce::Font (juce::FontOptions (10.0f, juce::Font::bold))
                        : juce::Font (juce::FontOptions (12.0f)));
-    l.setColour (juce::Label::textColourId,       section ? kGold : kText);
+    // Section headers: plain adaptive text (dark on light themes, light on dark) —
+    // the bold weight carries them, no need for a wash-out accent colour.
+    l.setColour (juce::Label::textColourId,       section ? AppTheme::palette().textPrimary : kText);
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
 
@@ -59,9 +56,9 @@ MidiSettingsDialog::MidiSettingsDialog()
     addAndMakeVisible (statusLabel);
 
     connectButton.setButtonText ("Connect");
-    connectButton.setColour (juce::TextButton::buttonColourId,  kOkBg);
-    connectButton.setColour (juce::TextButton::buttonOnColourId,kOkOn);
-    connectButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xffaaffaa));
+    connectButton.setColour (juce::TextButton::buttonColourId,  kBtnBg);
+    connectButton.setColour (juce::TextButton::buttonOnColourId,kBtnOn);
+    connectButton.setColour (juce::TextButton::textColourOffId, AppTheme::palette().accentSuccess);
     connectButton.onClick = [this]()
     {
         if (connected)
@@ -114,8 +111,8 @@ void MidiSettingsDialog::setConnectedState(const ConnectionManager::Status& stat
     statusLabel.setText (status.message, juce::dontSendNotification);
 
     juce::Colour col = kDim;
-    if      (status.state == ConnectionManager::State::Connected)  col = juce::Colour (0xff55dd55);
-    else if (status.state == ConnectionManager::State::Connecting) col = juce::Colour (0xffdddd44);
+    if      (status.state == ConnectionManager::State::Connected)  col = AppTheme::palette().accentSuccess;
+    else if (status.state == ConnectionManager::State::Connecting) col = AppTheme::palette().accentWarning;
     statusLabel.setColour (juce::Label::textColourId, col);
 
     updateButtonState();
@@ -126,16 +123,16 @@ void MidiSettingsDialog::updateButtonState()
     if (connected)
     {
         connectButton.setButtonText ("Disconnect");
-        connectButton.setColour (juce::TextButton::buttonColourId,  kWarnBg);
-        connectButton.setColour (juce::TextButton::buttonOnColourId,kWarnOn);
-        connectButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xffffaaaa));
+        connectButton.setColour (juce::TextButton::buttonColourId,  kBtnBg);
+        connectButton.setColour (juce::TextButton::buttonOnColourId,kBtnOn);
+        connectButton.setColour (juce::TextButton::textColourOffId, kAmber);
     }
     else
     {
         connectButton.setButtonText ("Connect");
-        connectButton.setColour (juce::TextButton::buttonColourId,  kOkBg);
-        connectButton.setColour (juce::TextButton::buttonOnColourId,kOkOn);
-        connectButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xffaaffaa));
+        connectButton.setColour (juce::TextButton::buttonColourId,  kBtnBg);
+        connectButton.setColour (juce::TextButton::buttonOnColourId,kBtnOn);
+        connectButton.setColour (juce::TextButton::textColourOffId, AppTheme::palette().accentSuccess);
     }
 }
 
@@ -158,7 +155,7 @@ void MidiSettingsDialog::paint (juce::Graphics& g)
 {
     g.fillAll (kBg);
 
-    g.setColour (kGold);
+    g.setColour (AppTheme::palette().textPrimary);
     g.setFont (juce::Font (juce::FontOptions (14.0f)).boldened());
     g.drawText ("MIDI Settings", 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
 

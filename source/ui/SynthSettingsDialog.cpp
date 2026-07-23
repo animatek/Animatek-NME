@@ -39,7 +39,7 @@ static void styleLabel (juce::Label& l, bool section = false)
 {
     l.setFont (section ? juce::Font (juce::FontOptions (11.0f, juce::Font::bold))
                        : juce::Font (juce::FontOptions (12.0f)));
-    l.setColour (juce::Label::textColourId,       section ? kGold : kText);
+    l.setColour (juce::Label::textColourId,       section ? AppTheme::palette().textPrimary : kText);
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
 
@@ -265,7 +265,7 @@ void SynthSettingsDialog::paint (juce::Graphics& g)
     };
 
     // Title
-    g.setColour (kGold);
+    g.setColour (AppTheme::palette().textPrimary);
     g.setFont (juce::Font (juce::FontOptions (14.0f)).boldened());
     g.drawText ("Synth Settings", 10, 0, W - 44, 32, juce::Justification::centredLeft);
 

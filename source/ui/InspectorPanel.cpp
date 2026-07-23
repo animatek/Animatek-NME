@@ -701,6 +701,15 @@ void InspectorPanel::paint(juce::Graphics& g)
     }
 }
 
+void InspectorPanel::paintOverChildren(juce::Graphics& g)
+{
+    // Right-edge divider so modules sitting next to the inspector stay visually
+    // separate from it. Drawn over children so the scrolling content (which spans
+    // the full width) can't leave it broken into segments.
+    g.setColour(AppTheme::palette().borderColor);
+    g.fillRect(getWidth() - 1, 0, 1, getHeight());
+}
+
 void InspectorPanel::resized()
 {
     int x = margin;

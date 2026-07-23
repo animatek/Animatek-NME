@@ -34,7 +34,7 @@ static void styleLabel (juce::Label& l, bool section = false)
 {
     l.setFont (section ? juce::Font (juce::FontOptions (11.0f, juce::Font::bold))
                        : juce::Font (juce::FontOptions (12.0f)));
-    l.setColour (juce::Label::textColourId,       section ? kGold : kText);
+    l.setColour (juce::Label::textColourId,       section ? AppTheme::palette().textPrimary : kText);
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
 static void styleBtn (juce::TextButton& b, bool isOk = false)
@@ -176,7 +176,7 @@ void PatchSettingsDialog::paint (juce::Graphics& g)
     g.fillAll (kBg);
 
     // Title
-    g.setColour (kGold);
+    g.setColour (AppTheme::palette().textPrimary);
     g.setFont (juce::Font (juce::FontOptions (14.0f)).boldened());
     g.drawText ("Patch Settings", 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
 
