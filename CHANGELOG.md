@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+- **New "Nord Classic" theme**: a light, warm-grey theme echoing the look of the original
+  Clavia Nord Modular editor — flat grey module bodies (light `#bfbfbf`) over a darker
+  lavender-grey canvas, black labels, grey knobs, indigo LCD-style value readouts and the
+  classic signal-cable colours, all sampled from the original editor. (The previous "Classic"
+  theme, which used Nomad's own colours, is now named **"Nomad"**; the little-used "Frost"
+  theme has been removed.)
+
+- **Subtle canvas grain texture on every theme**: a very light, seamless procedural grain
+  is now drawn over the patch canvas, giving it a soft paper feel instead of a flat fill —
+  most noticeable on Nord Classic but applied to all themes.
+
+- **Chrome text is now theme-aware**: labels across the header, status bar, slot list,
+  inspector (knob/CC/morph rows) and the module browser used hard-coded light greys that
+  were unreadable on a light theme; they now follow the palette, so text stays legible in
+  both light and dark themes. The empty-canvas "Press Enter to add modules" hint and the
+  header morph knobs (previously near-black) were fixed the same way.
+
+- **Add-module search pops up at the mouse, not on another monitor**: on a multi-monitor
+  setup the Quick-Add popup (Enter / double-click on the canvas) was clamped to the primary
+  display, so it jumped to the wrong screen; it now opens on whichever monitor the mouse is on.
+
+- **The menu bar follows the active theme**: File/Edit/… kept the colours of whichever theme
+  was loaded first; it now repaints with the current theme when you switch.
+
+- **Disk browser: hide legacy 2.10 patches**: a new **PCH2** toggle in the Disk browser's
+  filter row hides legacy `.pch2` (2.10) patches, so your list can show only current patches.
+
 - **DSP load shown with one decimal**: the Load meters (PVA / Σ) now read to one decimal
   place — e.g. `47.6%` — matching the original Nord Modular editor. The figure is a
   client-side estimate (the synth doesn't report its own load), so the previous whole-number

@@ -466,9 +466,39 @@ juce::Point<int> PatchCanvas::getConnectorPosition(const Module& m, const Connec
     }
 }
 
+// A seamless, faint grain overlay tiled over the canvas for themes that want
+// texture (Nord Classic). It's an overlay so it works on top of any base colour
+// without re-tinting. A very light, fine grain — values dialled in by ear.
+static const juce::Image& canvasGrainTexture()
+{
+    static const juce::Image tex = []
+    {
+        const int N = 256;
+        juce::Image img(juce::Image::ARGB, N, N, true);
+        juce::Image::BitmapData bmp(img, juce::Image::BitmapData::writeOnly);
+        juce::Random rng(0x9E3779B9);
+        for (int y = 0; y < N; ++y)
+            for (int x = 0; x < N; ++x)
+            {
+                float v = rng.nextFloat() * 2.0f - 1.0f;    // fine grain, no blur
+                auto  a = (juce::uint8) juce::jlimit(0, 255, (int) (std::abs(v) * 8.0f));
+                auto  c = (v < 0.0f ? juce::Colours::black : juce::Colours::white).withAlpha(a);
+                bmp.setPixelColour(x, y, c);
+            }
+        return img;
+    }();
+    return tex;
+}
+
 void PatchCanvas::paint(juce::Graphics& g)
 {
     g.fillAll(activeScheme_.gridBackground);
+
+    if (activeScheme_.canvasTexture)
+    {
+        g.setTiledImageFill(canvasGrainTexture(), 0, 0, 1.0f);
+        g.fillRect(g.getClipBounds());
+    }
 
     // Apply zoom transform — all subsequent drawing is in canvas (logical) coordinates
     g.addTransform(juce::AffineTransform::scale(zoomLevel));
@@ -488,7 +518,7 @@ void PatchCanvas::paint(juce::Graphics& g)
 
     if (patch == nullptr)
     {
-        g.setColour(juce::Colours::white.withAlpha(0.08f));
+        g.setColour(activeScheme_.moduleText.withAlpha(0.28f));
         g.setFont(juce::FontOptions(28.0f));
         g.drawText("Press Enter to add modules", clip, juce::Justification::centred, false);
         return;
@@ -500,7 +530,7 @@ void PatchCanvas::paint(juce::Graphics& g)
 
     if (container.getModules().empty())
     {
-        g.setColour(juce::Colours::white.withAlpha(0.08f));
+        g.setColour(activeScheme_.moduleText.withAlpha(0.28f));
         g.setFont(juce::FontOptions(28.0f));
         g.drawText("Press Enter to add modules", clip, juce::Justification::centred, false);
     }
@@ -1167,9 +1197,10 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
             }
         }
 
-        // Outline — in wireframe, the (now unfilled) ring uses the full baseColor
-        // so morph-group hue and the knob shape both read clearly.
-        g.setColour(activeScheme_.wireframe ? baseColor
+        // Outline — in wireframe a morph knob keeps its group hue, but a plain
+        // knob uses the dark module ink (knobBase would vanish on a light-grey
+        // canvas like Nord Classic); non-wireframe keeps the normal knob border.
+        g.setColour(activeScheme_.wireframe ? (hasMorph ? baseColor : wireframeInk(m))
                                             : (hasMorph ? baseColor.darker(0.4f) : activeScheme_.knobBorder));
         g.drawEllipse(rcx, rcy, rSz, rSz, 1.0f);
 

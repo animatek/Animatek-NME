@@ -6,7 +6,7 @@ StatusBar::StatusBar()
     auto setupLabel = [this](juce::Label& label, const juce::String& text)
     {
         label.setText(text, juce::dontSendNotification);
-        label.setColour(juce::Label::textColourId, juce::Colour(0xffaaaaaa));
+        label.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
         label.setFont(juce::Font(juce::FontOptions(12.0f)));
         addAndMakeVisible(label);
     };
@@ -34,7 +34,7 @@ void StatusBar::setConnectionStatus(const juce::String& status, bool connected)
     if (connected)
         connectionLabel.setColour(juce::Label::textColourId, AppTheme::palette().accentSuccess); // Green
     else
-        connectionLabel.setColour(juce::Label::textColourId, juce::Colour(0xffaaaaaa)); // Gray
+        connectionLabel.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
 
     repaint();
 }

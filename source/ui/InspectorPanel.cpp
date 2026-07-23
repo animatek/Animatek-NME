@@ -385,9 +385,9 @@ private:
         g.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
         int labelW = g.getCurrentFont().getStringWidth(r.label) + 8;
         juce::Rectangle<int> badge(badgeX, y + 3, labelW, rowH - 6);
-        g.setColour(accent.withAlpha(0.25f));
+        g.setColour(accent.withAlpha(0.32f));
         g.fillRoundedRectangle(badge.toFloat(), 3.0f);
-        g.setColour(accent.brighter(0.3f));
+        g.setColour(AppTheme::palette().textPrimary);
         g.drawText(r.label, badge, juce::Justification::centred);
 
         // Param name
@@ -404,13 +404,13 @@ private:
             g.setColour(AppTheme::palette().textMuted);
             g.setFont(juce::FontOptions(9.0f));
             g.drawText(moduleName, x, y, w, rowH / 2, juce::Justification::bottomLeft, true);
-            g.setColour(juce::Colours::white.withAlpha(0.85f));
+            g.setColour(AppTheme::palette().textPrimary);
             g.setFont(juce::FontOptions(10.0f));
             g.drawText(paramName, x, y + rowH / 2, w, rowH / 2, juce::Justification::topLeft, true);
         }
         else
         {
-            g.setColour(juce::Colours::white.withAlpha(0.85f));
+            g.setColour(AppTheme::palette().textPrimary);
             g.setFont(juce::FontOptions(11.0f));
             g.drawText(paramName, x, y, w, rowH, juce::Justification::centredLeft, true);
         }

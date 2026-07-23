@@ -16,9 +16,9 @@ QuickAddPopup::QuickAddPopup(const ModuleDescriptions& descs_, juce::Point<int> 
         favorites.addTokens(sharedSettings->getValue("favoriteModules"), "|", "");
 
     searchField.setFont(juce::Font(juce::FontOptions(14.0f)));
-    searchField.setTextToShowWhenEmpty("Type module name...", juce::Colour(0xff666666));
+    searchField.setTextToShowWhenEmpty("Type module name...", AppTheme::palette().textMuted);
     searchField.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().backgroundPanel);
-    searchField.setColour(juce::TextEditor::textColourId, juce::Colours::white);
+    searchField.setColour(juce::TextEditor::textColourId, AppTheme::palette().textPrimary);
     searchField.setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
     searchField.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::transparentBlack);
     searchField.addListener(this);
@@ -31,8 +31,12 @@ QuickAddPopup::QuickAddPopup(const ModuleDescriptions& descs_, juce::Point<int> 
     addToDesktop(juce::ComponentPeer::windowIsTemporary
                  | juce::ComponentPeer::windowHasDropShadow);
 
-    // Clamp to screen so it doesn't go off-edge
-    auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();
+    // Clamp to the screen the mouse is actually on (not the primary display, or
+    // the popup jumps to another monitor on a multi-head setup).
+    const auto& displays = juce::Desktop::getInstance().getDisplays();
+    auto* display = displays.getDisplayForPoint(screenPos);
+    if (display == nullptr)
+        display = displays.getPrimaryDisplay();
     auto screen = display ? display->userArea : juce::Rectangle<int>(0, 0, 1920, 1080);
     int px = juce::jlimit(screen.getX(), screen.getRight()  - popupWidth, screenPos.x);
     int py = juce::jlimit(screen.getY(), screen.getBottom() - 300,        screenPos.y);

@@ -149,15 +149,6 @@ const PaletteSpec kGhosty = {
     juce::Colour(0xff92deff), juce::Colour(0xfffec0ed), juce::Colour(0xffd4c0fe),
 };
 
-// Frost: light/frost scheme (only light Bitwig theme here besides our own Light).
-const PaletteSpec kFrost = {
-    juce::Colour(0xffe7e8ea), juce::Colour(0xffcfd1d4), juce::Colour(0xffc5c7c9),
-    juce::Colour(0xffb4b6b8), juce::Colour(0xff919294),
-    juce::Colour(0xff141414), juce::Colour(0xff48494a), juce::Colour(0xff757678),
-    juce::Colour(0xffff1c40), juce::Colour(0xff4abc00), juce::Colour(0xffffde42),
-    juce::Colour(0xff5ca8ee), juce::Colour(0xffff7f17), juce::Colour(0xffc36eff),
-};
-
 const PaletteSpec kMagneticRevival = {
     juce::Colour(0xff131313), juce::Colour(0xff222222), juce::Colour(0xff343434),
     juce::Colour(0xff454545), juce::Colour(0xff646464),
@@ -192,12 +183,81 @@ const PaletteSpec kCubitwig = {
     juce::Colour(0xff5ca8ee), juce::Colour(0xffff7f17), juce::Colour(0xffc36eff),
 };
 
+// "Nord Classic": the light warm-grey look of the original Clavia Nord Modular
+// editor. It is a LIGHT theme (like kFrost above) — flat, no 3D bevels — with
+// black text on grey module bodies, dark knobs, and the classic signal cable
+// colours (from docs/RESEARCH.md). makeCanvas gives the grey base; makeNordClassic
+// then overrides the LCD-blue value displays and the master-slave cable grey that
+// the generic mapping doesn't capture.
+const PaletteSpec kNordClassic = {
+    // bg0 = canvas: cool/lavender mid-grey sampled from the original editor's
+    // textured background (avg ~#80808b), deliberately darker than the modules.
+    juce::Colour(0xff80808b), juce::Colour(0xffaeaeae), juce::Colour(0xffbfbfbf),
+    juce::Colour(0xff8a8a8a), juce::Colour(0xff5a5a5a),
+    // Text: dark across the board — on a LIGHT theme even "muted" must stay
+    // readable, so fg1/fg2 are dark greys, not the mid-greys a dark theme uses.
+    juce::Colour(0xff151515), juce::Colour(0xff2a2a2a), juce::Colour(0xff4c4c4c),
+    juce::Colour(0xffcb4f4f), juce::Colour(0xff3f9b3f), juce::Colour(0xffe5de45),
+    juce::Colour(0xff5a5fb3), juce::Colour(0xffcf7a3a), juce::Colour(0xff9a5fb3),
+};
+
+ColorScheme makeNordClassic()
+{
+    ColorScheme s = makeCanvas(kNordClassic);
+
+    // Keep grid lines subtle against the darker canvas (bg1 would read too light).
+    s.gridLines = juce::Colour(0xff7a7a84);
+
+    // Knobs: medium-dark grey dial like the original — NOT tied to the (now very
+    // dark) text colour, which turned the knobs near-black. Light grip for contrast.
+    s.knobBase   = juce::Colour(0xff8f8f8f);
+    s.knobBorder = juce::Colour(0xff4a4a4a);
+    s.knobGrip   = juce::Colour(0xff202020);
+    s.knobTickMark = juce::Colour(0xff4a4a4a);
+
+    // Blue LCD-style value readouts (e.g. "327.0Hz"): deep indigo #392f7d
+    // sampled from the original editor.
+    s.displayBg     = juce::Colour(0xff392f7d);
+    s.displayBorder = juce::Colour(0xff211a52);
+    s.displayText   = juce::Colour(0xffe8ecff);
+
+    // Envelope/LFO/filter curve boxes read on a pale ground, not the dark base.
+    s.displayBgCustom     = juce::Colour(0xffbcbcbc);
+    s.displayBorderCustom = juce::Colour(0xff5a5a5a);
+    s.displayGrid         = juce::Colour(0xff909090);
+
+    // Waveform icon boxes: dark glyph on light ground.
+    s.iconBg = juce::Colour(0xffc4c4c4);
+    s.iconFg = juce::Colour(0xff222222);
+
+    // Master-slave cable is a neutral grey in the original (RESEARCH.md).
+    s.cableMasterSlave = juce::Colour(0xffa8a8a8);
+
+    // Faint stucco grain over the canvas, like the original editor's desktop.
+    s.canvasTexture = true;
+
+    return s;
+}
+
+// App chrome for Nord Classic: the light Win-grey (#bfbfbf) sampled from the
+// original editor's toolbar/panels — same as the module bodies, so the chrome
+// reads as a distinct light band against the darker lavender canvas between them.
+AppThemePalette makeNordClassicApp()
+{
+    AppThemePalette a = makeApp(kNordClassic);
+    const auto chromeGrey = juce::Colour(0xffbfbfbf);
+    a.backgroundMain       = chromeGrey;
+    a.backgroundPanel      = chromeGrey;
+    a.backgroundSecondary  = chromeGrey;
+    return a;
+}
+
 // Theme menu items use IDs 200+ in MainComponent's View menu (see getMenuForIndex
 // / menuItemSelected), so the registry can grow freely.
 const std::vector<EditorTheme>& themes()
 {
     static const std::vector<EditorTheme> list = {
-        { "Classic",          AppTheme::palette(AppThemeId::SoftDarkGrey), createClassicTheme },
+        { "Nomad",            AppTheme::palette(AppThemeId::SoftDarkGrey), createClassicTheme },
         { "Dark",             AppTheme::palette(AppThemeId::SoftDarkGrey), createDarkTheme },
         { "Deep Dark",        AppTheme::palette(AppThemeId::DeepDarkGrey), createDarkTheme },
         { "Tokyo Night",      makeApp(kTokyoNight),      []{ return makeCanvas(kTokyoNight); } },
@@ -205,11 +265,11 @@ const std::vector<EditorTheme>& themes()
         { "Dracula",          makeApp(kDracula),         []{ return makeCanvas(kDracula); } },
         { "Nord",             makeApp(kNord),            []{ return makeCanvas(kNord); } },
         { "Ghosty",           makeApp(kGhosty),          []{ return makeCanvas(kGhosty); } },
-        { "Frost",            makeApp(kFrost),           []{ return makeCanvas(kFrost); } },
         { "Magnetic Revival", makeApp(kMagneticRevival), []{ return makeCanvas(kMagneticRevival); } },
         { "MothWig",          makeApp(kMothWig),         []{ return makeCanvas(kMothWig); } },
         { "Macchiato",        makeApp(kMacchiato),       []{ return makeCanvas(kMacchiato); } },
         { "Cubitwig",         makeApp(kCubitwig),        []{ return makeCanvas(kCubitwig); } },
+        { "Nord Classic",     makeNordClassicApp(),      makeNordClassic },
     };
     return list;
 }

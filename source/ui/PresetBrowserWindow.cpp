@@ -95,6 +95,15 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     snippetsButton.onClick = [this]() { typeFilter = TypeFilter::Snippets; rebuildVisibleEntries(); };
     banksButton.onClick = [this]() { typeFilter = TypeFilter::Banks; rebuildVisibleEntries(); };
 
+    styleFilterButton(hidePch2Button);
+    hidePch2Button.setClickingTogglesState(true);
+    hidePch2Button.setTooltip("Hide legacy 2.10 (.pch2) patches");
+    hidePch2Button.onClick = [this]() {
+        hidePch2 = hidePch2Button.getToggleState();
+        rebuildVisibleEntries();
+    };
+    addAndMakeVisible(hidePch2Button);
+
     refreshButton.onClick = [this]() { refresh(); };
     addAndMakeVisible(refreshButton);
 
@@ -119,7 +128,7 @@ void DiskPresetBrowserPanel::applyTheme()
     listBox.setColour(juce::ListBox::backgroundColourId, kPanel);
     listBox.setColour(juce::ListBox::outlineColourId, kSep);
 
-    for (auto* b : { &allButton, &patchesButton, &snippetsButton, &banksButton })
+    for (auto* b : { &allButton, &patchesButton, &snippetsButton, &banksButton, &hidePch2Button })
         styleFilterButton(*b);
 
     listBox.repaint();
@@ -189,8 +198,11 @@ void DiskPresetBrowserPanel::rebuildVisibleEntries()
 
     for (int i = 0; i < static_cast<int>(allEntries.size()); ++i)
     {
-        const auto& e = allEntries[static_cast<size_t>(i)];
+        auto& e = allEntries[static_cast<size_t>(i)];
         if (!entryPassesTypeFilter(e))
+            continue;
+
+        if (hidePch2 && isLegacyPatch210(e))
             continue;
 
         auto haystack = (e.displayName + " " + e.relativePath).toLowerCase();
@@ -222,6 +234,7 @@ void DiskPresetBrowserPanel::resized()
     patchesButton.setBounds(filterRow.removeFromLeft(78).reduced(2));
     snippetsButton.setBounds(filterRow.removeFromLeft(82).reduced(2));
     banksButton.setBounds(filterRow.removeFromLeft(64).reduced(2));
+    hidePch2Button.setBounds(filterRow.removeFromLeft(56).reduced(2));
 
     statusLabel.setBounds(area.removeFromTop(24));
     area.removeFromTop(4);

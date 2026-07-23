@@ -36,6 +36,7 @@ public:
     ~MainComponent() override;
 
     void resized() override;
+    void paint(juce::Graphics& g) override;
     bool keyPressed(const juce::KeyPress& key) override;
 
     // MenuBarModel

@@ -908,6 +908,13 @@ MainComponent::~MainComponent() {
   mainLayout.reset();
 }
 
+void MainComponent::paint(juce::Graphics& g) {
+  // Themed backdrop, notably behind the menu-bar strip: the menu bar draws its
+  // background semi-transparently, so without this the bar washes out to a fixed
+  // grey that never follows the theme.
+  g.fillAll(AppTheme::palette().backgroundMain);
+}
+
 void MainComponent::resized() {
   auto area = getLocalBounds();
 
@@ -1867,6 +1874,13 @@ void MainComponent::applyUiTheme(int index, bool persist) {
   for (auto& sw : slotWindows)
     if (sw) { sw->getContent().setTheme(canvasScheme); sw->repaint(); }
   mainLayout->repaint();
+
+  // The menu bar lives outside mainLayout, so it isn't repainted above and would
+  // otherwise keep the first theme's colours. Repaint our themed backdrop behind
+  // it and re-query the bar's LookAndFeel so both the strip and its text update.
+  repaint();
+  if (menuBar)
+    menuBar->sendLookAndFeelChange();
 
   // Refresh the menu bar so the Theme submenu's checkmark follows the change
   // (the native macOS menu keeps the stale tick otherwise). Covers every path:

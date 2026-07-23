@@ -60,12 +60,14 @@ private:
     juce::TextButton patchesButton { "Patches" };
     juce::TextButton snippetsButton { "Snippets" };
     juce::TextButton banksButton { "Banks" };
+    juce::TextButton hidePch2Button { "PCH2" };  // toggle: hide legacy 2.10 patches
     RefreshIconButton refreshButton;
     juce::Label statusLabel;
     juce::ListBox listBox { "Disk Presets", this };
 
     juce::File libraryRoot;
     TypeFilter typeFilter = TypeFilter::All;
+    bool hidePch2 = false;   // when true, legacy 2.10 (.pch2) patches are hidden
     std::vector<Entry> allEntries;
     std::vector<int> visibleEntryIndices;
 

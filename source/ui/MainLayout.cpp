@@ -140,7 +140,7 @@ void SlotBar::paint(juce::Graphics& g)
         if (slotNames[i].isNotEmpty())
             label += slotNames[i];
 
-        g.setColour(active ? juce::Colours::white : juce::Colour(0xff999999));
+        g.setColour(active ? juce::Colours::white : AppTheme::palette().textSecondary);
         g.setFont(juce::FontOptions(12.0f));
         g.drawText(label, textArea, juce::Justification::centredLeft, true);
 

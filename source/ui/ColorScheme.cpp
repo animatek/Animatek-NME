@@ -190,10 +190,14 @@ const ColorScheme kDarkTheme    = makeDarkTheme();
 
 ColorScheme createClassicTheme()
 {
-    return makeClassicTheme();
+    auto s = makeClassicTheme();
+    s.canvasTexture = true;   // subtle canvas grain on every theme
+    return s;
 }
 
 ColorScheme createDarkTheme()
 {
-    return makeDarkTheme();
+    auto s = makeDarkTheme();
+    s.canvasTexture = true;   // subtle canvas grain on every theme (base for makeCanvas)
+    return s;
 }

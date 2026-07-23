@@ -297,8 +297,9 @@ void PatchHeaderBar::drawMorphKnob(juce::Graphics& g, float cx, float cy, float 
                                     float normalized, const juce::String& label,
                                     juce::Colour colour)
 {
-    // Dark knob body
-    g.setColour(juce::Colour(0xff2a2a2a));
+    // Knob body: theme-aware grey (medium on light themes, dark on dark ones) so
+    // it isn't a near-black blob on the light Nord Classic chrome.
+    g.setColour(AppTheme::palette().backgroundElevated);
     g.fillEllipse(cx, cy, size, size);
 
     // Colored ring
@@ -328,7 +329,7 @@ void PatchHeaderBar::drawLoadBar(juce::Graphics& g, int x, int y, int w, int h,
 {
     // Inner label (PVA: / E:)
     int lblW = 26;
-    g.setColour(juce::Colour(0xffaaaaaa));
+    g.setColour(AppTheme::palette().textSecondary);
     g.setFont(juce::FontOptions(9.0f));
     g.drawText(label, x, y, lblW, h, juce::Justification::centredLeft);
 
@@ -392,7 +393,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
 
     // --- Patch Name ---
     int x = patchSecX_;
-    g.setColour(juce::Colour(0xffaaaaaa));
+    g.setColour(AppTheme::palette().textSecondary);
     g.setFont(juce::FontOptions(11.0f));
     g.drawText("Patch:", x, 0, patchLblW, h, juce::Justification::centredLeft);
     x += patchLblW;
@@ -414,7 +415,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
 
     // --- Voices ---
     x = voicesSecX_;
-    g.setColour(juce::Colour(0xffaaaaaa));
+    g.setColour(AppTheme::palette().textSecondary);
     g.setFont(juce::FontOptions(11.0f));
     g.drawText("Voices:", x, 0, voicesLblW, h, juce::Justification::centredLeft);
     x += voicesLblW;
@@ -429,7 +430,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         float arrowMidX = static_cast<float>(x) + arrowBtnW * 0.5f;
         int midY = h / 2;
 
-        g.setColour(juce::Colour(0xffaaaaaa));
+        g.setColour(AppTheme::palette().textSecondary);
         juce::Path up;
         up.addTriangle(arrowMidX, static_cast<float>(midY - 7),
                        arrowMidX - 4.0f, static_cast<float>(midY - 1),
@@ -445,7 +446,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
 
     // --- Load ---
     x = loadSecX_;
-    g.setColour(juce::Colour(0xffaaaaaa));
+    g.setColour(AppTheme::palette().textSecondary);
     g.setFont(juce::FontOptions(11.0f));
     g.drawText("Load:", x, 0, loadLblW, h, juce::Justification::centredLeft);
 

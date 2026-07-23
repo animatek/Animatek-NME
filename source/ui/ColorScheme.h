@@ -107,6 +107,10 @@ struct ColorScheme
     juce::Colour slotIconActive;
     juce::Colour slotIconInactive;
 
+    // Subtle grain texture over the canvas background (Nord Classic emulates the
+    // original editor's stucco-like desktop). Drawn as a faint tiled overlay.
+    bool canvasTexture = false;
+
     // Wireframe mode: when true, structural fills (module body, group boxes, knob
     // bodies, displays, icon boxes) are drawn as outlines only — set independently
     // of the theme palette (Editor Options toggle), not by the theme factories.
