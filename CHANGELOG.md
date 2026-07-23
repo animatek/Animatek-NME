@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+- **Patch Mutator no longer wrecks pitch and cutoff**: mutating or randomizing a patch
+  slammed oscillator frequency, slave detune, filter cutoff and some LFO rates down to
+  almost nothing — a filter at 88 could land on 1, silencing the patch, from a setting whose
+  range should have moved it by about 23. Those parameters share an internal index with the
+  hidden "display units" setting, whose range is 0–2, and the mutator was reading its limits
+  by mistake. Present since the Mutator shipped in 0.7.0; Mutate and Randomize are affected,
+  Interpolate and Cross are not.
+
+- **MCP bridge: usable from a client that isn't sitting on the source tree**: the browsing
+  tools returned far more than a client could hold — a library listing came to 185 KB, and a
+  large patch 109 KB — and the connector names needed for cabling were only obtainable by
+  dumping every connector of all 110 module types. There is now
+  `describe_module_type` for a single type, `list_module_types` is compact by default with a
+  category filter, and `list_modules` omits the `morph:` duplicates, reports each module's
+  connectors, and accepts a `container_index` filter so a caller can read the patch
+  structure first and ask for detail only where it matters. A new `mutate_patch` exposes the
+  editor's own Mutator as one undoable, throttled step instead of a burst of individual
+  parameter writes.
+
 ## 0.10.0 — 2026-07-23
 
 - **Editing one slot is no longer blocked by another slot's transfer**: a patch upload
