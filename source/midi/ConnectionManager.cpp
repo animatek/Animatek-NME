@@ -713,7 +713,7 @@ void ConnectionManager::sendParameter(int slot, int section, int moduleId, int p
 
     // Edits made while a full upload is in flight belong to the authoritative
     // editor patch, but must wait until the section stream has completed.
-    if (waitingForUploadAck)
+    if (waitingForUploadAck && slot == uploadSlot)
     {
         queueParameter(slot, section, moduleId, parameterId, value);
         return;
@@ -722,7 +722,7 @@ void ConnectionManager::sendParameter(int slot, int section, int moduleId, int p
     // A fetched patch is about to replace the editor model. Do not interleave a
     // parameter message with that request/response stream or apply an edit to an
     // uncertain patch context.
-    if (waitingForPatchAck || collectingSections)
+    if ((waitingForPatchAck || collectingSections) && slot == pendingPatchSlot)
         return;
 
     ParameterChangeMessage msg;
@@ -751,7 +751,10 @@ void ConnectionManager::queueParameter(int slot, int section, int moduleId, int 
 {
     if (!isConnected()) return;
 
-    if (waitingForPatchAck || collectingSections)
+    // Only the fetched slot's own edits are meaningless (its model is about to be
+    // replaced). Another slot's edits must still be queued, matching the slot-scoped
+    // guards in sendParameter and the busySlot hold in drainParamQueue.
+    if ((waitingForPatchAck || collectingSections) && slot == pendingPatchSlot)
         return;
 
     // The first item binds this batch to the current patch context. Invalidation
@@ -974,6 +977,42 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
         + " type=0x" + juce::String::toHexString(msg.type)
         + " pid2=" + juce::String(msg.pid2));
 
+    if (waitingForUploadAck)
+    {
+        // Upload ACKs belong to uploadSlot, which may differ from the focused
+        // slot. Classify them before generic focused-slot PID resynchronization.
+        slotPatchIds[static_cast<size_t>(uploadSlot & 0x03)] = msg.pid1;
+        if (uploadSlot == currentSlot)
+            currentPatchId = msg.pid1;
+        ++uploadAckGeneration;  // invalidate timeout for the section just ACKed
+        uploadSectionIndex++;
+        std::cout << "[UPLOAD] ACK for section " << (uploadSectionIndex - 1)
+                  << ", patchId=" << msg.pid1 << std::endl;
+        auto aliveFlag = alive;
+        juce::Timer::callAfterDelay(uploadInterSectionDelayMs, [this, aliveFlag]() {
+            if (!*aliveFlag) return;
+            if (waitingForUploadAck)
+                sendNextUploadSection();  // sends next or completes if all done
+        });
+        return;
+    }
+
+    if (waitingForPatchAck)
+    {
+        waitingForPatchAck = false;
+        collectingSections = true;
+        // The pid belongs to the fetched slot, which may differ from the
+        // focused slot. Classify it before generic PID resynchronization.
+        slotPatchIds[static_cast<size_t>(pendingPatchSlot & 0x03)] = msg.pid1;
+        if (pendingPatchSlot == currentSlot)
+            currentPatchId = msg.pid1;
+        DBG("Patch ACK for slot " + juce::String(pendingPatchSlot)
+            + ", patchId=" + juce::String(msg.pid1) + " — sending GetPatch for all 13 sections");
+        sendGetPatchMessages(msg.pid1, pendingPatchSlot);
+        startPatchTimeout();
+        return;
+    }
+
     // Plain ACKs carry the synth's pid for the focused patch. Resync before
     // unblocking queued structural edits, otherwise the next queued message may
     // be sent with the stale pid that caused the previous patch generation.
@@ -993,43 +1032,6 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
         std::cout << "[QUEUE] ACK received, unblocking queue ("
                   << ackedQueue.size() << " pending)" << std::endl;
         drainAckedQueue();
-    }
-
-    if (waitingForUploadAck)
-    {
-        // Synth ACK for current upload section — advance to next.
-        // The pid belongs to the upload's target slot, which is not
-        // necessarily the focused one.
-        slotPatchIds[static_cast<size_t>(uploadSlot & 0x03)] = msg.pid1;
-        if (uploadSlot == currentSlot)
-            currentPatchId = msg.pid1;
-        ++uploadAckGeneration;  // invalidate timeout for the section just ACKed
-        uploadSectionIndex++;
-        std::cout << "[UPLOAD] ACK for section " << (uploadSectionIndex - 1)
-                  << ", patchId=" << currentPatchId << std::endl;
-        auto aliveFlag = alive;
-        juce::Timer::callAfterDelay(uploadInterSectionDelayMs, [this, aliveFlag]() {
-            if (!*aliveFlag) return;
-            if (waitingForUploadAck)
-                sendNextUploadSection();  // sends next or completes if all done
-        });
-        return;
-    }
-
-    if (waitingForPatchAck)
-    {
-        waitingForPatchAck = false;
-        collectingSections = true;
-        // The pid belongs to the fetched slot — a background-slot fetch must
-        // not overwrite the focused slot's pid used for parameter changes.
-        slotPatchIds[static_cast<size_t>(pendingPatchSlot & 0x03)] = msg.pid1;
-        if (pendingPatchSlot == currentSlot)
-            currentPatchId = msg.pid1;
-        DBG("Patch ACK for slot " + juce::String(pendingPatchSlot)
-            + ", patchId=" + juce::String(msg.pid1) + " — sending GetPatch for all 13 sections");
-        sendGetPatchMessages(msg.pid1, pendingPatchSlot);
-        startPatchTimeout();
-        return;
     }
 
 }
