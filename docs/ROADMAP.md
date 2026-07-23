@@ -98,9 +98,14 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](../CHANGELOG
 Tracked as GitHub issues; the detail lives there.
 
 - [x] **Resource usage reads a flat 100%** ([#18](https://github.com/animatek/Animatek-NME/issues/18))
-  and **theme submenu checkmark sticks on the initial theme**
-  ([#19](https://github.com/animatek/Animatek-NME/issues/19)) — both were already fixed after
-  0.9.0 and shipped in 0.10.0; they were reported against an older build. Close on release.
+  — already fixed after 0.9.0 and shipped in 0.10.0 (one-decimal Load meters); reported
+  against an older build. Closed.
+
+- [ ] **Theme submenu checkmark sticks on the initial theme**
+  ([#19](https://github.com/animatek/Animatek-NME/issues/19)) — a fix shipped in 0.10.0, but
+  it is left open until verified in a real session. Note the original report came from macOS,
+  where the native menu bar handles ticks differently from the in-window menu on Linux, so
+  confirming it on Linux alone does not close it.
 
 ## Parked / Future
 
