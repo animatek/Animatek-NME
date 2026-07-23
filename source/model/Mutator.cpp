@@ -23,8 +23,15 @@ const ParameterDescriptor* findDescriptor(const Patch& patch, const ParamSnapsho
     const auto& container = patch.getContainer(e.section);
     const auto* mod = container.getModuleByIndex(e.moduleId);
     if (!mod) return nullptr;
+    // Index alone does not identify a parameter: the "custom" display-units
+    // entries (e.g. "freq display units", min 0 max 2) share index 0 with the
+    // module's first real parameter and come first in the list. Matching without
+    // the class filter picked those up and clamped oscillator pitch and filter
+    // cutoff into 0..2 — the snapshot only ever holds "parameter" entries, and
+    // Module::getParameter filters the same way.
     for (const auto& p : mod->getParameters())
-        if (p.getDescriptor() && p.getDescriptor()->index == e.paramId)
+        if (p.getDescriptor() && p.getDescriptor()->index == e.paramId
+            && p.getDescriptor()->paramClass == "parameter")
             return p.getDescriptor();
     return nullptr;
 }
