@@ -21,6 +21,8 @@ public:
 
 private:
     juce::var listModuleTypes(const juce::var& params);
+    juce::var describeModuleType(const juce::var& params);
+    juce::var mutatePatch(const juce::var& params);
     juce::var listModules(const juce::var& params);
     juce::var listPatches(const juce::var& params);
     juce::var addModule(const juce::var& params);

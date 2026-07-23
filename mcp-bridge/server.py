@@ -57,26 +57,130 @@ def _call(method: str, params: Optional[dict[str, Any]] = None) -> Any:
 
 
 @mcp.tool()
-def list_module_types() -> Any:
-    """List every Nord Modular module type available to add, with its
-    typeId, name, category, and connectors (name, direction, signal type)."""
-    return _call("list_module_types")
+def list_module_types(
+    category: Optional[str] = None,
+    include_connectors: bool = False,
+) -> Any:
+    """Browse the Nord Modular module types available to add.
+
+    Returns typeId, name and category for each - enough to pick one, then call
+    describe_module_type for its connectors and parameters.
+
+    category: optional filter, e.g. "Oscillator", "Filter", "LFO", "Envelope",
+    "Mixer", "Logic", "Audio", "Control", "In/Out", "Seqencer" (sic).
+    include_connectors: return every connector of every listed type. Large -
+    prefer describe_module_type, or narrow with category first.
+    """
+    params: dict[str, Any] = {}
+    if category is not None:
+        params["category"] = category
+    if include_connectors:
+        params["includeConnectors"] = True
+    return _call("list_module_types", params)
 
 
 @mcp.tool()
-def list_modules(slot: Optional[int] = None, section: Optional[int] = None) -> Any:
+def describe_module_type(
+    type_id: Optional[int] = None,
+    type_name: Optional[str] = None,
+    include_morph: bool = False,
+) -> Any:
+    """Describe one module type: its connectors and its parameters.
+
+    This is how to find the exact connector names connect_cable expects (they
+    are terse and not guessable - "slv", "mst", "freq mod", "out left"), and
+    what set_parameter will accept, without adding the module first.
+
+    Provide exactly one of type_id or type_name (case-insensitive).
+    include_morph: also list the "morph:" parameter twins, omitted by default.
+    """
+    params: dict[str, Any] = {}
+    if type_id is not None:
+        params["typeId"] = type_id
+    if type_name is not None:
+        params["typeName"] = type_name
+    if include_morph:
+        params["includeMorph"] = True
+    return _call("describe_module_type", params)
+
+
+@mcp.tool()
+def list_modules(
+    slot: Optional[int] = None,
+    section: Optional[int] = None,
+    container_index: Optional[int | list[int]] = None,
+    include_parameters: bool = True,
+    include_morph: bool = False,
+    include_connectors: bool = True,
+    verbose_parameters: bool = False,
+) -> Any:
     """List the modules and cables currently in a patch slot.
 
     slot: 0-3 (A-D); defaults to whichever slot's tab is currently active
     in the editor.
     section: 0=common, 1=poly; omit to list both.
+    container_index: one index or a list of them - return only those modules,
+    plus the cables touching them.
+
+    By default each module reports its connectors (so its cables can be wired
+    without a separate lookup) and its non-morph parameters with current values.
+
+    A large patch is still a large response. The pattern that scales is to call
+    once with include_parameters=False for the structure, then again with
+    container_index for the handful of modules you actually care about.
+    include_morph adds the "morph:" twins and verbose_parameters adds each
+    parameter's min/max; both roughly double the size.
     """
     params: dict[str, Any] = {}
     if slot is not None:
         params["slot"] = slot
     if section is not None:
         params["section"] = section
+    if container_index is not None:
+        params["containerIndex"] = container_index
+    params["includeParameters"] = include_parameters
+    params["includeMorph"] = include_morph
+    params["includeConnectors"] = include_connectors
+    params["verboseParameters"] = verbose_parameters
     return _call("list_modules", params)
+
+
+@mcp.tool()
+def mutate_patch(
+    operation: str = "mutate",
+    probability: float = 0.5,
+    range: float = 0.25,
+    slot: Optional[int] = None,
+) -> Any:
+    """Mutate or randomize a patch's parameters using the editor's own engine.
+
+    Prefer this over a series of set_parameter calls: it is one undoable step,
+    it is delivered through the connection's throttled queue instead of a burst
+    of sends, and it applies the editor's musical rules rather than raw random
+    values.
+
+    operation: "mutate" (random offsets from the current sound) or "randomize"
+    (completely new values).
+    probability: chance per parameter of being touched, 0..1. Mutate only.
+    range: maximum offset as a fraction of each parameter's span, 0..1. Mutate
+    only - small values (0.1-0.2) explore around the current sound, large ones
+    depart from it.
+    slot: 0-3 (A-D); defaults to the currently active slot.
+
+    Parameters that are locked, in a module excluded from mutation, or in an
+    Output module are never touched. Interpolate and cross are not exposed:
+    they need a second parent snapshot this API has no way to name yet.
+
+    Returns how many parameters actually changed.
+    """
+    params: dict[str, Any] = {
+        "operation": operation,
+        "probability": probability,
+        "range": range,
+    }
+    if slot is not None:
+        params["slot"] = slot
+    return _call("mutate_patch", params)
 
 
 @mcp.tool()

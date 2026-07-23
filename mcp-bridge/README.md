@@ -33,9 +33,16 @@ tools to work; they return a clear error if it isn't.
 
 ## Tools
 
-- `list_module_types` — the full catalog of module types (typeId, name,
-  category, height, connectors).
-- `list_modules(slot?, section?)` — modules and cables currently in a patch.
+- `list_module_types(category?, include_connectors?)` — catalog of module types.
+  Compact by default (typeId, name, category); filter by category or ask for
+  connectors when the full dump is genuinely wanted.
+- `describe_module_type(type_id?, type_name?, include_morph?)` — one type's
+  connectors and parameters. The way to find the exact connector names
+  `connect_cable` expects, which are terse and not guessable.
+- `list_modules(slot?, section?, include_parameters?, include_morph?,
+  include_connectors?, verbose_parameters?)` — modules and cables currently in
+  a patch. Defaults omit the `morph:` parameter twins and per-parameter
+  min/max, which together dominate the payload on a large patch.
 - `list_patches(query?)` — loaded slots and disk-library patch names/paths.
 - `create_patch(slot?, name?, activate?)` — start an empty patch in a slot.
 - `open_patch(slot?, name?, path?, activate?)` — load a library `.pch` by
@@ -47,6 +54,10 @@ tools to work; they return a clear error if it isn't.
   in_container_index, in_connector, out_is_output?, in_is_output?, slot?)`
 - `delete_cable(section, out_container_index, out_connector,
   in_container_index, in_connector, out_is_output?, in_is_output?, slot?)`
+- `mutate_patch(operation?, probability?, range?, slot?)` — mutate or randomize
+  a patch through the editor's own Mutator engine. One undo step, delivered via
+  the throttled parameter queue; respects locks, module exclusions and Output
+  modules. Prefer it to a run of `set_parameter` calls.
 - `set_parameter(section, container_index, parameter_name?, parameter_id?,
   value?, delta?, slot?)`
 

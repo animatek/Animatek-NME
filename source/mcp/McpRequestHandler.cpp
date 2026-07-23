@@ -3,6 +3,7 @@
 #include "../model/Patch.h"
 #include "../model/ModuleDescriptions.h"
 #include "../model/SignalType.h"
+#include "../model/Mutator.h"
 #include "../undo/PatchActions.h"
 #include <algorithm>
 #include <optional>
@@ -176,26 +177,44 @@ juce::var connectorToVar(const ConnectorDescriptor& c)
     return juce::var(obj);
 }
 
-juce::var parameterToVar(const Parameter& p)
+// verbose=false trims the fields a caller rarely needs when it is just reading
+// the patch back: componentId is an internal theme handle, and min/max only
+// matter when picking a value, which set_parameter clamps and reports anyway.
+juce::var parameterToVar(const Parameter& p, bool verbose = true)
 {
     auto* obj = new juce::DynamicObject();
     obj->setProperty("name", p.getDescriptor()->name);
     obj->setProperty("parameterId", p.getDescriptor()->index);
     obj->setProperty("parameterClass", p.getDescriptor()->paramClass);
-    obj->setProperty("componentId", p.getDescriptor()->componentId);
     obj->setProperty("value", p.getValue());
-    obj->setProperty("min", p.getDescriptor()->minValue);
-    obj->setProperty("max", p.getDescriptor()->maxValue);
+    if (verbose)
+    {
+        obj->setProperty("componentId", p.getDescriptor()->componentId);
+        obj->setProperty("min", p.getDescriptor()->minValue);
+        obj->setProperty("max", p.getDescriptor()->maxValue);
+    }
     return juce::var(obj);
 }
 
-juce::var moduleTypeToVar(const ModuleDescriptor& d)
+bool isMorphParameter(const Parameter& p)
+{
+    return p.getDescriptor()->paramClass == "morph";
+}
+
+// The compact form is what a browsing client needs: enough to choose a type and
+// call describe_module_type for the detail. Serialising all 110 types with every
+// connector produced a response too large for a client to hold in context.
+juce::var moduleTypeToVar(const ModuleDescriptor& d, bool includeConnectors)
 {
     auto* obj = new juce::DynamicObject();
     obj->setProperty("typeId", d.index);
     obj->setProperty("name", d.name);
-    obj->setProperty("fullname", d.fullname);
     obj->setProperty("category", d.category);
+
+    if (!includeConnectors)
+        return juce::var(obj);
+
+    obj->setProperty("fullname", d.fullname);
     obj->setProperty("instantiable", d.instantiable);
     obj->setProperty("limit", d.limit);
     obj->setProperty("height", d.height);
@@ -233,6 +252,7 @@ juce::var McpRequestHandler::handle(const juce::var& request)
     {
         juce::var result;
         if (method == "list_module_types")     result = listModuleTypes(params);
+        else if (method == "describe_module_type") result = describeModuleType(params);
         else if (method == "list_modules")     result = listModules(params);
         else if (method == "list_patches")     result = listPatches(params);
         else if (method == "add_module")       result = addModule(params);
@@ -241,6 +261,7 @@ juce::var McpRequestHandler::handle(const juce::var& request)
         else if (method == "connect_cable")    result = connectCable(params);
         else if (method == "delete_cable")     result = deleteCable(params);
         else if (method == "set_parameter")    result = setParameter(params);
+        else if (method == "mutate_patch")     result = mutatePatch(params);
         else if (method == "create_patch")     result = createPatch(params);
         else if (method == "open_patch")       result = openPatch(params);
         else throw McpError{ "unknown_method", "Unknown method: " + method };
@@ -260,15 +281,159 @@ juce::var McpRequestHandler::handle(const juce::var& request)
     return response;
 }
 
-juce::var McpRequestHandler::listModuleTypes(const juce::var&)
+juce::var McpRequestHandler::listModuleTypes(const juce::var& params)
 {
+    // Compact by default — see moduleTypeToVar. Callers that genuinely want every
+    // connector of every type can still ask, and a category filter narrows it
+    // enough that the verbose form stays reasonable.
+    const bool includeConnectors = params.hasProperty("includeConnectors")
+                                && static_cast<bool>(params["includeConnectors"]);
+    const juce::String category = params.hasProperty("category")
+                                ? params["category"].toString().trim() : juce::String();
+
     juce::Array<juce::var> modules;
     for (auto& d : owner_.getModuleDescriptions().getAllModules())
-        modules.add(moduleTypeToVar(d));
+    {
+        if (category.isNotEmpty() && !d.category.equalsIgnoreCase(category))
+            continue;
+        modules.add(moduleTypeToVar(d, includeConnectors));
+    }
 
     auto* obj = new juce::DynamicObject();
     obj->setProperty("modules", modules);
+    obj->setProperty("count", modules.size());
+    if (!includeConnectors)
+        obj->setProperty("hint", "Call describe_module_type for a type's connectors and parameters.");
     return juce::var(obj);
+}
+
+juce::var McpRequestHandler::mutatePatch(const juce::var& params)
+{
+    const int slot = resolveSlot(params);
+    Patch* patch = owner_.getSlotPatch(slot);
+    UndoContext* ctx = owner_.getSlotUndoContext(slot);
+    if (!patch || !ctx)
+        throw McpError{ "no_patch", "No patch loaded in slot " + juce::String(slot) };
+    ensurePatchEditable(owner_);
+
+    const auto op = params.hasProperty("operation")
+                  ? params["operation"].toString().trim().toLowerCase()
+                  : juce::String("mutate");
+    if (op != "mutate" && op != "randomize")
+        throw McpError{ "bad_param",
+                        "operation must be \"mutate\" or \"randomize\". Interpolate and cross "
+                        "need a second parent snapshot, which this API cannot yet supply." };
+
+    // The same exclusions the Mutator panel applies, minus its Quick Lock
+    // categories, which are UI state with no equivalent here: per-parameter
+    // locks, per-module mutation exclusion, and Output modules — those set
+    // level and routing rather than timbre, and are never mutated.
+    Mutator::LockPredicate isLocked =
+        [patch](int section, int moduleId, int paramId) {
+            auto* mod = patch->getContainer(section).getModuleByIndex(moduleId);
+            if (!mod) return true;
+            if (mod->isExcludedFromMutation()) return true;
+            auto* param = mod->getParameter(paramId);
+            if (!param || param->isLocked()) return true;
+            const auto* md = mod->getDescriptor();
+            if (!md) return true;
+            return md->category == "In/Out" && md->name.endsWithIgnoreCase("Output");
+        };
+
+    const auto clamp01 = [](double v) { return static_cast<float>(juce::jlimit(0.0, 1.0, v)); };
+    const float probability = params.hasProperty("probability")
+                            ? clamp01(static_cast<double>(params["probability"])) : 0.5f;
+    const float range = params.hasProperty("range")
+                      ? clamp01(static_cast<double>(params["range"])) : 0.25f;
+
+    auto& rng = juce::Random::getSystemRandom();
+    const auto mother = Mutator::captureCurrent(*patch);
+    const auto child = (op == "randomize")
+                     ? Mutator::randomize(mother, *patch, rng, isLocked)
+                     : Mutator::mutate(mother, *patch, probability, range, rng, isLocked);
+    if (!child.filled)
+        throw McpError{ "mutate_failed", "The mutator returned an empty snapshot" };
+
+    // One RandomizeAction for the whole batch: a single undo step, and delivery
+    // through the connection's coalesced queue rather than a burst of sends.
+    std::vector<RandomizeAction::ParamChange> changes;
+    for (auto& e : child.entries)
+    {
+        auto* mod = patch->getContainer(e.section).getModuleByIndex(e.moduleId);
+        if (!mod) continue;
+        auto* param = mod->getParameter(e.paramId);
+        if (!param || param->isLocked()) continue;
+        const int oldValue = param->getValue();
+        if (oldValue != e.value)
+            changes.push_back({ e.section, e.moduleId, e.paramId, oldValue, e.value });
+    }
+
+    auto* result = new juce::DynamicObject();
+    result->setProperty("slot", slot);
+    result->setProperty("operation", op);
+    result->setProperty("changed", static_cast<int>(changes.size()));
+
+    if (changes.empty())
+    {
+        result->setProperty("note", "Nothing changed — every parameter was locked or excluded.");
+        return juce::var(result);
+    }
+
+    owner_.getSlotUndoManager(slot).beginNewTransaction(
+        op == "randomize" ? "Randomize (MCP)" : "Mutate (MCP)");
+    if (!owner_.getSlotUndoManager(slot).perform(new RandomizeAction(*ctx, std::move(changes))))
+        throw McpError{ "mutate_failed", "Failed to apply the mutation (unexpected)" };
+
+    return juce::var(result);
+}
+
+juce::var McpRequestHandler::describeModuleType(const juce::var& params)
+{
+    const bool hasId = params.hasProperty("typeId");
+    const bool hasName = params.hasProperty("typeName")
+                      && params["typeName"].toString().trim().isNotEmpty();
+    if (!hasId && !hasName)
+        throw McpError{ "missing_param", "typeId or typeName is required" };
+
+    const ModuleDescriptor* descriptor = nullptr;
+    if (hasId)
+    {
+        const int typeId = static_cast<int>(params["typeId"]);
+        descriptor = owner_.getModuleDescriptions().getModuleByIndex(typeId);
+        if (!descriptor)
+            throw McpError{ "unknown_module_type", "No module type with typeId " + juce::String(typeId) };
+    }
+    else
+    {
+        const auto wanted = params["typeName"].toString().trim();
+        descriptor = owner_.getModuleDescriptions().getModuleByName(wanted);
+        if (!descriptor)
+            throw McpError{ "unknown_module_type", "No module type named " + wanted };
+    }
+
+    auto result = moduleTypeToVar(*descriptor, /*includeConnectors=*/true);
+
+    // Parameter descriptors, so a caller can see what set_parameter accepts
+    // without having to add the module first. Morph entries are omitted for the
+    // same reason they are in list_modules: they roughly double the payload and
+    // shadow every real parameter with a "morph:" twin.
+    const bool includeMorph = params.hasProperty("includeMorph")
+                           && static_cast<bool>(params["includeMorph"]);
+    juce::Array<juce::var> paramsOut;
+    for (auto& pd : descriptor->parameters)
+    {
+        if (!includeMorph && pd.paramClass == "morph")
+            continue;
+        auto* p = new juce::DynamicObject();
+        p->setProperty("name", pd.name);
+        p->setProperty("parameterId", pd.index);
+        p->setProperty("parameterClass", pd.paramClass);
+        p->setProperty("min", pd.minValue);
+        p->setProperty("max", pd.maxValue);
+        paramsOut.add(juce::var(p));
+    }
+    result.getDynamicObject()->setProperty("parameters", paramsOut);
+    return result;
 }
 
 juce::var McpRequestHandler::listModules(const juce::var& params)
@@ -280,6 +445,37 @@ juce::var McpRequestHandler::listModules(const juce::var& params)
 
     const bool hasSectionFilter = params.hasProperty("section");
     const int sectionFilter = hasSectionFilter ? resolveSection(params) : -1;
+
+    // Defaults trade completeness for a response a client can actually hold: a
+    // 62-module patch serialised in full came to 109 KB, over half of it morph
+    // parameters. Connector names are included instead, since cabling what is
+    // already in the patch is the common reason to call this at all.
+    const auto flag = [&params](const char* key, bool fallback) {
+        return params.hasProperty(key) ? static_cast<bool>(params[key]) : fallback;
+    };
+    const bool includeMorph      = flag("includeMorph", false);
+    const bool verboseParams     = flag("verboseParameters", false);
+
+    // Narrowing to specific modules is the escape hatch for very large patches:
+    // ask for the structure with includeParameters=false, then come back for the
+    // few modules that matter. When a filter is given, parameters and connectors
+    // default to on regardless — the caller is explicitly asking for detail.
+    std::vector<int> onlyIndices;
+    if (params.hasProperty("containerIndex"))
+    {
+        const auto& v = params["containerIndex"];
+        if (auto* arr = v.getArray())
+            for (auto& e : *arr) onlyIndices.push_back(static_cast<int>(e));
+        else
+            onlyIndices.push_back(static_cast<int>(v));
+    }
+    const bool filtered = !onlyIndices.empty();
+    const auto wanted = [&onlyIndices](int idx) {
+        return std::find(onlyIndices.begin(), onlyIndices.end(), idx) != onlyIndices.end();
+    };
+
+    const bool includeParameters = flag("includeParameters", true);
+    const bool includeConnectors = flag("includeConnectors", true);
 
     juce::Array<juce::var> modulesOut;
     juce::Array<juce::var> cablesOut;
@@ -293,6 +489,9 @@ juce::var McpRequestHandler::listModules(const juce::var& params)
 
         for (auto& modPtr : container.getModules())
         {
+            if (filtered && !wanted(modPtr->getContainerIndex()))
+                continue;
+
             auto* obj = new juce::DynamicObject();
             obj->setProperty("section", section);
             obj->setProperty("containerIndex", modPtr->getContainerIndex());
@@ -302,10 +501,25 @@ juce::var McpRequestHandler::listModules(const juce::var& params)
             obj->setProperty("gridY", modPtr->getPosition().y);
             obj->setProperty("height", modPtr->getDescriptor()->height);
 
-            juce::Array<juce::var> paramsOut;
-            for (auto& param : modPtr->getParameters())
-                paramsOut.add(parameterToVar(param));
-            obj->setProperty("parameters", paramsOut);
+            if (includeConnectors)
+            {
+                juce::Array<juce::var> connectorsOut;
+                for (auto& c : modPtr->getDescriptor()->connectors)
+                    connectorsOut.add(connectorToVar(c));
+                obj->setProperty("connectors", connectorsOut);
+            }
+
+            if (includeParameters)
+            {
+                juce::Array<juce::var> paramsOut;
+                for (auto& param : modPtr->getParameters())
+                {
+                    if (!includeMorph && isMorphParameter(param))
+                        continue;
+                    paramsOut.add(parameterToVar(param, verboseParams));
+                }
+                obj->setProperty("parameters", paramsOut);
+            }
 
             modulesOut.add(juce::var(obj));
         }
@@ -333,6 +547,11 @@ juce::var McpRequestHandler::listModules(const juce::var& params)
             juce::String outName, inName;
             if (!findOwnerAndName(conn.output, outIdx, outName, outIsOutput)) continue;
             if (!findOwnerAndName(conn.input, inIdx, inName, inIsOutput)) continue;
+
+            // A filtered query wants that module's own wiring, not the whole
+            // patch's — keep cables with at least one end on a requested module.
+            if (filtered && !wanted(outIdx) && !wanted(inIdx))
+                continue;
 
             auto* outObj = new juce::DynamicObject();
             outObj->setProperty("containerIndex", outIdx);
