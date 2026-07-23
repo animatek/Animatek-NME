@@ -5,6 +5,14 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](../CHANGELOG
 
 ## High Priority
 
+- [ ] **Module Icon Bar** ([#17](https://github.com/animatek/Animatek-NME/issues/17)) —
+  reinstate the original editor's drag-and-drop bar of module icons, hideable via a View
+  toggle for users who prefer the text browser or Quick Add. The complete nmedit icon set
+  (109 modules, 16x16 and 32x32, keyed by `modules.xml` `index`) already exists locally and
+  needs no redrawing, and `PatchCanvas` already accepts the exact drag payload
+  `ModuleBrowserPanel` emits. Design notes, asset paths and open questions:
+  [MODULE_ICON_BAR.md](MODULE_ICON_BAR.md).
+
 - [x] **Bank Upload from Synth** — implemented in 0.6.0 as "Save Bank to Disk" plus
   "Backup All Banks to Library" (Device menu). Position metadata is preserved in the
   `NN - Name.pch` filename. Verified against real hardware.
@@ -68,6 +76,18 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](../CHANGELOG
 - [x] **Release Checklist** — done in 0.6.0: see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)
   (version bumps, build targets, no-synth smoke tests, hardware tests, packaging,
   post-release issue sweep).
+
+## Reported Bugs
+
+Tracked as GitHub issues; the detail lives there.
+
+- [ ] **Resource usage reads a flat 100%** where the original editor shows 99.5% / 97.7%
+  ([#18](https://github.com/animatek/Animatek-NME/issues/18)) — not display rounding; the
+  cycle accounting in `MainComponent::updateSlotWindowDspLoad()` has no voice-count scaling.
+
+- [ ] **Theme submenu checkmark sticks on the initial theme**
+  ([#19](https://github.com/animatek/Animatek-NME/issues/19)) — the theme applies, only the
+  menu tick is stale.
 
 ## Parked / Future
 
