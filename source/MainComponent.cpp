@@ -699,6 +699,20 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   mainLayout->getHeaderBar().setMutatorButtonCallback(
       [this]() { toggleMutatorWindow(); });
 
+  // Wire the Morph A/B fader
+  mainLayout->getHeaderBar().setMorphFaderCallback(
+      [this](float pos) { applyMorphPosition(pos); });
+  mainLayout->getHeaderBar().setMorphSetEndpointCallback(
+      [this](bool isB, int snapIndex) { setMorphEndpoint(isB, snapIndex); });
+  mainLayout->getHeaderBar().setMorphAssignKnobCallback(
+      [this](int knobIndex) { assignMorphKnob(knobIndex); });
+  mainLayout->getHeaderBar().setMorphLearnCallback(
+      [this]() { armMorphKnobLearn(); });
+  mainLayout->getHeaderBar().setMorphClearKnobCallback(
+      [this]() { clearMorphKnobAssignment(); });
+  mainLayout->getInspector().onMorphFaderKnobRemove =
+      [this]() { clearMorphKnobAssignment(); };
+
   // Wire undo/redo keyboard shortcuts from canvas
   mainLayout->getCanvas().setUndoCallback([this]() { undoManager().undo(); updateDspLoadDisplay(); });
   mainLayout->getCanvas().setRedoCallback([this]() { undoManager().redo(); updateDspLoadDisplay(); });
@@ -736,6 +750,38 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       if (!safeThis) return;
       if (safeThis->currentPatch() == nullptr)
         return;
+
+      // Morph A/B fader: Learn a physical panel knob as the drive source.
+      // Panel-knob turns arrive here as (section, module, parameter, value).
+      if (safeThis->morphLearnArmed) {
+        safeThis->morphKnobSection = section;
+        safeThis->morphKnobModule = moduleId;
+        safeThis->morphKnobParam = parameterId;
+        safeThis->morphKnobMin = 0;
+        safeThis->morphKnobMax = 127;
+        if (auto* mod = safeThis->currentPatch()->getContainer(section).getModuleByIndex(moduleId))
+          if (auto* p = mod->getParameter(parameterId))
+            if (auto* pd = p->getDescriptor()) {
+              safeThis->morphKnobMin = pd->minValue;
+              safeThis->morphKnobMax = pd->maxValue;
+            }
+        safeThis->morphLearnArmed = false;
+        safeThis->refreshMorphUi();
+        safeThis->mainLayout->getStatusBar().showMessage(
+            "Morph fader assigned to panel knob (sec " + juce::String(section)
+            + " mod " + juce::String(moduleId) + " par " + juce::String(parameterId) + ")", 3000);
+        return;
+      }
+      // Learned knob drives the morph position.
+      if (parameterId == safeThis->morphKnobParam && moduleId == safeThis->morphKnobModule
+          && section == safeThis->morphKnobSection) {
+        int span = juce::jmax(1, safeThis->morphKnobMax - safeThis->morphKnobMin);
+        float t = juce::jlimit(0.0f, 1.0f,
+                               static_cast<float>(value - safeThis->morphKnobMin) / span);
+        safeThis->mainLayout->getHeaderBar().setMorphFaderPos(t);
+        safeThis->applyMorphPosition(t);
+        return;
+      }
 
       // Morph section (section=2, module=1, parameter=0-3)
       if (section == 2 && moduleId == 1 && parameterId >= 0 &&
@@ -1279,6 +1325,7 @@ void MainComponent::switchToSlot(int slot, bool notifySynth) {
       mutatorWindow->getPanel().clearAll();  // snapshots referenced the old slot's patch
       mutatorWindow->getPanel().setVariations(variations[activeSlot]);
     }
+    resetMorphAB();  // A/B captures belong to the previous slot's patch
     refreshSnapshotUi();
 
     const char* slotNames[] = {"A", "B", "C", "D"};
@@ -3036,8 +3083,10 @@ void MainComponent::clearSnapshots(int slot) {
         stopInterpolation("patch snapshot reset");
 
     variations[slot].clear();
-    if (slot == activeSlot)
+    if (slot == activeSlot) {
+        resetMorphAB();  // A/B captures referenced the previous patch's modules
         refreshSnapshotUi();
+    }
     // Mutator snapshots reference module indices of the previous patch
     if (mutatorWindow)
         mutatorWindow->getPanel().clearAll();
@@ -3103,6 +3152,171 @@ void MainComponent::applySnapshot(const ParamSnapshot& snap, const juce::String&
                 connectionManager.queueParameter(activeSlot, 2, 1, m, snap.morphValues[static_cast<size_t>(m)]);
         mainLayout->getHeaderBar().repaint();
     }
+}
+
+// ---- Morph A/B fader ------------------------------------------------------
+
+void MainComponent::setMorphEndpoint(bool isB, int snapIndex) {
+    if (!currentPatch()) return;
+
+    juce::String sourceName;
+    if (snapIndex < 0) {
+        (isB ? morphB : morphA) = Mutator::captureCurrent(*currentPatch());
+        sourceName = "current sound";
+    } else {
+        if (snapIndex >= PatchVariations::kNumSlots) return;
+        auto& s = variations[activeSlot].slots[snapIndex];
+        if (!s.filled) return;
+        (isB ? morphB : morphA) = s;
+        sourceName = "Snapshot " + juce::String(snapIndex + 1);
+    }
+    rebuildMorphPairs();
+    refreshMorphUi();
+    mainLayout->getStatusBar().showMessage(
+        juce::String("Morph ") + (isB ? "B" : "A") + " set from " + sourceName, 2000);
+}
+
+void MainComponent::assignMorphKnob(int knobIndex) {
+    if (!currentPatch() || !undoContext()) return;
+
+    // Carrier = a spare morph group (prefer the highest index so we don't steal
+    // a low group the user is more likely to use). The synth reports morph-knob
+    // positions to the editor, so an empty group is a free, inert control source.
+    int group = -1;
+    for (int g = 3; g >= 0; --g) {
+        bool used = false;
+        for (auto& ma : currentPatch()->morphAssignments)
+            if (ma.morph == g) { used = true; break; }
+        if (!used) { group = g; break; }
+    }
+    if (group < 0) {
+        mainLayout->getStatusBar().showMessage(
+            "No free morph group to use as carrier — all 4 are in use", 4000);
+        return;
+    }
+
+    // Assign the physical knob to that morph group on the synth (native protocol).
+    int prevKnob = -1;
+    for (int k = 0; k < 23; ++k) {
+        auto& ka = currentPatch()->knobAssignments[static_cast<size_t>(k)];
+        if (ka.assigned && ka.section == 2 && ka.module == 1 && ka.param == group)
+        { prevKnob = k; break; }
+    }
+    undoManager().beginNewTransaction("Assign Morph Fader Knob");
+    undoManager().perform(new KnobAssignAction(*undoContext(), 2, 1, group, knobIndex, prevKnob));
+
+    // Register that morph group as the fader's drive source.
+    morphKnobSection = 2;
+    morphKnobModule = 1;
+    morphKnobParam = group;
+    morphKnobIndex = knobIndex;
+    morphKnobMin = 0;
+    morphKnobMax = 127;
+    refreshMorphUi();
+    mainLayout->getStatusBar().showMessage(
+        "Morph fader assigned to Knob " + juce::String(knobIndex + 1)
+        + " (carrier = morph group " + juce::String(group + 1) + ")", 5000);
+}
+
+void MainComponent::rebuildMorphPairs() {
+    morphPairs.clear();
+    if (!morphA.filled || !morphB.filled) return;
+    for (auto& be : morphB.entries) {
+        int aVal = be.value;
+        for (auto& ae : morphA.entries)
+            if (ae.section == be.section && ae.moduleId == be.moduleId
+                && ae.paramId == be.paramId) { aVal = ae.value; break; }
+        if (aVal != be.value)  // only params that actually differ between A and B
+            morphPairs.push_back({be.section, be.moduleId, be.paramId, aVal, be.value});
+    }
+}
+
+void MainComponent::applyMorphPosition(float t) {
+    if (!currentPatch() || (!morphA.filled || !morphB.filled)) return;
+    t = juce::jlimit(0.0f, 1.0f, t);
+
+    // Live scrub: lerp each differing param and push to model + synth. The
+    // connection's coalescing queue collapses rapid ticks. No undo — this is a
+    // performance gesture, like a morph knob.
+    for (auto& p : morphPairs) {
+        int v = juce::roundToInt(p.aVal + (p.bVal - p.aVal) * t);
+        auto& container = currentPatch()->getContainer(p.section);
+        auto* mod = container.getModuleByIndex(p.moduleId);
+        if (!mod) continue;
+        auto* param = mod->getParameter(p.paramId);
+        if (!param || param->isLocked()) continue;
+        if (param->getValue() == v) continue;
+        param->setValue(v);
+        connectionManager.queueParameter(activeSlot, p.section, p.moduleId, p.paramId, v);
+    }
+
+    // Morph knob values (protocol: section=2, module=1, param=morphIndex)
+    for (int m = 0; m < 4; ++m) {
+        // Skip the group used as the fader's knob carrier — the physical knob
+        // owns that value; overwriting it here would fight the knob.
+        if (morphKnobSection == 2 && morphKnobModule == 1 && morphKnobParam == m)
+            continue;
+        int av = morphA.morphValues[static_cast<size_t>(m)];
+        int bv = morphB.morphValues[static_cast<size_t>(m)];
+        int v = juce::roundToInt(av + (bv - av) * t);
+        if (currentPatch()->morphValues[static_cast<size_t>(m)] != v) {
+            currentPatch()->morphValues[static_cast<size_t>(m)] = v;
+            if (connectionManager.isConnected())
+                connectionManager.queueParameter(activeSlot, 2, 1, m, v);
+        }
+    }
+
+    mainLayout->getCanvas().repaintCanvas();
+    mainLayout->getHeaderBar().repaint();
+}
+
+void MainComponent::armMorphKnobLearn() {
+    morphLearnArmed = true;
+    refreshMorphUi();
+    mainLayout->getStatusBar().showMessage(
+        "Turn a front-panel knob to assign it to the Morph fader...", 8000);
+}
+
+void MainComponent::clearMorphKnobAssignment() {
+    // If we assigned a carrier knob (via the fader's Knob menu), deassign it on
+    // the synth too. Learn-based mappings leave morphKnobIndex == -1 and reuse a
+    // real param's own knob, so we must not touch those.
+    if (morphKnobIndex >= 0 && morphKnobSection == 2 && morphKnobModule == 1
+        && morphKnobParam >= 0 && currentPatch() && undoContext()) {
+        undoManager().beginNewTransaction("Remove Morph Fader Knob");
+        undoManager().perform(new KnobAssignAction(*undoContext(), 2, 1, morphKnobParam, -1, morphKnobIndex));
+    }
+    morphKnobSection = morphKnobModule = morphKnobParam = -1;
+    morphKnobIndex = -1;
+    morphLearnArmed = false;
+    refreshMorphUi();
+    mainLayout->getStatusBar().showMessage("Morph fader knob assignment cleared", 2000);
+}
+
+void MainComponent::resetMorphAB() {
+    morphA = {};
+    morphB = {};
+    morphPairs.clear();
+    morphLearnArmed = false;
+    morphKnobSection = morphKnobModule = morphKnobParam = -1;
+    morphKnobIndex = -1;
+    morphKnobMin = 0;
+    morphKnobMax = 127;
+    if (mainLayout) {
+        mainLayout->getHeaderBar().setMorphFaderPos(0.0f);
+        refreshMorphUi();
+    }
+}
+
+void MainComponent::refreshMorphUi() {
+    if (!mainLayout) return;
+    auto& hb = mainLayout->getHeaderBar();
+    hb.setMorphEndpoints(morphA.filled, morphB.filled);
+    hb.setMorphKnobAssigned(morphKnobParam >= 0);
+    hb.setMorphLearnArmed(morphLearnArmed);
+    // Surface the carrier knob in the inspector (only carrier assignments carry a
+    // physical knob index; Learn-based ones leave morphKnobIndex == -1).
+    mainLayout->getInspector().setMorphFaderKnob(morphKnobIndex, morphKnobParam);
 }
 
 void MainComponent::recallSnapshot(int index) {

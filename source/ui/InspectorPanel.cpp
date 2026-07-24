@@ -39,6 +39,7 @@ public:
         int           section;
         int           moduleId;
         int           paramIndex;
+        bool          isMorphFader = false;  // Morph A/B fader carrier — removed via its own callback
     };
 
     // Morph callbacks
@@ -47,8 +48,18 @@ public:
     // Knob/CC remove callbacks (section, moduleId, paramId)
     std::function<void(int section, int moduleId, int paramId)> onKnobRemove;
     std::function<void(int section, int moduleId, int paramId)> onCtrlRemove;
+    std::function<void()> onMorphFaderKnobRemove;   // remove the Morph A/B fader knob
 
     AssignmentsListComponent() { setInterceptsMouseClicks(true, false); }
+
+    // Morph A/B fader carrier knob (-1 = none); shown in the patch-wide view.
+    void setMorphFaderKnob(int knobIndex, int carrierGroup)
+    {
+        if (morphFaderKnob == knobIndex && morphFaderCarrierGroup == carrierGroup) return;
+        morphFaderKnob = knobIndex;
+        morphFaderCarrierGroup = carrierGroup;
+        rebuild();
+    }
 
     void setModule(Module* m, int sec)
     {
@@ -87,6 +98,22 @@ public:
             setSize(1, 1);
             repaint();
             return;
+        }
+
+        // Morph A/B fader carrier knob (global — shown in the patch-wide view).
+        // Its real assignment lives on the morph pseudo-section, so it never
+        // appears in the normal knob list; surface it here so it can be removed.
+        if (module == nullptr && morphFaderKnob >= 0
+            && KnobAssignmentMessage::isValidKnob(morphFaderKnob))
+        {
+            HwRow row;
+            row.label = KnobAssignmentMessage::getKnobName(morphFaderKnob);
+            row.paramName = "Morph A/B Fader";
+            row.section = 2;
+            row.moduleId = 1;
+            row.paramIndex = morphFaderCarrierGroup;
+            row.isMorphFader = true;
+            knobRows.push_back(row);
         }
 
         // Sort morph rows by group, then module name, then paramIndex
@@ -266,7 +293,14 @@ public:
         if (hr.type == HitType::KnobX)
         {
             auto& r = knobRows[size_t(hr.rowIdx)];
-            if (onKnobRemove) onKnobRemove(r.section, r.moduleId, r.paramIndex);
+            if (r.isMorphFader)
+            {
+                if (onMorphFaderKnobRemove) onMorphFaderKnobRemove();
+            }
+            else if (onKnobRemove)
+            {
+                onKnobRemove(r.section, r.moduleId, r.paramIndex);
+            }
             rebuild();
             return;
         }
@@ -548,6 +582,8 @@ public:
     Patch*                 patch         = nullptr;
 private:
     int                    singleSection = -1;
+    int                    morphFaderKnob = -1;         // physical knob driving the A/B fader
+    int                    morphFaderCarrierGroup = -1; // spare morph group used as carrier
     std::vector<MorphRow>  morphRows;
     std::vector<HwRow>     knobRows;
     std::vector<HwRow>     ctrlRows;
@@ -602,6 +638,10 @@ InspectorPanel::InspectorPanel()
     assignmentsList->onCtrlRemove = [this](int section, int moduleId, int paramId)
     {
         if (onMidiCtrlRemoved) onMidiCtrlRemoved(section, moduleId, paramId, -1);
+    };
+    assignmentsList->onMorphFaderKnobRemove = [this]()
+    {
+        if (onMorphFaderKnobRemove) onMorphFaderKnobRemove();
     };
 
     morphViewport.setViewedComponent(assignmentsList.get(), false);
@@ -698,6 +738,13 @@ void InspectorPanel::clearModule()
 void InspectorPanel::refreshMorphList()
 {
     assignmentsList->rebuild();
+    resized();
+    repaint();
+}
+
+void InspectorPanel::setMorphFaderKnob(int knobIndex, int carrierGroup)
+{
+    assignmentsList->setMorphFaderKnob(knobIndex, carrierGroup);
     resized();
     repaint();
 }
