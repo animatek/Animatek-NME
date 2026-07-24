@@ -1781,27 +1781,32 @@ void MainComponent::storePatchToBank() {
     });
 }
 
-bool MainComponent::savePatchToFile(const juce::File &file) {
-  if (currentPatch() == nullptr)
+bool MainComponent::saveSlotPatchToFile(int slot, const juce::File &file) {
+  if (slot < 0 || slot >= numSlots || slotPatches[slot] == nullptr)
     return false;
 
   PchFileIO io(moduleDescs);
-  bool ok = io.writeFile(*currentPatch(), file);
+  if (!io.writeFile(*slotPatches[slot], file))
+    return false;
 
-  if (ok) {
-    auto& vars = variations[activeSlot];
-    vars.mutationExcluded.clear();
-    for (int sec : {0, 1})
-      for (auto& mod : currentPatch()->getContainer(sec).getModules())
-        if (mod && mod->isExcludedFromMutation())
-          vars.mutationExcluded.emplace_back(sec, mod->getContainerIndex());
-    if (vars.anyFilled() || !vars.mutationExcluded.empty())
-      saveVarFile(vars, file.withFileExtension("var"));
-    mainLayout->getStatusBar().showMessage("Saved: " + file.getFileName(), 3000);
-  } else {
-    mainLayout->getStatusBar().showMessage("ERROR:Failed to save: " + file.getFileName(), 5000);
-  }
+  auto& vars = variations[slot];
+  vars.mutationExcluded.clear();
+  for (int sec : {0, 1})
+    for (auto& mod : slotPatches[slot]->getContainer(sec).getModules())
+      if (mod && mod->isExcludedFromMutation())
+        vars.mutationExcluded.emplace_back(sec, mod->getContainerIndex());
+  if (vars.anyFilled() || !vars.mutationExcluded.empty())
+    saveVarFile(vars, file.withFileExtension("var"));
 
+  return true;
+}
+
+bool MainComponent::savePatchToFile(const juce::File &file) {
+  bool ok = saveSlotPatchToFile(activeSlot, file);
+  mainLayout->getStatusBar().showMessage(
+      ok ? "Saved: " + file.getFileName()
+         : "ERROR:Failed to save: " + file.getFileName(),
+      ok ? 3000 : 5000);
   return ok;
 }
 

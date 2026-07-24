@@ -265,6 +265,7 @@ juce::var McpRequestHandler::handle(const juce::var& request)
         else if (method == "mutate_patch")     result = mutatePatch(params);
         else if (method == "create_patch")     result = createPatch(params);
         else if (method == "open_patch")       result = openPatch(params);
+        else if (method == "save_patch")       result = savePatch(params);
         else throw McpError{ "unknown_method", "Unknown method: " + method };
 
         obj->setProperty("ok", true);
@@ -1011,6 +1012,53 @@ juce::var McpRequestHandler::setParameter(const juce::var& params)
     result->setProperty("value", newValue);
     result->setProperty("min", descriptor->minValue);
     result->setProperty("max", descriptor->maxValue);
+    return juce::var(result);
+}
+
+juce::var McpRequestHandler::savePatch(const juce::var& params)
+{
+    int slot = resolveSlot(params);
+    Patch* patch = owner_.getSlotPatch(slot);
+    if (!patch)
+        throw McpError{ "no_patch", "No patch loaded in slot " + juce::String(slot) };
+
+    if (!params.hasProperty("path") || params["path"].toString().trim().isEmpty())
+        throw McpError{ "missing_param", "path is required" };
+
+    const auto path = params["path"].toString().trim();
+    juce::File file;
+    if (juce::File::isAbsolutePath(path))
+    {
+        file = juce::File(path);
+    }
+    else
+    {
+        // Relative paths resolve against the configured patches folder and must
+        // stay inside it (same safety rule as open_patch's library paths).
+        auto folder = owner_.getPatchesFolder();
+        if (!folder.isDirectory())
+            throw McpError{ "library_not_configured", "The patches folder is not configured" };
+        file = folder.getChildFile(path);
+        if (!file.isAChildOf(folder))
+            throw McpError{ "invalid_path", "Relative paths must stay inside the patches folder" };
+    }
+
+    if (file.getFileExtension().isEmpty())
+        file = file.withFileExtension("pch");
+    if (!file.hasFileExtension("pch"))
+        throw McpError{ "invalid_path", "path must have a .pch extension" };
+
+    auto parent = file.getParentDirectory();
+    if (!parent.isDirectory() && !parent.createDirectory())
+        throw McpError{ "save_failed", "Could not create the destination folder" };
+
+    if (!owner_.saveSlotPatchToFile(slot, file))
+        throw McpError{ "save_failed", "Failed to write the patch file" };
+
+    auto* result = new juce::DynamicObject();
+    result->setProperty("path", file.getFullPathName());
+    result->setProperty("name", patch->getName());
+    result->setProperty("slot", slot);
     return juce::var(result);
 }
 

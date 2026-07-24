@@ -10,6 +10,12 @@
   bridge clients (existing modules could be created with a name but never renamed). The name
   lives in the patch/editor and reaches the synth on the next full patch upload.
 
+- **MCP clients can now save a patch to disk (issue #23)**: a patch built through the bridge
+  lived only in memory — there was no way to persist it without going to the UI by hand. A
+  new MCP `save_patch` tool writes a slot's patch (and its `.var` sidecar) to a `.pch`;
+  absolute paths are used as-is, relative paths resolve inside the configured patches folder,
+  a missing extension defaults to `.pch`, and parent folders are created as needed.
+
 - **Slot chooser when opening a patch, with a Local option (issue #21)**: opening a `.pch`
   used to silently target the active slot and, when connected, always upload — so there was
   no way to just look at a patch without overwriting the synth's current slot, and no way to

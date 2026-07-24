@@ -450,5 +450,25 @@ def open_patch(
     return _call("open_patch", params)
 
 
+@mcp.tool()
+def save_patch(
+    path: str,
+    slot: Optional[int] = None,
+) -> Any:
+    """Save a slot's patch to a .pch file on disk.
+
+    path: destination. Absolute paths are used as-is; a relative path resolves
+    under the configured patches folder and must stay inside it. A missing
+    extension defaults to .pch. Parent folders are created as needed. This lets a
+    patch built through the bridge be persisted instead of living only in memory.
+    slot: 0-3 (A-D); defaults to the currently active slot.
+    Returns the full saved path and the patch name.
+    """
+    params: dict[str, Any] = {"path": path}
+    if slot is not None:
+        params["slot"] = slot
+    return _call("save_patch", params)
+
+
 if __name__ == "__main__":
     mcp.run()

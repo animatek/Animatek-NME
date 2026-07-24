@@ -52,6 +52,11 @@ public:
     int getActiveSlot() const { return activeSlot; }
     Patch* getSlotPatch(int slot) const { return slotPatches[slot].get(); }
     const juce::File& getSlotPatchFile(int slot) const { return slotPatchFiles[slot]; }
+    juce::File getPatchesFolder() const { return editorOptions.getPatchesFolder(); }
+    // Write a specific slot's patch (+ .var sidecar) to disk. No UI side effects,
+    // so it is safe to call from the MCP handler. Returns false if the slot is
+    // empty or the write failed.
+    bool saveSlotPatchToFile(int slot, const juce::File& file);
     juce::UndoManager& getSlotUndoManager(int slot) { return slotUndoManagers[slot]; }
     UndoContext* getSlotUndoContext(int slot) const { return slotUndoContexts[slot].get(); }
     bool isPatchTransferInProgress() const

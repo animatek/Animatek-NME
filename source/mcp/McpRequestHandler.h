@@ -34,6 +34,7 @@ private:
     juce::var setParameter(const juce::var& params);
     juce::var createPatch(const juce::var& params);
     juce::var openPatch(const juce::var& params);
+    juce::var savePatch(const juce::var& params);
 
     int resolveSlot(const juce::var& params) const;
 
