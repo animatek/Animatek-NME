@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Front-panel Voices arrows now reach the synth (issue #25)**: clicking the Voices
+  up/down arrows in the header bar updated the on-screen number but sent nothing to the
+  synth, so the voice count never actually changed — only Ctrl+P Patch Settings worked. The
+  header bar's `voiceChangeCallback` was defined but never wired up. It now re-uploads the
+  patch (the G1 stores the voice count in the patch header, so a re-upload is how the change
+  propagates), matching the Patch Settings path, for both the main window and slot windows.
+
 - **Windows build fixed (issue #24)**: the MCP-bridge "Copy" button's revert timer in the
   Editor Options dialog used a lambda init-capture initialised by a function-style cast
   (`SafePointer<...> (this)`), which MSVC refused to parse — Clang and GCC accepted it, so

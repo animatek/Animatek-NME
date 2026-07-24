@@ -606,6 +606,20 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         connectionManager.sendParameter(activeSlot, 2, 1, morphIndex, value);
       });
 
+  // Wire the front-panel Voices arrows to the synth. The G1 keeps the voice
+  // count in the patch header, so — exactly like the Ctrl+P Patch Settings
+  // dialog — the change only reaches the synth by re-uploading the patch.
+  // Without this the arrows updated the on-screen number but sent nothing
+  // (issue #25). PatchHeaderBar has already applied the new value to the
+  // header before invoking this callback.
+  mainLayout->getHeaderBar().setVoiceChangeCallback(
+      [this](int voices) {
+        if (!currentPatch()) return;
+        mainLayout->getStatusBar().showMessage("Voices: " + juce::String(voices), 2000);
+        if (connectionManager.isConnected())
+          connectionManager.uploadPatch(connectionManager.getCurrentSlot(), *currentPatch());
+      });
+
   // Wire patch name changes to send to synth
   mainLayout->getHeaderBar().setNameChangeCallback(
       [this](const juce::String& newName) {
@@ -2627,6 +2641,12 @@ void MainComponent::wireSlotWindowContent(SlotWindow& window, int slot) {
     slotUndoManagers[slot].beginNewTransaction("Rename Patch");
     slotUndoManagers[slot].perform(new RenamePatchAction(*ctx(), oldName, newName));
     mainLayout->getSlotBar().setSlotName(slot, newName);
+  });
+  headerBar.setVoiceChangeCallback([this, slot, patch](int voices) {
+    if (!patch()) return;
+    mainLayout->getStatusBar().showMessage("Voices: " + juce::String(voices), 2000);
+    if (connectionManager.isConnected())
+      connectionManager.uploadPatch(slot, *patch());
   });
   headerBar.setCableVisibilityCallback([&canvas]() { canvas.repaintCanvas(); });
   headerBar.setShakeCablesCallback([&canvas]() { canvas.shakeCables(); });
