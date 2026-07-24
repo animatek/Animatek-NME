@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Rapid Voices changes no longer corrupt the synth slot (issue #28)**: each voice
+  increment re-uploads the whole patch, and pressing the Voices arrows quickly fired
+  overlapping uploads — a second `uploadPatch()` clobbered the first's in-flight section/ACK
+  state, the SysEx sections interleaved, and the synth's slot ended up corrupt (patch read
+  back as name "Error" with 0 modules) after a `sc=0x7e code=6` warning. The voice-change
+  upload is now debounced and coalesced: rapid presses collapse into a single upload for the
+  final voice count, and a new upload never starts while one is still in flight.
+
 - **Renaming a module is now undoable (issue #23)**: renaming a module — from the canvas
   context menu, the Inspector name field, or a slot window — previously changed the title
   outside the undo system (the callback only logged), so Ctrl+Z couldn't take it back. There

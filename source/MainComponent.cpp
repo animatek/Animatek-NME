@@ -619,12 +619,42 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Without this the arrows updated the on-screen number but sent nothing
   // (issue #25). PatchHeaderBar has already applied the new value to the
   // header before invoking this callback.
+  //
+  // Each voice increment re-uploads the whole patch, so pressing the arrows
+  // rapidly used to fire overlapping uploads: a second uploadPatch() clobbered
+  // the first's in-flight section/ACK state, the SysEx sections interleaved,
+  // and the synth's slot ended up corrupt (name="Error", 0 modules) with a
+  // "sc=0x7e code=6" warning (issue #28). Coalesce instead: debounce the arrow
+  // presses and never start an upload while one is still in flight — the same
+  // generation-guard pattern rebuildUndoContext() uses for its sync upload.
   mainLayout->getHeaderBar().setVoiceChangeCallback(
-      [this](int voices) {
+      [this, voiceUploadGen = std::make_shared<int>(0)](int voices) {
         if (!currentPatch()) return;
         mainLayout->getStatusBar().showMessage("Voices: " + juce::String(voices), 2000);
-        if (connectionManager.isConnected())
-          connectionManager.uploadPatch(connectionManager.getCurrentSlot(), *currentPatch());
+        if (!connectionManager.isConnected()) return;
+
+        const int gen = ++(*voiceUploadGen);
+        auto capturedGen = voiceUploadGen;
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+
+        // Self-rescheduling: waits out both the user's rapid presses and any
+        // upload still in flight, then sends exactly one upload for the final
+        // voice count. `attempt` holds itself so it can re-arm the timer; the
+        // cycle is released as soon as a terminal branch runs (upload sent, or
+        // superseded/disconnected — no further timer scheduled).
+        auto attempt = std::make_shared<std::function<void()>>();
+        *attempt = [safeThis, capturedGen, gen, attempt]() {
+          if (!safeThis || *capturedGen != gen) return;  // superseded by a newer press
+          if (!safeThis->connectionManager.isConnected() || !safeThis->currentPatch()) return;
+          if (safeThis->connectionManager.isUploadingPatch()) {
+            // An upload (this slot's or another's) is mid-flight — try again shortly.
+            juce::Timer::callAfterDelay(80, *attempt);
+            return;
+          }
+          safeThis->connectionManager.uploadPatch(
+              safeThis->connectionManager.getCurrentSlot(), *safeThis->currentPatch());
+        };
+        juce::Timer::callAfterDelay(200, *attempt);
       });
 
   // Wire patch name changes to send to synth
