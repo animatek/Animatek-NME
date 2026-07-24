@@ -5068,11 +5068,15 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                                     if (r == 1)
                                     {
                                         juce::String newName = dialog->getTextEditorContents("name").trim();
-                                        if (newName.isNotEmpty())
+                                        juce::String oldName = modPtr->getTitle();
+                                        if (newName.isNotEmpty() && newName != oldName)
                                         {
-                                            modPtr->setTitle(newName);
+                                            // The undoable action applies setTitle; if no
+                                            // callback is wired, fall back to a direct set.
                                             if (renameModuleCallback)
-                                                renameModuleCallback(sec, modPtr, newName);
+                                                renameModuleCallback(sec, modPtr, oldName, newName);
+                                            else
+                                                modPtr->setTitle(newName);
                                             repaint();
                                         }
                                     }

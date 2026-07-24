@@ -27,6 +27,7 @@ private:
     juce::var listPatches(const juce::var& params);
     juce::var addModule(const juce::var& params);
     juce::var moveModule(const juce::var& params);
+    juce::var renameModule(const juce::var& params);
     juce::var deleteModule(const juce::var& params);
     juce::var connectCable(const juce::var& params);
     juce::var deleteCable(const juce::var& params);

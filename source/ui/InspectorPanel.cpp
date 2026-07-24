@@ -875,7 +875,9 @@ void InspectorPanel::commitName()
     if (currentModule == nullptr) return;
     juce::String newName = nameEditor.getText().trim();
     if (newName.isEmpty()) { nameEditor.setText(currentModule->getTitle(), juce::dontSendNotification); return; }
-    if (newName == currentModule->getTitle()) return;
-    currentModule->setTitle(newName);
-    if (onNameChanged) onNameChanged(currentSection, currentModule, newName);
+    juce::String oldName = currentModule->getTitle();
+    if (newName == oldName) return;
+    // The undoable action applies setTitle; fall back to a direct set if unwired.
+    if (onNameChanged) onNameChanged(currentSection, currentModule, oldName, newName);
+    else currentModule->setTitle(newName);
 }

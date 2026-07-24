@@ -257,6 +257,7 @@ juce::var McpRequestHandler::handle(const juce::var& request)
         else if (method == "list_patches")     result = listPatches(params);
         else if (method == "add_module")       result = addModule(params);
         else if (method == "move_module")      result = moveModule(params);
+        else if (method == "rename_module")    result = renameModule(params);
         else if (method == "delete_module")    result = deleteModule(params);
         else if (method == "connect_cable")    result = connectCable(params);
         else if (method == "delete_cable")     result = deleteCable(params);
@@ -761,6 +762,47 @@ juce::var McpRequestHandler::moveModule(const juce::var& params)
     result->setProperty("gridX", gridX);
     result->setProperty("gridY", gridY);
     result->setProperty("height", module->getDescriptor()->height);
+    return juce::var(result);
+}
+
+juce::var McpRequestHandler::renameModule(const juce::var& params)
+{
+    int slot = resolveSlot(params);
+    UndoContext* ctx = owner_.getSlotUndoContext(slot);
+    Patch* patch = owner_.getSlotPatch(slot);
+    if (!ctx || !patch)
+        throw McpError{ "no_patch", "No patch loaded in slot " + juce::String(slot) };
+    ensurePatchEditable(owner_);
+
+    int section = resolveSection(params);
+
+    if (!params.hasProperty("containerIndex"))
+        throw McpError{ "missing_param", "containerIndex is required" };
+    if (!params.hasProperty("name"))
+        throw McpError{ "missing_param", "name is required" };
+
+    int containerIndex = static_cast<int>(params["containerIndex"]);
+    juce::String newName = params["name"].toString().trim();
+    if (newName.isEmpty())
+        throw McpError{ "invalid_name", "name must not be empty" };
+    if (newName.length() > 16)
+        throw McpError{ "invalid_name", "name must be 16 characters or fewer (G1 module-name limit)" };
+
+    auto& container = patch->getContainer(section);
+    auto* module = container.getModuleByIndex(containerIndex);
+    if (!module)
+        throw McpError{ "unknown_module", "No module with containerIndex " + juce::String(containerIndex) };
+
+    const juce::String oldName = module->getTitle();
+    owner_.getSlotUndoManager(slot).beginNewTransaction("Rename Module (MCP)");
+    if (!owner_.getSlotUndoManager(slot).perform(
+            new RenameModuleAction(*ctx, section, containerIndex, oldName, newName)))
+        throw McpError{ "rename_failed", "Failed to rename module (unexpected)" };
+
+    auto* result = new juce::DynamicObject();
+    result->setProperty("containerIndex", containerIndex);
+    result->setProperty("name", newName);
+    result->setProperty("previousName", oldName);
     return juce::var(result);
 }
 

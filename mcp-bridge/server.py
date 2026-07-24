@@ -266,6 +266,32 @@ def move_module(
 
 
 @mcp.tool()
+def rename_module(
+    section: int,
+    container_index: int,
+    name: str,
+    slot: Optional[int] = None,
+) -> Any:
+    """Rename an existing module (undoable).
+
+    section: 0=common, 1=poly.
+    container_index: module identifier returned by add_module/list_modules.
+    name: new title, 1-16 characters (the G1 module-name limit). The name lives
+    in the patch/editor and reaches the synth on the next full patch upload.
+    slot: 0-3 (A-D); defaults to the currently active slot.
+    Returns the new name and the previous one.
+    """
+    params: dict[str, Any] = {
+        "section": section,
+        "containerIndex": container_index,
+        "name": name,
+    }
+    if slot is not None:
+        params["slot"] = slot
+    return _call("rename_module", params)
+
+
+@mcp.tool()
 def delete_module(
     section: int,
     container_index: int,

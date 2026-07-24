@@ -344,6 +344,39 @@ private:
 };
 
 // ============================================================================
+// RenameModuleAction — change a module's title (undoable). The name lives in
+// the .pch / editor; it reaches the synth on the next full patch upload via the
+// NameDump section, so no per-module message is sent here.
+// ============================================================================
+class RenameModuleAction : public juce::UndoableAction
+{
+public:
+    RenameModuleAction(UndoContext& ctx, int section, int moduleIndex,
+                       const juce::String& oldName, const juce::String& newName)
+        : ctx_(ctx), section_(section), moduleIndex_(moduleIndex),
+          oldName_(oldName), newName_(newName) {}
+
+    bool perform() override { return apply(newName_); }
+    bool undo()    override { return apply(oldName_); }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    bool apply(const juce::String& name)
+    {
+        auto* mod = ctx_.patch.getContainer(section_).getModuleByIndex(moduleIndex_);
+        if (!mod) return false;
+        mod->setTitle(name);
+        ctx_.repaint();
+        return true;
+    }
+
+    UndoContext& ctx_;
+    int section_, moduleIndex_;
+    juce::String oldName_, newName_;
+};
+
+// ============================================================================
 // AddCableAction
 // ============================================================================
 class AddCableAction : public juce::UndoableAction

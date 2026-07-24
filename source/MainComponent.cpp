@@ -176,10 +176,13 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
           mainLayout->getInspector().clearModule();
       });
 
-  // Wire inspector name changes to canvas repaint
-  mainLayout->getInspector().onNameChanged = [this](int /*section*/, Module* /*module*/, const juce::String& newName) {
-    std::cout << "[MAIN] Module renamed via inspector to: " << newName.toStdString() << std::endl;
-    mainLayout->getCanvas().repaintCanvas();
+  // Wire inspector name changes (undoable)
+  mainLayout->getInspector().onNameChanged =
+      [this](int section, Module* module, const juce::String& oldName, const juce::String& newName) {
+    if (!module || !currentPatch() || !undoContext()) return;
+    undoManager().beginNewTransaction("Rename Module");
+    undoManager().perform(new RenameModuleAction(
+        *undoContext(), section, module->getContainerIndex(), oldName, newName));
   };
 
   // Wire inspector morph group remove
@@ -477,12 +480,13 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         undoManager().perform(new MoveModuleAction(*undoContext(), section, moduleIndex, oldPos, newPos));
       });
 
-  // Wire module rename from canvas context menu
+  // Wire module rename from canvas context menu (undoable)
   mainLayout->getCanvas().setRenameModuleCallback(
-      [](int /*section*/, Module* /*module*/, const juce::String& newName) {
-        // Title is already updated on the module object; log for now
-        // Future: send NameDump to synth when protocol supports it
-        std::cout << "[MAIN] Module renamed to: " << newName.toStdString() << std::endl;
+      [this](int section, Module* module, const juce::String& oldName, const juce::String& newName) {
+        if (!module || !currentPatch() || !undoContext()) return;
+        undoManager().beginNewTransaction("Rename Module");
+        undoManager().perform(new RenameModuleAction(
+            *undoContext(), section, module->getContainerIndex(), oldName, newName));
       });
 
   // Wire morph group assignment from parameter context menu
@@ -2529,8 +2533,12 @@ void MainComponent::wireSlotWindowContent(SlotWindow& window, int slot) {
   });
 
   // Inspector-originated edits
-  inspector.onNameChanged = [&canvas](int, Module*, const juce::String&) {
-    canvas.repaintCanvas();
+  inspector.onNameChanged = [patch, ctx, undoMgr](int section, Module* module,
+                                const juce::String& oldName, const juce::String& newName) {
+    if (!patch() || !ctx() || !module) return;
+    undoMgr().beginNewTransaction("Rename Module");
+    undoMgr().perform(new RenameModuleAction(
+        *ctx(), section, module->getContainerIndex(), oldName, newName));
   };
   inspector.onMorphGroupChanged = [this, slot, patch, ctx, undoMgr]
       (int section, Module* module, int paramIndex, int morphGroup) {
@@ -2605,8 +2613,12 @@ void MainComponent::wireSlotWindowContent(SlotWindow& window, int slot) {
     if (!patch() || !ctx()) return;
     undoMgr().perform(new MoveModuleAction(*ctx(), section, moduleIndex, oldPos, newPos));
   });
-  canvas.setRenameModuleCallback([](int, Module*, const juce::String& newName) {
-    std::cout << "[SLOTWIN] Module renamed to: " << newName.toStdString() << std::endl;
+  canvas.setRenameModuleCallback([patch, ctx, undoMgr](int section, Module* module,
+                                     const juce::String& oldName, const juce::String& newName) {
+    if (!patch() || !ctx() || !module) return;
+    undoMgr().beginNewTransaction("Rename Module");
+    undoMgr().perform(new RenameModuleAction(
+        *ctx(), section, module->getContainerIndex(), oldName, newName));
   });
   canvas.setMorphAssignCallback([patch, ctx, undoMgr]
       (int section, int moduleId, int paramId, int morphGroup) {

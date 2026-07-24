@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Renaming a module is now undoable (issue #23)**: renaming a module — from the canvas
+  context menu, the Inspector name field, or a slot window — previously changed the title
+  outside the undo system (the callback only logged), so Ctrl+Z couldn't take it back. There
+  is now a `RenameModuleAction`; all three rename paths go through it, in the main window and
+  slot windows alike. A new MCP `rename_module` tool exposes the same undoable operation to
+  bridge clients (existing modules could be created with a name but never renamed). The name
+  lives in the patch/editor and reaches the synth on the next full patch upload.
+
 - **Slot chooser when opening a patch, with a Local option (issue #21)**: opening a `.pch`
   used to silently target the active slot and, when connected, always upload — so there was
   no way to just look at a patch without overwriting the synth's current slot, and no way to

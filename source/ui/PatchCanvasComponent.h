@@ -23,7 +23,7 @@ public:
     using ParameterDragCompleteCallback = std::function<void(int section, int moduleId, int parameterId, int oldValue, int newValue)>;
     using ModuleDropCallback = std::function<void(int typeId, int section, int gridX, int gridY, const juce::String& name)>;
     using DeleteModuleCallback = std::function<void(int section, Module* module)>;
-    using RenameModuleCallback = std::function<void(int section, Module* module, const juce::String& newName)>;
+    using RenameModuleCallback = std::function<void(int section, Module* module, const juce::String& oldName, const juce::String& newName)>;
     using ModuleSelectedCallback = std::function<void(Module* module, int section)>;
     // Module move callback for undo: section, moduleIndex, oldPos, newPos
     using ModuleMoveCallback = std::function<void(int section, int moduleIndex,

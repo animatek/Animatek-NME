@@ -26,7 +26,7 @@ public:
     void clearModule();
 
     // Callbacks
-    std::function<void(int section, Module*, const juce::String&)> onNameChanged;
+    std::function<void(int section, Module*, const juce::String& oldName, const juce::String& newName)> onNameChanged;
     // section, module, paramIndex, newGroup (-1=remove)
     std::function<void(int section, Module*, int paramIndex, int morphGroup)> onMorphGroupChanged;
     // section, module, paramIndex, span (0-127), direction (0=+, 1=-)
