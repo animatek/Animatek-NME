@@ -731,6 +731,14 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
           juce::MessageManager::callAsync([safeThis, l, me]() mutable {
               if (!safeThis) return;
               safeThis->mainLayout->getCanvas().setLightMeterData(l.data(), me.data());
+              // Live fan-out (issue #22): the synth streams lights/meters for the
+              // focused slot, which the editor keeps in sync with activeSlot. If
+              // that slot also has its own pop-out window open, drive its canvas
+              // too so its LEDs/meters animate like the main one's.
+              const int focused = safeThis->activeSlot;
+              if (safeThis->slotWindows[focused] && safeThis->slotWindows[focused]->isVisible())
+                  safeThis->slotWindows[focused]->getContent().getCanvas().setLightMeterData(
+                      l.data(), me.data());
           });
       });
 
@@ -841,6 +849,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         safeThis->mainLayout->getHeaderBar().repaint();
         if (safeThis->knobFloaterWindow && safeThis->knobFloaterWindow->isVisible())
           safeThis->knobFloaterWindow->refresh();
+        safeThis->mirrorLiveUpdateToSlotWindow();  // issue #22 fan-out
         return;
       }
 
@@ -865,6 +874,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         safeThis->mainLayout->getCanvas().repaintCanvas();
         if (safeThis->knobFloaterWindow && safeThis->knobFloaterWindow->isVisible())
           safeThis->knobFloaterWindow->refresh();
+        safeThis->mirrorLiveUpdateToSlotWindow();  // issue #22 fan-out
       }
     });
   });
@@ -1634,6 +1644,45 @@ void MainComponent::savePatchAs() {
           if (savePatchToFile(file))
             currentPatchFile() = file;
         }
+      });
+}
+
+// Ctrl+S from a SlotWindow (issue #22): save that window's own slot, not the
+// active one. Saves to the slot's known file if it has one, otherwise prompts.
+void MainComponent::saveSlotPatch(int slot) {
+  if (slot < 0 || slot >= numSlots || slotPatches[slot] == nullptr) return;
+  if (slotPatchFiles[slot].existsAsFile()) {
+    bool ok = saveSlotPatchToFile(slot, slotPatchFiles[slot]);
+    mainLayout->getStatusBar().showMessage(
+        ok ? "Saved: " + slotPatchFiles[slot].getFileName()
+           : "ERROR:Failed to save: " + slotPatchFiles[slot].getFileName(),
+        ok ? 3000 : 5000);
+  } else {
+    saveSlotPatchAs(slot);
+  }
+}
+
+void MainComponent::saveSlotPatchAs(int slot) {
+  if (slot < 0 || slot >= numSlots || slotPatches[slot] == nullptr) return;
+
+  auto startFolder = editorOptions.getPatchesFolder();
+  auto chooser = std::make_shared<juce::FileChooser>(
+      "Save Patch As", startFolder.exists() ? startFolder : juce::File(), "*.pch");
+
+  chooser->launchAsync(
+      juce::FileBrowserComponent::saveMode |
+          juce::FileBrowserComponent::canSelectFiles,
+      [this, chooser, slot](const juce::FileChooser &fc) {
+        auto result = fc.getResult();
+        if (result == juce::File()) return;
+        auto file = result.hasFileExtension(".pch") ? result
+                                                     : result.withFileExtension("pch");
+        bool ok = saveSlotPatchToFile(slot, file);
+        if (ok) slotPatchFiles[slot] = file;
+        mainLayout->getStatusBar().showMessage(
+            ok ? "Saved: " + file.getFileName()
+               : "ERROR:Failed to save: " + file.getFileName(),
+            ok ? 3000 : 5000);
       });
 }
 
@@ -2495,6 +2544,22 @@ void MainComponent::toggleSlotWindow(int slot) {
             content.setInspectorVisible(!content.isInspectorVisible());
             return true;
           }
+          // Randomize / Save act on THIS window's slot (issue #22). The main
+          // canvas gates these behind its fileCommandCallback; a SlotWindow
+          // deliberately leaves that null (so Ctrl+1..9/floaters still route
+          // through here), so its canvas passes these keys up to us unhandled.
+          if (k.getModifiers().isCommandDown()) {
+            const bool shift = k.getModifiers().isShiftDown();
+            const int code = k.getKeyCode();
+            if (code == 'r') {
+              randomizeSlotParameters(slot, slotWindows[slot]->getContent().getCanvas(), shift);
+              return true;
+            }
+            if (code == 's') {
+              if (shift) saveSlotPatchAs(slot); else saveSlotPatch(slot);
+              return true;
+            }
+          }
           return handleFloaterShortcut(k);
         };
     wireSlotWindowContent(*slotWindows[slot], slot);
@@ -2502,8 +2567,9 @@ void MainComponent::toggleSlotWindow(int slot) {
 
   // Match the main canvas's current color scheme. Editing (cables, modules,
   // parameters, undo/redo) is wired below via wireSlotWindowContent(); live
-  // updates arriving FROM the synth for this slot still only reach the main
-  // canvas if it's the focused one (that fan-out is a later milestone).
+  // updates arriving FROM the synth for the focused slot now fan out to this
+  // window too (issue #22), via mirrorLiveUpdateToSlotWindow() and the
+  // light/meter callback.
   const auto& theme = ThemeRegistry::get(editorOptions.uiThemeIndex);
   auto canvasScheme = theme.makeCanvas();
   canvasScheme.wireframe = editorOptions.wireframe;
@@ -2536,6 +2602,22 @@ void MainComponent::updateSlotWindowDspLoad(int slot) {
     if (mod && mod->getDescriptor()) commonCycles += mod->getDescriptor()->cycles;
   double total = polyCycles + commonCycles;
   headerBar.setLoadValues(static_cast<float>(polyCycles / 100.0), static_cast<float>(total / 100.0));
+}
+
+// A live parameter/morph value arriving from the synth is applied to the
+// active slot's patch (currentPatch() == slotPatches[activeSlot]), which is the
+// very same Patch object an open SlotWindow for that slot displays — so the
+// model is already up to date and this only needs to repaint that window's
+// surfaces (issue #22 live fan-out). No-op unless the focused slot's window is
+// actually open and visible.
+void MainComponent::mirrorLiveUpdateToSlotWindow() {
+  const int focused = activeSlot;
+  if (focused < 0 || focused >= numSlots) return;
+  auto* sw = slotWindows[focused].get();
+  if (!sw || !sw->isVisible()) return;
+  auto& content = sw->getContent();
+  content.getCanvas().repaintCanvas();
+  content.getHeaderBar().repaint();
 }
 
 // With N windows potentially open at once, it's not obvious at a glance
@@ -2577,14 +2659,16 @@ void MainComponent::updateSlotWindowFocusIndicators() {
 // accessors, which are activeSlot-only.
 //
 // Scope: the core editing chain (selection, parameters, cables, modules,
-// morph/knob/CC assignment, rename, undo/redo). Deliberately NOT wired:
-// file commands (Ctrl+N/O/S have no clear meaning for a window bound to one
-// already-loaded slot — Ctrl+1..9/T for slot-switch/floaters/theme still
-// work via SlotWindow's onGlobalKey, since PatchCanvas::keyPressed only
-// handles those itself when setFileCommandCallback is non-null); the
-// morph-keyboard/snapshot/mutator buttons (tied to the single shared
-// keyboard/mutator floaters and activeSlot-scoped variations — a separate
-// design question, not needed for basic patch editing); snippet save/drop.
+// morph/knob/CC assignment, rename, undo/redo). Randomize (Ctrl+R/Ctrl+Shift+R)
+// and Save (Ctrl+S/Ctrl+Shift+S) are handled per-slot in this window's
+// onGlobalKey (issue #22), NOT here — they hang off the window's key routing
+// rather than the canvas's fileCommandCallback (still left null so Ctrl+1..9/T
+// keep routing through onGlobalKey). Deliberately still NOT wired: the rest of
+// the file commands (Ctrl+N/O open/new have no unambiguous meaning for a window
+// bound to one already-loaded slot); the morph-keyboard/snapshot/mutator
+// buttons (tied to the single shared keyboard/mutator floaters and the top
+// settings bar, which — matching the original Nomad editor — live only on the
+// main window); snippet save/drop.
 void MainComponent::wireSlotWindowContent(SlotWindow& window, int slot) {
   auto& content = window.getContent();
   auto& canvas = content.getCanvas();
@@ -3684,7 +3768,19 @@ void MainComponent::initializeModule(int section, Module* module) {
 }
 
 void MainComponent::randomizeParameters(bool gaussian) {
-  if (!currentPatch() || !undoContext()) return;
+  // Main-window entry point: the active slot, its canvas selection and canvas.
+  randomizeSlotParameters(activeSlot, mainLayout->getCanvas(), gaussian);
+}
+
+// Slot-scoped core (issue #22): a SlotWindow routes its Ctrl+R here with its
+// own slot and canvas, so Randomize acts on the window's patch and honours the
+// window's own module selection, instead of being a silent no-op that only
+// ever touched the active slot.
+void MainComponent::randomizeSlotParameters(int slot, PatchCanvasComponent& canvas, bool gaussian) {
+  if (slot < 0 || slot >= numSlots) return;
+  Patch* p = slotPatches[slot].get();
+  UndoContext* uc = slotUndoContexts[slot].get();
+  if (!p || !uc) return;
 
   // Auto-exclude list: parameter names that should not be randomized
   static const juce::StringArray excludeNames = {
@@ -3710,7 +3806,7 @@ void MainComponent::randomizeParameters(bool gaussian) {
   std::vector<RandomizeAction::ParamChange> changes;
 
   // If modules are selected, only randomize those; otherwise randomize all
-  auto selected = mainLayout->getCanvas().getSelectedModules();
+  auto selected = canvas.getSelectedModules();
   std::set<Module*> selectedSet;
   for (auto& [mod, sec] : selected)
       selectedSet.insert(mod);
@@ -3747,17 +3843,19 @@ void MainComponent::randomizeParameters(bool gaussian) {
       }
   };
 
-  processContainer(currentPatch()->getPolyVoiceArea(), 1);
-  processContainer(currentPatch()->getCommonArea(), 0);
+  processContainer(p->getPolyVoiceArea(), 1);
+  processContainer(p->getCommonArea(), 0);
 
   if (changes.empty()) return;
 
-  // Single undo transaction with batched synth upload
+  // Single undo transaction with batched synth upload. The RandomizeAction runs
+  // against this slot's UndoContext, whose repaint callback already redraws
+  // whichever surface(s) show the slot (main canvas and/or its SlotWindow), so
+  // we don't repaint here explicitly.
   int numChanges = static_cast<int>(changes.size());
-  undoManager().beginNewTransaction("Randomize Parameters");
-  undoManager().perform(new RandomizeAction(*undoContext(), std::move(changes)));
+  slotUndoManagers[slot].beginNewTransaction("Randomize Parameters");
+  slotUndoManagers[slot].perform(new RandomizeAction(*uc, std::move(changes)));
 
-  mainLayout->getCanvas().repaintCanvas();
   juce::String scope = hasSelection ? " (selection)" : " (all)";
   mainLayout->getStatusBar().showMessage(
       "Randomized " + juce::String(numChanges) + " parameters" + scope

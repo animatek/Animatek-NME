@@ -115,6 +115,7 @@ private:
     void wireSlotWindowContent(SlotWindow& window, int slot);  // Editing callbacks, wired once per window
     void updateSlotWindowDspLoad(int slot);  // Slot-scoped equivalent of updateDspLoadDisplay()
     void updateSlotWindowFocusIndicators();  // Mark which open slot window has synth hardware focus
+    void mirrorLiveUpdateToSlotWindow();     // Repaint the focused slot's window on live synth updates (issue #22)
     bool handleFloaterShortcut(const juce::KeyPress& key);  // Ctrl+1..9, T
     void showFloaterWindow(juce::DocumentWindow& window, const juce::String& settingsPrefix);
     void saveFloaterState();
@@ -128,6 +129,9 @@ private:
     void showBetaWarning(bool forceShow = false);
     void showKeyboardShortcutsDialog();
     void randomizeParameters(bool gaussian);
+    void randomizeSlotParameters(int slot, PatchCanvasComponent& canvas, bool gaussian);  // issue #22
+    void saveSlotPatch(int slot);     // Ctrl+S from a SlotWindow (issue #22)
+    void saveSlotPatchAs(int slot);   // Ctrl+Shift+S from a SlotWindow (issue #22)
     void initializeModule(int section, Module* module);
     void handleSnapshotClick(int index, bool isShiftClick);
     void saveSnapshot(int index);

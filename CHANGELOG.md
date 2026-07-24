@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Slot windows now track live synth updates and support Randomize/Save (issue #22)**:
+  a popped-out slot window used to be edit-only — turning a physical knob (or moving a
+  meter/light) on the front panel animated the main window's canvas but never the slot
+  window's, even when it showed the very slot being touched, and Randomize/Save silently did
+  nothing there. Now the live fan-out from the synth (parameter values, morph knobs, lights
+  and meters) reaches the focused slot's own window too, and Ctrl+R / Ctrl+Shift+R (Randomize
+  simple/Gaussian) and Ctrl+S / Ctrl+Shift+S (Save / Save As) act on that window's slot,
+  honouring its own module selection. The top settings bar (macros, CPU/voice meters) stays
+  main-window-only, matching the original Nomad editor.
+
 - **Rapid Voices changes no longer corrupt the synth slot (issue #28)**: each voice
   increment re-uploads the whole patch, and pressing the Voices arrows quickly fired
   overlapping uploads — a second `uploadPatch()` clobbered the first's in-flight section/ACK
