@@ -1,0 +1,28 @@
+# Normalise all text files to LF in the repository and the working tree.
+# This project lives on an NTFS mount where the tooling can silently rewrite
+# files with CRLF; without this, every edit produced a full-file line-ending
+# diff. Forcing LF keeps diffs honest on Linux, macOS and Windows alike.
+* text=auto eol=lf
+
+# Shell scripts must be LF or they break at runtime.
+*.sh text eol=lf
+
+# Diff patches must keep their exact bytes: the JUCE sources they patch ship
+# with CRLF, so the patch context is CRLF and normalising it to LF makes
+# `git apply` reject it. -text = never convert, store bytes verbatim.
+*.patch -text
+
+# Binary assets: never touch line endings, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.pdf binary
+*.zip binary
+*.wav binary
+*.ttf binary
+*.otf binary
+*.pch binary
+*.snip binary
