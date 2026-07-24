@@ -128,6 +128,17 @@ private:
     void startInterpolationTo(const ParamSnapshot& snap, float seconds, int targetVariation);
     void onInterpolationTick();
     void stopInterpolation(const char* reason);
+
+    // Morph A/B fader (editor-side software morph between two captured sounds;
+    // proof-of-concept for driving an editor macro from a physical panel knob).
+    void setMorphEndpoint(bool isB, int snapIndex);  // snapIndex -1 = current sound
+    void assignMorphKnob(int knobIndex);   // assign a panel knob (editor->synth) to drive the fader
+    void rebuildMorphPairs();
+    void applyMorphPosition(float t);        // t in [0,1]; live, no undo
+    void armMorphKnobLearn();
+    void clearMorphKnobAssignment();
+    void resetMorphAB();
+    void refreshMorphUi();
     void handleConnectionRequest(const juce::String& inputId, const juce::String& outputId);
     void handleDisconnectionRequest();
     void onConnectionStatusChanged(const ConnectionManager::Status& status);
@@ -202,6 +213,15 @@ private:
     };
     InterpolationState interpolation;
     std::unique_ptr<juce::Timer> interpolationTimer;
+
+    // Morph A/B fader state (single set for the active slot; reset on patch change)
+    ParamSnapshot morphA, morphB;
+    struct MorphPair { int section, moduleId, paramId, aVal, bVal; };
+    std::vector<MorphPair> morphPairs;     // cached differing params, rebuilt on capture
+    bool morphLearnArmed = false;
+    int morphKnobSection = -1, morphKnobModule = -1, morphKnobParam = -1;
+    int morphKnobIndex = -1;    // physical knob (0..22) assigned as the fader carrier, -1 = none
+    int morphKnobMin = 0, morphKnobMax = 127;   // range of the learned knob's param
 
     juce::String lastInputId;
     juce::String lastOutputId;

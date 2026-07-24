@@ -230,11 +230,31 @@ int PatchHeaderBar::getSnapshotButtonAt(juce::Point<int> pos) const
     return -1;
 }
 
+juce::Rectangle<float> PatchHeaderBar::getMorphFaderBounds() const
+{
+    // Between the snapshot row (past the interpolation-time label) and MUT.
+    auto last = getSnapshotButtonBounds(7);
+    return { last.getRight() + 28.0f, last.getY(), 76.0f, last.getHeight() };
+}
+
+bool PatchHeaderBar::isMorphFaderAt(juce::Point<int> pos) const
+{
+    return getMorphFaderBounds().expanded(2.0f).contains(pos.toFloat());
+}
+
+float PatchHeaderBar::morphFaderPosFromX(float x) const
+{
+    auto fb = getMorphFaderBounds();
+    constexpr float inset = 11.0f;  // room for the A/B end labels
+    float l = fb.getX() + inset, r = fb.getRight() - inset;
+    return juce::jlimit(0.0f, 1.0f, (x - l) / juce::jmax(1.0f, r - l));
+}
+
 juce::Rectangle<float> PatchHeaderBar::getMutatorButtonBounds() const
 {
-    // Right of the snapshot row, leaving room for the interpolation-time label
-    auto last = getSnapshotButtonBounds(7);
-    return { last.getRight() + 30.0f, last.getY(), 36.0f, last.getHeight() };
+    // Right of the morph fader
+    auto fader = getMorphFaderBounds();
+    return { fader.getRight() + 10.0f, fader.getY(), 36.0f, fader.getHeight() };
 }
 
 bool PatchHeaderBar::isMutatorButtonAt(juce::Point<int> pos) const
@@ -564,6 +584,43 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             }
         }
 
+        // Morph A/B fader (editor-side software morph between two captures)
+        {
+            auto fb = getMorphFaderBounds();
+            const bool ready = morphHasA && morphHasB;
+
+            // Track
+            g.setColour(AppTheme::palette().inputBackground);
+            g.fillRoundedRectangle(fb, 3.0f);
+            g.setColour(morphLearnArmed ? AppTheme::palette().buttonActive
+                                        : AppTheme::palette().borderColor);
+            g.drawRoundedRectangle(fb.reduced(0.5f), 3.0f, 1.0f);
+
+            // A / B end labels (dimmed until that endpoint is captured)
+            g.setFont(juce::FontOptions(8.0f).withStyle("Bold"));
+            g.setColour(morphHasA ? AppTheme::palette().textSecondary
+                                  : AppTheme::palette().textMuted);
+            g.drawText("A", juce::Rectangle<float>(fb.getX() + 2.0f, fb.getY(),
+                                                   9.0f, fb.getHeight()),
+                       juce::Justification::centred, false);
+            g.setColour(morphHasB ? AppTheme::palette().textSecondary
+                                  : AppTheme::palette().textMuted);
+            g.drawText("B", juce::Rectangle<float>(fb.getRight() - 11.0f, fb.getY(),
+                                                   9.0f, fb.getHeight()),
+                       juce::Justification::centred, false);
+
+            // Thumb
+            constexpr float inset = 11.0f;
+            float l = fb.getX() + inset, r = fb.getRight() - inset;
+            float thumbX = l + (r - l) * morphFaderPos;
+            auto thumbCol = !ready ? AppTheme::palette().textMuted
+                          : morphKnobAssigned ? AppTheme::palette().buttonActive
+                                              : AppTheme::palette().textSecondary;
+            g.setColour(thumbCol);
+            g.fillRoundedRectangle(thumbX - 2.0f, fb.getY() + 1.5f, 4.0f,
+                                   fb.getHeight() - 3.0f, 1.5f);
+        }
+
         // Patch Mutator quick-access button
         {
             auto mb = getMutatorButtonBounds();
@@ -682,6 +739,25 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
         return;
     }
 
+    // Morph A/B fader
+    if (isMorphFaderAt(pos))
+    {
+        if (e.mods.isPopupMenu())
+        {
+            showMorphFaderMenu();
+            return;
+        }
+        if (morphHasA && morphHasB)
+        {
+            morphDragging = true;
+            morphFaderPos = morphFaderPosFromX(static_cast<float>(pos.x));
+            repaint();
+            if (morphFaderCallback)
+                morphFaderCallback(morphFaderPos);
+        }
+        return;
+    }
+
     // Patch Mutator button
     if (isMutatorButtonAt(pos))
     {
@@ -762,6 +838,69 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
         }
         return;
     }
+}
+
+void PatchHeaderBar::showMorphFaderMenu()
+{
+    // Menu id ranges: A-from = 10 (current) / 20+i (snapshot i);
+    //                 B-from = 40 (current) / 50+i (snapshot i);  Learn=3, Clear=4.
+    juce::PopupMenu menu;
+    menu.addSectionHeader("Morph A/B");
+
+    juce::PopupMenu aMenu, bMenu;
+    aMenu.addItem(10, "Current sound");
+    bMenu.addItem(40, "Current sound");
+    bool anySnap = false;
+    for (int i = 0; i < 8; ++i) anySnap = anySnap || snapshotFilled[i];
+    if (anySnap) { aMenu.addSeparator(); bMenu.addSeparator(); }
+    for (int i = 0; i < 8; ++i)
+    {
+        if (!snapshotFilled[i]) continue;
+        aMenu.addItem(20 + i, "Snapshot " + juce::String(i + 1));
+        bMenu.addItem(50 + i, "Snapshot " + juce::String(i + 1));
+    }
+    menu.addSubMenu("Set A from", aMenu);
+    menu.addSubMenu("Set B from", bMenu);
+    menu.addSeparator();
+
+    // Knob submenu: assign a physical panel knob from the editor (sent to the
+    // synth via a spare morph group as carrier). Ids 100+k.
+    {
+        juce::PopupMenu knobSub;
+        auto addKnob = [&](int k, const juce::String& name)
+        {
+            juce::String label = name;
+            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned)
+                label += " (used)";
+            knobSub.addItem(100 + k, label);
+        };
+        for (int k = 0; k < 6; ++k)  addKnob(k, "Knob " + juce::String(k + 1));
+        knobSub.addSeparator();
+        for (int k = 6; k < 12; ++k) addKnob(k, "Knob " + juce::String(k + 1));
+        knobSub.addSeparator();
+        for (int k = 12; k < 15; ++k) addKnob(k, "Knob " + juce::String(k + 1));
+        knobSub.addSeparator();
+        for (int k = 15; k < 18; ++k) addKnob(k, "Knob " + juce::String(k + 1));
+        knobSub.addSeparator();
+        for (int k : { 19, 20, 22 }) addKnob(k, KnobAssignmentMessage::getKnobName(k));
+        menu.addSubMenu("Knob", knobSub);
+    }
+
+    menu.addItem(3, morphLearnArmed ? "Learning... (turn a panel knob)"
+                                    : "Learn already-assigned knob", !morphLearnArmed);
+    menu.addItem(4, "Clear knob assignment", morphKnobAssigned);
+
+    menu.showMenuAsync(juce::PopupMenu::Options{},
+        [this](int r)
+        {
+            if (r == 10)                 { if (morphSetEndpointCallback) morphSetEndpointCallback(false, -1); }
+            else if (r >= 20 && r < 28)  { if (morphSetEndpointCallback) morphSetEndpointCallback(false, r - 20); }
+            else if (r == 40)            { if (morphSetEndpointCallback) morphSetEndpointCallback(true, -1); }
+            else if (r >= 50 && r < 58)  { if (morphSetEndpointCallback) morphSetEndpointCallback(true, r - 50); }
+            else if (r >= 100 && r < 123){ if (morphAssignKnobCallback)  morphAssignKnobCallback(r - 100); }
+            else if (r == 3)             { if (morphLearnCallback)       morphLearnCallback(); }
+            else if (r == 4)             { if (morphClearKnobCallback)   morphClearKnobCallback(); }
+        });
 }
 
 void PatchHeaderBar::showMorphKnobContextMenu(int morphIndex)
@@ -909,6 +1048,15 @@ void PatchHeaderBar::showMorphKnobContextMenu(int morphIndex)
 
 void PatchHeaderBar::mouseDrag(const juce::MouseEvent& e)
 {
+    if (morphDragging)
+    {
+        morphFaderPos = morphFaderPosFromX(static_cast<float>(e.getPosition().x));
+        repaint();
+        if (morphFaderCallback)
+            morphFaderCallback(morphFaderPos);
+        return;
+    }
+
     if (dragState.morphIndex < 0 || patch == nullptr)
         return;
 
@@ -931,6 +1079,12 @@ void PatchHeaderBar::mouseDrag(const juce::MouseEvent& e)
 
 void PatchHeaderBar::mouseUp(const juce::MouseEvent&)
 {
+    if (morphDragging)
+    {
+        morphDragging = false;
+        return;
+    }
+
     if (dragState.morphIndex >= 0 && patch != nullptr && morphChangeCallback)
     {
         int finalVal = patch->morphValues[static_cast<size_t>(dragState.morphIndex)];

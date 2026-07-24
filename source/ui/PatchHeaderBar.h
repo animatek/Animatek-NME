@@ -63,6 +63,25 @@ public:
     void setActiveSnapshot(int index) { activeSnapshot = index; repaint(); }
     void setInterpolationProgress(float progress);  // 0-1, <0 = not interpolating
 
+    // Morph A/B fader (editor-side software morph, sits between the snapshot
+    // row and the MUT button). Left-drag scrubs A->B; right-click captures the
+    // A/B endpoints and Learns a physical panel knob as the drive source.
+    using MorphFaderCallback = std::function<void(float pos)>;    // drag -> pos 0..1
+    // Set endpoint A (isB=false) or B (isB=true) from snapIndex; snapIndex -1 = current sound
+    using MorphSetEndpointCallback = std::function<void(bool isB, int snapIndex)>;
+    using MorphLearnCallback = std::function<void()>;             // arm panel-knob Learn
+    using MorphClearKnobCallback = std::function<void()>;         // clear knob assignment
+    using MorphAssignKnobCallback = std::function<void(int knobIndex)>;  // assign knob editor->synth
+    void setMorphFaderCallback(MorphFaderCallback cb) { morphFaderCallback = std::move(cb); }
+    void setMorphSetEndpointCallback(MorphSetEndpointCallback cb) { morphSetEndpointCallback = std::move(cb); }
+    void setMorphAssignKnobCallback(MorphAssignKnobCallback cb) { morphAssignKnobCallback = std::move(cb); }
+    void setMorphLearnCallback(MorphLearnCallback cb) { morphLearnCallback = std::move(cb); }
+    void setMorphClearKnobCallback(MorphClearKnobCallback cb) { morphClearKnobCallback = std::move(cb); }
+    void setMorphEndpoints(bool hasA, bool hasB) { morphHasA = hasA; morphHasB = hasB; repaint(); }
+    void setMorphFaderPos(float pos) { morphFaderPos = juce::jlimit(0.0f, 1.0f, pos); repaint(); }
+    void setMorphLearnArmed(bool armed) { morphLearnArmed = armed; repaint(); }
+    void setMorphKnobAssigned(bool assigned) { morphKnobAssigned = assigned; repaint(); }
+
     // Set the current bank/position for quick save button
     void setCurrentLocation(int section, int position);
     void clearCurrentLocation();
@@ -139,6 +158,23 @@ private:
     int getSnapshotButtonAt(juce::Point<int> pos) const;  // -1 if none
     juce::Rectangle<float> getMutatorButtonBounds() const;
     bool isMutatorButtonAt(juce::Point<int> pos) const;
+
+    // Morph A/B fader
+    juce::Rectangle<float> getMorphFaderBounds() const;
+    bool isMorphFaderAt(juce::Point<int> pos) const;
+    void showMorphFaderMenu();
+    float morphFaderPosFromX(float x) const;
+    MorphFaderCallback morphFaderCallback;
+    MorphSetEndpointCallback morphSetEndpointCallback;
+    MorphAssignKnobCallback morphAssignKnobCallback;
+    MorphLearnCallback morphLearnCallback;
+    MorphClearKnobCallback morphClearKnobCallback;
+    bool morphHasA = false, morphHasB = false;
+    bool morphLearnArmed = false;
+    bool morphKnobAssigned = false;
+    float morphFaderPos = 0.0f;
+    bool morphDragging = false;
+
     bool snapshotFilled[8] = {};
     int activeSnapshot = -1;       // -1 = none active
     float interpolationProgress = -1.0f;  // <0 = not interpolating

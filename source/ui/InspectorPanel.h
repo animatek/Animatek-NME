@@ -36,6 +36,10 @@ public:
     // section, moduleId, paramId, midiCC=-1 (deassign)
     std::function<void(int section, int moduleId, int paramId, int midiCC)> onMidiCtrlRemoved;
 
+    // Morph A/B fader carrier knob shown in the patch-wide assignments view.
+    void setMorphFaderKnob(int knobIndex, int carrierGroup);
+    std::function<void()> onMorphFaderKnobRemove;
+
     // Called by canvas when a morph assignment changes (so inspector can refresh)
     void refreshMorphList();
 
