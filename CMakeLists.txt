@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(AnimatekNME VERSION 0.10.0 LANGUAGES C CXX)
+project(AnimatekNME VERSION 0.11.0 LANGUAGES C CXX)
 
 include(GNUInstallDirs)
 

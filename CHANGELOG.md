@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.0 — 2026-07-24
+
 - **Slot windows now track live synth updates and support Randomize/Save (issue #22)**:
   a popped-out slot window used to be edit-only — turning a physical knob (or moving a
   meter/light) on the front panel animated the main window's canvas but never the slot
