@@ -218,8 +218,9 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     mcpBridgeCopyButton.onClick = [this]() {
         juce::SystemClipboard::copyTextToClipboard (mcpBridgeCommand.getText());
         mcpBridgeCopyButton.setButtonText ("Copied!");
-        juce::Timer::callAfterDelay (1500, [safeThis = juce::Component::SafePointer<EditorOptionsDialog> (this)]() {
-            if (safeThis) safeThis->mcpBridgeCopyButton.setButtonText ("Copy");
+        juce::Component::SafePointer<EditorOptionsDialog> safeThis (this);
+        juce::Timer::callAfterDelay (1500, [safeThis]() {
+            if (safeThis != nullptr) safeThis->mcpBridgeCopyButton.setButtonText ("Copy");
         });
     };
     addAndMakeVisible (mcpBridgeCommand);

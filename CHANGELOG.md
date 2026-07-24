@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Windows build fixed (issue #24)**: the MCP-bridge "Copy" button's revert timer in the
+  Editor Options dialog used a lambda init-capture initialised by a function-style cast
+  (`SafePointer<...> (this)`), which MSVC refused to parse — Clang and GCC accepted it, so
+  only the Windows build broke, with a cascade of C2440/C2119/C2512/C2660 errors. The
+  `SafePointer` is now hoisted to a local before the `callAfterDelay`, matching every other
+  call site in the codebase.
+
 - **Patch Mutator no longer wrecks pitch and cutoff**: mutating or randomizing a patch
   slammed oscillator frequency, slave detune, filter cutoff and some LFO rates down to
   almost nothing — a filter at 88 could land on 1, silencing the patch, from a setting whose
