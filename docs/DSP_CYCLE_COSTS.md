@@ -40,8 +40,18 @@ The only way to get correct values is to measure each module in isolation on the
 Clavia editor connected to hardware, and record what it costs. This is exactly what the
 original authors must have done — with some errors, as shown above.
 
-`docs/module-resource-costs.csv` is the working sheet (opens in Excel / Google Sheets;
-kept as CSV so it version-controls and can be shared publicly for crowd-sourcing).
+### Live crowd-sourced sheet
+
+The measurements are collected in a shared Google Sheet:
+
+- **View (public, read-only):**
+  https://docs.google.com/spreadsheets/d/e/2PACX-1vTjvaa-Qjq1bWuZSUrX-HP3NvBzcRAUlAhCXcSXI1idAwTskEFAaVJOa0jep8dbq6wNpTIVW3YZNsii/pubhtml
+- **Contribute (edit):**
+  https://docs.google.com/spreadsheets/d/13Kvlt3cO2nU5--zyeup1RH1EA2hiJYC2vtDYH5bbK2w/edit?usp=sharing
+
+The Google Sheet is the **live** copy (where contributors add values). `docs/module-resource-costs.csv`
+in this repo is the seed and the version-controlled snapshot — periodically re-export the
+sheet back onto it so the correction is tracked in git before it lands in `modules.xml`.
 
 ### Columns
 
