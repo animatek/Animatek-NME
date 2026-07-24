@@ -29,6 +29,7 @@ public:
     int  getCurrentTabIndex() const { return activeIndex; }
     void setSlotName(int slot, const juce::String& patchName);
     void setSlotsEnabled(const std::array<bool, 4>& enabled);
+    void setSlotLocal(int slot, bool local);  // show a "LOCAL" (not-synced) badge
 
     std::function<void(int)> onSlotChanged;
     std::function<void(int)> onSlotEnableToggled;  // Ctrl+click on this slot
@@ -41,6 +42,7 @@ private:
     static constexpr int numSlots = 4;
     int activeIndex = 0;
     bool slotEnabledFlags[numSlots] = {};
+    bool slotLocalFlags[numSlots] = {};
     bool blinkPhase = false;
     juce::String slotNames[numSlots];  // patch names per slot
     juce::Rectangle<int> slotBounds[numSlots];

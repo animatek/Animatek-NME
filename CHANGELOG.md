@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Slot chooser when opening a patch, with a Local option (issue #21)**: opening a `.pch`
+  used to silently target the active slot and, when connected, always upload — so there was
+  no way to just look at a patch without overwriting the synth's current slot, and no way to
+  load into a slot you hadn't visited. Opening a patch (File > Open and both preset browsers)
+  now shows a chooser listing A/B/C/D with the patch currently in each slot, defaulting to
+  the active one, plus a **Local** option that loads into the editor only without uploading.
+  Slots whose editor patch is not known to match the synth — loaded Local, or
+  loaded/built while disconnected — carry a **LOCAL** badge in the slot bar; the badge clears
+  once the patch is uploaded to, or fetched from, the synth.
+
 - **Front-panel Voices arrows now reach the synth (issue #25)**: clicking the Voices
   up/down arrows in the header bar updated the on-screen number but sent nothing to the
   synth, so the voice count never actually changed — only Ctrl+P Patch Settings worked. The

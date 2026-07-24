@@ -81,6 +81,7 @@ set(NME_SHARED_SOURCES
     source/ui/StatusBar.cpp
     source/ui/PatchHeaderBar.cpp
     source/ui/PatchLocationDialog.cpp
+    source/ui/SlotSelectDialog.cpp
     source/ui/PatchSettingsDialog.cpp
     source/ui/MidiSettingsDialog.cpp
     source/ui/SynthSettingsDialog.cpp

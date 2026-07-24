@@ -43,6 +43,15 @@ void SlotBar::setSlotName(int slot, const juce::String& patchName)
     }
 }
 
+void SlotBar::setSlotLocal(int slot, bool local)
+{
+    if (slot >= 0 && slot < numSlots && slotLocalFlags[slot] != local)
+    {
+        slotLocalFlags[slot] = local;
+        repaint();
+    }
+}
+
 void SlotBar::setSlotsEnabled(const std::array<bool, 4>& enabled)
 {
     bool changed = false;
@@ -134,8 +143,9 @@ void SlotBar::paint(juce::Graphics& g)
         auto iconArea = bounds.removeFromLeft(20).reduced(2);
         drawSlotIcon(g, iconArea, active);
 
-        // Text: "A : PatchName" (leave room for the LED on the right)
-        auto textArea = bounds.reduced(4, 0).withTrimmedRight(16);
+        // Text: "A : PatchName" (leave room for the LED on the right, and for
+        // the LOCAL badge when this slot is not synced to the synth)
+        auto textArea = bounds.reduced(4, 0).withTrimmedRight(slotLocalFlags[i] ? 62 : 16);
         juce::String label = juce::String(slotLetters[i]) + " : ";
         if (slotNames[i].isNotEmpty())
             label += slotNames[i];
@@ -143,6 +153,19 @@ void SlotBar::paint(juce::Graphics& g)
         g.setColour(active ? juce::Colours::white : AppTheme::palette().textSecondary);
         g.setFont(juce::FontOptions(12.0f));
         g.drawText(label, textArea, juce::Justification::centredLeft, true);
+
+        // "LOCAL" badge: this slot's editor patch is not known to match the
+        // synth (loaded Local, or edited/loaded while disconnected).
+        if (slotLocalFlags[i])
+        {
+            auto row = slotBounds[i];
+            juce::Rectangle<int> badge(row.getRight() - 16 - 44, row.getCentreY() - 8, 42, 16);
+            g.setColour(juce::Colour(0xffd08a2c));
+            g.fillRoundedRectangle(badge.toFloat(), 3.0f);
+            g.setColour(juce::Colours::black);
+            g.setFont(juce::FontOptions(9.0f, juce::Font::bold));
+            g.drawText("LOCAL", badge, juce::Justification::centred);
+        }
 
         // Slot LED, mirroring the hardware: blinking = focused, fixed =
         // enabled, off = disabled. Ctrl+click the row to toggle enable.

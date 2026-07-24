@@ -4,6 +4,7 @@
 #include "ui/BankTransferDialog.h"
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
+#include "ui/SlotSelectDialog.h"
 #include "ui/PatchSettingsDialog.h"
 #include "ui/SynthSettingsDialog.h"
 #include "ui/AppTheme.h"
@@ -387,8 +388,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
               safeThis->updateSlotWindowDspLoad(targetSlot);
             }
 
-            // Update slot bar with patch name
+            // Update slot bar with patch name. This patch came from the synth,
+            // so the slot is in sync — clear any stale LOCAL badge (issue #21).
             safeThis->mainLayout->getSlotBar().setSlotName(targetSlot, safeThis->slotPatches[targetSlot]->getName());
+            safeThis->setSlotLocal(targetSlot, false);
 
             const char* slotLetters[] = {"A", "B", "C", "D"};
             std::cout << "[SYNC] Patch loaded into slot " << slotLetters[targetSlot]
@@ -852,7 +855,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   mainLayout->onStoreToBankClicked = [this]() { storePatchToBank(); };
   mainLayout->getDiskPresetBrowser().setLibraryRoot(editorOptions.presetLibraryRoot);
   mainLayout->getDiskPresetBrowser().onPatchChosen = [this](const juce::File& file) {
-    loadPatchFromFile(file);
+    openPatchFileWithChooser(file);
   };
   mainLayout->getDiskPresetBrowser().onSnippetChosen = [this](const juce::File& file) {
     importSnippetFromFile(file);
@@ -1465,6 +1468,8 @@ bool MainComponent::replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
   }
 
   mainLayout->getSlotBar().setSlotName(slot, slotPatches[slot]->getName());
+  // Synced when we just uploaded it; otherwise it lives in the editor only.
+  setSlotLocal(slot, !connectionManager.isConnected());
   mainLayout->getStatusBar().showMessage(
       (sourceFile.existsAsFile() ? "Loaded: " + sourceFile.getFileName()
                                  : "New patch: " + slotPatches[slot]->getName()),
@@ -1560,7 +1565,7 @@ void MainComponent::openPatch() {
       [this, chooser](const juce::FileChooser &fc) {
         auto result = fc.getResult();
         if (result.existsAsFile())
-          loadPatchFromFile(result);
+          openPatchFileWithChooser(result);
       });
 }
 
@@ -1598,10 +1603,7 @@ void MainComponent::savePatchAs() {
       });
 }
 
-void MainComponent::loadPatchFromFile(const juce::File &file) {
-  std::cout << "===== LOAD PATCH: slot=" << static_cast<char>('A' + activeSlot)
-            << " source=file \"" << file.getFileName() << "\" =====" << std::endl;
-
+void MainComponent::loadPatchFromFile(const juce::File &file, int targetSlot, bool localOnly) {
   PchFileIO io(moduleDescs);
   auto patch = io.readFile(file);
 
@@ -1609,6 +1611,15 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
     mainLayout->getStatusBar().showMessage("ERROR:Failed to load: " + file.getFileName(), 5000);
     return;
   }
+
+  // Route the load to the chosen destination tab (issue #21). Done only after a
+  // successful read so a bad file never yanks you to another slot.
+  if (targetSlot >= 0 && targetSlot < numSlots && targetSlot != activeSlot)
+    switchToSlot(targetSlot);
+
+  std::cout << "===== LOAD PATCH: slot=" << static_cast<char>('A' + activeSlot)
+            << (localOnly ? " (LOCAL)" : "")
+            << " source=file \"" << file.getFileName() << "\" =====" << std::endl;
 
   stopInterpolation("disk patch load");
 
@@ -1645,7 +1656,10 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
   mainLayout->getStatusBar().showMessage("Loaded: " + file.getFileName(), 3000);
   updateDspLoadDisplay();
 
-  if (connectionManager.isConnected()) {
+  // Local load (issue #21): keep the patch in the editor only — no upload, no
+  // synchronizer that would push edits onto a synth slot holding a different
+  // patch. Mark the slot LOCAL so the divergence from the synth is visible.
+  if (!localOnly && connectionManager.isConnected()) {
     // Send loaded patch to synth so it plays immediately. Must be activeSlot
     // (the tab that just received this file), not getCurrentSlot() (whatever
     // slot happens to have hardware focus) — those can differ since slot
@@ -1685,8 +1699,37 @@ void MainComponent::loadPatchFromFile(const juce::File &file) {
     std::cout << "[SYNC] Patch synchronizer enabled after file load" << std::endl;
   }
 
+  setSlotLocal(activeSlot, localOnly || !connectionManager.isConnected());
+
   undoManager().clearUndoHistory();
   rebuildUndoContext(activeSlot);
+}
+
+// Show the slot chooser (issue #21), then load into the chosen destination.
+// Used by every user-initiated open (File > Open and both preset browsers).
+void MainComponent::openPatchFileWithChooser(const juce::File &file) {
+  std::array<juce::String, 4> names;
+  for (int i = 0; i < numSlots; ++i)
+    names[static_cast<size_t>(i)] =
+        slotPatches[i] ? slotPatches[i]->getName() : juce::String();
+
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  SlotSelectDialog::show(
+      this, "Open \"" + file.getFileNameWithoutExtension() + "\" into...",
+      names, activeSlot,
+      [safeThis, file](const SlotSelectDialog::Result &r) {
+        if (!safeThis || !r.confirmed)
+          return;
+        safeThis->loadPatchFromFile(file, r.slot, r.local);
+      });
+}
+
+// A slot's editor patch has diverged from (local) or rejoined (synced) the synth.
+void MainComponent::setSlotLocal(int slot, bool local) {
+  if (slot < 0 || slot >= numSlots)
+    return;
+  slotIsLocal[slot] = local;
+  mainLayout->getSlotBar().setSlotLocal(slot, local);
 }
 
 void MainComponent::storePatchToBank() {
@@ -1999,7 +2042,7 @@ void MainComponent::showPresetBrowser() {
     presetBrowserWindow = std::make_unique<PresetBrowserWindow>();
 
     presetBrowserWindow->onPatchChosen = [this](const juce::File& file) {
-      loadPatchFromFile(file);
+      openPatchFileWithChooser(file);
     };
     presetBrowserWindow->onSnippetChosen = [this](const juce::File& file) {
       importSnippetFromFile(file);

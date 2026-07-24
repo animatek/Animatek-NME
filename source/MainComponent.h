@@ -71,7 +71,10 @@ private:
     void savePatch();
     void savePatchAs();
     void storePatchToBank();
-    void loadPatchFromFile(const juce::File& file);
+    // Opening a .pch shows the slot chooser (issue #21); the chosen destination
+    // and Local flag are then applied by loadPatchFromFile.
+    void openPatchFileWithChooser(const juce::File& file);
+    void loadPatchFromFile(const juce::File& file, int targetSlot, bool localOnly);
     bool replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
                             const juce::File& sourceFile, bool activate,
                             bool loadVariations, juce::String& error);
@@ -162,6 +165,12 @@ private:
     juce::UndoManager slotUndoManagers[numSlots];
     std::unique_ptr<UndoContext> slotUndoContexts[numSlots];
     std::unique_ptr<SlotWindow> slotWindows[numSlots];  // Optional pop-out view per slot
+    // A slot is "local" when its editor patch is not known to match the synth:
+    // loaded via the Local option, or loaded/built while disconnected. Cleared
+    // once the patch is uploaded to, or fetched from, the synth. Drives the
+    // "LOCAL" badge in the slot bar (issue #21).
+    bool slotIsLocal[numSlots] = {};
+    void setSlotLocal(int slot, bool local);
 
     int activeSlot = 0;  // Which slot is currently displayed in the UI
     int pendingBrowserLoadSlot = -1;  // Directed browser load target, while patch data is in flight
