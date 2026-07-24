@@ -16,6 +16,11 @@
   absolute paths are used as-is, relative paths resolve inside the configured patches folder,
   a missing extension defaults to `.pch`, and parent folders are created as needed.
 
+- **MCP clients can store a patch to a synth bank (issue #23)**: a new `store_to_bank` tool
+  (bank 1-9, position 1-99) uploads a slot's patch to the synth and writes it to the bank
+  once the upload is ACKed, so an assistant-built patch can be persisted to the hardware, not
+  just to disk. Requires a connected synth with its patch list loaded.
+
 - **Slot chooser when opening a patch, with a Local option (issue #21)**: opening a `.pch`
   used to silently target the active slot and, when connected, always upload — so there was
   no way to just look at a patch without overwriting the synth's current slot, and no way to

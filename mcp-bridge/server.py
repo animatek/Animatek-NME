@@ -470,5 +470,25 @@ def save_patch(
     return _call("save_patch", params)
 
 
+@mcp.tool()
+def store_to_bank(
+    bank: int,
+    position: int,
+    slot: Optional[int] = None,
+) -> Any:
+    """Store a slot's patch into a synth bank location (requires a connected synth).
+
+    bank: 1-9. position: 1-99 (bank location = bank*100 + position, e.g. 101).
+    slot: 0-3 (A-D); defaults to the currently active slot.
+    The patch is uploaded to the synth working slot and then written to the bank,
+    so this overwrites that working slot. The patch list must have finished
+    loading. Returns the target bank/position/location.
+    """
+    params: dict[str, Any] = {"bank": bank, "position": position}
+    if slot is not None:
+        params["slot"] = slot
+    return _call("store_to_bank", params)
+
+
 if __name__ == "__main__":
     mcp.run()

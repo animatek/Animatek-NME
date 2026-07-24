@@ -1781,6 +1781,42 @@ void MainComponent::storePatchToBank() {
     });
 }
 
+bool MainComponent::storeSlotPatchToBank(int slot, int bankSection, int position,
+                                         juce::String &error) {
+  if (!connectionManager.isConnected()) {
+    error = "Not connected to a Nord Modular";
+    return false;
+  }
+  if (slot < 0 || slot >= numSlots || slotPatches[slot] == nullptr) {
+    error = "No patch loaded in slot " + juce::String(slot);
+    return false;
+  }
+  if (!connectionManager.isPatchListLoaded()) {
+    error = "Patch list not loaded yet";
+    return false;
+  }
+  if (bankSection < 0 || bankSection > 8 || position < 0 || position > 98) {
+    error = "bank must be 1-9 and position 1-99";
+    return false;
+  }
+
+  // Upload the editor patch to the synth slot first so the bank stores exactly
+  // this patch, then send the store once the synth ACKs the upload.
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  connectionManager.setUploadCompleteCallback(
+      [safeThis, slot, bankSection, position]() {
+        if (!safeThis) return;
+        safeThis->connectionManager.setUploadCompleteCallback(nullptr);
+        StorePatchMessage msg(slot, bankSection, position);
+        safeThis->connectionManager.sendRawSysEx(msg.toSysEx(slot));
+        int location = (bankSection + 1) * 100 + position + 1;
+        safeThis->mainLayout->getStatusBar().showMessage(
+            "Stored to bank location " + juce::String(location) + " (MCP)", 3000);
+      });
+  connectionManager.uploadPatch(slot, *slotPatches[slot]);
+  return true;
+}
+
 bool MainComponent::saveSlotPatchToFile(int slot, const juce::File &file) {
   if (slot < 0 || slot >= numSlots || slotPatches[slot] == nullptr)
     return false;

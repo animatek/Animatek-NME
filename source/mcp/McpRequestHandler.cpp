@@ -266,6 +266,7 @@ juce::var McpRequestHandler::handle(const juce::var& request)
         else if (method == "create_patch")     result = createPatch(params);
         else if (method == "open_patch")       result = openPatch(params);
         else if (method == "save_patch")       result = savePatch(params);
+        else if (method == "store_to_bank")    result = storeToBank(params);
         else throw McpError{ "unknown_method", "Unknown method: " + method };
 
         obj->setProperty("ok", true);
@@ -1059,6 +1060,37 @@ juce::var McpRequestHandler::savePatch(const juce::var& params)
     result->setProperty("path", file.getFullPathName());
     result->setProperty("name", patch->getName());
     result->setProperty("slot", slot);
+    return juce::var(result);
+}
+
+juce::var McpRequestHandler::storeToBank(const juce::var& params)
+{
+    int slot = resolveSlot(params);
+    ensurePatchEditable(owner_);
+
+    if (!params.hasProperty("bank"))
+        throw McpError{ "missing_param", "bank is required (1-9)" };
+    if (!params.hasProperty("position"))
+        throw McpError{ "missing_param", "position is required (1-99)" };
+
+    int bank = static_cast<int>(params["bank"]);
+    int position = static_cast<int>(params["position"]);
+    if (bank < 1 || bank > 9)
+        throw McpError{ "invalid_param", "bank must be 1-9" };
+    if (position < 1 || position > 99)
+        throw McpError{ "invalid_param", "position must be 1-99" };
+
+    // The store uploads the patch to the synth slot first, then writes it to the
+    // bank once the synth ACKs — so this overwrites the synth's working slot.
+    juce::String error;
+    if (!owner_.storeSlotPatchToBank(slot, bank - 1, position - 1, error))
+        throw McpError{ "store_failed", error };
+
+    auto* result = new juce::DynamicObject();
+    result->setProperty("slot", slot);
+    result->setProperty("bank", bank);
+    result->setProperty("position", position);
+    result->setProperty("location", bank * 100 + position);
     return juce::var(result);
 }
 

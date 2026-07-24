@@ -57,6 +57,11 @@ public:
     // so it is safe to call from the MCP handler. Returns false if the slot is
     // empty or the write failed.
     bool saveSlotPatchToFile(int slot, const juce::File& file);
+    // Upload a slot's patch to the synth and, once the upload is ACKed, store it
+    // into a bank location (bankSection 0-8 = banks 1-9, position 0-98). Async:
+    // returns true after initiating; on a precondition failure returns false and
+    // fills `error`. For the MCP store_to_bank tool.
+    bool storeSlotPatchToBank(int slot, int bankSection, int position, juce::String& error);
     juce::UndoManager& getSlotUndoManager(int slot) { return slotUndoManagers[slot]; }
     UndoContext* getSlotUndoContext(int slot) const { return slotUndoContexts[slot].get(); }
     bool isPatchTransferInProgress() const
