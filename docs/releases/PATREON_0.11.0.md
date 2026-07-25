@@ -1,4 +1,4 @@
-# Patreon post — Animatek NME 0.11.0
+# Patreon post: Animatek NME 0.11.0
 
 Two language versions below. Publish one, delete the other (or post both).
 
@@ -6,7 +6,7 @@ Two language versions below. Publish one, delete the other (or post both).
 
 ## English
 
-# 🎛️ Animatek NME 0.11.0 — Slot windows come alive, and a manual to go with them
+# 🎛️ Animatek NME 0.11.0: slot windows come alive, and a manual to go with them
 
 Multi-window polish, a safety fix worth upgrading for on its own, and the editor finally
 has a proper manual.
@@ -86,7 +86,7 @@ Thanks for supporting Animatek NME.
 
 ## Español
 
-# 🎛️ Animatek NME 0.11.0 — Las ventanas de slot cobran vida, y por fin hay manual
+# 🎛️ Animatek NME 0.11.0: las ventanas de slot cobran vida, y por fin hay manual
 
 Repaso del trabajo multiventana, un fallo corregido que ya justifica actualizar por sí
 solo, y el editor tiene por fin un manual como es debido.
