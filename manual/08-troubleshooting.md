@@ -16,21 +16,21 @@
 
 Modern Linux kernels expose MIDI through the new UMP layer, which stock JUCE
 builds handle incorrectly (no devices found, or UMP packets sent to legacy
-interfaces). Animatek NME ships with a patched MIDI backend that handles both —
+interfaces). Animatek NME ships with a patched MIDI backend that handles both;
 use the official AppImage or binaries. If you build from source, the required
 JUCE patches are in the bundled `JUCE/` submodule (see the README's *Linux MIDI
 Note*).
 
 ## A patch loads with missing modules or wrong cables
 
-Make sure you're on the current version — 0.8.x fixed several patch-decoding
+Make sure you're on the current version; 0.8.x fixed several patch-decoding
 bugs (legacy 2.10 cables, chained cables fetched from the synth, custom module
 data arriving out of order). If a specific file still misbehaves, open a GitHub
 issue and attach the `.pch`.
 
 ## A slot shows a LOCAL badge
 
-That slot's patch exists only in the editor — it was opened with the **Local**
+That slot's patch exists only in the editor; it was opened with the **Local**
 option, or loaded/built while disconnected, so the synth doesn't have it. Upload
 it (open it into slot A–D, or store it to a bank) and the badge clears.
 

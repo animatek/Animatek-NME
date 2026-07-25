@@ -9,7 +9,7 @@ hardware's two-level slot system faithfully:
   keyboard. Plain-click a slot in the slot bar to select it; the editor loads
   that slot's patch. `Ctrl+1`–`Ctrl+4` switch from the keyboard.
 - **Enabled slots** (steady LED): slots that sound. Several can be enabled at
-  once. `Ctrl+click` a slot to enable/disable it without selecting — the same
+  once. `Ctrl+click` a slot to enable/disable it without selecting, the same
   gesture as `Shift+slot button` on the front panel.
 
 Each slot keeps its own patch, undo history and sync state; background slots
@@ -26,7 +26,7 @@ genuine change on the synth (program change, bank load, reconnect) always does.
 ## Slot pop-out windows
 
 **Right-click a slot row** in the slot bar to open that slot's patch in its own
-window. This is how you work on two or more patches side by side — the main
+window. This is how you work on two or more patches side by side; the main
 window keeps its A–D slots working exactly as before.
 
 Inside a slot window, everything is independent: canvas, modules, cables,
@@ -49,8 +49,8 @@ matching the original editor.
 
 ## Editor ↔ synth sync
 
-While connected, every edit — parameters, cables, modules, morphs, knob and CC
-assignments, patch name — is streamed to the synth as you make it, and changes
+While connected, every edit (parameters, cables, modules, morphs, knob and CC
+assignments, patch name) is streamed to the synth as you make it, and changes
 made on the synth's front panel come back to the editor. There is no "send"
 button to remember.
 
@@ -64,12 +64,12 @@ the active slot, and adds a **Local** option:
 
 - Pick **A–D** and the patch loads into that slot and uploads to the synth,
   replacing what was there.
-- Pick **Local** and the patch loads into the editor only — nothing is sent to
+- Pick **Local** and the patch loads into the editor only; nothing is sent to
   the synth. Use it to look through patches without disturbing what the rack is
   playing.
 
-A slot whose editor patch is not known to match the synth — loaded Local, or
-loaded/built while disconnected — carries a **LOCAL** badge in the slot bar. The
+A slot whose editor patch is not known to match the synth (loaded Local, or
+loaded/built while disconnected) carries a **LOCAL** badge in the slot bar. The
 badge clears as soon as that patch is uploaded to, or fetched from, the synth.
 
 ## The synth patch browser
@@ -86,11 +86,11 @@ transparently.
 
 ## Bank transfers (Device menu)
 
-- **Save Bank to Disk** — dump a whole synth bank to a folder; position
+- **Save Bank to Disk**: dump a whole synth bank to a folder; position
   metadata is preserved in the `NN - Name.pch` filenames.
-- **Send Bank to Synth** — upload a folder of patches into a bank, with an
+- **Send Bank to Synth**: upload a folder of patches into a bank, with an
   overwrite warning; a failed transfer stops cleanly.
-- **Backup All Banks to Library** — mirror all 9 banks into your preset
+- **Backup All Banks to Library**: mirror all 9 banks into your preset
   library's `Banks/Bank1`–`Bank9` folders in one action.
 
 All transfers show progress and can be cancelled.
@@ -98,7 +98,7 @@ All transfers show progress and can be cancelled.
 ## Controller snapshot (Device menu)
 
 **Send Controller Snapshot** asks the *synth* to emit the current values of the
-patch's MIDI CC assignments as CC messages from its MIDI OUT — the same
+patch's MIDI CC assignments as CC messages from its MIDI OUT, the same
 function as the front panel's CTRL SNAP SHOT, handy for priming a sequencer
 recording. It does not change any synth state.
 

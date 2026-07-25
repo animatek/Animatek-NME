@@ -1,6 +1,6 @@
 # 6. Files & Formats
 
-## `.pch` — patch files
+## `.pch` patch files
 
 Patches are standard Nord Modular **3.0 text format** `.pch` files, compatible
 with the original Clavia editor and Nomad/nmedit. Anything you save in Animatek
@@ -10,19 +10,19 @@ NME loads in the originals and vice versa.
   including daisy-chained cables and correct 1/2 output routing. They are tagged
   **PCH2** in the preset browser, and the browser's **PCH2** filter toggle hides
   them when you only want current patches. Saving rewrites them in 3.0 format.
-- **Patch notes** are stored in a `[Notes]` section — a Nomad/nmedit extension
+- **Patch notes** are stored in a `[Notes]` section, a Nomad/nmedit extension
   that original editors ignore harmlessly.
 
 Opening a patch asks which slot it should go to, or whether to load it **Local**
-(editor only, nothing sent to the synth) — see
+(editor only, nothing sent to the synth). See
 [Working with the Synth](04-working-with-the-synth.md#opening-a-patch-choosing-where-it-goes).
 
-## `.var` — variations sidecar
+## `.var` variations sidecar
 
 The 8 per-slot patch variations (and per-module mutation exclusions) live in a
 `.var` file next to the patch: `MyPatch.pch` + `MyPatch.var`. This keeps the
 `.pch` byte-standard. **Keep the two files together when moving or backing up
-patches** — without its sidecar a patch loads fine but loses its variations.
+patches**: without its sidecar a patch loads fine but loses its variations.
 
 ## Snippets
 
@@ -48,6 +48,6 @@ Bank backups load like any other patch.
 
 ## Bank folders
 
-**Save Bank to Disk** writes patches as `NN - Name.pch` — the `NN` prefix
+**Save Bank to Disk** writes patches as `NN - Name.pch`; the `NN` prefix
 records the bank position, and **Send Bank to Synth** uses it to restore
 patches to their exact slots.
