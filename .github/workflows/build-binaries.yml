@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Check out exact source revision
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -149,7 +149,7 @@ jobs:
 
     steps:
       - name: Check out exact source revision
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           persist-credentials: false
@@ -228,8 +228,8 @@ jobs:
               ;;
             macos)
               cp -R build/AnimatekNME_artefacts/Release/AnimatekNME.app stage/
-              lipo -verify_arch arm64 x86_64 \
-                stage/AnimatekNME.app/Contents/MacOS/AnimatekNME
+              lipo stage/AnimatekNME.app/Contents/MacOS/AnimatekNME \
+                -verify_arch arm64 x86_64
               bundle_version="$(
                 /usr/libexec/PlistBuddy \
                   -c 'Print :CFBundleShortVersionString' \
