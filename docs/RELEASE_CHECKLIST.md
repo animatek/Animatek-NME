@@ -14,6 +14,9 @@ every box must pass before tagging.
 
 ## 2. Build targets
 
+- [ ] Trigger `Build Patreon Binaries (Private Draft)` from the intended source
+      revision and confirm its private Draft Release contains ZIP, SHA-256, and
+      Sigstore files for all three platforms. See `docs/PATREON_BUILDS.md`.
 - [ ] Linux: clean configure+build, Release config, no warnings-as-errors surprises:
       `cmake -B build-rel -DCMAKE_BUILD_TYPE=Release && cmake --build build-rel -j$(nproc)`
 - [ ] Windows build (CI) produces an artifact that launches.

@@ -1,8 +1,9 @@
-name: Build Binaries
+name: Build Patreon Binaries (Private Draft)
 
-# Manual trigger only. Artifacts are short-lived and, when the
-# ARTIFACT_PASSWORD secret is set, wrapped in a password-protected zip.
-# Release maintainers may also attach selected unprotected packages to GitHub Releases.
+# Builds are deliberately kept out of public workflow artifacts. Each run
+# creates an unpublished Draft Release, which is visible only to repository
+# collaborators with write access. The resulting files can then be tested and
+# uploaded to Patreon manually.
 on:
   workflow_dispatch:
     inputs:
@@ -16,29 +17,155 @@ on:
           - linux
           - windows
           - macos
-      protect_with_password:
-        description: Password-protect packages with ARTIFACT_PASSWORD
-        required: true
-        default: true
-        type: boolean
+  push:
+    tags:
+      - "v*.*.*"
+
+concurrency:
+  group: patreon-binaries-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  prepare:
+    name: Prepare private draft
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    outputs:
+      matrix: ${{ steps.metadata.outputs.matrix }}
+      release_tag: ${{ steps.metadata.outputs.release_tag }}
+      release_url: ${{ steps.draft.outputs.release_url }}
+      version: ${{ steps.metadata.outputs.version }}
+
+    steps:
+      - name: Check out exact source revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate release metadata
+        id: metadata
+        shell: bash
+        env:
+          REQUESTED_PLATFORM: ${{ inputs.platform || 'all' }}
+        run: |
+          set -euo pipefail
+
+          version="$(sed -n 's/^project(AnimatekNME VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Could not read a valid semantic version from CMakeLists.txt"
+            exit 1
+          fi
+
+          case "$REQUESTED_PLATFORM" in
+            all)     matrix='["linux","windows","macos"]' ;;
+            linux)   matrix='["linux"]' ;;
+            windows) matrix='["windows"]' ;;
+            macos)   matrix='["macos"]' ;;
+            *)
+              echo "::error::Unsupported platform: $REQUESTED_PLATFORM"
+              exit 1
+              ;;
+          esac
+
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Release tags must use the form vX.Y.Z"
+              exit 1
+            fi
+
+            tag_version="${GITHUB_REF_NAME#v}"
+            if [[ "$tag_version" != "$version" ]]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match CMake version $version"
+              exit 1
+            fi
+          fi
+
+          release_tag="patreon-build-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## Patreon build $version"
+            echo
+            echo "- Source ref: \`$GITHUB_REF_NAME\`"
+            echo "- Source commit: \`$GITHUB_SHA\`"
+            echo "- Platforms: \`$matrix\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create unpublished Draft Release
+        id: draft
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.metadata.outputs.release_tag }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          body="$(printf '%s\n' \
+            '**PRIVATE PATREON BUILD - DO NOT PUBLISH THIS DRAFT RELEASE**' \
+            '' \
+            "Version: $VERSION" \
+            "Source ref: $GITHUB_REF_NAME" \
+            "Source commit: $GITHUB_SHA" \
+            "Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '' \
+            'Download the ZIP, SHA-256 and Sigstore bundle for each platform.' \
+            'Only upload the packages to Patreon after all three builds and manual smoke tests pass.')"
+
+          release_url="$(
+            gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              "repos/$GITHUB_REPOSITORY/releases" \
+              -f "tag_name=$RELEASE_TAG" \
+              -f "target_commitish=$GITHUB_SHA" \
+              -f "name=PRIVATE - Animatek NME $VERSION - run $GITHUB_RUN_NUMBER" \
+              -f "body=$body" \
+              -F "draft=true" \
+              -F "prerelease=true" \
+              --jq '.html_url'
+          )"
+
+          echo "release_url=$release_url" >> "$GITHUB_OUTPUT"
+          echo "Draft release: $release_url"
+
   build:
-    name: ${{ matrix.name }}
+    name: Build ${{ matrix.name }}
+    needs: prepare
     runs-on: ${{ matrix.name == 'linux' && 'ubuntu-22.04' || matrix.name == 'windows' && 'windows-latest' || 'macos-latest' }}
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     strategy:
       fail-fast: false
       matrix:
-        name: ${{ fromJSON(inputs.platform == 'all' && '["linux","windows","macos"]' || format('["{0}"]', inputs.platform)) }}
+        name: ${{ fromJSON(needs.prepare.outputs.matrix) }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out exact source revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
+          persist-credentials: false
+
+      - name: Verify checked-out revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git submodule status --recursive
 
       - name: Install Linux dependencies
         if: matrix.name == 'linux'
+        shell: bash
         run: |
+          set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y \
             libasound2-dev libjack-jackd2-dev \
@@ -46,76 +173,166 @@ jobs:
             libxinerama-dev libxrandr-dev libxrender-dev \
             libfreetype6-dev libfontconfig1-dev
 
-      - name: Read version
-        id: version
-        shell: bash
-        run: |
-          v=$(sed -n 's/^project(AnimatekNME VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
-          echo "version=$v" >> "$GITHUB_OUTPUT"
-          echo "Version: $v"
-
       - name: Configure
         shell: bash
         run: |
-          if [ "${{ matrix.name }}" = "macos" ]; then
-            cmake -B build -DCMAKE_BUILD_TYPE=Release \
+          set -euo pipefail
+          if [[ "${{ matrix.name }}" == "macos" ]]; then
+            cmake -B build \
+              -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
-              -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15
+              -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
+              -DNME_BUILD_PLUGIN=OFF
           else
-            cmake -B build -DCMAKE_BUILD_TYPE=Release
+            cmake -B build \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DNME_BUILD_PLUGIN=OFF
           fi
 
-      - name: Build
+      - name: Build Release application
         run: cmake --build build --config Release --target AnimatekNME --parallel 4
 
-      - name: Stage
+      - name: Stage and verify application
+        id: stage
         shell: bash
+        env:
+          PLATFORM: ${{ matrix.name }}
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
+          set -euo pipefail
           mkdir stage
-          case "${{ matrix.name }}" in
+
+          case "$PLATFORM" in
             linux)
               cp build/AnimatekNME_artefacts/Release/AnimatekNME stage/
-              cp packaging/README-linux.txt stage/README.txt
+              file stage/AnimatekNME
+              ldd_output="$(ldd stage/AnimatekNME)"
+              echo "$ldd_output"
+              if grep -q 'not found' <<< "$ldd_output"; then
+                echo "::error::The Linux binary has unresolved shared libraries"
+                exit 1
+              fi
+              strings stage/AnimatekNME | grep -F "$VERSION" > /dev/null
               ;;
             windows)
               cp build/AnimatekNME_artefacts/Release/AnimatekNME.exe stage/
-              cp packaging/README-windows.txt stage/README.txt
+              product_version="$(
+                powershell.exe -NoProfile -Command \
+                  "(Get-Item 'stage/AnimatekNME.exe').VersionInfo.ProductVersion"
+              )"
+              product_version="${product_version//$'\r'/}"
+              if [[ "$product_version" != "$VERSION"* ]]; then
+                echo "::error::Windows binary reports version '$product_version', expected '$VERSION'"
+                exit 1
+              fi
               ;;
             macos)
               cp -R build/AnimatekNME_artefacts/Release/AnimatekNME.app stage/
-              # Ad-hoc signature: without it Gatekeeper reports the app as
-              # "damaged" instead of offering the right-click-Open path
-              codesign --force --deep -s - stage/AnimatekNME.app
-              # Verify both architectures made it into the universal binary
-              lipo -info stage/AnimatekNME.app/Contents/MacOS/AnimatekNME
-              cp packaging/README-macos.txt stage/README.txt
+              lipo stage/AnimatekNME.app/Contents/MacOS/AnimatekNME \
+                -verify_arch arm64 x86_64
+              bundle_version="$(
+                /usr/libexec/PlistBuddy \
+                  -c 'Print :CFBundleShortVersionString' \
+                  stage/AnimatekNME.app/Contents/Info.plist
+              )"
+              if [[ "$bundle_version" != "$VERSION" ]]; then
+                echo "::error::macOS app reports version '$bundle_version', expected '$VERSION'"
+                exit 1
+              fi
+              codesign --force --sign - stage/AnimatekNME.app
+              codesign --verify --deep --strict --verbose=2 stage/AnimatekNME.app
               ;;
           esac
 
-      - name: Package
+          cp "packaging/README-$PLATFORM.txt" stage/README.txt
+          cp LICENSE stage/LICENSE.txt
+
+          {
+            echo "Animatek NME official Patreon build"
+            echo "=================================="
+            echo
+            echo "Version: $VERSION"
+            echo "Platform: $PLATFORM"
+            echo "Source ref: $GITHUB_REF_NAME"
+            echo "Source commit: $GITHUB_SHA"
+            echo "Source: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/tree/$GITHUB_SHA"
+            echo "Workflow: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo
+            echo "Verify after downloading:"
+            echo "  gh attestation verify AnimatekNME-$VERSION-$PLATFORM.zip \\"
+            echo "    --repo $GITHUB_REPOSITORY"
+          } > stage/BUILD-INFO.txt
+
+      - name: Package and test ZIP
+        id: package
         shell: bash
         env:
-          ARTIFACT_PASSWORD: ${{ inputs.protect_with_password && secrets.ARTIFACT_PASSWORD || '' }}
+          PLATFORM: ${{ matrix.name }}
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
-          out="AnimatekNME-${{ steps.version.outputs.version }}-${{ matrix.name }}.zip"
-          cd stage
-          if [ "${{ matrix.name }}" = "windows" ]; then
-            if [ -n "$ARTIFACT_PASSWORD" ]; then
-              7z a -p"$ARTIFACT_PASSWORD" "../$out" .
-            else
-              7z a "../$out" .
-            fi
+          set -euo pipefail
+          package="AnimatekNME-$VERSION-$PLATFORM.zip"
+
+          if [[ "$PLATFORM" == "windows" ]]; then
+            (
+              cd stage
+              7z a -tzip "../$package" .
+            )
+            7z t "$package"
           else
-            if [ -n "$ARTIFACT_PASSWORD" ]; then
-              zip -ry -P "$ARTIFACT_PASSWORD" "../$out" .
-            else
-              zip -ry "../$out" .
-            fi
+            (
+              cd stage
+              zip -qry "../$package" .
+            )
+            unzip -t "$package"
           fi
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+          cmake -E sha256sum "$package" > "$package.sha256"
+          cmake -E sha256sum "$package"
+
+          echo "package=$package" >> "$GITHUB_OUTPUT"
+          echo "checksum=$package.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Attest package provenance
+        id: attest
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
-          name: AnimatekNME-${{ steps.version.outputs.version }}-${{ matrix.name }}
-          path: AnimatekNME-*.zip
-          retention-days: 3
+          subject-path: ${{ steps.package.outputs.package }}
+
+      - name: Save Sigstore bundle
+        id: bundle
+        shell: bash
+        env:
+          PACKAGE: ${{ steps.package.outputs.package }}
+          SOURCE_BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          bundle="$PACKAGE.sigstore.json"
+          cp "$SOURCE_BUNDLE" "$bundle"
+          echo "bundle=$bundle" >> "$GITHUB_OUTPUT"
+
+      - name: Upload only to private Draft Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
+          PACKAGE: ${{ steps.package.outputs.package }}
+          CHECKSUM: ${{ steps.package.outputs.checksum }}
+          BUNDLE: ${{ steps.bundle.outputs.bundle }}
+        run: |
+          set -euo pipefail
+          gh release upload "$RELEASE_TAG" \
+            "$PACKAGE" \
+            "$CHECKSUM" \
+            "$BUNDLE" \
+            --clobber \
+            --repo "$GITHUB_REPOSITORY"
+
+          {
+            echo "## ${{ matrix.name }} package"
+            echo
+            echo "- \`$PACKAGE\`"
+            echo "- \`$CHECKSUM\`"
+            echo "- \`$BUNDLE\`"
+            echo "- Draft: ${{ needs.prepare.outputs.release_url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
