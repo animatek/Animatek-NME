@@ -28,6 +28,18 @@ bugs (legacy 2.10 cables, chained cables fetched from the synth, custom module
 data arriving out of order). If a specific file still misbehaves, open a GitHub
 issue and attach the `.pch`.
 
+## A slot shows a LOCAL badge
+
+That slot's patch exists only in the editor — it was opened with the **Local**
+option, or loaded/built while disconnected, so the synth doesn't have it. Upload
+it (open it into slot A–D, or store it to a bank) and the badge clears.
+
+## My AI assistant can't reach the editor
+
+The MCP bridge is **off by default**. Enable it in Editor Options (`Ctrl+,`) →
+MCP Bridge and check the status line says it is listening; the editor must be
+running for the tools to work. See [The MCP Bridge](09-mcp-bridge.md).
+
 ## Stuck notes
 
 If notes hang (usually from external MIDI going directly to the synth), use the

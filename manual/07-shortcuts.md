@@ -16,7 +16,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl+B` | Preset browser |
 | `Ctrl+P` | Patch settings |
 | `Ctrl+G` | Synth settings |
-| `Ctrl+E` | Editor options |
+| `Ctrl+,` | Editor options |
 | `Ctrl+Q` | Quit |
 
 ## Edit
@@ -55,6 +55,8 @@ On macOS, `Ctrl` is `Cmd`.
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+1`..`Ctrl+4` | Switch to slot A..D |
+| Right-click a slot row | Open that slot in its own window |
+| `Ctrl+click` a slot row | Enable/disable the slot without selecting it |
 
 ## Floaters
 
@@ -68,9 +70,13 @@ On macOS, `Ctrl` is `Cmd`.
 
 ## Slot Window (window focused)
 
+All of these act on that window's own slot and selection.
+
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+I` | Toggle inspector panel |
+| `Ctrl+R` / `Ctrl+Shift+R` | Randomize parameters (uniform / gaussian) |
+| `Ctrl+S` / `Ctrl+Shift+S` | Save / Save as |
 
 ## Patch Mutator (window focused)
 

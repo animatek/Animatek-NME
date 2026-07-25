@@ -47,8 +47,16 @@ tools to work; they return a clear error if it isn't.
 - `create_patch(slot?, name?, activate?)` — start an empty patch in a slot.
 - `open_patch(slot?, name?, path?, activate?)` — load a library `.pch` by
   unique name or exact path.
+- `save_patch(path, slot?, overwrite?)` — write a slot's patch (and its `.var`
+  sidecar) to a `.pch`. Absolute paths are used as-is, relative ones resolve
+  inside the configured patches folder, a missing extension defaults to `.pch`.
+- `store_to_bank(bank, position, slot?)` — upload a slot's patch and store it to
+  a synth bank (1-9) position (1-99) once the upload is ACKed. Needs a connected
+  synth with its patch list loaded.
 - `add_module(section, grid_x?, grid_y?, auto_place?, type_id?, type_name?, name?, slot?)`
 - `move_module(section, container_index, grid_x, grid_y, slot?)`
+- `rename_module(section, container_index, name, slot?)` — undoable, like every
+  other structural edit.
 - `delete_module(section, container_index, slot?)`
 - `connect_cable(section, out_container_index, out_connector,
   in_container_index, in_connector, out_is_output?, in_is_output?, slot?)`

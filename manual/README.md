@@ -17,14 +17,16 @@ you can do once you're in.
 6. [Files & Formats](06-files-and-formats.md) — `.pch`, `.var`, snippets, legacy patches
 7. [Keyboard Shortcuts](07-shortcuts.md) — the complete reference
 8. [Troubleshooting](08-troubleshooting.md) — connection problems and common questions
+9. [The MCP Bridge](09-mcp-bridge.md) — driving the editor from an AI assistant
 
 ## Quick orientation
 
 If you've used the original Clavia editor or Nomad/nmedit, you'll feel at home:
 the patch canvas with its Poly and Common areas, cable colors, module palette and
 slot workflow all follow the original. What's new is everything around them —
-disk preset browser, bank tools, patch mutator, variations, themes, and a
-protocol layer verified against real hardware.
+disk preset browser, bank tools, patch mutator, variations, themes, pop-out
+windows for editing several slots at once, an optional AI-assistant bridge, and
+a protocol layer verified against real hardware.
 
 If you're new to the Nord Modular, start with [Getting Started](01-getting-started.md)
 and then skim [Editing Patches](03-editing-patches.md); the rest can wait until

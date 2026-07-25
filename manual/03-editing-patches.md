@@ -20,6 +20,13 @@ Modules use DSP resources on the synth; the status display tracks the load.
 - `Delete` removes the selection, cables included. Everything is undoable —
   each slot has its own undo history (`Ctrl+Z` / `Ctrl+Shift+Z`).
 
+## Renaming modules
+
+Give a module your own name from its right-click menu, or from the **Name**
+field at the top of the Inspector. Renaming is a normal, undoable edit — `Ctrl+Z`
+takes it back — and works the same way in a slot pop-out window. The name lives
+in the patch and reaches the synth with the next full upload.
+
 ## Cables
 
 - **Create**: drag from any connector to a compatible one. Valid targets light
@@ -44,8 +51,11 @@ Modules use DSP resources on the synth; the status display tracks the load.
 
 The four morph groups from the header bar work like the hardware's: assign
 parameters to a group (right-click → morph), set each parameter's morph range,
-and sweep the group knob to move them all. Overlays visualize the assignments:
-`F5` shows morph values, `F7` shows group membership.
+and sweep the group knob to move them all. Assigned controls of every kind —
+knobs, 4-1 selectors, toggles, increment buttons and sliders — show their group
+colour on the canvas, and the Inspector lists all of a module's assignments.
+Overlays visualize them too: `F5` shows morph values, `F7` shows group
+membership.
 
 ## Randomize, initialize, locks
 

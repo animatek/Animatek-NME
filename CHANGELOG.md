@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Manual brought up to date with 0.10/0.11**: the user manual still described
+  the editor as of 0.9.0. It now covers the Inspector and its hardware knob map,
+  the Voices control and the PVA/E load meters, slot pop-out windows (live synth
+  updates, per-window Randomize/Save, `Ctrl+I`), the slot chooser and **Local**
+  option when opening a patch plus the **LOCAL** badge, background prefetch and
+  instant slot switching, undoable module rename, the Nord Classic theme and
+  theme-aware chrome, and the disk browser's PCH2 filter. A new chapter 9
+  documents the MCP bridge. Shortcuts were corrected (`Ctrl+,` for Editor
+  Options) and extended (slot right-click/`Ctrl+click`, slot-window
+  Randomize/Save), in the manual and in the in-app Help → Keyboard Shortcuts
+  dialog alike. `mcp-bridge/README.md` gained the `rename_module`, `save_patch`
+  and `store_to_bank` tools added in 0.11.0.
+
 ## 0.11.0 — 2026-07-24
 
 - **Slot windows now track live synth updates and support Randomize/Save (issue #22)**:

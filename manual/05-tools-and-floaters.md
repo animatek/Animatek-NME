@@ -1,6 +1,7 @@
 # 5. Tools & Floaters
 
-Five floating windows live in the View menu (or `Ctrl+5`–`Ctrl+9`). They are
+Five floating windows live in the View menu (or `Ctrl+5`–`Ctrl+9`), plus two
+extras at the end of this chapter. They are
 normal windows: move them to a second display, resize the resizable ones, and
 the editor remembers where they were.
 
@@ -50,3 +51,16 @@ to the 8 per-slot variations. Keyboard control is fast — see the
 A live TX/RX hex log of all MIDI traffic between editor and synth — the tool to
 grab when something doesn't sync and you want to see why (or to attach to a bug
 report). Zero overhead when closed; works in release builds without a console.
+
+## Slot pop-out windows
+
+Not a floater, but the other way to get more than one thing on screen:
+right-click a slot row to edit that slot in its own window, with its own canvas,
+Inspector and undo history. See
+[Working with the Synth](04-working-with-the-synth.md#slot-pop-out-windows).
+
+## The MCP bridge
+
+An optional, off-by-default local channel that lets an AI assistant edit the
+patch through the editor's own undo system. See
+[The MCP Bridge](09-mcp-bridge.md).
