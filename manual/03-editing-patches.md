@@ -65,7 +65,7 @@ membership.
 - Initialize resets a patch to a clean state.
 
 For evolutionary sound design with breeding and interpolation, see the
-[Patch Mutator](05-tools-and-floaters.md#patch-mutator).
+[Patch Mutator](05-tools-and-floaters.md#patch-mutator-ctrl8).
 
 ## Snapshots and variations
 
