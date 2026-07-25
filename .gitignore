@@ -69,6 +69,7 @@ Implementaciones/
 
 # Claude Code local data
 .claude/
+.agents/
 .superpowers/
 docs/superpowers/
 
