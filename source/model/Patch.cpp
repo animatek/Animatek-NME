@@ -236,7 +236,7 @@ Connector* ModuleContainer::findNetOutput(Connector* start)
 Module* ModuleContainer::getModuleByIndex(int containerIndex)
 {
     for (auto& m : modules)
-        if (m->getContainerIndex() == containerIndex)
+        if (m != nullptr && m->getContainerIndex() == containerIndex)
             return m.get();
     return nullptr;
 }
@@ -244,7 +244,7 @@ Module* ModuleContainer::getModuleByIndex(int containerIndex)
 const Module* ModuleContainer::getModuleByIndex(int containerIndex) const
 {
     for (auto& m : modules)
-        if (m->getContainerIndex() == containerIndex)
+        if (m != nullptr && m->getContainerIndex() == containerIndex)
             return m.get();
     return nullptr;
 }

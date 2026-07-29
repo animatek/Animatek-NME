@@ -31,6 +31,33 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](../CHANGELOG
   not undoable (`MainComponent.cpp:478` only logs; there is no `RenameModuleAction`), which
   is worth fixing on its own. Module names also never reach the synth.
 
+- [ ] **`replacePatchInSlot` still reads the patch it just freed** — the crash this caused is
+  fixed (null-guarded `ModuleContainer::getModuleByIndex`, see the changelog), but the
+  use-after-free itself is untouched. The detach block at `MainComponent.cpp:1454` calls
+  `InspectorPanel::clearModule()`, which ends in `assignmentsList->setPatchWide(currentPatch)`
+  — it re-arms the assignments list with the very patch about to be destroyed by
+  `slotPatches[slot] = std::move(patch)`. `clearSnapshots()` then walks it through
+  `resetMorphAB()` → `refreshMorphUi()` → `buildHwFromPatch()`, reading freed memory; it
+  survives only because the freed container's module slots read back as null. The fix is to
+  detach with `setPatch(nullptr)` (which now does release the list) instead of
+  `clearModule()`, at both sites — the active-slot one and `slotWindows[slot]` at line 1465.
+  Both already get re-pointed at the new patch afterwards (lines 1495 and 1510), so nothing
+  else needs moving. Worth an ASAN run over the slot-replacement path while in there.
+
+- [ ] **MCP bridge: no way to assign knobs or morphs from a client** — the editor has full
+  hardware knob and morph assignment (`KnobAssignmentMessage`, `AssignmentsListComponent`,
+  the Inspector's patch-wide assignments view), but none of it is reachable over the bridge:
+  `McpRequestHandler` answers 16 methods and not one touches assignments, so an
+  assistant that has just built a patch cannot finish the job by putting its most
+  performance-relevant parameters under the front-panel knobs — the user has to do it by
+  hand in the Inspector. Wanted: `assign_knob` / `assign_morph` / `list_assignments`
+  (plus their removals), taking the same `section` + `container_index` + parameter
+  name/id trio `set_parameter` already accepts, so a client can say "cutoff on knob 7".
+  Both halves need writing: the method in `source/mcp/McpRequestHandler.cpp` and the
+  wrapper in `mcp-bridge/server.py`, following the `set_parameter` pattern. Assignments
+  are already part of the patch model and upload path (`buildHwFromPatch` reads
+  `patch->knobAssignments`), so this is plumbing rather than new protocol work.
+
 - [ ] **Slot windows: live fan-out and global commands**
   ([#22](https://github.com/animatek/Animatek-NME/issues/22)) — editing *from* a slot window
   is hardware-verified, but front-panel knob moves, lights and meters never reach it

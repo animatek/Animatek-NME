@@ -673,7 +673,18 @@ void InspectorPanel::applyTheme()
 void InspectorPanel::setPatch(Patch* p)
 {
     currentPatch = p;
-    if (currentModule == nullptr && p != nullptr)
+
+    // Detaching: the assignments list caches its own Patch and Module pointers,
+    // so they must be dropped here or they outlive the patch being replaced.
+    if (p == nullptr)
+    {
+        currentModule  = nullptr;
+        currentSection = -1;
+        assignmentsList->setPatchWide(nullptr);
+        return;
+    }
+
+    if (currentModule == nullptr)
     {
         titleLabel.setText("Assignments", juce::dontSendNotification);
         sectionLabel.setText("All modules", juce::dontSendNotification);

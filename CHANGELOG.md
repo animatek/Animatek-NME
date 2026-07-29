@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- **Replacing a patch in a slot no longer crashes the editor**: creating an empty patch or
+  loading a file into a slot that held a patch with knob or MIDI CC assignments killed the
+  app outright (`SIGSEGV` in `Module::getContainerIndex` with `this == nullptr`). The detach
+  block in `MainComponent::replacePatchInSlot` exists precisely to drop the editor surfaces
+  that cache pointers into the outgoing `Patch`, but it called
+  `InspectorPanel::clearModule()`, which re-arms the assignments list with `currentPatch`
+  instead of releasing it. The old patch was then freed by `slotPatches[slot] = std::move(patch)`
+  and, two lines later, `clearSnapshots()` → `resetMorphAB()` → `refreshMorphUi()` walked that
+  freed object: `buildHwFromPatch()` read the stale `knobAssignments`, asked the
+  half-destroyed container for a module index, and dereferenced one of the already-nulled
+  `unique_ptr` slots. Both `ModuleContainer::getModuleByIndex` overloads now skip null
+  entries rather than dereferencing them, which is what stops the crash, and
+  `InspectorPanel::setPatch(nullptr)` genuinely detaches the assignments list (it used to
+  fall through its `p != nullptr` guard and leave the pointer dangling). Reproduced through
+  the MCP bridge's `create_patch` against a slot holding an assignment-carrying patch, and
+  verified fixed against that same sequence. Note this makes the crash unreachable without
+  removing the underlying use-after-free: `replacePatchInSlot` still detaches via
+  `clearModule()`, which re-arms the assignments list with the outgoing patch, so
+  `buildHwFromPatch()` still reads freed memory — it just no longer dereferences a null
+  module. See the roadmap entry for the remaining half.
+
 - **Manual brought up to date with 0.10/0.11**: the user manual still described
   the editor as of 0.9.0. It now covers the Inspector and its hardware knob map,
   the Voices control and the PVA/E load meters, slot pop-out windows (live synth
