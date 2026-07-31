@@ -154,7 +154,7 @@
 	    <attribute name="possible-values" value="0, 16, 32, 48, 64, 80, 96, 112, 122, 127"/>
     </light>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="2.2" />
+    <attribute name="cycles" type="double" value="2.1919" />
     <attribute name="x-mem" type="double" value="1.0" />
     <attribute name="y-mem" type="double" value="1.0" />
     <attribute name="prog-mem" type="double" value="1.0" />
@@ -175,7 +175,7 @@
     <parameter component-id="p1" index="0" name="level" class="parameter" defaultValue="100" extension="m1" role="audio,out,level" />
     <parameter component-id="m1" index="0" name="morph:level"  class="morph" role="morph" minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="2.0625" />
+    <attribute name="cycles" type="double" value="2.0013" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="0.46875" />
@@ -198,7 +198,7 @@
     <parameter component-id="m2" index="1" name="morph:destination" class="morph" role="morph" minValue="-2" maxValue="2" />
     <parameter component-id="m3" index="2" name="morph:mute" class="morph" role="morph" minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.40625" />
+    <attribute name="cycles" type="double" value="1.3977" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.34375" />
@@ -220,7 +220,7 @@
     <parameter component-id="m2" index="1" name="morph:dest" class="morph" role="morph"  minValue="-5" maxValue="5" />
     <parameter component-id="m3" index="2" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.28125" />
+    <attribute name="cycles" type="double" value="1.3024" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.3125" />
@@ -266,7 +266,7 @@
     <parameter component-id="m10" index="8" name="morph:PW mod" class="morph" role="morph" minValue="-127" maxValue="127" />
     <parameter component-id="m11" index="9" name="morph:Mute" class="morph" role="morph" minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="10.8125" />
+    <attribute name="cycles" type="double" value="11.007" />
     <attribute name="x-mem" type="double" value="0.84375" />
     <attribute name="y-mem" type="double" value="0.34375" />
     <attribute name="prog-mem" type="double" value="6.5625" />
@@ -309,7 +309,7 @@
     <parameter component-id="m9" index="7" name="morph:PWidth" class="morph" role="morph" minValue="-127" maxValue="127" />
     <parameter component-id="m10" index="8" name="morph:mute" class="morph" role="morph" minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="8.28125" />
+    <attribute name="cycles" type="double" value="8.291" />
     <attribute name="x-mem" type="double" value="0.6875" />
     <attribute name="y-mem" type="double" value="0.5" />
     <attribute name="prog-mem" type="double" value="6.25" />
@@ -345,7 +345,7 @@
     <parameter component-id="m6" index="4" name="morph:FMA" class="morph" role="morph" minValue="-127" maxValue="127" />
     <parameter component-id="m7" index="5" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="4.96875" />
+    <attribute name="cycles" type="double" value="4.9873" />
     <attribute name="x-mem" type="double" value="0.5625" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="1.09375" />
@@ -377,7 +377,7 @@
     <parameter component-id="m5" index="3" name="morph:PW mod" class="morph" role="morph" />
     <parameter component-id="m6" index="4" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="7.125" />
+    <attribute name="cycles" type="double" value="7.0997" />
     <attribute name="x-mem" type="double" value="0.21875" />
     <attribute name="y-mem" type="double" value="0.34375" />
     <attribute name="prog-mem" type="double" value="2.15625" />
@@ -407,7 +407,7 @@
     <parameter component-id="m4" index="2" name="morph:FMA mod" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m5" index="3" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="6.0" />
+    <attribute name="cycles" type="double" value="6.0038" />
     <attribute name="x-mem" type="double" value="0.15625" />
     <attribute name="y-mem" type="double" value="0.21875" />
     <attribute name="prog-mem" type="double" value="1.75" />
@@ -437,7 +437,7 @@
     <parameter component-id="m4" index="2" name="morph:FMA mod" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m5" index="3" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="5.875" />
+    <attribute name="cycles" type="double" value="5.8132" />
     <attribute name="x-mem" type="double" value="0.15625" />
     <attribute name="y-mem" type="double" value="0.21875" />
     <attribute name="prog-mem" type="double" value="1.3125" />
@@ -468,7 +468,7 @@
     <parameter component-id="m4" index="2" name="morph:FMA mod" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m5" index="3" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="3.0625" />
+    <attribute name="cycles" type="double" value="3.0019" />
     <attribute name="x-mem" type="double" value="0.34375" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.6875" />
@@ -503,7 +503,7 @@
     <parameter component-id="m5" index="3" name="morph:FMA mod" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m6" index="4" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="7.625" />
+    <attribute name="cycles" type="double" value="7.5921" />
     <attribute name="x-mem" type="double" value="0.4375" />
     <attribute name="y-mem" type="double" value="0.28125" />
     <attribute name="prog-mem" type="double" value="5.875" />
@@ -564,7 +564,7 @@
 	<light component-id="ledStep1-16" type="led-array" name="Step 1-16" minValue="0" maxValue="16" />
 
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.4375" />
+    <attribute name="cycles" type="double" value="1.3977" />
     <attribute name="x-mem" type="double" value="0.5625" />
     <attribute name="y-mem" type="double" value="1.4375" />
     <attribute name="prog-mem" type="double" value="1.15625" />
@@ -584,7 +584,7 @@
     <parameter component-id="p1" index="0" name="time" class="parameter" defaultValue="64" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:time" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.53125" />
+    <attribute name="cycles" type="double" value="0.5083" />
     <attribute name="x-mem" type="double" value="0.15625" />
     <attribute name="y-mem" type="double" value="0.21875" />
     <attribute name="prog-mem" type="double" value="0.46875" />
@@ -680,7 +680,7 @@
 	<light component-id="ledStep1-16" type="led-array" name="Step 1-16" minValue="0" maxValue="16" />
     
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.65625" />
+    <attribute name="cycles" type="double" value="1.6995" />
     <attribute name="x-mem" type="double" value="0.625" />
     <attribute name="y-mem" type="double" value="1.4375" />
     <attribute name="prog-mem" type="double" value="1.34375" />
@@ -703,7 +703,7 @@
     <parameter component-id="m1" index="0" name="morph:modulation" class="morph" role="morph" minValue="-127" maxValue="127" />
     <parameter component-id="m2" index="1" name="morph:crossfade" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.65625" />
+    <attribute name="cycles" type="double" value="1.6995" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.40625" />
@@ -727,7 +727,7 @@
     <parameter component-id="m2" index="1" name="morph:in sense 2" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m3" index="2" name="morph:in sense 3" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.90625" />
+    <attribute name="cycles" type="double" value="0.8895" />
     <attribute name="x-mem" type="double" value="0.15625" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.21875" />
@@ -761,7 +761,7 @@
     <parameter component-id="m6" index="5" name="morph:invert" class="morph" role="morph"  minValue="-1" maxValue="1"/>
     <light component-id="ledGateIn" name="LED Gate" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.625" />
+    <attribute name="cycles" type="double" value="1.5883" />
     <attribute name="x-mem" type="double" value="1.03125" />
     <attribute name="y-mem" type="double" value="0.21875" />
     <attribute name="prog-mem" type="double" value="1.0625" />
@@ -803,7 +803,7 @@
 	    <attribute name="limiter-active" value="127"/>
     </light>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="8.28125" />
+    <attribute name="cycles" type="double" value="8.291" />
     <attribute name="x-mem" type="double" value="0.5625" />
     <attribute name="y-mem" type="double" value="0.5625" />
     <attribute name="prog-mem" type="double" value="1.8125" />
@@ -822,7 +822,7 @@
     <parameter component-id="p1" index="0" name="partials" class="parameter" formatter="fmtPartialGen" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:range" class="morph" role="morph" minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.59375" />
+    <attribute name="cycles" type="double" value="0.5718" />
     <attribute name="x-mem" type="double" value="0.28125" />
     <attribute name="y-mem" type="double" value="2.1875" />
     <attribute name="prog-mem" type="double" value="0.53125" />
@@ -866,7 +866,7 @@
     <parameter component-id="m9" index="8" name="morph:invert" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <light component-id="ledGate" name="LED Gate" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="3.34375" />
+    <attribute name="cycles" type="double" value="3.3037" />
     <attribute name="x-mem" type="double" value="2.59375" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="2.53125" />
@@ -902,7 +902,7 @@
     <parameter component-id="m8" index="7" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <light component-id="ledControlOut" name="LED Control Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.78125" />
+    <attribute name="cycles" type="double" value="1.8107" />
     <attribute name="x-mem" type="double" value="0.5625" />
     <attribute name="y-mem" type="double" value="0.21875" />
     <attribute name="prog-mem" type="double" value="2.375" />
@@ -939,7 +939,7 @@
     <parameter component-id="m8" index="7" name="morph:PW" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <light component-id="ledControlOut" name="LED Control Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.1875" />
+    <attribute name="cycles" type="double" value="1.2071" />
     <attribute name="x-mem" type="double" value="0.5" />
     <attribute name="y-mem" type="double" value="0.28125" />
     <attribute name="prog-mem" type="double" value="1.0625" />
@@ -970,7 +970,7 @@
     <parameter component-id="m6" index="5" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <light component-id="ledControlOut" name="LED Control Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.46875" />
+    <attribute name="cycles" type="double" value="1.493" />
     <attribute name="x-mem" type="double" value="0.5" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="1.0625" />
@@ -994,7 +994,7 @@
     <parameter component-id="m2" index="0" name="morph:rate" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <light component-id="ledControlOut" name="LED Control Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.375" />
+    <attribute name="cycles" type="double" value="0.3494" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.34375" />
@@ -1018,7 +1018,7 @@
     <parameter component-id="m2" index="0" name="morph:rate" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <light component-id="ledControlOut" name="LED Control Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.78125" />
+    <attribute name="cycles" type="double" value="0.7624" />
     <attribute name="x-mem" type="double" value="0.34375" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.6875" />
@@ -1042,7 +1042,7 @@
     <parameter component-id="m2" index="0" name="morph:rate" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <light component-id="ledControlOut" name="LED Control Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.375" />
+    <attribute name="cycles" type="double" value="0.3494" />
     <attribute name="x-mem" type="double" value="0.15625" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.34375" />
@@ -1065,7 +1065,7 @@
     <parameter component-id="p2" index="0" name="rate" class="parameter" defaultValue="64" formatter="fmtLFOHz" extension="m2" />
     <parameter component-id="m2" index="0" name="morph:rate" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.34375" />
+    <attribute name="cycles" type="double" value="0.3177" />
     <attribute name="x-mem" type="double" value="0.15625" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.3125" />
@@ -1083,7 +1083,7 @@
     <parameter component-id="p1" index="0" name="color" class="parameter" />
     <parameter component-id="p2" index="0" name="morph:color" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.65625" />
+    <attribute name="cycles" type="double" value="1.6995" />
     <attribute name="x-mem" type="double" value="0.28125" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.40625" />
@@ -1130,7 +1130,7 @@
     <parameter component-id="m14" index="13" name="morph:8.3" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m15" index="14" name="morph:bypass" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="17.9375" />
+    <attribute name="cycles" type="double" value="17.9956" />
     <attribute name="x-mem" type="double" value="5.59375" />
     <attribute name="y-mem" type="double" value="10.21875" />
     <attribute name="prog-mem" type="double" value="9.0" />
@@ -1151,7 +1151,7 @@
     <parameter component-id="m1" index="0" name="morph:mono" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <parameter component-id="m2" index="1" name="morph:col" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.625" />
+    <attribute name="cycles" type="double" value="0.6036" />
     <attribute name="x-mem" type="double" value="0.21875" />
     <attribute name="y-mem" type="double" value="0.21875" />
     <attribute name="prog-mem" type="double" value="0.625" />
@@ -1174,7 +1174,7 @@
     <parameter component-id="p2" index="0" name="rate" class="parameter" defaultValue="64" formatter="fmtLFOHz" extension="m2" />
     <parameter component-id="m2" index="0" name="morph:rate" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.625" />
+    <attribute name="cycles" type="double" value="0.6036" />
     <attribute name="x-mem" type="double" value="0.21875" />
     <attribute name="y-mem" type="double" value="0.34375" />
     <attribute name="prog-mem" type="double" value="0.65625" />
@@ -1192,7 +1192,7 @@
     <parameter component-id="p1" index="0" name="density" class="parameter" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:density" class="morph" role="morph" minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.34375" />
+    <attribute name="cycles" type="double" value="0.3177" />
     <attribute name="x-mem" type="double" value="0.21875" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.3125" />
@@ -1212,7 +1212,7 @@
     <parameter component-id="p1" index="0" name="time" class="parameter" defaultValue="64" formatter="fmtLogicDelay" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:time" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.28125" />
+    <attribute name="cycles" type="double" value="0.2541" />
     <attribute name="x-mem" type="double" value="0.15625" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.25" />
@@ -1231,7 +1231,7 @@
     <parameter component-id="p1" index="0" name="time" class="parameter" defaultValue="64" formatter="fmtLogicDelay" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:time" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.625" />
+    <attribute name="cycles" type="double" value="0.6036" />
     <attribute name="x-mem" type="double" value="0.15625" />
     <attribute name="y-mem" type="double" value="0.28125" />
     <attribute name="prog-mem" type="double" value="0.5625" />
@@ -1250,7 +1250,7 @@
     <parameter component-id="p1" index="0" name="time" class="parameter" defaultValue="64" formatter="fmtLogicDelay" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:time" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.34375" />
+    <attribute name="cycles" type="double" value="0.3177" />
     <attribute name="x-mem" type="double" value="0.21875" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.3125" />
@@ -1269,7 +1269,7 @@
     <parameter component-id="p1" index="0" name="time" class="parameter" defaultValue="64" formatter="fmtSmoothTime" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:time" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.25" />
+    <attribute name="cycles" type="double" value="0.2224" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.21875" />
@@ -1313,7 +1313,7 @@
     
     <light component-id="ledAudioOut" name="LED Audio Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="2.1875" />
+    <attribute name="cycles" type="double" value="2.1919" />
     <attribute name="x-mem" type="double" value="0.28125" />
     <attribute name="y-mem" type="double" value="0.34375" />
     <attribute name="prog-mem" type="double" value="0.5" />
@@ -1353,7 +1353,7 @@
     <parameter component-id="p1" index="0" name="shift" class="parameter" maxValue="1" formatter="fmtOffOn" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:shift" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.78125" />
+    <attribute name="cycles" type="double" value="0.7624" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="0.21875" />
@@ -1390,7 +1390,7 @@
     <parameter component-id="m8" index="7" name="morph:frequency mod" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m9" index="8" name="morph:resonance" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="7.59375" />
+    <attribute name="cycles" type="double" value="7.5921" />
     <attribute name="x-mem" type="double" value="1.78125" />
     <attribute name="y-mem" type="double" value="2.0625" />
     <attribute name="prog-mem" type="double" value="3.0625" />
@@ -1426,7 +1426,7 @@
     <parameter component-id="m6" index="5" name="morph:D mod" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <light component-id="ledTriggerIn" name="LED Trigger Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="2.46875" />
+    <attribute name="cycles" type="double" value="2.3983" />
     <attribute name="x-mem" type="double" value="1.3125" />
     <attribute name="y-mem" type="double" value="0.21875" />
     <attribute name="prog-mem" type="double" value="1.75" />
@@ -1449,7 +1449,7 @@
     <parameter component-id="m1" index="0" name="morph:pan mod" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m2" index="1" name="morph:pan" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.65625" />
+    <attribute name="cycles" type="double" value="1.6995" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.40625" />
@@ -1469,7 +1469,7 @@
     <parameter component-id="p1" index="0" name="time" class="parameter" defaultValue="64" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:time" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.46875" />
+    <attribute name="cycles" type="double" value="0.4447" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.21875" />
     <attribute name="prog-mem" type="double" value="0.4375" />
@@ -1497,7 +1497,7 @@
     <parameter component-id="m3" index="1" name="morph:resonance" class="morph" role="morph" minValue="-127" maxValue="127" />
     <parameter component-id="m4" index="2" name="morph:gain control" class="morph" role="morph" minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.78125" />
+    <attribute name="cycles" type="double" value="1.8107" />
     <attribute name="x-mem" type="double" value="0.21875" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.4375" />
@@ -1530,7 +1530,7 @@
     <parameter component-id="m4" index="2" name="morph:resonance" class="morph" role="morph" minValue="-127" maxValue="127" />
     <parameter component-id="m5" index="3" name="morph:freqmod" class="morph" role="morph" minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="4.03125" />
+    <attribute name="cycles" type="double" value="4.0025" />
     <attribute name="x-mem" type="double" value="0.5625" />
     <attribute name="y-mem" type="double" value="0.4375" />
     <attribute name="prog-mem" type="double" value="1.53125" />
@@ -1574,7 +1574,7 @@
     <parameter component-id="m10" index="8" name="morph:frequency mod 2" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m11" index="9" name="morph:bypass" class="morph" role="morph"  minValue="-1" maxValue="1"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="6.625" />
+    <attribute name="cycles" type="double" value="6.6074" />
     <attribute name="x-mem" type="double" value="0.5625" />
     <attribute name="y-mem" type="double" value="0.625" />
     <attribute name="prog-mem" type="double" value="1.46875" />
@@ -1617,7 +1617,7 @@
     <parameter component-id="m11" index="10" name="morph:curve" class="morph" role="morph"  minValue="-2" maxValue="2" />
     <light component-id="ledGateIn" name="LED Gate Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.96875" />
+    <attribute name="cycles" type="double" value="1.906" />
     <attribute name="x-mem" type="double" value="2.53125" />
     <attribute name="y-mem" type="double" value="0.4375" />
     <attribute name="prog-mem" type="double" value="1.40625" />
@@ -1634,7 +1634,7 @@
     <connector component-id="c2" index="1" name="in" type="input" signal="audio" />
     <connector component-id="c3" index="0" name="out" type="output" signal="audio" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.03125" />
+    <attribute name="cycles" type="double" value="1.0006" />
     <attribute name="x-mem" type="double" value="0.0" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.25" />
@@ -1653,7 +1653,7 @@
     <parameter component-id="p1" index="0" name="bits" class="parameter" maxValue="12" formatter="value+1" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:bits" class="morph" role="morph"  minValue="-12" maxValue="12" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.53125" />
+    <attribute name="cycles" type="double" value="0.5083" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="0.15625" />
@@ -1674,7 +1674,7 @@
     <parameter component-id="m1" index="0" name="morph:mode" class="morph" role="morph"  minValue="-2" maxValue="2" />
     <parameter component-id="m2" index="1" name="morph:inv" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.53125" />
+    <attribute name="cycles" type="double" value="0.5083" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.15625" />
@@ -1726,7 +1726,7 @@
     <parameter component-id="m16" index="15" name="morph:Mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <light component-id="ledTriggerIn" name="LED Trigger In" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="12.21875" />
+    <attribute name="cycles" type="double" value="12.0076" />
     <attribute name="x-mem" type="double" value="2.1875" />
     <attribute name="y-mem" type="double" value="1.8125" />
     <attribute name="prog-mem" type="double" value="4.71875" />
@@ -1745,7 +1745,7 @@
     <parameter component-id="p1" index="0" name="level" class="parameter" defaultValue="64" formatter="value-64" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:level" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.1875" />
+    <attribute name="cycles" type="double" value="0.1588" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.1875" />
@@ -1769,7 +1769,7 @@
     <parameter component-id="m2" index="1" name="morph:clip" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m3" index="2" name="morph:sym" class="morph" role="morph"  minValue="-1" maxValue="1"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.53125" />
+    <attribute name="cycles" type="double" value="1.493" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.375" />
@@ -1791,7 +1791,7 @@
     <parameter component-id="m1" index="0" name="morph:overdrive mod" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m2" index="1" name="morph:overdrive" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="4.0" />
+    <attribute name="cycles" type="double" value="4.0025" />
     <attribute name="x-mem" type="double" value="0.28125" />
     <attribute name="y-mem" type="double" value="0.34375" />
     <attribute name="prog-mem" type="double" value="1.65625" />
@@ -1829,7 +1829,7 @@
     <parameter component-id="p1" index="0" name="time" class="parameter" defaultValue="64" formatter="fmtLogicDelay" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:time" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.28125" />
+    <attribute name="cycles" type="double" value="0.2541" />
     <attribute name="x-mem" type="double" value="0.15625" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.25" />
@@ -1846,7 +1846,7 @@
     <connector component-id="c2" index="1" name="sync" type="output" signal="logic" />
     <connector component-id="c3" index="2" name="active" type="output" signal="logic" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.13" />
+    <attribute name="cycles" type="double" value="0.1271" />
     <attribute name="x-mem" type="double" value="1.0" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="1.0" />
@@ -1875,7 +1875,7 @@
     <parameter component-id="m4" index="3" name="morph:level 2" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m5" index="4" name="morph:mode" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.1875" />
+    <attribute name="cycles" type="double" value="0.1588" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.1875" />
@@ -1919,7 +1919,7 @@
     <parameter component-id="m1" index="0" name="morph:rate" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m2" index="1" name="morph:on/off" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.0" />
+    <attribute name="cycles" type="double" value="0.9848" />
     <attribute name="x-mem" type="double" value="0.4375" />
     <attribute name="y-mem" type="double" value="0.28125" />
     <attribute name="prog-mem" type="double" value="0.78125" />
@@ -1939,7 +1939,7 @@
     <parameter component-id="p1" index="0" name="divider" class="parameter" formatter="value+1" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:divider" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.625" />
+    <attribute name="cycles" type="double" value="0.6036" />
     <attribute name="x-mem" type="double" value="0.5" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.5625" />
@@ -1955,7 +1955,7 @@
     <connector component-id="c1" index="0" name="in" type="input" signal="logic" />
     <connector component-id="c2" index="0" name="out" type="output" signal="logic" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.1875" />
+    <attribute name="cycles" type="double" value="0.1588" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="0.1875" />
@@ -1976,7 +1976,7 @@
     <parameter component-id="m1" index="0" name="morph:attack" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m2" index="1" name="morph:release" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="2.3125" />
+    <attribute name="cycles" type="double" value="2.2872" />
     <attribute name="x-mem" type="double" value="0.21875" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.5" />
@@ -1995,7 +1995,7 @@
     <parameter component-id="p1" index="0" name="transpose" class="parameter" formatter="fmtNoteScale" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:transpose" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.15625" />
+    <attribute name="cycles" type="double" value="0.1271" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.15625" />
@@ -2015,7 +2015,7 @@
     <parameter component-id="p1" index="0" name="mode" class="parameter" maxValue="2" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:mode" class="morph" role="morph"  minValue="-2" maxValue="2"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.28125" />
+    <attribute name="cycles" type="double" value="0.2541" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="0.25" />
@@ -2037,7 +2037,7 @@
     <parameter component-id="m1" index="0" name="morph:wrap mod" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m2" index="1" name="morph:wrap" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="2.6875" />
+    <attribute name="cycles" type="double" value="2.7001" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.625" />
@@ -2058,7 +2058,7 @@
     <parameter component-id="m1" index="0" name="morph:range" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m2" index="1" name="morph:notes" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.4375" />
+    <attribute name="cycles" type="double" value="0.413" />
     <attribute name="x-mem" type="double" value="0.15625" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.40625" />
@@ -2077,7 +2077,7 @@
     <parameter component-id="p1" index="0" name="on/off" class="parameter" maxValue="1" defaultValue="1" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:on/off" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.40625" />
+    <attribute name="cycles" type="double" value="0.3812" />
     <attribute name="x-mem" type="double" value="0.0" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="0.125" />
@@ -2096,7 +2096,7 @@
     <connector component-id="c4" index="1" name="T8" type="output" signal="logic" />
     <connector component-id="c5" index="2" name="8" type="output" signal="logic" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.84375" />
+    <attribute name="cycles" type="double" value="0.8259" />
     <attribute name="x-mem" type="double" value="0.4375" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.75" />
@@ -2119,7 +2119,7 @@
     <parameter component-id="m1" index="0" name="morph:modulation" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m2" index="1" name="morph:time" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="8.0" />
+    <attribute name="cycles" type="double" value="8.0051" />
     <attribute name="x-mem" type="double" value="9.25" />
     <attribute name="y-mem" type="double" value="9.25" />
     <attribute name="prog-mem" type="double" value="1.84375" />
@@ -2151,7 +2151,7 @@
     <parameter component-id="m5" index="4" name="morph:level 4" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m6" index="5" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.03125" />
+    <attribute name="cycles" type="double" value="1.0006" />
     <attribute name="x-mem" type="double" value="0.28125" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.21875" />
@@ -2184,7 +2184,7 @@
     <parameter component-id="m6" index="4" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <light component-id="ledControlOut" name="LED Control Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.21875" />
+    <attribute name="cycles" type="double" value="1.2071" />
     <attribute name="x-mem" type="double" value="0.4375" />
     <attribute name="y-mem" type="double" value="0.21875" />
     <attribute name="prog-mem" type="double" value="1.90625" />
@@ -2203,7 +2203,7 @@
     <parameter component-id="p1" index="0" name="gain" class="parameter" defaultValue="64" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:gain" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.65625" />
+    <attribute name="cycles" type="double" value="0.6353" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="0.1875" />
@@ -2222,7 +2222,7 @@
     <parameter component-id="p1" index="0" name="mode" class="parameter" maxValue="2" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:mode" class="morph" role="morph"  minValue="-2" maxValue="2" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.65625" />
+    <attribute name="cycles" type="double" value="0.6353" />
     <attribute name="x-mem" type="double" value="0.0" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="0.1875" />
@@ -2241,7 +2241,7 @@
     <parameter component-id="p1" index="0" name="mode" class="parameter" maxValue="4" defaultValue="2" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:mode" class="morph" role="morph"  minValue="-4" maxValue="4" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.90625" />
+    <attribute name="cycles" type="double" value="1.906" />
     <attribute name="x-mem" type="double" value="0.21875" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.46875" />
@@ -2268,7 +2268,7 @@
     <parameter component-id="m3" index="2" name="morph:gate" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <light component-id="ledGateIn" name="LED Gate In" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.4375" />
+    <attribute name="cycles" type="double" value="1.3977" />
     <attribute name="x-mem" type="double" value="0.75" />
     <attribute name="y-mem" type="double" value="0.21875" />
     <attribute name="prog-mem" type="double" value="0.875" />
@@ -2301,7 +2301,7 @@
     <parameter component-id="m5" index="3" name="morph:fmb" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m6" index="4" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="3.1875" />
+    <attribute name="cycles" type="double" value="3.2084" />
     <attribute name="x-mem" type="double" value="0.4375" />
     <attribute name="y-mem" type="double" value="0.28125" />
     <attribute name="prog-mem" type="double" value="0.71875" />
@@ -2320,7 +2320,7 @@
     <parameter component-id="p1" index="0" name="frequency" class="parameter" defaultValue="64" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:frequency" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.65625" />
+    <attribute name="cycles" type="double" value="0.6353" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.1875" />
@@ -2339,7 +2339,7 @@
     <parameter component-id="p1" index="0" name="frequency" class="parameter" defaultValue="64" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:frequency" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.03125" />
+    <attribute name="cycles" type="double" value="1.0006" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.25" />
@@ -2365,7 +2365,7 @@
     <parameter component-id="m2" index="1" name="morph:level" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m3" index="2" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.90625" />
+    <attribute name="cycles" type="double" value="0.8895" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="0.21875" />
@@ -2382,7 +2382,7 @@
     <connector component-id="c2" index="1" name="B" type="input" signal="control" />
     <connector component-id="c3" index="0" name="A>=B" type="output" signal="logic" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.1875" />
+    <attribute name="cycles" type="double" value="0.1588" />
     <attribute name="x-mem" type="double" value="0.0" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="0.1875" />
@@ -2452,7 +2452,7 @@
 	<light component-id="ledStep1-16" type="led-array" name="Step 1-16" minValue="0" maxValue="16" />
     
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.4375" />
+    <attribute name="cycles" type="double" value="1.3977" />
     <attribute name="x-mem" type="double" value="0.5625" />
     <attribute name="y-mem" type="double" value="1.4375" />
     <attribute name="prog-mem" type="double" value="1.15625" />
@@ -2512,7 +2512,7 @@
 	<light component-id="ledStep1-16" type="led-array" name="Step 1-16" minValue="0" maxValue="16" />
     
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.4375" />
+    <attribute name="cycles" type="double" value="1.3977" />
     <attribute name="x-mem" type="double" value="0.5625" />
     <attribute name="y-mem" type="double" value="1.5" />
     <attribute name="prog-mem" type="double" value="1.15625" />
@@ -2549,7 +2549,7 @@
     <parameter component-id="m7" index="5" name="morph:slope" class="morph" role="morph"  minValue="-2" maxValue="2" />
     <parameter component-id="m8" index="6" name="morph:bypass" class="morph" role="morph"  minValue="-1" maxValue="1"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="5.53125" />
+    <attribute name="cycles" type="double" value="5.4956" />
     <attribute name="x-mem" type="double" value="0.6875" />
     <attribute name="y-mem" type="double" value="0.6875" />
     <attribute name="prog-mem" type="double" value="2.0" />
@@ -2573,7 +2573,7 @@
     <parameter component-id="m2" index="1" name="morph:amount" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m3" index="2" name="morph:bypass" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="9.125" />
+    <attribute name="cycles" type="double" value="9.101" />
     <attribute name="x-mem" type="double" value="18.09375" />
     <attribute name="y-mem" type="double" value="10.6875" />
     <attribute name="prog-mem" type="double" value="3.0" />
@@ -2610,7 +2610,7 @@
     <parameter component-id="m7" index="5" name="morph:pitchfine" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m8" index="6" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="4.875" />
+    <attribute name="cycles" type="double" value="4.892" />
     <attribute name="x-mem" type="double" value="0.5" />
     <attribute name="y-mem" type="double" value="0.5" />
     <attribute name="prog-mem" type="double" value="1.53125" />
@@ -2648,7 +2648,7 @@
     <parameter component-id="m7" index="5" name="morph:pitch mod 1" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m8" index="6" name="morph:pitch mod 2" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="9.0625" />
+    <attribute name="cycles" type="double" value="9.101" />
     <attribute name="x-mem" type="double" value="0.5625" />
     <attribute name="y-mem" type="double" value="0.5" />
     <attribute name="prog-mem" type="double" value="2.53125" />
@@ -2680,7 +2680,7 @@
     <parameter component-id="m5" index="3" name="morph:pitch mod 1" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m6" index="4" name="morph:pitch mod 2" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.78125" />
+    <attribute name="cycles" type="double" value="0.7624" />
     <attribute name="x-mem" type="double" value="0.21875" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.6875" />
@@ -2711,7 +2711,7 @@
     <parameter component-id="p13" index="12" name="D" class="parameter" maxValue="1" formatter="fmtOffOn" />
     <parameter component-id="p14" index="13" name="D#" class="parameter" maxValue="1" formatter="fmtOffOn" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.34375" />
+    <attribute name="cycles" type="double" value="1.3024" />
     <attribute name="x-mem" type="double" value="1.03125" />
     <attribute name="y-mem" type="double" value="1.03125" />
     <attribute name="prog-mem" type="double" value="1.1875" />
@@ -2740,7 +2740,7 @@
     <parameter component-id="m4" index="3" name="morph:step" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m5" index="4" name="morph:mono" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="2.34375" />
+    <attribute name="cycles" type="double" value="2.2872" />
     <attribute name="x-mem" type="double" value="0.5" />
     <attribute name="y-mem" type="double" value="0.34375" />
     <attribute name="prog-mem" type="double" value="1.53125" />
@@ -2765,7 +2765,7 @@
     <parameter component-id="m1" index="0" name="morph:lower" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m2" index="1" name="morph:upper" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.79" />
+    <attribute name="cycles" type="double" value="0.7942" />
     <attribute name="x-mem" type="double" value="1.0" />
     <attribute name="y-mem" type="double" value="1.0" />
     <attribute name="prog-mem" type="double" value="1.0" />
@@ -2807,7 +2807,7 @@
     <parameter component-id="m11" index="10" name="morph:inlevel" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <light component-id="ledAudioOut" name="LED Audio Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="12.5625" />
+    <attribute name="cycles" type="double" value="12.0076" />
     <attribute name="x-mem" type="double" value="1.15625" />
     <attribute name="y-mem" type="double" value="1.09375" />
     <attribute name="prog-mem" type="double" value="3.40625" />
@@ -2835,7 +2835,7 @@
     <parameter component-id="m5" index="4" name="morph:in level" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <light component-id="ledAudioOut" name="LED Audio Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="3.34375" />
+    <attribute name="cycles" type="double" value="3.3037" />
     <attribute name="x-mem" type="double" value="0.34375" />
     <attribute name="y-mem" type="double" value="0.5625" />
     <attribute name="prog-mem" type="double" value="1.0625" />
@@ -2863,7 +2863,7 @@
     <parameter component-id="m5" index="4" name="morph:in level" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <light component-id="ledAudioOut" name="LED Audio Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="2.4375" />
+    <attribute name="cycles" type="double" value="2.3983" />
     <attribute name="x-mem" type="double" value="0.21875" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.5625" />
@@ -2906,7 +2906,7 @@
     </light>
     
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="8.28125" />
+    <attribute name="cycles" type="double" value="8.291" />
     <attribute name="x-mem" type="double" value="0.6875" />
     <attribute name="y-mem" type="double" value="0.625" />
     <attribute name="prog-mem" type="double" value="1.8125" />
@@ -2979,7 +2979,7 @@
     <parameter component-id="m23" index="22" name="morph:osc5 mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <parameter component-id="m24" index="23" name="morph:osc6 mute" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="16.78125" />
+    <attribute name="cycles" type="double" value="16.9949" />
     <attribute name="x-mem" type="double" value="0.84375" />
     <attribute name="y-mem" type="double" value="2.25" />
     <attribute name="prog-mem" type="double" value="3.5625" />
@@ -3024,7 +3024,7 @@
     <parameter component-id="m10" index="8" name="morph:kbt" class="morph" role="morph"  minValue="-1" maxValue="1"/>
     <parameter component-id="m11" index="9" name="morph:mute" class="morph" role="morph"  minValue="-1" maxValue="1"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="7.90625" />
+    <attribute name="cycles" type="double" value="7.9098" />
     <attribute name="x-mem" type="double" value="0.5" />
     <attribute name="y-mem" type="double" value="0.75" />
     <attribute name="prog-mem" type="double" value="2.40625" />
@@ -3080,7 +3080,7 @@
     <parameter component-id="m18" index="17" name="morph:high freq emphasis" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <parameter component-id="m19" index="18" name="morph:monitor" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="48.9375" />
+    <attribute name="cycles" type="double" value="48.9994" />
     <attribute name="x-mem" type="double" value="23.78125" />
     <attribute name="y-mem" type="double" value="26.71875" />
     <attribute name="prog-mem" type="double" value="34.21875" />
@@ -3104,7 +3104,7 @@
     <parameter component-id="m2" index="0" name="morph:rate" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <light component-id="ledControlOut" name="LED Control Out" index="0" type="led" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.4375" />
+    <attribute name="cycles" type="double" value="1.3977" />
     <attribute name="x-mem" type="double" value="0.5" />
     <attribute name="y-mem" type="double" value="0.34375" />
     <attribute name="prog-mem" type="double" value="1.1875" />
@@ -3125,7 +3125,7 @@
     <parameter component-id="m1" index="0" name="morph:multiplier" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m2" index="1" name="morph:unipolar" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.53125" />
+    <attribute name="cycles" type="double" value="0.5083" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="0.15625" />
@@ -3146,7 +3146,7 @@
     <parameter component-id="m1" index="0" name="morph:offset" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m2" index="1" name="morph:unipolar" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.53125" />
+    <attribute name="cycles" type="double" value="0.5083" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="0.15625" />
@@ -3166,7 +3166,7 @@
     <parameter component-id="p1" index="0" name="fade" class="parameter" defaultValue="64" formatter="value-64" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:fade" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.78125" />
+    <attribute name="cycles" type="double" value="0.7624" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.09375" />
     <attribute name="prog-mem" type="double" value="0.21875" />
@@ -3186,7 +3186,7 @@
     <parameter component-id="p1" index="0" name="fade" class="parameter" defaultValue="64" formatter="value-64" extension="m1" />
     <parameter component-id="m1" index="0" name="morph:fade" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.78125" />
+    <attribute name="cycles" type="double" value="0.7624" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.0" />
     <attribute name="prog-mem" type="double" value="0.21875" />
@@ -3212,7 +3212,7 @@
     <parameter component-id="m3" index="2" name="morph:breakpoint" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m4" index="3" name="morph:right gain" class="morph" role="morph"  minValue="-48" maxValue="48" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.875" />
+    <attribute name="cycles" type="double" value="0.8577" />
     <attribute name="x-mem" type="double" value="0.34375" />
     <attribute name="y-mem" type="double" value="0.34375" />
     <attribute name="prog-mem" type="double" value="0.78125" />
@@ -3235,7 +3235,7 @@
     <parameter component-id="m1" index="0" name="morph:ringmod depth mod" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m2" index="1" name="morph:ringmod depth" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="1.90625" />
+    <attribute name="cycles" type="double" value="1.906" />
     <attribute name="x-mem" type="double" value="0.09375" />
     <attribute name="y-mem" type="double" value="0.15625" />
     <attribute name="prog-mem" type="double" value="0.4375" />
@@ -3263,7 +3263,7 @@
     <parameter component-id="m4" index="3" name="morph:quant off" class="morph" role="morph"  minValue="-1" maxValue="1" />
     <parameter component-id="m5" index="4" name="morph:sampling off" class="morph" role="morph"  minValue="-1" maxValue="1"/>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="3.4375" />
+    <attribute name="cycles" type="double" value="3.399" />
     <attribute name="x-mem" type="double" value="0.28125" />
     <attribute name="y-mem" type="double" value="0.21875" />
     <attribute name="prog-mem" type="double" value="0.78125" />
@@ -3288,7 +3288,7 @@
 	    <attribute name="possible-values" value="0, 16, 32, 48, 64, 80, 96, 112, 122, 127"/>
     </light>
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="2.2" />
+    <attribute name="cycles" type="double" value="2.2872" />
     <attribute name="x-mem" type="double" value="1.0" />
     <attribute name="y-mem" type="double" value="1.0" />
     <attribute name="prog-mem" type="double" value="1.0" />
