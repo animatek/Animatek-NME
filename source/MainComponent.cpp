@@ -4,6 +4,7 @@
 #include "ui/BankTransferDialog.h"
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
+#include "ui/AboutDialog.h"
 #include "ui/SlotSelectDialog.h"
 #include "ui/PatchSettingsDialog.h"
 #include "ui/SynthSettingsDialog.h"
@@ -1175,6 +1176,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
   }
   else if (menuIndex == 5) // About
   {
+    menu.addItem(54, "About Animatek NME...", true);
+    menu.addSeparator();
     menu.addItem(53, "Animatek NME Website", true);
     menu.addItem(50, "Support the Project (Patreon)", true);
     menu.addItem(51, "Source Code (GitHub)", true);
@@ -1305,6 +1308,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
 
   // About menu
+  case 54:  // About box
+    AboutDialog::show(this, [this](const juce::String& url) { openURL(url); });
+    break;
   case 53:  // Animatek NME website
     openURL("https://animatek.net/animatek-nme-eng/");
     break;

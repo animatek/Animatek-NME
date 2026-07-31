@@ -1,0 +1,45 @@
+Animatek NME is a native reimplementation of the Nomad editor for the
+Clavia Nord Modular G1, written in C++ with JUCE.
+
+
+BUILT ON THE WORK OF
+
+  The original nmedit / Nomad developers, without whose reverse
+  engineering this editor could not exist:
+
+  Marcus Andersson      Nord Modular MIDI protocol; C++ and Java
+                        protocol libraries
+  Christian Schneider   Nomad Java editor v0.2 / v0.3
+  Ian Hoogeboom         Nomad v0.4 and macOS compatibility
+  Jan Punter            Patch file format documentation
+  Jelle Herold          Original project founder
+  Stefan Keel           Module icon designs
+  Tobias Weinald        Splash screen artwork
+
+  nmedit.sourceforge.net
+
+
+TESTING AND BUG REPORTS
+
+  This editor is shaped by the people who run it against real
+  hardware and take the time to write up what breaks:
+
+  Nocticore (Santeri)
+  djagia
+  Qzma10
+  encoderaudio
+  jzcavaco-dev
+
+
+SUPPORTERS
+
+  Animatek NME is developed in the open and funded by the people
+  who back it on Patreon. Thank you.
+
+  patreon.com/animatek
+
+
+LICENSE
+
+  GNU General Public License v3. The source is at
+  github.com/animatek/Animatek-NME

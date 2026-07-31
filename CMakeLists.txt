@@ -1,4 +1,14 @@
 cmake_minimum_required(VERSION 3.22)
+
+# Keep Intel builds compatible with macOS 10.13 High Sierra. This must be set before
+# project() enables the compiler so local builds get the same deployment target
+# as release builds. CMake ignores this setting on non-Apple platforms, and
+# callers may still override it with -DCMAKE_OSX_DEPLOYMENT_TARGET.
+if(NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING
+        "Minimum macOS version supported by Animatek NME")
+endif()
+
 project(AnimatekNME VERSION 0.11.0 LANGUAGES C CXX)
 
 include(GNUInstallDirs)
@@ -81,6 +91,7 @@ set(NME_SHARED_SOURCES
     source/ui/StatusBar.cpp
     source/ui/PatchHeaderBar.cpp
     source/ui/PatchLocationDialog.cpp
+    source/ui/AboutDialog.cpp
     source/ui/SlotSelectDialog.cpp
     source/ui/PatchSettingsDialog.cpp
     source/ui/MidiSettingsDialog.cpp
@@ -140,6 +151,8 @@ juce_add_gui_app(AnimatekNME
     ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon.png"
     ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/data/images/app-icon.png"
     VERSION "${PROJECT_VERSION}"
+    PLIST_TO_MERGE
+        "<plist><dict><key>LSMinimumSystemVersion</key><string>${CMAKE_OSX_DEPLOYMENT_TARGET}</string></dict></plist>"
 )
 
 target_sources(AnimatekNME PRIVATE
@@ -200,6 +213,7 @@ juce_add_binary_data(NmeData SOURCES
     data/modules.xml
     data/transformations.xml
     data/classic-theme.xml
+    data/credits.txt
     data/images/single/decoration-1.png
     data/images/single/decoration-2.png
     data/images/single/decoration-3.png
