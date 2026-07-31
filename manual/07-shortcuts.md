@@ -47,6 +47,8 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl++` / `Ctrl+-` | Zoom in / out |
 | `Ctrl+T` | Cycle color theme |
 | `Ctrl+W` | Toggle wireframe modules |
+| `Ctrl+I` | Toggle the inspector panel (left side) |
+| `Ctrl+Shift+I` | Toggle the patch browser (right side) |
 | `S` | Shake cables |
 | Middle-drag | Pan the canvas |
 

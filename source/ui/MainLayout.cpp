@@ -326,3 +326,56 @@ void MainLayout::showDiskPresetBrowser()
 {
     rightBrowserTabs.setCurrentTabIndex(1);
 }
+
+void MainLayout::setLeftPanelVisible(bool visible)
+{
+    if (leftPanelVisible == visible)
+        return;
+
+    if (!visible && leftColumn.getWidth() > 0)
+        savedLeftWidth = leftColumn.getWidth();
+
+    leftPanelVisible = visible;
+    leftColumn.setVisible(visible);
+    resizerBar1.setVisible(visible);
+
+    // Zero out the item and its resizer so the canvas absorbs the width.
+    if (visible)
+    {
+        layoutManager.setItemLayout(0, 150, 350, savedLeftWidth);
+        layoutManager.setItemLayout(1, 4, 4, 4);
+    }
+    else
+    {
+        layoutManager.setItemLayout(0, 0, 0, 0);
+        layoutManager.setItemLayout(1, 0, 0, 0);
+    }
+
+    resized();
+}
+
+void MainLayout::setRightPanelVisible(bool visible)
+{
+    if (rightPanelVisible == visible)
+        return;
+
+    if (!visible && rightBrowserTabs.getWidth() > 0)
+        savedRightWidth = rightBrowserTabs.getWidth();
+
+    rightPanelVisible = visible;
+    rightBrowserTabs.setVisible(visible);
+    resizerBar2.setVisible(visible);
+
+    if (visible)
+    {
+        layoutManager.setItemLayout(3, 4, 4, 4);
+        layoutManager.setItemLayout(4, 150, 400, savedRightWidth);
+    }
+    else
+    {
+        layoutManager.setItemLayout(3, 0, 0, 0);
+        layoutManager.setItemLayout(4, 0, 0, 0);
+    }
+
+    resized();
+}

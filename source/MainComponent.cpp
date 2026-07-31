@@ -1055,6 +1055,18 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
     toggleWireframe();
     return true;
   }
+  // Ctrl+I hides the left panel, Ctrl+Shift+I the right one (issue #38).
+  // Both cases of the key code are matched: the shifted variant reports the
+  // upper-case one on some platforms.
+  if (key.getModifiers().isCommandDown()
+      && (key.getKeyCode() == 'i' || key.getKeyCode() == 'I'))
+  {
+    if (key.getModifiers().isShiftDown())
+      toggleRightPanel();
+    else
+      toggleLeftPanel();
+    return true;
+  }
   if (handleFloaterShortcut(key))
     return true;
   return mainLayout != nullptr
@@ -1116,6 +1128,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
                         i == editorOptions.uiThemeIndex);
     menu.addSubMenu("Theme\tCtrl+T", themeMenu);
     menu.addItem(66, "Wireframe Modules\tCtrl+W", true, editorOptions.wireframe);
+    menu.addSeparator();
+    menu.addItem(67, "Inspector Panel\tCtrl+I", true, mainLayout->isLeftPanelVisible());
+    menu.addItem(68, "Patch Browser\tCtrl+Shift+I", true, mainLayout->isRightPanelVisible());
     menu.addSeparator();
     menu.addItem(80, "Knob Floater\tCtrl+5", true,
                  knobFloaterWindow != nullptr && knobFloaterWindow->isVisible());
@@ -1315,6 +1330,12 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 66:  // Wireframe Modules
     toggleWireframe();
+    break;
+  case 67:  // Inspector Panel
+    toggleLeftPanel();
+    break;
+  case 68:  // Patch Browser
+    toggleRightPanel();
     break;
   case 80:  // Knob Floater
     toggleKnobFloater();
@@ -2126,6 +2147,26 @@ void MainComponent::toggleWireframe() {
   if (mainLayout)
     mainLayout->getStatusBar().showMessage(
         editorOptions.wireframe ? "Wireframe: on" : "Wireframe: off", 2000);
+}
+
+void MainComponent::toggleLeftPanel() {
+  if (!mainLayout) return;
+  const bool show = !mainLayout->isLeftPanelVisible();
+  mainLayout->setLeftPanelVisible(show);
+  // Name the way back: with the panel gone so is the slot bar, and the message
+  // is the only place the shortcut is visible without opening a menu.
+  mainLayout->getStatusBar().showMessage(
+      show ? "Inspector panel shown" : "Inspector panel hidden (Ctrl+I to show)",
+      2500);
+}
+
+void MainComponent::toggleRightPanel() {
+  if (!mainLayout) return;
+  const bool show = !mainLayout->isRightPanelVisible();
+  mainLayout->setRightPanelVisible(show);
+  mainLayout->getStatusBar().showMessage(
+      show ? "Patch browser shown" : "Patch browser hidden (Ctrl+Shift+I to show)",
+      2500);
 }
 
 void MainComponent::choosePresetLibraryFolder() {
@@ -3188,6 +3229,8 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Ctrl++ / Ctrl+-     Zoom in / out\n"
       "  Ctrl+T              Cycle color theme\n"
       "  Ctrl+W              Toggle wireframe modules\n"
+      "  Ctrl+I              Toggle inspector panel (left)\n"
+      "  Ctrl+Shift+I        Toggle patch browser (right)\n"
       "  S                   Shake cables\n"
       "  Middle-drag         Pan canvas\n"
       "\n"

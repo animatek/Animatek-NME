@@ -104,6 +104,8 @@ private:
 #endif
     void applyUiTheme(int index, bool persist);
     void toggleWireframe();
+    void toggleLeftPanel();   // Ctrl+I: inspector column (issue #38)
+    void toggleRightPanel();  // Ctrl+Shift+I: patch browser
     void togglePresetBrowser();
     void showPresetBrowser();
     void toggleKnobFloater();

@@ -76,6 +76,15 @@ public:
     SlotBar&              getSlotBar()     { return slotBar; }
     void showDiskPresetBrowser();
 
+    // Side panel visibility (issue #38). Collapsing a panel hands its width to
+    // the canvas and remembers the width it had, so re-showing restores the
+    // size the user had dragged it to. The slot bar rides in the left column,
+    // so while that one is hidden slots stay reachable through Ctrl+1..4.
+    void setLeftPanelVisible(bool visible);
+    void setRightPanelVisible(bool visible);
+    bool isLeftPanelVisible() const  { return leftPanelVisible; }
+    bool isRightPanelVisible() const { return rightPanelVisible; }
+
     std::function<void(int)> onSlotChanged;  // called with slot index 0-3
     std::function<void(int)> onSlotWindowRequested;  // right-click a slot row: pop it out
     std::function<void()> onMidiSettingsClicked;
@@ -104,6 +113,11 @@ private:
     juce::StretchableLayoutManager layoutManager;
     juce::StretchableLayoutResizerBar resizerBar1 { &layoutManager, 1, true };
     juce::StretchableLayoutResizerBar resizerBar2 { &layoutManager, 3, true };
+
+    bool leftPanelVisible  = true;
+    bool rightPanelVisible = true;
+    int  savedLeftWidth    = 210;   // preferred sizes below, restored on re-show
+    int  savedRightWidth   = 220;
 
     static constexpr int statusBarHeight = 24;
     static constexpr int slotBarHeight   = 100;  // 4 rows × 25px
