@@ -55,6 +55,33 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SlotBar)
 };
 
+// Narrow clickable strip with a chevron that collapses/expands the panel it
+// sits next to, the same affordance the pop-out slot windows use for their
+// inspector. It stays put when the panel is hidden, so it is also the way back.
+class PanelToggleStrip : public juce::Component
+{
+public:
+    explicit PanelToggleStrip(bool leftEdge);
+
+    void paint(juce::Graphics& g) override;
+    void mouseDown(const juce::MouseEvent& e) override;
+    void mouseEnter(const juce::MouseEvent& e) override;
+    void mouseExit(const juce::MouseEvent& e) override;
+
+    void setPanelOpen(bool open);
+
+    std::function<void()> onToggle;
+
+    static constexpr int stripWidth = 14;
+
+private:
+    const bool isLeftEdge;      // strip for the left panel, chevron mirrored
+    bool panelOpen = true;
+    bool hovered = false;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PanelToggleStrip)
+};
+
 class MainLayout : public juce::Component,
                    public juce::DragAndDropContainer
 {
@@ -85,6 +112,11 @@ public:
     bool isLeftPanelVisible() const  { return leftPanelVisible; }
     bool isRightPanelVisible() const { return rightPanelVisible; }
 
+    // Chevron strip clicked: true for the left panel, false for the right one.
+    // Routed out so the toggle goes through the same place as the shortcuts and
+    // reports in the status bar. Falls back to toggling directly if unwired.
+    std::function<void(bool)> onPanelToggleRequested;
+
     std::function<void(int)> onSlotChanged;  // called with slot index 0-3
     std::function<void(int)> onSlotWindowRequested;  // right-click a slot row: pop it out
     std::function<void()> onMidiSettingsClicked;
@@ -101,6 +133,9 @@ private:
     juce::TextButton libraryButton { "Library" };
     juce::TextButton storeButton { "Store" };
     juce::Component   leftColumn;   // groups all left elements
+
+    PanelToggleStrip  leftToggleStrip { true };
+    PanelToggleStrip  rightToggleStrip { false };
 
     PatchCanvasComponent canvasComponent; // centre — patch canvas
     PatchBrowserPanel patchBrowserPanel;  // right tab — synth patch browser

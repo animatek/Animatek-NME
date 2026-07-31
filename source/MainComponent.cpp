@@ -895,6 +895,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // Wire toolbar buttons
   mainLayout->onMidiSettingsClicked = [this]() { showMidiSettingsDialog(); };
+
+  // Chevron strips go through the same path as Ctrl+I / Ctrl+Shift+I so the
+  // status bar reports the change either way.
+  mainLayout->onPanelToggleRequested = [this](bool left) {
+    if (left) toggleLeftPanel(); else toggleRightPanel();
+  };
   mainLayout->onLibraryFolderClicked = [this]() { choosePresetLibraryFolder(); };
   mainLayout->onStoreToBankClicked = [this]() { storePatchToBank(); };
   mainLayout->getDiskPresetBrowser().setLibraryRoot(editorOptions.presetLibraryRoot);
