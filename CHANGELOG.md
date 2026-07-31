@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **About box** (About > About Animatek NME): version and build date, a "Copy version" button
+  that puts the version, OS and JUCE build on the clipboard for bug reports, and the credits.
+  The credits live in `data/credits.txt` and cover the original nmedit/Nomad developers, the
+  people filing hardware-tested bug reports, and the Patreon backers.
+
 - **Module DSP costs rebuilt from Clavia's own figures**: the per-module `cycles` table
   came from nmedit, where 47 of the 109 values fall outside the rounding interval of the
   figures the original Clavia editor prints in its insert-module menu, nearly all of them
