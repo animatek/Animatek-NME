@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **Module DSP costs rebuilt from Clavia's own figures**: the per-module `cycles` table
+  came from nmedit, where 47 of the 109 values fall outside the rounding interval of the
+  figures the original Clavia editor prints in its insert-module menu, nearly all of them
+  too high. That is why a full patch read just over 100%: Nocticore's MorgBass02 summed to
+  exactly 100.50%, matching his report. Since Clavia shows only two significant figures,
+  each published figure defines an interval; searching for a total DSP budget consistent
+  with all 109 intervals at once yields a single answer under 12000, namely 3148 units, so
+  one unit is 0.0318%. That pins the exact integer cost of 46 modules, and the remaining 63
+  (mostly heavy ones, where two significant figures are coarse) take the interval midpoint.
+  MorgBass02 now reads 100.03% and SY-1 RndBlips1 97.73%. Source screenshots are in
+  `Implementaciones/Consumo módulos/`; issue #18.
+
+- **The main window can hide its side panels** (issue #38): `Ctrl+I` was only wired in the
+  pop-out slot windows, so it did nothing in the main window. It now collapses the left
+  inspector column there too, and `Ctrl+Shift+I` collapses the right patch browser, handing
+  the width to the canvas. Each panel remembers the width it was dragged to. The slot bar
+  goes with the left column; slots stay reachable through `Ctrl+1`..`Ctrl+4`. Both are in
+  the View menu with check marks.
+
 - **Replacing a patch in a slot no longer crashes the editor**: creating an empty patch or
   loading a file into a slot that held a patch with knob or MIDI CC assignments killed the
   app outright (`SIGSEGV` in `Module::getContainerIndex` with `this == nullptr`). The detach
