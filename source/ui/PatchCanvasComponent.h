@@ -197,6 +197,9 @@ private:
     HoverTarget hoverTarget;
     bool hoverBadgeVisible = false;
     static constexpr int hoverDelayMs = 400;
+    // Module whose DSP cost was asked for by double-clicking it, as the original
+    // editor answers. Cleared by the next click.
+    const Module* costBadgeModule = nullptr;
     // textOverride lets the hover box say something the current overlay mode
     // wouldn't; empty means "whatever the mode reads out".
     void paintOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
@@ -374,7 +377,7 @@ private:
     // Hint boxes over the controls, as the original editor's function keys give:
     // F5 every parameter's value, F7 the morph group of the assigned ones. The
     // mode is editor-wide, so both areas and every window agree.
-    enum class OverlayMode { Off, MorphGroups, Values, Knobs, MidiCtrls };
+    enum class OverlayMode { Off, MorphGroups, Values, Knobs, MidiCtrls, ModuleCosts };
     inline static OverlayMode overlayMode = OverlayMode::Off;
 
     // Editor-wide settings (shared across all PatchCanvas instances)

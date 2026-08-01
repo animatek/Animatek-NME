@@ -45,6 +45,8 @@ On macOS, `Ctrl` is `Cmd`.
 | `F7` | Toggle morph groups overlay |
 | `F8` | Toggle knob assignments overlay |
 | `F9` | Toggle MIDI CC assignments overlay |
+| `F10` | Toggle module DSP cost overlay |
+| double-click | Double-click a module to read its DSP cost |
 | `Z` | Zoom to selection (or reset when nothing selected) |
 | `Shift+Z` | Reset zoom to 100% |
 | `Ctrl++` / `Ctrl+-` | Zoom in / out |

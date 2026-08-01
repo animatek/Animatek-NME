@@ -231,6 +231,10 @@ bool PatchCanvas::handleOverlayKey(const juce::KeyPress& key, juce::Component& r
     if (key == juce::KeyPress::F7Key) return toggle(OverlayMode::MorphGroups);
     if (key == juce::KeyPress::F8Key) return toggle(OverlayMode::Knobs);
     if (key == juce::KeyPress::F9Key) return toggle(OverlayMode::MidiCtrls);
+    // Not one of the original's keys: it has no whole-patch cost readout, only
+    // the per-module answer on a double-click. Worth having when you are hunting
+    // for what to cut in a patch that is over budget.
+    if (key == juce::KeyPress::F10Key) return toggle(OverlayMode::ModuleCosts);
 
     return false;
 }
@@ -368,6 +372,7 @@ void PatchCanvas::setPatch(Patch* p, const ModuleDescriptions* md, const ThemeDa
     selectedModule = nullptr;
     selectedSection = -1;
     clearHover();   // hoverTarget holds a Module* into the outgoing patch
+    costBadgeModule = nullptr;
     cableSagOffsets.clear();
     activeQuickAdd = nullptr;
     showCablePreview = false;
@@ -579,6 +584,12 @@ void PatchCanvas::paint(juce::Graphics& g)
     paintHoverBadge(g);
     paintDragValueBadge(g);
 
+    // The answer to a double-click on a module, kept up until the next click.
+    if (costBadgeModule != nullptr)
+        if (auto* desc = costBadgeModule->getDescriptor())
+            paintModuleCostBadge(g, getModuleBounds(*costBadgeModule, 0),
+                                 desc->fullname + "  " + formatDspCost(desc->cycles));
+
     // Cable creation preview (rubber-band cable)
     if (showCablePreview && dragState.sourceConnector != nullptr && dragState.module != nullptr)
     {
@@ -720,6 +731,15 @@ void PatchCanvas::paintOverlays(juce::Graphics& g, const ModuleContainer& contai
         auto rect = getModuleBounds(m, yOffset);
         if (!g.getClipBounds().intersects(rect))
             continue;
+
+        // The cost readout is per module, not per control, so it does not go
+        // through the theme walk the other modes use.
+        if (overlayMode == OverlayMode::ModuleCosts)
+        {
+            if (auto* desc = m.getDescriptor())
+                paintModuleCostBadge(g, rect, formatDspCost(desc->cycles));
+            continue;
+        }
 
         if (const auto* theme = themeData->getModuleTheme(m.getDescriptor()->componentId))
             paintOverlay(g, m, rect, *theme);
@@ -982,17 +1002,12 @@ void PatchCanvas::paintHoverBadge(juce::Graphics& g)
         || overlayMode == OverlayMode::Values)
         return;
 
-    // Hovering the module itself rather than one of its controls reads out what
-    // it costs the DSP, which the original editor gives on a double-click.
+    // Hovering reads out controls only. The module's own cost is asked for by
+    // double-clicking it, the way the original editor does: crossing modules is
+    // something the cursor does constantly, and a cost box following it around
+    // would be noise rather than an answer.
     if (hoverTarget.componentId.isEmpty())
-    {
-        auto* desc = hoverTarget.module->getDescriptor();
-        if (desc == nullptr)
-            return;
-        paintModuleCostBadge(g, hoverTarget.moduleBounds,
-                             formatDspCost(desc->cycles) + " DSP");
         return;
-    }
 
     if (auto* param = findParameter(*hoverTarget.module, hoverTarget.componentId))
         paintOverlayBadge(g, hoverTarget.controlBounds, hoverTarget.moduleBounds,
@@ -4648,13 +4663,21 @@ void PatchCanvas::mouseDoubleClick(const juce::MouseEvent& e)
     if (patch == nullptr || moduleDescs == nullptr || !e.mods.isLeftButtonDown())
         return;
 
-    // Only on empty canvas — double-clicking a module must not open Quick Add
+    // Only on empty canvas — double-clicking a module must not open Quick Add.
+    // On a module it answers what that module costs the DSP, as the original
+    // editor does; on one of its controls it is already a reset to default, so
+    // leave that alone.
     auto pos = screenToCanvas(e.getPosition());
-    ModuleContainer& container = (mySection == 1) ? patch->getPolyVoiceArea()
-                                                  : patch->getCommonArea();
-    for (auto& modulePtr : container.getModules())
-        if (getModuleBounds(*modulePtr, 0).contains(pos))
-            return;
+    HoverTarget target;
+    if (findControlAt(pos, target))
+    {
+        if (target.componentId.isEmpty())
+        {
+            costBadgeModule = target.module;
+            repaint();
+        }
+        return;
+    }
 
     openQuickAddAtMouse();
 }
@@ -4664,6 +4687,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
     grabKeyboardFocus();
     // A hint box left standing over a knob being turned would just be stale.
     clearHover();
+    if (costBadgeModule != nullptr) { costBadgeModule = nullptr; repaint(); }
 
     if (patch == nullptr || themeData == nullptr)
         return;
