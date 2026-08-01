@@ -260,10 +260,15 @@ jobs:
                 echo "::error::macOS app requires '$minimum_system_version', expected '10.13'"
                 exit 1
               fi
+              # Below macOS 10.14 the linker records the deployment target as
+              # LC_VERSION_MIN_MACOSX, whose field is "version", instead of the
+              # newer LC_BUILD_VERSION, whose field is "minos". Targeting 10.13
+              # is precisely the case that produces the older command, so accept
+              # either name rather than only the one modern builds emit.
               intel_minimum="$(
                 xcrun vtool -show-build -arch x86_64 \
                   stage/AnimatekNME.app/Contents/MacOS/AnimatekNME |
-                  awk '$1 == "minos" { print $2; exit }'
+                  awk '$1 == "minos" || $1 == "version" { print $2; exit }'
               )"
               if [[ "$intel_minimum" != "10.13" && "$intel_minimum" != "10.13.0" ]]; then
                 echo "::error::Intel executable requires '$intel_minimum', expected '10.13'"
