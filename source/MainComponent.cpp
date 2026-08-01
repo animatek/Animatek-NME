@@ -109,6 +109,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   };
 
   QuickAddPopup::setSharedSettings(appProperties.getUserSettings());
+  InspectorPanel::setSharedSettings(appProperties.getUserSettings());
 
   // Load module descriptions — prefer embedded BinaryData, fall back to disk
   if (BinaryData::modules_xmlSize > 0)
@@ -4049,6 +4050,28 @@ void MainComponent::wirePresetCallbacks(InspectorPanel& inspector, int slot)
     if (module == nullptr || module->getDescriptor() == nullptr) return;
     modulePresets.remove(module->getDescriptor()->name, index);
     refreshInspectorPresets();
+  };
+
+  inspector.onPresetRename = [this](int, Module* module, int index) {
+    if (module == nullptr || module->getDescriptor() == nullptr) return;
+    const auto type = module->getDescriptor()->name;
+    const auto* preset = modulePresets.find(type, index);
+    if (preset == nullptr) return;
+
+    auto* dialog = new juce::AlertWindow("Rename Preset", "Preset name:",
+                                         juce::MessageBoxIconType::NoIcon);
+    dialog->addTextEditor("name", preset->name, "");
+    dialog->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    dialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    dialog->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, dialog, type, index](int r) {
+          if (r == 1)
+          {
+            modulePresets.rename(type, index, dialog->getTextEditorContents("name"));
+            refreshInspectorPresets();
+          }
+          delete dialog;
+        }), true);
   };
 }
 

@@ -48,9 +48,12 @@ public:
     // holds the library and performs the recall, save and delete, then calls
     // refreshMorphList() so the section redraws from what was actually written.
     void setPresetLibrary(const ModulePresetLibrary* library);
+    // Where the folded/unfolded state of the Presets section is remembered.
+    static void setSharedSettings(juce::PropertiesFile* settings);
     // index into the selected module type's preset list
     std::function<void(int section, Module*, int presetIndex)> onPresetRecall;
     std::function<void(int section, Module*, int presetIndex)> onPresetDelete;
+    std::function<void(int section, Module*, int presetIndex)> onPresetRename;
     std::function<void(int section, Module*)>                  onPresetSave;
 
 private:

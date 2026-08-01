@@ -12,6 +12,22 @@ static const juce::Colour kMorphColors[4] = {
 };
 static const char* kGroupNames[4] = { "Macro 1", "Macro 2", "Macro 3", "Macro 4" };
 
+// Whether the Presets section is folded away. Shared by every inspector and
+// remembered between runs, matching how the main window's own panel toggles
+// behave: a display preference, not per-window state.
+static juce::PropertiesFile* inspectorSettings = nullptr;
+static bool presetsSectionCollapsed = false;
+
+static void setPresetsCollapsed(bool collapsed)
+{
+    presetsSectionCollapsed = collapsed;
+    if (inspectorSettings != nullptr)
+    {
+        inspectorSettings->setValue("inspectorPresetsCollapsed", collapsed);
+        inspectorSettings->saveIfNeeded();
+    }
+}
+
 // ─── AssignmentsListComponent ────────────────────────────────────────────────
 // Shows morph assignments, knob assignments, and MIDI CC assignments.
 // Two modes: single module or patch-wide.
@@ -52,7 +68,9 @@ public:
     // Preset callbacks, by index into the selected module type's preset list
     std::function<void(int)> onPresetRecall;
     std::function<void(int)> onPresetDelete;
+    std::function<void(int)> onPresetRename;
     std::function<void()>    onPresetSave;
+    std::function<void()>    onPresetsCollapsedChanged;
 
     AssignmentsListComponent() { setInterceptsMouseClicks(true, false); }
 
@@ -77,6 +95,8 @@ public:
     // The section carries its Save row even with nothing saved yet, which is the
     // only thing that makes saving discoverable at all.
     bool hasPresetSection() const { return presetType().isNotEmpty(); }
+    // Collapsed, only the title row with its chevron is drawn and hit tested.
+    bool presetRowsVisible() const { return hasPresetSection() && !presetsSectionCollapsed; }
 
     // Morph A/B fader carrier knob (-1 = none); shown in the patch-wide view.
     void setMorphFaderKnob(int knobIndex, int carrierGroup)
@@ -159,17 +179,26 @@ public:
 
     // ── Layout constants ──
     static constexpr int topPad       = 4;
-    static constexpr int sectionTitleH = 18;
-    static constexpr int groupHeaderH = 20;
-    static constexpr int rowH         = 22;
-    static constexpr int xBtnW        = 18;
-    static constexpr int amountW      = 52;
+    static constexpr int sectionTitleH = 22;
+    static constexpr int groupHeaderH = 22;
+    static constexpr int rowH         = 26;
+    static constexpr int xBtnW        = 20;
+    static constexpr int amountW      = 56;
     static constexpr int marginX      = 6;
     static constexpr int sectionGap   = 8;
 
+    // Text sizes, named rather than written into each drawText, both because a
+    // future editor-wide zoom then has one place to scale and because the old
+    // 9-11pt literals made a knob assignment hard to read at a glance.
+    static constexpr float fontRow      = 13.0f;  // parameter and preset names
+    static constexpr float fontRowSmall = 11.0f;  // module name above a parameter
+    static constexpr float fontBadge    = 11.0f;  // "Knob 3" / "CC 74"
+    static constexpr float fontTitle    = 12.0f;  // section titles
+    static constexpr float fontSmall    = 11.0f;  // x glyphs, amounts
+
     // ── Hit testing ──
     enum class HitType { None, MorphX, MorphAmount, KnobX, CtrlX,
-                         PresetRecall, PresetDelete, PresetSave };
+                         PresetRecall, PresetDelete, PresetSave, PresetsHeader };
     struct HitResult { HitType type = HitType::None; int rowIdx = -1; };
 
     HitResult findHit(juce::Point<int> pos) const
@@ -222,24 +251,31 @@ public:
         }
         if (hasPresetSection())
         {
+            juce::Rectangle<int> headerRect(0, y, getWidth(), sectionTitleH);
+            if (headerRect.contains(pos))
+                return { HitType::PresetsHeader, -1 };
             y += sectionTitleH;
-            const auto& list = presets();
-            for (int i = 0; i < (int)list.size(); ++i)
+
+            if (!presetsSectionCollapsed)
             {
-                juce::Rectangle<int> rowRect(0, y, getWidth(), rowH);
-                if (rowRect.contains(pos))
+                const auto& list = presets();
+                for (int i = 0; i < (int)list.size(); ++i)
                 {
-                    // The x sits at the right end, mirroring the module's own
-                    // preset menu; built-ins have none, so a click there recalls.
-                    const bool onX = !list[size_t(i)].builtIn
-                                   && pos.x >= getWidth() - marginX - xBtnW;
-                    return { onX ? HitType::PresetDelete : HitType::PresetRecall, i };
+                    juce::Rectangle<int> rowRect(0, y, getWidth(), rowH);
+                    if (rowRect.contains(pos))
+                    {
+                        // The x sits at the right end, mirroring the module's own
+                        // preset menu; built-ins have none, so a click there recalls.
+                        const bool onX = !list[size_t(i)].builtIn
+                                       && pos.x >= getWidth() - marginX - xBtnW;
+                        return { onX ? HitType::PresetDelete : HitType::PresetRecall, i };
+                    }
+                    y += rowH;
                 }
-                y += rowH;
+                juce::Rectangle<int> saveRect(0, y, getWidth(), rowH);
+                if (saveRect.contains(pos))
+                    return { HitType::PresetSave, -1 };
             }
-            juce::Rectangle<int> saveRect(0, y, getWidth(), rowH);
-            if (saveRect.contains(pos))
-                return { HitType::PresetSave, -1 };
         }
         return {};
     }
@@ -316,29 +352,59 @@ public:
         if (hasPresetSection())
         {
             paintSectionTitle(g, y, "Presets", juce::Colour(0xff7fb2d4));
+            paintCollapseChevron(g, y, juce::Colour(0xff7fb2d4));
             y += sectionTitleH;
-            const auto& list = presets();
-            for (int i = 0; i < (int)list.size(); ++i)
+            if (!presetsSectionCollapsed)
             {
-                paintPresetRow(g, y, list[size_t(i)]);
-                y += rowH;
+                const auto& list = presets();
+                for (int i = 0; i < (int)list.size(); ++i)
+                {
+                    paintPresetRow(g, y, list[size_t(i)]);
+                    y += rowH;
+                }
+                paintPresetSaveRow(g, y);
             }
-            paintPresetSaveRow(g, y);
         }
+    }
+
+    // Same shape as the main window's panel chevrons: pointing down while the
+    // section is open, up while it is folded away.
+    void paintCollapseChevron(juce::Graphics& g, int y, juce::Colour col)
+    {
+        const float cx = static_cast<float>(getWidth() - marginX - 8);
+        const float cy = static_cast<float>(y) + sectionTitleH * 0.5f;
+        const float s  = 3.5f;
+
+        juce::Path chevron;
+        if (presetsSectionCollapsed)
+        {
+            chevron.startNewSubPath(cx - s * 1.4f, cy + s * 0.7f);
+            chevron.lineTo(cx, cy - s * 0.7f);
+            chevron.lineTo(cx + s * 1.4f, cy + s * 0.7f);
+        }
+        else
+        {
+            chevron.startNewSubPath(cx - s * 1.4f, cy - s * 0.7f);
+            chevron.lineTo(cx, cy + s * 0.7f);
+            chevron.lineTo(cx + s * 1.4f, cy - s * 0.7f);
+        }
+        g.setColour(col);
+        g.strokePath(chevron, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved,
+                                                   juce::PathStrokeType::rounded));
     }
 
     void paintPresetRow(juce::Graphics& g, int y, const ModulePreset& preset)
     {
         const auto& theme = AppTheme::palette();
         g.setColour(theme.textSecondary);
-        g.setFont(juce::FontOptions(12.0f));
+        g.setFont(juce::FontOptions(fontRow));
         g.drawText(preset.name, marginX, y, getWidth() - marginX * 2 - xBtnW, rowH,
                    juce::Justification::centredLeft, true);
 
         if (!preset.builtIn)
         {
             g.setColour(theme.textMuted);
-            g.setFont(juce::FontOptions(13.0f));
+            g.setFont(juce::FontOptions(fontRow + 1.0f));
             g.drawText(juce::String::fromUTF8("\xc3\x97"), getWidth() - marginX - xBtnW, y,
                        xBtnW, rowH, juce::Justification::centred);
         }
@@ -351,7 +417,7 @@ public:
         g.setColour(theme.borderColor.withAlpha(0.6f));
         g.drawRoundedRectangle(row.toFloat().reduced(0.5f), 3.0f, 1.0f);
         g.setColour(theme.textSecondary);
-        g.setFont(juce::FontOptions(11.0f));
+        g.setFont(juce::FontOptions(fontRowSmall));
         g.drawText("+ Save current settings", row, juce::Justification::centred);
     }
 
@@ -360,6 +426,25 @@ public:
     {
         auto hr = findHit(e.getPosition());
         if (hr.type == HitType::None) return;
+
+        // Right-clicking a preset row offers renaming, which has nowhere else to
+        // go: the row already recalls on its left and deletes on its right.
+        if (e.mods.isRightButtonDown())
+        {
+            if (hr.type != HitType::PresetRecall && hr.type != HitType::PresetDelete)
+                return;
+            const auto& list = presets();
+            if (hr.rowIdx < 0 || hr.rowIdx >= (int)list.size()) return;
+            if (list[size_t(hr.rowIdx)].builtIn) return;   // built-ins are not the user's to name
+
+            juce::PopupMenu menu;
+            menu.addItem(1, "Rename...");
+            const int row = hr.rowIdx;
+            menu.showMenuAsync(juce::PopupMenu::Options{}, [this, row](int result) {
+                if (result == 1 && onPresetRename) onPresetRename(row);
+            });
+            return;
+        }
 
         if (hr.type == HitType::MorphX)
         {
@@ -406,6 +491,13 @@ public:
             return;
         }
 
+        if (hr.type == HitType::PresetsHeader)
+        {
+            setPresetsCollapsed(!presetsSectionCollapsed);
+            if (onPresetsCollapsedChanged) onPresetsCollapsedChanged();
+            return;
+        }
+
         // The owner performs these against the library and calls back in to
         // rebuild, so the list on screen can never disagree with what was written.
         if (hr.type == HitType::PresetRecall)
@@ -449,7 +541,7 @@ private:
         g.fillRect(0, y, getWidth(), sectionTitleH);
         g.setColour(col);
         g.fillRect(0, y, getWidth(), 1);
-        g.setFont(juce::FontOptions(10.0f).withStyle("Bold"));
+        g.setFont(juce::FontOptions(fontTitle).withStyle("Bold"));
         g.drawText(title.toUpperCase(), marginX, y, getWidth() - marginX * 2, sectionTitleH,
                    juce::Justification::centredLeft);
     }
@@ -478,7 +570,7 @@ private:
         g.setColour(AppTheme::palette().borderColor);
         juce::Rectangle<int> xRect(marginX, y + (rowH - xBtnW) / 2, xBtnW, xBtnW);
         g.drawRoundedRectangle(xRect.toFloat(), 3.0f, 1.0f);
-        g.setFont(juce::FontOptions(10.0f));
+        g.setFont(juce::FontOptions(fontSmall));
         g.drawText("x", xRect, juce::Justification::centred);
 
         // Name
@@ -522,12 +614,12 @@ private:
         g.setColour(AppTheme::palette().borderColor);
         juce::Rectangle<int> xRect(marginX, y + (rowH - xBtnW) / 2, xBtnW, xBtnW);
         g.drawRoundedRectangle(xRect.toFloat(), 3.0f, 1.0f);
-        g.setFont(juce::FontOptions(10.0f));
+        g.setFont(juce::FontOptions(fontSmall));
         g.drawText("x", xRect, juce::Justification::centred);
 
         // Label badge (e.g. "Knob 3")
         int badgeX = marginX + xBtnW + 4;
-        g.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+        g.setFont(juce::FontOptions(fontBadge).withStyle("Bold"));
         int labelW = g.getCurrentFont().getStringWidth(r.label) + 8;
         juce::Rectangle<int> badge(badgeX, y + 3, labelW, rowH - 6);
         g.setColour(accent.withAlpha(0.32f));
@@ -547,16 +639,16 @@ private:
         if (isGlobal && moduleName.isNotEmpty())
         {
             g.setColour(AppTheme::palette().textMuted);
-            g.setFont(juce::FontOptions(9.0f));
+            g.setFont(juce::FontOptions(fontRowSmall));
             g.drawText(moduleName, x, y, w, rowH / 2, juce::Justification::bottomLeft, true);
             g.setColour(AppTheme::palette().textPrimary);
-            g.setFont(juce::FontOptions(10.0f));
+            g.setFont(juce::FontOptions(fontRowSmall));
             g.drawText(paramName, x, y + rowH / 2, w, rowH / 2, juce::Justification::topLeft, true);
         }
         else
         {
             g.setColour(AppTheme::palette().textPrimary);
-            g.setFont(juce::FontOptions(11.0f));
+            g.setFont(juce::FontOptions(fontRow));
             g.drawText(paramName, x, y, w, rowH, juce::Justification::centredLeft, true);
         }
     }
@@ -685,8 +777,10 @@ private:
         }
         if (hasPresetSection())
         {
+            h += sectionTitleH;
             // Rows plus the Save row that always closes the section.
-            h += sectionTitleH + ((int)presets().size() + 1) * rowH;
+            if (!presetsSectionCollapsed)
+                h += ((int)presets().size() + 1) * rowH;
         }
         h += topPad;
         return h;
@@ -778,10 +872,16 @@ InspectorPanel::InspectorPanel()
     {
         if (onPresetDelete && currentModule) onPresetDelete(currentSection, currentModule, index);
     };
+    assignmentsList->onPresetRename = [this](int index)
+    {
+        if (onPresetRename && currentModule) onPresetRename(currentSection, currentModule, index);
+    };
     assignmentsList->onPresetSave = [this]()
     {
         if (onPresetSave && currentModule) onPresetSave(currentSection, currentModule);
     };
+    // Folding the section changes how tall the list is, so the panel relays out.
+    assignmentsList->onPresetsCollapsedChanged = [this]() { refreshMorphList(); };
 
     morphViewport.setViewedComponent(assignmentsList.get(), false);
     morphViewport.setScrollBarsShown(true, false);
@@ -901,6 +1001,13 @@ void InspectorPanel::setPresetLibrary(const ModulePresetLibrary* library)
 {
     assignmentsList->presetLibrary = library;
     refreshMorphList();
+}
+
+void InspectorPanel::setSharedSettings(juce::PropertiesFile* settings)
+{
+    inspectorSettings = settings;
+    if (settings != nullptr)
+        presetsSectionCollapsed = settings->getBoolValue("inspectorPresetsCollapsed", false);
 }
 
 void InspectorPanel::setMorphFaderKnob(int knobIndex, int carrierGroup)
