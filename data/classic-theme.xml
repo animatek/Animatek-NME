@@ -234,31 +234,31 @@ label{fill:#000;}
 			<parameter component-id="p2" alt="sample rate" />
 		</textDisplay>
 	</module>
-	<module component-id="m32" width="255" height="120">
+	<module component-id="m32" width="255" height="105">
 		<name>FilterBank</name>
 		<image x="6" y="14" width="243" height="84" xlink:href="url(#groupbox)" />
-		<connector x="194" y="103" size="13" class="cAUDIO">
+		<connector x="186" y="83" size="13" class="cAUDIO">
 			<connector component-id="c1" alt="in" />
 		</connector>
-		<connector x="238" y="103" size="13" class="cAUDIO">
+		<connector x="236" y="83" size="13" class="cAUDIO">
 			<connector component-id="c2" alt="out" />
 		</connector>
-		<button x="218" y="100" width="16" height="14" cyclic="true" landscape="false">
+		<button x="210" y="82" width="16" height="14" cyclic="true" landscape="false">
 			<parameter component-id="p15" alt="bypass" />
 			<btn index="1">B</btn>
 			<btn index="0">B</btn>
 		</button>
-		<button x="101" y="82" width="24" height="12" cyclic="true" landscape="true">
+		<button x="11" y="82" width="24" height="12" cyclic="true" landscape="true">
 			<call method="min" />
 			<btn index="0">Min</btn>
 			<btn index="1">Min</btn>
 		</button>
-		<button x="129" y="82" width="24" height="12" cyclic="true" landscape="true">
+		<button x="39" y="82" width="24" height="12" cyclic="true" landscape="true">
 			<call method="max" />
 			<btn index="0">Max</btn>
 			<btn index="1">Max</btn>
 		</button>
-		<button x="157" y="82" width="24" height="12" cyclic="true" landscape="true">
+		<button x="67" y="82" width="24" height="12" cyclic="true" landscape="true">
 			<call method="rnd" />
 			<btn index="0">Rnd</btn>
 			<btn index="1">Rnd</btn>
@@ -2190,7 +2190,7 @@ label{fill:#000;}
 	</module>
 	<module component-id="m107" width="255" height="75">
 		<name>SpectralOsc</name>
-		<image x="157" y="4" width="48" height="72" xlink:href="url(#groupbox)" />
+		<image x="157" y="4" width="48" height="71" xlink:href="url(#groupbox)" />
 		<connector x="90" y="57" size="13" class="cAUDIO">
 			<connector component-id="c1" alt="fma" />
 		</connector>

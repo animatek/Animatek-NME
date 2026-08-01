@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The Filter Bank's input, output and bypass are back inside the module** (issue #35): its
+  artwork was drawn 120px tall against a module that is 7 grid rows, or 105px, so the bottom
+  row of controls fell outside the body. The row is rearranged rather than the module made
+  taller, which would have overlapped whatever sat below it in existing patches: Min/Max/Rnd
+  move to the left end, and the jacks and bypass take the right, with room between them. A
+  sweep of all 110 modules found this was the only one whose controls escaped its body, plus
+  a 1px groupbox hairline poking out of the Spectral Oscillator, also corrected.
+
 - **Two sequencer fixes** (issue #34). **The arrow buttons step both ways again**: the four
   sequencer modules draw their arrows as a left/right pair, but the click was always split
   top/bottom, so which way the value moved depended on whether the upper or lower half of an
