@@ -136,7 +136,9 @@ jobs:
   build:
     name: Build ${{ matrix.name }}
     needs: prepare
-    runs-on: ${{ matrix.name == 'linux' && 'ubuntu-22.04' || matrix.name == 'windows' && 'windows-latest' || 'macos-latest' }}
+    # Xcode 26 cannot deploy to High Sierra. Keep the macOS job on an image
+    # that provides Xcode 16.4, whose macOS deployment range starts at 10.13.
+    runs-on: ${{ matrix.name == 'linux' && 'ubuntu-22.04' || matrix.name == 'windows' && 'windows-latest' || 'macos-15' }}
     permissions:
       contents: write
       id-token: write
@@ -161,6 +163,16 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           git submodule status --recursive
 
+      - name: Select High Sierra-compatible Xcode
+        if: matrix.name == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          developer_dir="/Applications/Xcode_16.4.app/Contents/Developer"
+          test -d "$developer_dir"
+          echo "DEVELOPER_DIR=$developer_dir" >> "$GITHUB_ENV"
+          DEVELOPER_DIR="$developer_dir" xcodebuild -version
+
       - name: Install Linux dependencies
         if: matrix.name == 'linux'
         shell: bash
@@ -181,7 +193,7 @@ jobs:
             cmake -B build \
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
-              -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
+              -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 \
               -DNME_BUILD_PLUGIN=OFF
           else
             cmake -B build \
@@ -237,6 +249,24 @@ jobs:
               )"
               if [[ "$bundle_version" != "$VERSION" ]]; then
                 echo "::error::macOS app reports version '$bundle_version', expected '$VERSION'"
+                exit 1
+              fi
+              minimum_system_version="$(
+                /usr/libexec/PlistBuddy \
+                  -c 'Print :LSMinimumSystemVersion' \
+                  stage/AnimatekNME.app/Contents/Info.plist
+              )"
+              if [[ "$minimum_system_version" != "10.13" ]]; then
+                echo "::error::macOS app requires '$minimum_system_version', expected '10.13'"
+                exit 1
+              fi
+              intel_minimum="$(
+                xcrun vtool -show-build -arch x86_64 \
+                  stage/AnimatekNME.app/Contents/MacOS/AnimatekNME |
+                  awk '$1 == "minos" { print $2; exit }'
+              )"
+              if [[ "$intel_minimum" != "10.13" && "$intel_minimum" != "10.13.0" ]]; then
+                echo "::error::Intel executable requires '$intel_minimum', expected '10.13'"
                 exit 1
               fi
               codesign --force --sign - stage/AnimatekNME.app

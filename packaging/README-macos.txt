@@ -2,7 +2,7 @@ Animatek NME - Nord Modular Editor G1 (macOS)
 ==============================================
 
 This is a UNIVERSAL build: it runs natively on both Apple Silicon (M1/M2/M3/M4)
-and Intel Macs. macOS 10.15 Catalina or newer.
+and Intel Macs. macOS 10.13 High Sierra or newer.
 
 IMPORTANT - FIRST LAUNCH
 ------------------------

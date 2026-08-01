@@ -20,8 +20,10 @@ every box must pass before tagging.
 - [ ] Linux: clean configure+build, Release config, no warnings-as-errors surprises:
       `cmake -B build-rel -DCMAKE_BUILD_TYPE=Release && cmake --build build-rel -j$(nproc)`
 - [ ] Windows build (CI) produces an artifact that launches.
-- [ ] macOS universal build (CI) produces an artifact that launches (Gatekeeper note in
-      release text until signing exists).
+- [ ] macOS universal build (CI) contains Intel and Apple Silicon slices, reports
+      macOS 10.13 as its Intel deployment target, and launches on a High Sierra
+      Intel Mac, a Mojave Intel Mac, and a current macOS version (Gatekeeper note
+      in release text until signing exists).
 
 ## 3. Smoke tests (no synth required)
 

@@ -431,3 +431,26 @@ cd /mnt/SPEED/CODE/Nomad2026/nomad-0-3_2
 - C/C++ libraries: Autotools (configure, make)
 - Java libraries: Apache Ant
 - Dependencies: TCL 8.x, Flex, Bison, SWIG, SCons (for legacy C/C++)
+
+### Animatek NME macOS Compatibility
+- The JUCE version vendored by the project supports deployment targets as old
+  as macOS 10.11. The reproducible release target is macOS 10.13 High Sierra,
+  the oldest version also supported by the Xcode 16.4 toolchain used in CI.
+- `CMAKE_OSX_DEPLOYMENT_TARGET` is defaulted before `project()` in the root
+  `CMakeLists.txt`, so both local and CI builds inherit the Mojave target.
+- The generated app bundle explicitly writes that value to
+  `LSMinimumSystemVersion`; JUCE's generated plist does not add the key unless
+  it is supplied through `PLIST_TO_MERGE`.
+- Release builds are universal (`x86_64` and `arm64`). High Sierra and Mojave
+  use the Intel slice; Apple Silicon Macs use the native arm64 slice.
+- The CI job is pinned to the `macos-15` runner and Xcode 16.4 because that
+  toolchain can deploy to macOS 10.13-15. Xcode 26 raises its macOS deployment
+  floor to macOS 11 and therefore cannot produce the High Sierra-compatible
+  slice.
+- Reaching JUCE's theoretical macOS 10.11 floor would require a separate Intel
+  legacy build made with Xcode 12 or 13 on a compatible self-hosted Mac. GitHub's
+  current hosted runners do not provide that toolchain, and Xcode 14+ does not
+  support deployment targets below macOS 10.13.
+- CI verifies both `LSMinimumSystemVersion` in the app bundle and the Intel
+  Mach-O deployment target, preventing packaging metadata from claiming a
+  newer minimum by accident.

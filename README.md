@@ -105,6 +105,10 @@ cmake -B build-universal -DCMAKE_BUILD_TYPE=Release \
 cmake --build build-universal -j$(sysctl -n hw.logicalcpu)
 ```
 
+The macOS build targets macOS 10.13 High Sierra or newer by default. It contains
+both Intel and Apple Silicon code when configured with the universal command
+above.
+
 Windows release build:
 
 ```bash
