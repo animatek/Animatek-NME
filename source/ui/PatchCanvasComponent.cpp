@@ -5048,8 +5048,19 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                     menu.addSubMenu("Scales (root C)", scales);
                 }
 
+                // DrumSynth (m58): the preset library. It used to be reachable
+                // only by right-clicking the small preset display box, and even
+                // there it could delete but not recall. IDs >= 200 are its own.
+                const bool isDrumSynth = (modPtr->getDescriptor()->index == 58);
+                auto drumAction = std::make_shared<int>(0);
+                if (isDrumSynth)
+                {
+                    menu.addSeparator();
+                    menu.addSubMenu("Preset", buildDrumPresetMenu(*modPtr, drumAction));
+                }
+
                 menu.showMenuAsync(juce::PopupMenu::Options{},
-                    [this, modPtr, sec](int result)
+                    [this, modPtr, sec, drumAction](int result)
                     {
                         if (result == 1)
                         {
@@ -5172,6 +5183,10 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                                     paramDragCompleteCallback(sec, modPtr->getContainerIndex(), pd->index, oldVal, newVal);
                             }
                             repaint();
+                        }
+                        else if (result >= drumPresetSaveId)
+                        {
+                            handleDrumPresetMenuResult(result, *drumAction, *modPtr, sec);
                         }
                     });
                 return;
@@ -7146,6 +7161,9 @@ void PatchCanvas::initDrumPresets()
         { 48, 48, 40, 50, 80, 70,   // MTune=80Hz, STune=2:1, MDecay=med, SDecay=med, levels
           70, 40, 30, 40, 0,         // Ffreq=mid-high, Fres=mid, Fswp=low, Fdcy=mid, Fmode=HP
           30, 40, 80, 90 } });       // Amt=low, Dcy=med, Click=high, Noise=high
+
+    // Whatever was pushed above is the built-in set; user presets load after it.
+    numBuiltInDrumPresets = drumPresets.size();
 }
 
 static juce::File getDrumPresetsFile()
@@ -7173,8 +7191,8 @@ void PatchCanvas::saveDrumPresetsToFile()
     out.setPosition(0);
     out.truncate();
 
-    // Skip built-in presets (first 2), save only user presets
-    for (size_t i = 2; i < drumPresets.size(); ++i)
+    // Skip the built-ins, save only what the user added
+    for (size_t i = numBuiltInDrumPresets; i < drumPresets.size(); ++i)
     {
         auto& p = drumPresets[i];
         out.writeText(p.name + "|", false, false, nullptr);
@@ -7225,58 +7243,189 @@ void PatchCanvas::applyDrumPreset(Module& m, int section, int presetIdx)
     repaint();
 }
 
-void PatchCanvas::showDrumPresetContextMenu(Module& m, int section)
+// One row of the DrumSynth preset list. Clicking the name recalls the preset,
+// clicking the x at its right end deletes it, so the library reads as a list
+// rather than as a load menu plus a separate delete menu. Built-in presets get
+// no x. The row reports which half was clicked through a shared int, because a
+// menu item can only carry the one id that identifies the preset.
+class DrumPresetMenuRow : public juce::PopupMenu::CustomComponent
+{
+public:
+    DrumPresetMenuRow(juce::String presetName, bool canDelete, bool isCurrent,
+                      std::shared_ptr<int> sharedAction)
+        : juce::PopupMenu::CustomComponent(false),
+          name(std::move(presetName)), deletable(canDelete), current(isCurrent),
+          action(std::move(sharedAction)) {}
+
+    void getIdealSize(int& idealWidth, int& idealHeight) override
+    {
+        idealWidth  = rowFont().getStringWidth(name) + tickW + deleteW + 16;
+        idealHeight = 24;
+    }
+
+    void paint(juce::Graphics& g) override
+    {
+        auto& lf = getLookAndFeel();
+        auto textColour = lf.findColour(juce::PopupMenu::textColourId);
+
+        if (isItemHighlighted())
+        {
+            g.setColour(lf.findColour(juce::PopupMenu::highlightedBackgroundColourId));
+            g.fillRect(getLocalBounds());
+            textColour = lf.findColour(juce::PopupMenu::highlightedTextColourId);
+        }
+
+        g.setFont(rowFont());
+        if (current)
+        {
+            g.setColour(textColour);
+            g.drawText(juce::String::fromUTF8("\xe2\x9c\x93"), 4, 0, tickW, getHeight(),
+                       juce::Justification::centred);
+        }
+        g.setColour(textColour);
+        g.drawText(name, tickW + 4, 0, getWidth() - tickW - deleteW - 8, getHeight(),
+                   juce::Justification::centredLeft, true);
+
+        if (deletable)
+        {
+            g.setColour(overDelete ? juce::Colour(0xffe05555) : textColour.withAlpha(0.55f));
+            g.drawText(juce::String::fromUTF8("\xc3\x97"), getWidth() - deleteW, 0, deleteW - 4,
+                       getHeight(), juce::Justification::centred);
+        }
+    }
+
+    void mouseMove(const juce::MouseEvent& e) override    { updateHover(e.x); }
+    void mouseEnter(const juce::MouseEvent& e) override   { updateHover(e.x); }
+    void mouseExit(const juce::MouseEvent&) override      { updateHover(-1); }
+
+    void mouseUp(const juce::MouseEvent& e) override
+    {
+        if (!getLocalBounds().contains(e.getPosition()))
+            return;
+        *action = isOverDelete(e.x) ? 1 : 0;
+        triggerMenuItem();
+    }
+
+private:
+    static juce::Font rowFont() { return juce::Font(juce::FontOptions(14.0f)); }
+    bool isOverDelete(int x) const { return deletable && x >= getWidth() - deleteW; }
+    void updateHover(int x)
+    {
+        const bool over = x >= 0 && isOverDelete(x);
+        if (over != overDelete) { overDelete = over; repaint(); }
+    }
+
+    juce::String name;
+    bool deletable = false;
+    bool current   = false;
+    bool overDelete = false;
+    std::shared_ptr<int> action;
+    static constexpr int tickW   = 18;
+    static constexpr int deleteW = 26;
+};
+
+juce::PopupMenu PatchCanvas::buildDrumPresetMenu(Module& m, std::shared_ptr<int> action)
 {
     juce::PopupMenu menu;
-    menu.addItem(1, "Save preset...");
-    if (drumPresets.size() > 2)
-    {
+
+    int currentIdx = 0;
+    auto it = drumPresetState.find(m.getContainerIndex());
+    if (it != drumPresetState.end())
+        currentIdx = it->second;
+
+    for (size_t i = 0; i < drumPresets.size(); ++i)
+        menu.addCustomItem(drumPresetFirstId + static_cast<int>(i),
+                           std::make_unique<DrumPresetMenuRow>(
+                               drumPresets[i].name,
+                               i >= numBuiltInDrumPresets,
+                               static_cast<int>(i) == currentIdx,
+                               action),
+                           nullptr, drumPresets[i].name);
+
+    if (!drumPresets.empty())
         menu.addSeparator();
-        int id = 100;
-        for (size_t i = 2; i < drumPresets.size(); ++i)
-            menu.addItem(id++, "Delete \"" + drumPresets[i].name + "\"");
-    }
-    menu.showMenuAsync(juce::PopupMenu::Options{}, [this, &m, section](int result)
+    menu.addItem(drumPresetSaveId, "Save current settings as preset...");
+    return menu;
+}
+
+void PatchCanvas::handleDrumPresetMenuResult(int result, int action, Module& m, int section)
+{
+    if (result == drumPresetSaveId)
     {
-        if (result == 1)
+        saveDrumPresetFromModule(m);
+        return;
+    }
+
+    const int index = result - drumPresetFirstId;
+    if (index < 0 || index >= static_cast<int>(drumPresets.size()))
+        return;
+
+    if (action == 1)
+        deleteDrumPreset(static_cast<size_t>(index));
+    else
+    {
+        drumPresetState[m.getContainerIndex()] = index;
+        applyDrumPreset(m, section, index);
+    }
+}
+
+void PatchCanvas::saveDrumPresetFromModule(Module& m)
+{
+    auto* dialog = new juce::AlertWindow("Save Drum Preset", "Preset name:",
+                                         juce::MessageBoxIconType::NoIcon);
+    dialog->addTextEditor("name", "My Preset", "");
+    dialog->addButton("Save", 1);
+    dialog->addButton("Cancel", 0);
+    dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog, &m](int r)
+    {
+        if (r == 1)
         {
-            // Save current params as new preset
-            auto* dialog = new juce::AlertWindow("Save Drum Preset", "Preset name:", juce::MessageBoxIconType::NoIcon);
-            dialog->addTextEditor("name", "My Preset", "");
-            dialog->addButton("Save", 1);
-            dialog->addButton("Cancel", 0);
-            dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog, &m, section](int r)
+            DrumPreset dp;
+            dp.name = dialog->getTextEditorContents("name").trim();
+            if (dp.name.isEmpty())
+                dp.name = "Preset " + juce::String(drumPresets.size() - numBuiltInDrumPresets + 1);
+            for (int i = 0; i < 15; ++i)
             {
-                if (r == 1)
-                {
-                    DrumPreset dp;
-                    dp.name = dialog->getTextEditorContents("name").trim();
-                    if (dp.name.isEmpty()) dp.name = "Preset " + juce::String(drumPresets.size() - 1);
-                    for (int i = 0; i < 15; ++i)
-                    {
-                        auto* param = findParameter(const_cast<Module&>(m), "p" + juce::String(i + 1));
-                        dp.params[static_cast<size_t>(i)] = (param != nullptr) ? param->getValue() : 64;
-                    }
-                    drumPresets.push_back(dp);
-                    saveDrumPresetsToFile();
-                    repaint();
-                }
-                delete dialog;
-            }), true);
-        }
-        else if (result >= 100)
-        {
-            size_t idx = static_cast<size_t>(result - 100) + 2;
-            if (idx < drumPresets.size())
-            {
-                drumPresets.erase(drumPresets.begin() + static_cast<int>(idx));
-                saveDrumPresetsToFile();
-                // Clamp any active preset index
-                for (auto& kv : drumPresetState)
-                    if (kv.second >= static_cast<int>(drumPresets.size()))
-                        kv.second = static_cast<int>(drumPresets.size()) - 1;
-                repaint();
+                auto* param = findParameter(m, "p" + juce::String(i + 1));
+                dp.params[static_cast<size_t>(i)] = (param != nullptr) ? param->getValue() : 64;
             }
+            drumPresets.push_back(dp);
+            saveDrumPresetsToFile();
+            repaint();
         }
-    });
+        delete dialog;
+    }), true);
+}
+
+void PatchCanvas::deleteDrumPreset(size_t index)
+{
+    // Built-ins are the editor's own data, not the user's, so they never go.
+    if (index < numBuiltInDrumPresets || index >= drumPresets.size())
+        return;
+
+    drumPresets.erase(drumPresets.begin() + static_cast<long>(index));
+    saveDrumPresetsToFile();
+
+    // Modules pointing past the deleted preset would otherwise show the wrong
+    // name, and anything past the end would show none at all.
+    const int last = static_cast<int>(drumPresets.size()) - 1;
+    for (auto& kv : drumPresetState)
+    {
+        if (kv.second > static_cast<int>(index))
+            --kv.second;
+        kv.second = juce::jlimit(0, juce::jmax(0, last), kv.second);
+    }
+    repaint();
+}
+
+void PatchCanvas::showDrumPresetContextMenu(Module& m, int section)
+{
+    auto action = std::make_shared<int>(0);
+    buildDrumPresetMenu(m, action).showMenuAsync(
+        juce::PopupMenu::Options{},
+        [this, &m, section, action](int result)
+        {
+            if (result != 0)
+                handleDrumPresetMenuResult(result, *action, m, section);
+        });
 }
