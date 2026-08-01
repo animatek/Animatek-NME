@@ -9,7 +9,9 @@
   raw morph range ("+34") instead of a value, so the readout the original editor gives for a
   whole patch was in practice a morph inspector. A morphed parameter reads out the span the
   morph sweeps it across, matching the original's "46Hz-2.30kHz". **F7** is unchanged, since
-  it is about morph assignments. Both remain toggles rather than hold-to-show.
+  it is about morph assignments. Both remain toggles rather than hold-to-show. Dragging a
+  control reads its value out straight away, with no hover delay, so you can see where a knob
+  lands while you turn it.
 
 - **The Filter Bank's input, output and bypass are back inside the module** (issue #35): its
   artwork was drawn 120px tall against a module that is 7 grid rows, or 105px, so the bottom

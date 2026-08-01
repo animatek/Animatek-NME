@@ -184,9 +184,13 @@ private:
         { return module == o.module && componentId == o.componentId; }
     };
     bool findControlAt(juce::Point<int> canvasPos, HoverTarget& out) const;
+    bool controlBoundsFor(const Module& m, const juce::String& componentId,
+                          juce::Rectangle<float>& outControl,
+                          juce::Rectangle<int>& outModule) const;
     void clearHover();
     void timerCallback() override;
     void paintHoverBadge(juce::Graphics& g);
+    void paintDragValueBadge(juce::Graphics& g);
 
     HoverTarget hoverTarget;
     bool hoverBadgeVisible = false;

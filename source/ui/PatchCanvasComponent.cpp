@@ -572,6 +572,7 @@ void PatchCanvas::paint(juce::Graphics& g)
     paintCables(g, container, 0);
     paintOverlays(g, container, 0);
     paintHoverBadge(g);
+    paintDragValueBadge(g);
 
     // Cable creation preview (rubber-band cable)
     if (showCablePreview && dragState.sourceConnector != nullptr && dragState.module != nullptr)
@@ -847,6 +848,67 @@ bool PatchCanvas::findControlAt(juce::Point<int> canvasPos, HoverTarget& out) co
         return false;   // over the module but not over one of its controls
     }
     return false;
+}
+
+// Same walk as findControlAt, but starting from a parameter rather than from a
+// point: while a control is being dragged we know which one it is and only need
+// to know where it sits.
+bool PatchCanvas::controlBoundsFor(const Module& m, const juce::String& componentId,
+                                   juce::Rectangle<float>& outControl,
+                                   juce::Rectangle<int>& outModule) const
+{
+    if (themeData == nullptr || componentId.isEmpty())
+        return false;
+    const auto* theme = themeData->getModuleTheme(m.getDescriptor()->componentId);
+    if (theme == nullptr)
+        return false;
+
+    const auto bounds = getModuleBounds(m, 0);
+    auto take = [&](const juce::String& id, juce::Rectangle<int> r) -> bool
+    {
+        if (id != componentId)
+            return false;
+        outControl = r.translated(bounds.getX(), bounds.getY()).toFloat();
+        outModule  = bounds;
+        return true;
+    };
+
+    for (const auto& tk : theme->knobs)
+        if (take(tk.componentId, { tk.x, tk.y, tk.size, tk.size })) return true;
+    for (const auto& ts : theme->sliders)
+        if (take(ts.componentId, { ts.x, ts.y, ts.width, ts.height })) return true;
+    for (const auto& tb : theme->buttons)
+        if (take(tb.componentId, { tb.x, tb.y, tb.width, tb.height })) return true;
+    for (const auto& td : theme->textDisplays)
+        if (take(td.componentId, { td.x, td.y, td.width, td.height })) return true;
+    return false;
+}
+
+// While a control is being dragged its value is read out with no delay: the
+// point of turning a knob is watching where it lands.
+void PatchCanvas::paintDragValueBadge(juce::Graphics& g)
+{
+    if (overlayMode == OverlayMode::Values)
+        return;   // the whole patch is already reading out, this one included
+
+    const bool draggingParam = dragState.type == DragState::Knob
+                            || dragState.type == DragState::Slider
+                            || dragState.type == DragState::Button
+                            || dragState.type == DragState::MorphRange;
+    if (!draggingParam || dragState.module == nullptr || dragState.parameter == nullptr)
+        return;
+
+    auto* pd = dragState.parameter->getDescriptor();
+    if (pd == nullptr)
+        return;
+
+    juce::Rectangle<float> control;
+    juce::Rectangle<int> mod;
+    if (!controlBoundsFor(*dragState.module, pd->componentId, control, mod))
+        return;
+
+    paintOverlayBadge(g, control, mod, *dragState.parameter,
+                      getParameterValueText(*dragState.parameter));
 }
 
 void PatchCanvas::mouseMove(const juce::MouseEvent& e)
