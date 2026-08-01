@@ -218,14 +218,19 @@ bool PatchCanvas::handleOverlayKey(const juce::KeyPress& key, juce::Component& r
         return true;
     }
 
-    if (key == juce::KeyPress::F7Key)
+    // F7, F8 and F9 read out the three kinds of assignment, as the original
+    // editor's function keys do. Each toggles: pressing the same key again
+    // closes the readout rather than needing the key held down.
+    auto toggle = [&repaintTarget](OverlayMode mode)
     {
-        overlayMode = (overlayMode == OverlayMode::MorphGroups)
-            ? OverlayMode::Off
-            : OverlayMode::MorphGroups;
+        overlayMode = (overlayMode == mode) ? OverlayMode::Off : mode;
         repaintTarget.repaint();
         return true;
-    }
+    };
+
+    if (key == juce::KeyPress::F7Key) return toggle(OverlayMode::MorphGroups);
+    if (key == juce::KeyPress::F8Key) return toggle(OverlayMode::Knobs);
+    if (key == juce::KeyPress::F9Key) return toggle(OverlayMode::MidiCtrls);
 
     return false;
 }
@@ -768,7 +773,7 @@ void PatchCanvas::paintOverlay(juce::Graphics& g, const Module& m, juce::Rectang
         if (overlayMode == OverlayMode::MorphGroups && !assigned)
             return;
 
-        paintOverlayBadge(g, controlBounds, bounds, *param);
+        paintOverlayBadge(g, controlBounds, bounds, m, *param);
     };
 
     for (const auto& tk : theme.knobs)
@@ -845,7 +850,14 @@ bool PatchCanvas::findControlAt(juce::Point<int> canvasPos, HoverTarget& out) co
         for (const auto& td : theme->textDisplays)
             if (hit(td.componentId, { td.x, td.y, td.width, td.height })) return true;
 
-        return false;   // over the module but not over one of its controls
+        // Over the module but not over a control: the module itself is the
+        // target, and what it has to say is what it costs the DSP (issue #31,
+        // which the original editor answers on a double-click).
+        out.module        = &m;
+        out.componentId   = {};
+        out.controlBounds = bounds.removeFromTop(1).toFloat();
+        out.moduleBounds  = getModuleBounds(m, 0);
+        return true;
     }
     return false;
 }
@@ -907,7 +919,7 @@ void PatchCanvas::paintDragValueBadge(juce::Graphics& g)
     if (!controlBoundsFor(*dragState.module, pd->componentId, control, mod))
         return;
 
-    paintOverlayBadge(g, control, mod, *dragState.parameter,
+    paintOverlayBadge(g, control, mod, *dragState.module, *dragState.parameter,
                       getParameterValueText(*dragState.parameter));
 }
 
@@ -970,16 +982,50 @@ void PatchCanvas::paintHoverBadge(juce::Graphics& g)
         || overlayMode == OverlayMode::Values)
         return;
 
+    // Hovering the module itself rather than one of its controls reads out what
+    // it costs the DSP, which the original editor gives on a double-click.
+    if (hoverTarget.componentId.isEmpty())
+    {
+        auto* desc = hoverTarget.module->getDescriptor();
+        if (desc == nullptr)
+            return;
+        paintModuleCostBadge(g, hoverTarget.moduleBounds,
+                             formatDspCost(desc->cycles) + " DSP");
+        return;
+    }
+
     if (auto* param = findParameter(*hoverTarget.module, hoverTarget.componentId))
-        paintOverlayBadge(g, hoverTarget.controlBounds, hoverTarget.moduleBounds, *param,
-                          getParameterValueText(*param));
+        paintOverlayBadge(g, hoverTarget.controlBounds, hoverTarget.moduleBounds,
+                          *hoverTarget.module, *param, getParameterValueText(*param));
+}
+
+// The module-level twin of paintOverlayBadge: same box, but anchored to the
+// module's top edge rather than to a control inside it.
+void PatchCanvas::paintModuleCostBadge(juce::Graphics& g, juce::Rectangle<int> moduleBounds,
+                                       const juce::String& text)
+{
+    g.setFont(juce::FontOptions("Fira Sans", 10.0f, juce::Font::bold));
+    const float badgeH = 14.0f;
+    const float badgeW = juce::jlimit(18.0f, 110.0f,
+                                      g.getCurrentFont().getStringWidthFloat(text) + 10.0f);
+
+    juce::Rectangle<float> badge(moduleBounds.toFloat().getRight() - badgeW - 4.0f,
+                                 moduleBounds.toFloat().getY() + 3.0f, badgeW, badgeH);
+
+    g.setColour(juce::Colour(0xff1c2229).withAlpha(0.92f));
+    g.fillRoundedRectangle(badge, 3.0f);
+    g.setColour(juce::Colour(0xff1c2229).darker(0.25f));
+    g.drawRoundedRectangle(badge, 3.0f, 1.4f);
+    g.setColour(juce::Colours::white);
+    g.drawText(text, badge.toNearestInt(), juce::Justification::centred, false);
 }
 
 void PatchCanvas::paintOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
-                                         juce::Rectangle<int> moduleBounds, const Parameter& param,
+                                         juce::Rectangle<int> moduleBounds, const Module& m,
+                                         const Parameter& param,
                                          const juce::String& textOverride)
 {
-    auto text = textOverride.isNotEmpty() ? textOverride : getOverlayText(param);
+    auto text = textOverride.isNotEmpty() ? textOverride : getOverlayText(m, param);
     if (text.isEmpty())
         return;
 
@@ -1017,7 +1063,7 @@ void PatchCanvas::paintOverlayBadge(juce::Graphics& g, juce::Rectangle<float> co
     g.drawText(text, badge.toNearestInt(), juce::Justification::centred, false);
 }
 
-juce::String PatchCanvas::getOverlayText(const Parameter& param) const
+juce::String PatchCanvas::getOverlayText(const Module& m, const Parameter& param) const
 {
     const int group = param.getMorphGroup();
 
@@ -1026,6 +1072,34 @@ juce::String PatchCanvas::getOverlayText(const Parameter& param) const
 
     if (overlayMode == OverlayMode::Values)
         return getParameterValueText(param);
+
+    // Assignment readouts. Both are reverse lookups: the patch stores them by
+    // knob and by controller, and here we have the parameter and want to know
+    // what points at it.
+    auto* pd = param.getDescriptor();
+    if (pd == nullptr || patch == nullptr)
+        return {};
+    const int moduleIdx = m.getContainerIndex();
+
+    if (overlayMode == OverlayMode::Knobs)
+    {
+        for (size_t k = 0; k < patch->knobAssignments.size(); ++k)
+        {
+            const auto& ka = patch->knobAssignments[k];
+            if (ka.assigned && ka.section == mySection
+                && ka.module == moduleIdx && ka.param == pd->index)
+                return KnobAssignmentMessage::getKnobName(static_cast<int>(k));
+        }
+        return {};
+    }
+
+    if (overlayMode == OverlayMode::MidiCtrls)
+    {
+        for (const auto& ca : patch->ctrlAssignments)
+            if (ca.section == mySection && ca.module == moduleIdx && ca.param == pd->index)
+                return "CC " + juce::String(ca.control);
+        return {};
+    }
 
     return {};
 }

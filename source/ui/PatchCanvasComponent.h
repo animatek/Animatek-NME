@@ -191,6 +191,8 @@ private:
     void timerCallback() override;
     void paintHoverBadge(juce::Graphics& g);
     void paintDragValueBadge(juce::Graphics& g);
+    void paintModuleCostBadge(juce::Graphics& g, juce::Rectangle<int> moduleBounds,
+                              const juce::String& text);
 
     HoverTarget hoverTarget;
     bool hoverBadgeVisible = false;
@@ -198,9 +200,10 @@ private:
     // textOverride lets the hover box say something the current overlay mode
     // wouldn't; empty means "whatever the mode reads out".
     void paintOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
-                                juce::Rectangle<int> moduleBounds, const Parameter& param,
+                                juce::Rectangle<int> moduleBounds, const Module& m,
+                                const Parameter& param,
                                 const juce::String& textOverride = {});
-    juce::String getOverlayText(const Parameter& param) const;
+    juce::String getOverlayText(const Module& m, const Parameter& param) const;
     juce::String getParameterValueText(const Parameter& param) const;
     void paintModuleFallback(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds);
 
@@ -371,7 +374,7 @@ private:
     // Hint boxes over the controls, as the original editor's function keys give:
     // F5 every parameter's value, F7 the morph group of the assigned ones. The
     // mode is editor-wide, so both areas and every window agree.
-    enum class OverlayMode { Off, MorphGroups, Values };
+    enum class OverlayMode { Off, MorphGroups, Values, Knobs, MidiCtrls };
     inline static OverlayMode overlayMode = OverlayMode::Off;
 
     // Editor-wide settings (shared across all PatchCanvas instances)

@@ -3250,6 +3250,8 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  F1                  Module help (hovered/selected)\n"
       "  F5                  Parameter values overlay\n"
       "  F7                  Morph groups overlay\n"
+      "  F8                  Knob assignments overlay\n"
+      "  F9                  MIDI CC assignments overlay\n"
       "  Z                   Zoom to selection / reset\n"
       "  Shift+Z             Reset zoom to 100%\n"
       "  Ctrl++ / Ctrl+-     Zoom in / out\n"

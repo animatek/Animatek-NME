@@ -43,6 +43,8 @@ On macOS, `Ctrl` is `Cmd`.
 | `F5` | Toggle parameter values overlay for the whole patch (morphed ones show their range) |
 | hover | Rest the cursor on a control to read its value |
 | `F7` | Toggle morph groups overlay |
+| `F8` | Toggle knob assignments overlay |
+| `F9` | Toggle MIDI CC assignments overlay |
 | `Z` | Zoom to selection (or reset when nothing selected) |
 | `Shift+Z` | Reset zoom to 100% |
 | `Ctrl++` / `Ctrl+-` | Zoom in / out |

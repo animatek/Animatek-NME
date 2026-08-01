@@ -11,7 +11,10 @@
   morph sweeps it across, matching the original's "46Hz-2.30kHz". **F7** is unchanged, since
   it is about morph assignments. Both remain toggles rather than hold-to-show. Dragging a
   control reads its value out straight away, with no hover delay, so you can see where a knob
-  lands while you turn it.
+  lands while you turn it. Hovering a module rather than one of its controls reads out what
+  that module costs the DSP, which is the last thing issue #31 was missing. **F8** and **F9**
+  complete the original editor's readouts, showing knob assignments and MIDI CC assignments
+  over the parameters they are attached to.
 
 - **The Filter Bank's input, output and bypass are back inside the module** (issue #35): its
   artwork was drawn 120px tall against a module that is 7 grid rows, or 105px, so the bottom
