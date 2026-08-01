@@ -100,6 +100,13 @@ juce::File EditorOptions::getBanksFolder() const
     return presetLibraryRoot == juce::File() ? juce::File() : presetLibraryRoot.getChildFile ("Banks");
 }
 
+// Module presets ("<Type>.pchp" packs) sit alongside patches, snippets and
+// banks so a preset library is shared the same way everything else is.
+juce::File EditorOptions::getPresetsFolder() const
+{
+    return presetLibraryRoot == juce::File() ? juce::File() : presetLibraryRoot.getChildFile ("Presets");
+}
+
 bool EditorOptions::ensureLibraryFolders() const
 {
     if (presetLibraryRoot == juce::File())
@@ -109,7 +116,8 @@ bool EditorOptions::ensureLibraryFolders() const
     auto patchesOk = getPatchesFolder().createDirectory().wasOk();
     auto snippetsOk = getSnippetsFolder().createDirectory().wasOk();
     auto banksOk = getBanksFolder().createDirectory().wasOk();
-    return rootOk && patchesOk && snippetsOk && banksOk;
+    auto presetsOk = getPresetsFolder().createDirectory().wasOk();
+    return rootOk && patchesOk && snippetsOk && banksOk && presetsOk;
 }
 
 // ─── EditorOptionsDialog ─────────────────────────────────────────────────────

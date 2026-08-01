@@ -5,6 +5,7 @@
 #include "../model/ModuleDescriptions.h"
 #include "../model/ThemeData.h"
 #include "../model/SnipFileIO.h"
+#include "../model/ModulePresets.h"
 #include "QuickAddPopup.h"
 #include "../help/ModuleHelpPopup.h"
 #include "ColorScheme.h"
@@ -108,6 +109,16 @@ public:
     using FileCommandCallback = std::function<void(const juce::String&)>;
     void setFileCommandCallback(FileCommandCallback cb) { fileCommandCallback = std::move(cb); }
     void setUndoManager(juce::UndoManager* um) { undoManager = um; }
+    void setPresetLibrary(ModulePresetLibrary* library) { presetLibrary = library; repaint(); }
+
+    // Keeps a module's own preset display box in step when the preset was
+    // recalled from somewhere else, such as the Inspector's preset list.
+    void notePresetRecalled(int section, int containerIndex, int presetIndex)
+    {
+        if (section != mySection) return;
+        drumPresetState[containerIndex] = presetIndex;
+        repaint();
+    }
 
     // DragAndDropTarget interface
     bool isInterestedInDragSource(const SourceDetails& dragSourceDetails) override;
@@ -254,21 +265,12 @@ private:
     juce::Rectangle<int> rubberBandRect;
     bool showRubberBand = false;
 
-    // DrumSynth (m58) preset system
-    struct DrumPreset
-    {
-        juce::String name;
-        std::array<int, 15> params; // p1..p15 values (p16=mute excluded)
-    };
-    std::vector<DrumPreset> drumPresets;   // built-ins first, then user presets
+    // DrumSynth (m58) preset UI. The presets themselves live in the shared
+    // ModulePresetLibrary, which the owner injects, so the display box, this
+    // canvas's menu and the Inspector all read and write the same list.
     std::map<int, int> drumPresetState;    // containerIndex → preset index
-    // Everything initDrumPresets() creates is built in and cannot be deleted;
-    // the preset file holds only what the user saved, appended after these. Kept
-    // as a count rather than a literal so adding built-ins stays a one-place edit.
-    size_t numBuiltInDrumPresets = 0;
-    void initDrumPresets();
-    void saveDrumPresetsToFile();
-    void loadDrumPresetsFromFile();
+    ModulePresetLibrary* presetLibrary = nullptr;
+    const std::vector<ModulePreset>& drumPresets() const;
     void applyDrumPreset(Module& m, int section, int presetIdx);
     void showDrumPresetContextMenu(Module& m, int section);
     // The preset list is reachable both from the module's own context menu and
@@ -277,7 +279,7 @@ private:
     juce::PopupMenu buildDrumPresetMenu(Module& m, std::shared_ptr<int> action);
     void handleDrumPresetMenuResult(int result, int action, Module& m, int section);
     void saveDrumPresetFromModule(Module& m);
-    void deleteDrumPreset(size_t index);
+    void deleteDrumPreset(int index);
     static constexpr int drumPresetSaveId  = 200;  // IDs >= 200 belong to the
     static constexpr int drumPresetFirstId = 201;  // DrumSynth preset menu
 
@@ -520,6 +522,18 @@ public:
     {
         polyCanvas.setUndoManager(um);
         commonCanvas.setUndoManager(um);
+    }
+
+    void setPresetLibrary(ModulePresetLibrary* library)
+    {
+        polyCanvas.setPresetLibrary(library);
+        commonCanvas.setPresetLibrary(library);
+    }
+
+    void notePresetRecalled(int section, int containerIndex, int presetIndex)
+    {
+        polyCanvas.notePresetRecalled(section, containerIndex, presetIndex);
+        commonCanvas.notePresetRecalled(section, containerIndex, presetIndex);
     }
 
     void repaintCanvas()

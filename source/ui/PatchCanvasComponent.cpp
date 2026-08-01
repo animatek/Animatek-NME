@@ -177,8 +177,6 @@ PatchCanvas::PatchCanvas()
 {
     setSize(canvasWidth, sectionHeight);
     setWantsKeyboardFocus(true);
-    initDrumPresets();
-    loadDrumPresetsFromFile();
 }
 
 bool PatchCanvas::handleMorphOverlayKey(const juce::KeyPress& key, juce::Component& repaintTarget)
@@ -4892,7 +4890,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             // Test DrumSynth preset spinner arrows
             if (m.getDescriptor()->index == 58)
             {
-                int numP = static_cast<int>(drumPresets.size());
+                int numP = static_cast<int>(drumPresets().size());
                 // Preset display: right-click to save/manage
                 juce::Rectangle<int> dispRect(120, 115, 57, 13);
                 if (dispRect.contains(relPos) && e.mods.isRightButtonDown())
@@ -7100,10 +7098,10 @@ void PatchCanvas::paintDrumSynthExtras(juce::Graphics& g, const Module& m, juce:
     auto it = drumPresetState.find(m.getContainerIndex());
     if (it != drumPresetState.end())
         presetIdx = it->second;
-    presetIdx = juce::jlimit(0, static_cast<int>(drumPresets.size()) - 1, presetIdx);
+    presetIdx = juce::jlimit(0, static_cast<int>(drumPresets().size()) - 1, presetIdx);
 
-    juce::String presetName = drumPresets.empty() ? "none"
-                              : drumPresets[static_cast<size_t>(presetIdx)].name;
+    juce::String presetName = drumPresets().empty() ? "none"
+                              : drumPresets()[static_cast<size_t>(presetIdx)].name;
 
     g.setColour(juce::Colours::white);
     g.setFont(juce::FontOptions(8.5f));
@@ -7142,99 +7140,35 @@ void PatchCanvas::paintDrumSynthExtras(juce::Graphics& g, const Module& m, juce:
 }
 
 // ============================================================
-// DrumSynth preset system
-// p1=MTune p2=STune p3=MDecay p4=SDecay p5=MLevel p6=SLevel
-// p7=Ffreq p8=Fres p9=Fswp p10=Fdcy p11=Fmode p12=Amt p13=Dcy p14=Click p15=Noise
+// DrumSynth preset UI
+//
+// The presets themselves live in the shared ModulePresetLibrary, which is
+// injected by the owner. This canvas only draws the display box, offers the
+// menu, and applies a recall; it owns no preset data of its own, so what the
+// Inspector shows and what this menu shows cannot drift apart.
 // ============================================================
 
-void PatchCanvas::initDrumPresets()
+const std::vector<ModulePreset>& PatchCanvas::drumPresets() const
 {
-    drumPresets.clear();
-    // Built-in 1: Basic Kick
-    drumPresets.push_back({ "Basic Kick",
-        { 60, 0, 80, 40, 100, 50,   // MTune=113Hz, STune=1:1, MDecay=long, SDecay=med, Mlevel=high, SLevel=mid
-          30, 20, 40, 50, 0,         // Ffreq=low, Fres=low, Fswp=mid, Fdcy=mid, Fmode=HP
-          50, 60, 60, 10 } });       // Amt=mid, BendDcy=mid, Click=high, Noise=low
-
-    // Built-in 2: Basic Snare
-    drumPresets.push_back({ "Basic Snare",
-        { 48, 48, 40, 50, 80, 70,   // MTune=80Hz, STune=2:1, MDecay=med, SDecay=med, levels
-          70, 40, 30, 40, 0,         // Ffreq=mid-high, Fres=mid, Fswp=low, Fdcy=mid, Fmode=HP
-          30, 40, 80, 90 } });       // Amt=low, Dcy=med, Click=high, Noise=high
-
-    // Whatever was pushed above is the built-in set; user presets load after it.
-    numBuiltInDrumPresets = drumPresets.size();
-}
-
-static juce::File getDrumPresetsFile()
-{
-    const auto appData = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory);
-    const auto file = appData.getChildFile("AnimatekNME").getChildFile("drum_presets.txt");
-
-    // Migrate presets written under the old Nomad2026 name
-    const auto oldFile = appData.getChildFile("Nomad2026").getChildFile("drum_presets.txt");
-    if (oldFile.existsAsFile() && !file.existsAsFile())
-    {
-        file.getParentDirectory().createDirectory();
-        oldFile.copyFileTo(file);
-    }
-
-    return file;
-}
-
-void PatchCanvas::saveDrumPresetsToFile()
-{
-    auto f = getDrumPresetsFile();
-    f.getParentDirectory().createDirectory();
-    juce::FileOutputStream out(f);
-    if (!out.openedOk()) return;
-    out.setPosition(0);
-    out.truncate();
-
-    // Skip the built-ins, save only what the user added
-    for (size_t i = numBuiltInDrumPresets; i < drumPresets.size(); ++i)
-    {
-        auto& p = drumPresets[i];
-        out.writeText(p.name + "|", false, false, nullptr);
-        for (int j = 0; j < 15; ++j)
-            out.writeText(juce::String(p.params[static_cast<size_t>(j)]) + (j < 14 ? "," : ""), false, false, nullptr);
-        out.writeText("\n", false, false, nullptr);
-    }
-}
-
-void PatchCanvas::loadDrumPresetsFromFile()
-{
-    auto f = getDrumPresetsFile();
-    if (!f.existsAsFile()) return;
-    juce::StringArray lines;
-    f.readLines(lines);
-    for (auto& line : lines)
-    {
-        if (line.trim().isEmpty()) continue;
-        auto parts = juce::StringArray::fromTokens(line, "|", "");
-        if (parts.size() < 2) continue;
-        DrumPreset dp;
-        dp.name = parts[0].trim();
-        auto vals = juce::StringArray::fromTokens(parts[1], ",", "");
-        for (int i = 0; i < 15 && i < vals.size(); ++i)
-            dp.params[static_cast<size_t>(i)] = vals[i].getIntValue();
-        drumPresets.push_back(dp);
-    }
+    static const std::vector<ModulePreset> none;
+    return presetLibrary != nullptr ? presetLibrary->forType("DrumSynth") : none;
 }
 
 void PatchCanvas::applyDrumPreset(Module& m, int section, int presetIdx)
 {
-    if (presetIdx < 0 || presetIdx >= static_cast<int>(drumPresets.size())) return;
-    auto& preset = drumPresets[static_cast<size_t>(presetIdx)];
+    if (presetIdx < 0 || presetIdx >= static_cast<int>(drumPresets().size())) return;
+    auto& preset = drumPresets()[static_cast<size_t>(presetIdx)];
 
-    // p1..p15 → parameterDescriptor index 0..14
-    for (int i = 0; i < 15; ++i)
+    // Only the parameters the preset actually names are touched, so a preset
+    // written by hand with two lines in it stays a two-parameter preset.
+    for (const auto& [componentId, value] : preset.values)
     {
-        auto* param = findParameter(m, "p" + juce::String(i + 1));
+        auto* param = findParameter(m, componentId);
         if (param == nullptr) continue;
-        int newVal = juce::jlimit(0, 127, preset.params[static_cast<size_t>(i)]);
         int oldVal = param->getValue();
-        param->setValue(newVal);
+        param->setValue(value);
+        int newVal = param->getValue();   // clamped to the parameter's own range
+        if (newVal == oldVal) continue;
         if (parameterChangeCallback)
             parameterChangeCallback(section, m.getContainerIndex(), param->getDescriptor()->index, newVal);
         if (paramDragCompleteCallback)
@@ -7333,16 +7267,17 @@ juce::PopupMenu PatchCanvas::buildDrumPresetMenu(Module& m, std::shared_ptr<int>
     if (it != drumPresetState.end())
         currentIdx = it->second;
 
-    for (size_t i = 0; i < drumPresets.size(); ++i)
+    const auto& list = drumPresets();
+    for (size_t i = 0; i < list.size(); ++i)
         menu.addCustomItem(drumPresetFirstId + static_cast<int>(i),
                            std::make_unique<DrumPresetMenuRow>(
-                               drumPresets[i].name,
-                               i >= numBuiltInDrumPresets,
+                               list[i].name,
+                               !list[i].builtIn,
                                static_cast<int>(i) == currentIdx,
                                action),
-                           nullptr, drumPresets[i].name);
+                           nullptr, list[i].name);
 
-    if (!drumPresets.empty())
+    if (!list.empty())
         menu.addSeparator();
     menu.addItem(drumPresetSaveId, "Save current settings as preset...");
     return menu;
@@ -7357,11 +7292,11 @@ void PatchCanvas::handleDrumPresetMenuResult(int result, int action, Module& m, 
     }
 
     const int index = result - drumPresetFirstId;
-    if (index < 0 || index >= static_cast<int>(drumPresets.size()))
+    if (index < 0 || index >= static_cast<int>(drumPresets().size()))
         return;
 
     if (action == 1)
-        deleteDrumPreset(static_cast<size_t>(index));
+        deleteDrumPreset(index);
     else
     {
         drumPresetState[m.getContainerIndex()] = index;
@@ -7371,47 +7306,27 @@ void PatchCanvas::handleDrumPresetMenuResult(int result, int action, Module& m, 
 
 void PatchCanvas::saveDrumPresetFromModule(Module& m)
 {
-    auto* dialog = new juce::AlertWindow("Save Drum Preset", "Preset name:",
-                                         juce::MessageBoxIconType::NoIcon);
-    dialog->addTextEditor("name", "My Preset", "");
-    dialog->addButton("Save", 1);
-    dialog->addButton("Cancel", 0);
-    dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog, &m](int r)
-    {
-        if (r == 1)
-        {
-            DrumPreset dp;
-            dp.name = dialog->getTextEditorContents("name").trim();
-            if (dp.name.isEmpty())
-                dp.name = "Preset " + juce::String(drumPresets.size() - numBuiltInDrumPresets + 1);
-            for (int i = 0; i < 15; ++i)
-            {
-                auto* param = findParameter(m, "p" + juce::String(i + 1));
-                dp.params[static_cast<size_t>(i)] = (param != nullptr) ? param->getValue() : 64;
-            }
-            drumPresets.push_back(dp);
-            saveDrumPresetsToFile();
-            repaint();
-        }
-        delete dialog;
-    }), true);
-}
-
-void PatchCanvas::deleteDrumPreset(size_t index)
-{
-    // Built-ins are the editor's own data, not the user's, so they never go.
-    if (index < numBuiltInDrumPresets || index >= drumPresets.size())
+    if (presetLibrary == nullptr || !presetLibrary->canSave())
         return;
 
-    drumPresets.erase(drumPresets.begin() + static_cast<long>(index));
-    saveDrumPresetsToFile();
+    // Named automatically rather than through a dialog: the name can be changed
+    // later, and stopping to invent one is the friction that stops people saving.
+    auto preset = ModulePresetLibrary::capture(m, presetLibrary->suggestName("DrumSynth"));
+    if (presetLibrary->add(std::move(preset)) >= 0)
+        repaint();
+}
+
+void PatchCanvas::deleteDrumPreset(int index)
+{
+    if (presetLibrary == nullptr || !presetLibrary->remove("DrumSynth", index))
+        return;   // built-ins and failed writes leave the list untouched
 
     // Modules pointing past the deleted preset would otherwise show the wrong
     // name, and anything past the end would show none at all.
-    const int last = static_cast<int>(drumPresets.size()) - 1;
+    const int last = static_cast<int>(drumPresets().size()) - 1;
     for (auto& kv : drumPresetState)
     {
-        if (kv.second > static_cast<int>(index))
+        if (kv.second > index)
             --kv.second;
         kv.second = juce::jlimit(0, juce::jmax(0, last), kv.second);
     }

@@ -49,8 +49,34 @@ public:
     std::function<void(int section, int moduleId, int paramId)> onKnobRemove;
     std::function<void(int section, int moduleId, int paramId)> onCtrlRemove;
     std::function<void()> onMorphFaderKnobRemove;   // remove the Morph A/B fader knob
+    // Preset callbacks, by index into the selected module type's preset list
+    std::function<void(int)> onPresetRecall;
+    std::function<void(int)> onPresetDelete;
+    std::function<void()>    onPresetSave;
 
     AssignmentsListComponent() { setInterceptsMouseClicks(true, false); }
+
+    // The module type whose presets belong on screen, empty when nothing single
+    // is selected. Kept as its own accessor so paint, hit testing and height all
+    // agree on when the section exists.
+    juce::String presetType() const
+    {
+        if (module == nullptr || presetLibrary == nullptr)
+            return {};
+        auto* desc = module->getDescriptor();
+        return desc != nullptr ? desc->name : juce::String();
+    }
+
+    const std::vector<ModulePreset>& presets() const
+    {
+        static const std::vector<ModulePreset> none;
+        auto type = presetType();
+        return type.isEmpty() ? none : presetLibrary->forType(type);
+    }
+
+    // The section carries its Save row even with nothing saved yet, which is the
+    // only thing that makes saving discoverable at all.
+    bool hasPresetSection() const { return presetType().isNotEmpty(); }
 
     // Morph A/B fader carrier knob (-1 = none); shown in the patch-wide view.
     void setMorphFaderKnob(int knobIndex, int carrierGroup)
@@ -142,7 +168,8 @@ public:
     static constexpr int sectionGap   = 8;
 
     // ── Hit testing ──
-    enum class HitType { None, MorphX, MorphAmount, KnobX, CtrlX };
+    enum class HitType { None, MorphX, MorphAmount, KnobX, CtrlX,
+                         PresetRecall, PresetDelete, PresetSave };
     struct HitResult { HitType type = HitType::None; int rowIdx = -1; };
 
     HitResult findHit(juce::Point<int> pos) const
@@ -191,6 +218,28 @@ public:
                     return { HitType::CtrlX, i };
                 y += rowH;
             }
+            y += sectionGap;
+        }
+        if (hasPresetSection())
+        {
+            y += sectionTitleH;
+            const auto& list = presets();
+            for (int i = 0; i < (int)list.size(); ++i)
+            {
+                juce::Rectangle<int> rowRect(0, y, getWidth(), rowH);
+                if (rowRect.contains(pos))
+                {
+                    // The x sits at the right end, mirroring the module's own
+                    // preset menu; built-ins have none, so a click there recalls.
+                    const bool onX = !list[size_t(i)].builtIn
+                                   && pos.x >= getWidth() - marginX - xBtnW;
+                    return { onX ? HitType::PresetDelete : HitType::PresetRecall, i };
+                }
+                y += rowH;
+            }
+            juce::Rectangle<int> saveRect(0, y, getWidth(), rowH);
+            if (saveRect.contains(pos))
+                return { HitType::PresetSave, -1 };
         }
         return {};
     }
@@ -200,7 +249,8 @@ public:
     {
         g.fillAll(AppTheme::palette().backgroundPanel);
         bool isGlobal = (patch != nullptr && module == nullptr);
-        bool hasAny = !morphRows.empty() || !knobRows.empty() || !ctrlRows.empty();
+        bool hasAny = !morphRows.empty() || !knobRows.empty() || !ctrlRows.empty()
+                    || hasPresetSection();
 
         if (!hasAny)
         {
@@ -259,7 +309,50 @@ public:
                 paintHwRow(g, y, i, ctrlRows[size_t(i)], isGlobal, juce::Colour(0xffaa8844));
                 y += rowH;
             }
+            y += sectionGap;
         }
+
+        // ── Presets section ──
+        if (hasPresetSection())
+        {
+            paintSectionTitle(g, y, "Presets", juce::Colour(0xff7fb2d4));
+            y += sectionTitleH;
+            const auto& list = presets();
+            for (int i = 0; i < (int)list.size(); ++i)
+            {
+                paintPresetRow(g, y, list[size_t(i)]);
+                y += rowH;
+            }
+            paintPresetSaveRow(g, y);
+        }
+    }
+
+    void paintPresetRow(juce::Graphics& g, int y, const ModulePreset& preset)
+    {
+        const auto& theme = AppTheme::palette();
+        g.setColour(theme.textSecondary);
+        g.setFont(juce::FontOptions(12.0f));
+        g.drawText(preset.name, marginX, y, getWidth() - marginX * 2 - xBtnW, rowH,
+                   juce::Justification::centredLeft, true);
+
+        if (!preset.builtIn)
+        {
+            g.setColour(theme.textMuted);
+            g.setFont(juce::FontOptions(13.0f));
+            g.drawText(juce::String::fromUTF8("\xc3\x97"), getWidth() - marginX - xBtnW, y,
+                       xBtnW, rowH, juce::Justification::centred);
+        }
+    }
+
+    void paintPresetSaveRow(juce::Graphics& g, int y)
+    {
+        const auto& theme = AppTheme::palette();
+        auto row = juce::Rectangle<int>(marginX, y + 2, getWidth() - marginX * 2, rowH - 4);
+        g.setColour(theme.borderColor.withAlpha(0.6f));
+        g.drawRoundedRectangle(row.toFloat().reduced(0.5f), 3.0f, 1.0f);
+        g.setColour(theme.textSecondary);
+        g.setFont(juce::FontOptions(11.0f));
+        g.drawText("+ Save current settings", row, juce::Justification::centred);
     }
 
     // ── Mouse handling (morph rows only for now) ──
@@ -310,6 +403,24 @@ public:
             auto& r = ctrlRows[size_t(hr.rowIdx)];
             if (onCtrlRemove) onCtrlRemove(r.section, r.moduleId, r.paramIndex);
             rebuild();
+            return;
+        }
+
+        // The owner performs these against the library and calls back in to
+        // rebuild, so the list on screen can never disagree with what was written.
+        if (hr.type == HitType::PresetRecall)
+        {
+            if (onPresetRecall) onPresetRecall(hr.rowIdx);
+            return;
+        }
+        if (hr.type == HitType::PresetDelete)
+        {
+            if (onPresetDelete) onPresetDelete(hr.rowIdx);
+            return;
+        }
+        if (hr.type == HitType::PresetSave)
+        {
+            if (onPresetSave) onPresetSave();
             return;
         }
     }
@@ -570,7 +681,12 @@ private:
         }
         if (!ctrlRows.empty())
         {
-            h += sectionTitleH + (int)ctrlRows.size() * rowH;
+            h += sectionTitleH + (int)ctrlRows.size() * rowH + sectionGap;
+        }
+        if (hasPresetSection())
+        {
+            // Rows plus the Save row that always closes the section.
+            h += sectionTitleH + ((int)presets().size() + 1) * rowH;
         }
         h += topPad;
         return h;
@@ -580,6 +696,10 @@ private:
 public:
     Module*                module        = nullptr;
     Patch*                 patch         = nullptr;
+    // Presets are shown for whichever single module is selected. The list is
+    // read straight from the library rather than copied, so a save or a delete
+    // made anywhere else is on screen at the next rebuild.
+    const ModulePresetLibrary* presetLibrary = nullptr;
 private:
     int                    singleSection = -1;
     int                    morphFaderKnob = -1;         // physical knob driving the A/B fader
@@ -648,6 +768,19 @@ InspectorPanel::InspectorPanel()
     assignmentsList->onMorphFaderKnobRemove = [this]()
     {
         if (onMorphFaderKnobRemove) onMorphFaderKnobRemove();
+    };
+
+    assignmentsList->onPresetRecall = [this](int index)
+    {
+        if (onPresetRecall && currentModule) onPresetRecall(currentSection, currentModule, index);
+    };
+    assignmentsList->onPresetDelete = [this](int index)
+    {
+        if (onPresetDelete && currentModule) onPresetDelete(currentSection, currentModule, index);
+    };
+    assignmentsList->onPresetSave = [this]()
+    {
+        if (onPresetSave && currentModule) onPresetSave(currentSection, currentModule);
     };
 
     morphViewport.setViewedComponent(assignmentsList.get(), false);
@@ -762,6 +895,12 @@ void InspectorPanel::refreshMorphList()
     assignmentsList->rebuild();
     resized();
     repaint();
+}
+
+void InspectorPanel::setPresetLibrary(const ModulePresetLibrary* library)
+{
+    assignmentsList->presetLibrary = library;
+    refreshMorphList();
 }
 
 void InspectorPanel::setMorphFaderKnob(int knobIndex, int carrierGroup)

@@ -13,11 +13,22 @@
   the shared repaint path redrew the meter without recomputing it; the MCP bridge and the
   Mutator both hit that.
 
-- **The DrumSynth preset library moved onto the module's own right-click menu**: a new
-  **Preset** submenu lists every preset, with a check mark on the one in use. Clicking a name
-  recalls it and clicking the small x at the right of the row deletes it, with the built-in
-  presets carrying no x. Saving is in the same list instead of hidden behind a right-click on
-  the little preset display box, which previously offered deleting but no way to recall.
+- **Module presets are now a library, shown in the Inspector**: selecting a module puts a
+  **Presets** section under its assignments, listing every preset for that module type with an
+  x on each to delete it and a **Save current settings** button that captures the module as it
+  stands. Recalling one is a single undo step rather than one per parameter. The same list is
+  also on the module's own right-click menu as a **Preset** submenu, with a check mark on the
+  one in use; it used to be reachable only by right-clicking the small preset display box, and
+  even there it could delete but not recall.
+
+  Underneath, presets are no longer specific to the DrumSynth: a preset is any module's named
+  parameter snapshot, so enabling them for the sequencers or anything else costs no code. They
+  live in a new **Presets** folder in the patch library, next to Patches, Snippets and Banks,
+  as one `.pchp` pack per module type. The format is plain text, commented and hand-editable,
+  since transcribing the original editor's own presets is done by hand. Values are keyed by
+  parameter rather than by position, so a preset written with two lines in it sets those two
+  parameters and leaves the rest of the module alone. Presets saved by earlier versions are
+  migrated into the new library on first run.
 
 - **About box** (About > About Animatek NME): version and build date, a "Copy version" button
   that puts the version, OS and JUCE build on the clipboard for bug reports, and the credits.

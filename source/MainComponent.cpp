@@ -177,6 +177,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
           mainLayout->getInspector().clearModule();
       });
 
+  initModulePresetLibrary();
+  mainLayout->getCanvas().setPresetLibrary(&modulePresets);
+  // The main window's inspector follows whichever slot is active, so it binds to
+  // "the active slot" rather than to a fixed one the way a slot window does.
+  wirePresetCallbacks(mainLayout->getInspector(), -1);
+
   // Wire inspector name changes (undoable)
   mainLayout->getInspector().onNameChanged =
       [this](int section, Module* module, const juce::String& oldName, const juce::String& newName) {
@@ -2059,6 +2065,9 @@ void MainComponent::applyEditorOptions(const EditorOptions& opts) {
   editorOptions = opts;
   auto libraryOk = editorOptions.ensureLibraryFolders();
   editorOptions.save(appProperties.getUserSettings());
+  // Pointing the library somewhere else moves where presets are read and written.
+  modulePresets.setFolder(presetsFolder());
+  refreshInspectorPresets();
   PatchCanvas::setCableStyle   (static_cast<int>(opts.cableStyle));
   PatchCanvas::setKnobControl  (static_cast<int>(opts.knobControl));
   PatchCanvas::setAutoUpload   (opts.autoUpload);
@@ -2793,6 +2802,10 @@ void MainComponent::wireSlotWindowContent(SlotWindow& window, int slot) {
     undoMgr().beginNewTransaction("MIDI CC Deassign");
     undoMgr().perform(new MidiCtrlAssignAction(*ctx(), section, moduleId, paramId, -1, prevCtrl));
   };
+
+  // A slot window is pinned to its own slot, unlike the main window's inspector.
+  wirePresetCallbacks(inspector, slot);
+  canvas.setPresetLibrary(&modulePresets);
 
   // Canvas -> synth (live parameter changes) and canvas -> undo (structural edits)
   canvas.setParameterChangeCallback([this, slot](int section, int moduleId, int parameterId, int value) {
@@ -3951,6 +3964,132 @@ void MainComponent::updateDspLoadDisplay() {
   mainLayout->getHeaderBar().setLoadValues(
       static_cast<float>(polyCycles / 100.0),
       static_cast<float>(total / 100.0));
+}
+
+// ── Module presets ───────────────────────────────────────────────────────────
+
+// Parameter lookup by the component-id a preset stores its values under.
+static Parameter* findParamByComponentId(Module& m, const juce::String& componentId)
+{
+  for (auto& p : m.getParameters())
+    if (p.getDescriptor() != nullptr && p.getDescriptor()->componentId == componentId)
+      return &p;
+  return nullptr;
+}
+
+void MainComponent::initModulePresetLibrary()
+{
+  // Presets that ship with the editor. They are registered here rather than
+  // inside any one component so every surface reads the same library, and they
+  // are never written to disk, so a user pack can never shadow or delete them.
+  // Values are p1..p15 in descriptor order, the same way the original editor's
+  // own presets get transcribed.
+  struct BuiltIn { const char* type; const char* name; std::array<int, 15> values; };
+  static const BuiltIn builtIns[] = {
+      { "DrumSynth", "Basic Kick",
+        { 60, 0, 80, 40, 100, 50, 30, 20, 40, 50, 0, 50, 60, 60, 10 } },
+      { "DrumSynth", "Basic Snare",
+        { 48, 48, 40, 50, 80, 70, 70, 40, 30, 40, 0, 30, 40, 80, 90 } },
+  };
+
+  for (const auto& b : builtIns) {
+    ModulePreset preset;
+    preset.name = b.name;
+    preset.moduleType = b.type;
+    for (size_t i = 0; i < b.values.size(); ++i)
+      preset.values["p" + juce::String(static_cast<int>(i) + 1)] = b.values[i];
+    modulePresets.addBuiltIn(std::move(preset));
+  }
+
+  modulePresets.setFolder(presetsFolder());
+  modulePresets.migrateLegacyDrumPresets(appConfigFolder().getChildFile("drum_presets.txt"));
+}
+
+juce::File MainComponent::appConfigFolder()
+{
+  return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+             .getChildFile("AnimatekNME");
+}
+
+// Presets belong in the shared library when there is one, since that is what
+// gets backed up and passed around. Without a library folder configured they
+// still have to work, so they fall back beside the settings, which is where the
+// DrumSynth presets lived before they became a library.
+juce::File MainComponent::presetsFolder() const
+{
+  auto configured = editorOptions.getPresetsFolder();
+  return configured != juce::File() ? configured : appConfigFolder().getChildFile("Presets");
+}
+
+void MainComponent::wirePresetCallbacks(InspectorPanel& inspector, int slot)
+{
+  inspector.setPresetLibrary(&modulePresets);
+
+  inspector.onPresetRecall = [this, slot](int section, Module* module, int index) {
+    recallModulePreset(slot < 0 ? activeSlot : slot, section, module, index);
+  };
+
+  inspector.onPresetSave = [this](int, Module* module) {
+    if (module == nullptr || module->getDescriptor() == nullptr) return;
+    if (!modulePresets.canSave()) {
+      mainLayout->getStatusBar().showMessage(
+          "Choose a preset library folder in Editor Options to save module presets", 5000);
+      return;
+    }
+    const auto type = module->getDescriptor()->name;
+    auto preset = ModulePresetLibrary::capture(*module, modulePresets.suggestName(type));
+    if (modulePresets.add(std::move(preset)) < 0)
+      mainLayout->getStatusBar().showMessage("ERROR: could not write the preset pack", 5000);
+    else
+      mainLayout->getStatusBar().showMessage("Saved preset for " + type, 3000);
+    refreshInspectorPresets();
+  };
+
+  inspector.onPresetDelete = [this](int, Module* module, int index) {
+    if (module == nullptr || module->getDescriptor() == nullptr) return;
+    modulePresets.remove(module->getDescriptor()->name, index);
+    refreshInspectorPresets();
+  };
+}
+
+void MainComponent::recallModulePreset(int slot, int section, Module* module, int presetIndex)
+{
+  if (module == nullptr || module->getDescriptor() == nullptr) return;
+  auto* ctx = getSlotUndoContext(slot);
+  if (ctx == nullptr) return;
+
+  const auto* preset = modulePresets.find(module->getDescriptor()->name, presetIndex);
+  if (preset == nullptr) return;
+
+  // One transaction for the whole recall, so undoing it is a single Ctrl+Z
+  // rather than one per parameter the preset happened to change.
+  auto& undo = getSlotUndoManager(slot);
+  undo.beginNewTransaction("Recall Preset: " + preset->name);
+
+  for (const auto& [componentId, value] : preset->values) {
+    auto* param = findParamByComponentId(*module, componentId);
+    if (param == nullptr) continue;
+    const int oldValue = param->getValue();
+    if (oldValue == value) continue;
+    undo.perform(new ParameterChangeAction(*ctx, section, module->getContainerIndex(),
+                                           param->getDescriptor()->index, oldValue, value));
+  }
+
+  // The module may draw its own preset name (the DrumSynth does), which has to
+  // follow a recall made from the Inspector rather than from the module itself.
+  if (slot == activeSlot)
+    mainLayout->getCanvas().notePresetRecalled(section, module->getContainerIndex(), presetIndex);
+  if (slotWindows[slot] && slotWindows[slot]->isVisible())
+    slotWindows[slot]->getContent().getCanvas().notePresetRecalled(
+        section, module->getContainerIndex(), presetIndex);
+}
+
+void MainComponent::refreshInspectorPresets()
+{
+  mainLayout->getInspector().refreshMorphList();
+  for (int s = 0; s < numSlots; ++s)
+    if (slotWindows[s] && slotWindows[s]->isVisible())
+      slotWindows[s]->getContent().getInspector().refreshMorphList();
 }
 
 void MainComponent::saveSnippet(SnipData snip)

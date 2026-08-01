@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../model/Patch.h"
+#include "../model/ModulePresets.h"
 
 // Forward declaration
 class AssignmentsListComponent;
@@ -42,6 +43,15 @@ public:
 
     // Called by canvas when a morph assignment changes (so inspector can refresh)
     void refreshMorphList();
+
+    // Module presets. The panel only displays and reports clicks; the owner
+    // holds the library and performs the recall, save and delete, then calls
+    // refreshMorphList() so the section redraws from what was actually written.
+    void setPresetLibrary(const ModulePresetLibrary* library);
+    // index into the selected module type's preset list
+    std::function<void(int section, Module*, int presetIndex)> onPresetRecall;
+    std::function<void(int section, Module*, int presetIndex)> onPresetDelete;
+    std::function<void(int section, Module*)>                  onPresetSave;
 
 private:
     void textEditorReturnKeyPressed(juce::TextEditor&) override;

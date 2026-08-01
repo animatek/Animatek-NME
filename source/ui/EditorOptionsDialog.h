@@ -31,6 +31,7 @@ struct EditorOptions
     juce::File getPatchesFolder() const;
     juce::File getSnippetsFolder() const;
     juce::File getBanksFolder() const;
+    juce::File getPresetsFolder() const;
     bool ensureLibraryFolders() const;
 };
 

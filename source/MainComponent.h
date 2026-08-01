@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_data_structures/juce_data_structures.h>
 #include "model/ModuleDescriptions.h"
+#include "model/ModulePresets.h"
 #include "model/ThemeData.h"
 #include "model/Patch.h"
 #include "model/PatchVariations.h"
@@ -167,6 +168,7 @@ private:
 
     juce::ApplicationProperties& appProperties;
     ModuleDescriptions moduleDescs;
+    ModulePresetLibrary modulePresets;
     ThemeData themeData;
     ConnectionManager connectionManager;
     BankTransferManager bankTransfer { connectionManager, moduleDescs };
@@ -220,6 +222,18 @@ private:
 
     void switchToSlot(int slot, bool notifySynth = true);
     void updateDspLoadDisplay();
+
+    // Module presets. wirePresetCallbacks() serves both the main window's
+    // inspector and a slot window's, since the two are the same class driving
+    // the same library.
+    void initModulePresetLibrary();
+    static juce::File appConfigFolder();
+    juce::File presetsFolder() const;
+    void wirePresetCallbacks(InspectorPanel& inspector, int slot);
+    void recallModulePreset(int slot, int section, Module* module, int presetIndex);
+    // After a save or a delete, every open inspector redraws its preset list, so
+    // two windows showing the same module never disagree about what exists.
+    void refreshInspectorPresets();
     void rebuildUndoContext(int slot);  // call after patch change
     void clearSnapshots(int slot);     // call when patch changes
 
