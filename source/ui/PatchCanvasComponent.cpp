@@ -205,26 +205,39 @@ PatchCanvas::PatchCanvas()
 {
     setSize(canvasWidth, sectionHeight);
     setWantsKeyboardFocus(true);
+    liveCanvases.push_back(this);
 }
 
 bool PatchCanvas::handleOverlayKey(const juce::KeyPress& key, juce::Component& repaintTarget)
 {
+    // The mode is editor-wide, so every canvas on screen has to redraw, not just
+    // the one the key happened to reach. With a slot window open, toggling F5
+    // from the main window used to leave the other window showing the previous
+    // state until something else dirtied it.
+    auto repaintAll = [&repaintTarget]()
+    {
+        repaintTarget.repaint();
+        for (auto* c : liveCanvases)
+            if (c != nullptr)
+                c->repaint();
+    };
+
     if (key == juce::KeyPress::F5Key)
     {
         overlayMode = (overlayMode == OverlayMode::Values)
             ? OverlayMode::Off
             : OverlayMode::Values;
-        repaintTarget.repaint();
+        repaintAll();
         return true;
     }
 
     // F7, F8 and F9 read out the three kinds of assignment, as the original
     // editor's function keys do. Each toggles: pressing the same key again
     // closes the readout rather than needing the key held down.
-    auto toggle = [&repaintTarget](OverlayMode mode)
+    auto toggle = [&repaintAll](OverlayMode mode)
     {
         overlayMode = (overlayMode == mode) ? OverlayMode::Off : mode;
-        repaintTarget.repaint();
+        repaintAll();
         return true;
     };
 
@@ -354,6 +367,9 @@ void PatchCanvas::setSection(int s)
 
 PatchCanvas::~PatchCanvas()
 {
+    liveCanvases.erase(std::remove(liveCanvases.begin(), liveCanvases.end(), this),
+                       liveCanvases.end());
+
     // If the popup is still open when we're destroyed, clear its callbacks
     // first so it can't fire onDismiss with a dangling 'this' pointer.
     if (activeQuickAdd != nullptr)

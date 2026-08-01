@@ -338,8 +338,13 @@ void ConnectionManager::selectSlot(int slot)
     if (!isConnected() || slot < 0 || slot > 3)
         return;
 
-    if (slot != currentSlot)
-        invalidateParamQueue("slot selection");
+    // Selecting a slot invalidates nothing. Queued edits are keyed by slot,
+    // drainParamQueue holds per slot, and every send carries its slot in the
+    // SysEx envelope, so an edit queued for A stays valid while the synth shows
+    // B. This used to discard the whole queue, which silently threw away edits
+    // that were still in flight. What does invalidate a slot's queue is its
+    // patch being replaced, and those calls already pass the slot ("patch
+    // request", "bank patch load").
 
     // Emulate the panel rule for a plain slot-button press: enable state is
     // sticky for pinned slots and follows the selection otherwise, so the
@@ -1652,9 +1657,8 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         int activeSlot = msg.data[0] & 0x03;
         std::cout << "[SLOT] Active slot changed to " << activeSlot << std::endl;
 
-        if (activeSlot != currentSlot)
-            invalidateParamQueue("synth slot activation");
-
+        // Same as selectSlot: the synth moving its own focus says nothing about
+        // edits queued for any slot, all of which are slot-addressed.
         currentSlot = activeSlot;
         currentPatchId = slotPatchIds[static_cast<size_t>(activeSlot & 0x03)];
         slotDetected = true;

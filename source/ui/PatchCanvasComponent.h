@@ -379,6 +379,9 @@ private:
     // mode is editor-wide, so both areas and every window agree.
     enum class OverlayMode { Off, MorphGroups, Values, Knobs, MidiCtrls, ModuleCosts };
     inline static OverlayMode overlayMode = OverlayMode::Off;
+    // Every canvas alive right now. The overlay mode is editor-wide, so a key
+    // that changes it has to repaint all of them, not only the one it reached.
+    inline static std::vector<PatchCanvas*> liveCanvases;
 
     // Editor-wide settings (shared across all PatchCanvas instances)
     inline static float cableOpacity   = 0.80f; // 0..1
