@@ -42,7 +42,7 @@ built locally (`VERSION=x.y.z bash packaging/build-appimage.sh`) and dropped int
 ## Documentation Layout
 
 - `manual/` — user manual (chapters + `07-shortcuts.md`, keep in sync with the in-app shortcuts dialog)
-- `docs/` — project docs: STATUS, ROADMAP, MODULE_CHECKLIST, RELEASE_CHECKLIST, PLUGIN_ARCHITECTURE, RESEARCH
+- `docs/` — project docs: STATUS, ROADMAP, MODULE_CHECKLIST, RELEASE_CHECKLIST, PLUGIN_ARCHITECTURE, RESEARCH, MDI_PLAN
 - `docs/releases/` — per-version release notes (`RELEASE_NOTES_x.y.z.md`)
 - Root keeps only README.md, CHANGELOG.md, CLAUDE.md/AGENTS.md, LICENSE
 

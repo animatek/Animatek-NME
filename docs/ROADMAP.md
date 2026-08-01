@@ -58,11 +58,25 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](../CHANGELOG
   are already part of the patch model and upload path (`buildHwFromPatch` reads
   `patch->knobAssignments`), so this is plumbing rather than new protocol work.
 
-- [ ] **Slot windows: live fan-out and global commands**
-  ([#22](https://github.com/animatek/Animatek-NME/issues/22)) — editing *from* a slot window
-  is hardware-verified, but front-panel knob moves, lights and meters never reach it
-  (milestone 5 of the multi-window plan, `MainComponent.cpp:2325`), and `Ctrl+R` /
-  Mutator / snapshots silently do nothing there (`MainComponent.cpp:2406`).
+- [ ] **MDI: the four slots inside the main window.** Replace the per-slot OS pop-out
+  windows with internal sub-windows in the central area, as the original Clavia editor and
+  Nomad do, so the four patches can be tiled 2x2. Each sub-window carries only its canvas;
+  the Inspector, browsers, header and status bar stay shared and follow the focused slot.
+  `juce::MultiDocumentPanel` is already available in the vendored JUCE and provides the
+  windows and focus; tiling is ours to add.
+
+  The real argument is that it **removes** code rather than adding it. Canvas wiring exists
+  twice today, inline in the constructor resolving through `activeSlot`
+  (`MainComponent.cpp:173-808`) and again per fixed slot in `wireSlotWindowContent`
+  (`:2735-2958`), with 19 distinct main-vs-slot-window special cases between them. With
+  several canvases visible, resolving through `activeSlot` stops being correct by
+  construction, which forces the two paths to become one. Phased plan, effort estimate
+  (~7-9 days) and verification steps in [`docs/MDI_PLAN.md`](MDI_PLAN.md); phase 0 is done
+  (commit e1c4b2f).
+
+  This supersedes the old "slot windows: live fan-out and global commands"
+  ([#22](https://github.com/animatek/Animatek-NME/issues/22)) item, whose live fan-out and
+  per-window `Ctrl+R`/`Ctrl+S` shipped in 0.11.0.
 
 - [x] **Bank Upload from Synth** — implemented in 0.6.0 as "Save Bank to Disk" plus
   "Backup All Banks to Library" (Device menu). Position metadata is preserved in the
