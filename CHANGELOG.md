@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Parameter values read out on hover and on F5** (issue #32). Resting the cursor on a knob,
+  slider, button or display box shows its value in a hint box, in the parameter's own units,
+  so a cutoff reads "440 Hz" rather than "64". **F5** does the same for the whole patch at
+  once: it existed already but only drew parameters assigned to a morph group, and showed the
+  raw morph range ("+34") instead of a value, so the readout the original editor gives for a
+  whole patch was in practice a morph inspector. A morphed parameter reads out the span the
+  morph sweeps it across, matching the original's "46Hz-2.30kHz". **F7** is unchanged, since
+  it is about morph assignments. Both remain toggles rather than hold-to-show.
+
 - **The Filter Bank's input, output and bypass are back inside the module** (issue #35): its
   artwork was drawn 120px tall against a module that is 7 grid rows, or 105px, so the bottom
   row of controls fell outside the body. The row is rearranged rather than the module made

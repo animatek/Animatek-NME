@@ -362,6 +362,7 @@ void PatchCanvas::setPatch(Patch* p, const ModuleDescriptions* md, const ThemeDa
     selection.clear();
     selectedModule = nullptr;
     selectedSection = -1;
+    clearHover();   // hoverTarget holds a Module* into the outgoing patch
     cableSagOffsets.clear();
     activeQuickAdd = nullptr;
     showCablePreview = false;
@@ -570,6 +571,7 @@ void PatchCanvas::paint(juce::Graphics& g)
     paintModules(g, container, 0);
     paintCables(g, container, 0);
     paintOverlays(g, container, 0);
+    paintHoverBadge(g);
 
     // Cable creation preview (rubber-band cable)
     if (showCablePreview && dragState.sourceConnector != nullptr && dragState.module != nullptr)
@@ -797,10 +799,125 @@ void PatchCanvas::paintOverlay(juce::Graphics& g, const Module& m, juce::Rectang
                        static_cast<float>(td.height) });
 }
 
-void PatchCanvas::paintOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
-                                         juce::Rectangle<int> moduleBounds, const Parameter& param)
+// Which control the cursor is over, in the same order and over the same control
+// kinds the F5 readout draws, so hovering and the readout can never disagree
+// about what is a parameter.
+bool PatchCanvas::findControlAt(juce::Point<int> canvasPos, HoverTarget& out) const
 {
-    auto text = getOverlayText(param);
+    if (patch == nullptr || themeData == nullptr)
+        return false;
+
+    const auto& container = (mySection == 1) ? patch->getPolyVoiceArea() : patch->getCommonArea();
+
+    for (auto& modulePtr : container.getModules())
+    {
+        const auto& m = *modulePtr;
+        auto bounds = getModuleBounds(m, 0);
+        if (!bounds.contains(canvasPos))
+            continue;
+
+        const auto* theme = themeData->getModuleTheme(m.getDescriptor()->componentId);
+        if (theme == nullptr)
+            return false;
+
+        const auto rel = canvasPos - bounds.getPosition();
+
+        auto hit = [&](const juce::String& componentId, juce::Rectangle<int> r) -> bool
+        {
+            if (componentId.isEmpty() || !r.contains(rel))
+                return false;
+            if (findParameter(m, componentId) == nullptr)
+                return false;
+            out.module        = &m;
+            out.componentId   = componentId;
+            out.controlBounds = r.translated(bounds.getX(), bounds.getY()).toFloat();
+            out.moduleBounds  = bounds;
+            return true;
+        };
+
+        for (const auto& tk : theme->knobs)
+            if (hit(tk.componentId, { tk.x, tk.y, tk.size, tk.size })) return true;
+        for (const auto& ts : theme->sliders)
+            if (hit(ts.componentId, { ts.x, ts.y, ts.width, ts.height })) return true;
+        for (const auto& tb : theme->buttons)
+            if (hit(tb.componentId, { tb.x, tb.y, tb.width, tb.height })) return true;
+        for (const auto& td : theme->textDisplays)
+            if (hit(td.componentId, { td.x, td.y, td.width, td.height })) return true;
+
+        return false;   // over the module but not over one of its controls
+    }
+    return false;
+}
+
+void PatchCanvas::mouseMove(const juce::MouseEvent& e)
+{
+    HoverTarget target;
+    const bool found = findControlAt(screenToCanvas(e.getPosition()), target);
+
+    if (found && target.sameControlAs(hoverTarget))
+    {
+        hoverTarget = target;   // same control, refresh its bounds after a zoom
+        return;
+    }
+
+    const bool wasVisible = hoverBadgeVisible;
+    hoverBadgeVisible = false;
+    hoverTarget = found ? target : HoverTarget{};
+
+    // Delayed like a tooltip: without it, dragging the cursor across a module
+    // flashes a box over every knob it crosses.
+    if (found)
+        startTimer(hoverDelayMs);
+    else
+        stopTimer();
+
+    if (wasVisible)
+        repaint();
+}
+
+void PatchCanvas::mouseExit(const juce::MouseEvent&)
+{
+    clearHover();
+}
+
+void PatchCanvas::clearHover()
+{
+    stopTimer();
+    hoverTarget = HoverTarget{};
+    if (hoverBadgeVisible)
+    {
+        hoverBadgeVisible = false;
+        repaint();
+    }
+}
+
+void PatchCanvas::timerCallback()
+{
+    stopTimer();
+    if (hoverTarget.module == nullptr)
+        return;
+    hoverBadgeVisible = true;
+    repaint();
+}
+
+void PatchCanvas::paintHoverBadge(juce::Graphics& g)
+{
+    // The F5 readout already covers every control, so a hover box on top of it
+    // would just be a second copy of the same number.
+    if (!hoverBadgeVisible || hoverTarget.module == nullptr
+        || overlayMode == OverlayMode::Values)
+        return;
+
+    if (auto* param = findParameter(*hoverTarget.module, hoverTarget.componentId))
+        paintOverlayBadge(g, hoverTarget.controlBounds, hoverTarget.moduleBounds, *param,
+                          getParameterValueText(*param));
+}
+
+void PatchCanvas::paintOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
+                                         juce::Rectangle<int> moduleBounds, const Parameter& param,
+                                         const juce::String& textOverride)
+{
+    auto text = textOverride.isNotEmpty() ? textOverride : getOverlayText(param);
     if (text.isEmpty())
         return;
 
@@ -846,27 +963,33 @@ juce::String PatchCanvas::getOverlayText(const Parameter& param) const
         return (group >= 0 && group < 4) ? "M" + juce::String(group + 1) : juce::String();
 
     if (overlayMode == OverlayMode::Values)
-    {
-        // Values are read out in the parameter's own units, the same way its
-        // display box would show them, so a cutoff reads "440 Hz" rather than
-        // "64". A morphed parameter reads out the span the morph sweeps it
-        // across, from where it sits now to where the morph takes it, which is
-        // what the original editor shows ("46Hz-2.30kHz").
-        auto* pd = param.getDescriptor();
-        if (pd == nullptr)
-            return juce::String(param.getValue());
-
-        const auto fmt = [pd](int v) { return ValueFormatters::format(pd->formatter, v); };
-        const auto start = fmt(param.getValue());
-        if (group < 0 || group >= 4 || param.getMorphRange() == 0)
-            return start;
-
-        const int end = juce::jlimit(pd->minValue, pd->maxValue,
-                                     param.getValue() + param.getMorphRange());
-        return start + "-" + fmt(end);
-    }
+        return getParameterValueText(param);
 
     return {};
+}
+
+// Values are read out in the parameter's own units, the same way its display box
+// would show them, so a cutoff reads "440 Hz" rather than "64". A morphed
+// parameter reads out the span the morph sweeps it across, from where it sits to
+// where the morph takes it, which is what the original editor shows
+// ("46Hz-2.30kHz"). Shared by the F5 readout and the hover hint box so the two
+// can never word the same parameter differently.
+juce::String PatchCanvas::getParameterValueText(const Parameter& param) const
+{
+    auto* pd = param.getDescriptor();
+    if (pd == nullptr)
+        return juce::String(param.getValue());
+
+    const auto fmt = [pd](int v) { return ValueFormatters::format(pd->formatter, v); };
+    const auto start = fmt(param.getValue());
+
+    const int group = param.getMorphGroup();
+    if (group < 0 || group >= 4 || param.getMorphRange() == 0)
+        return start;
+
+    const int end = juce::jlimit(pd->minValue, pd->maxValue,
+                                 param.getValue() + param.getMorphRange());
+    return start + "-" + fmt(end);
 }
 
 juce::Colour PatchCanvas::wireframeInk(const Module& m) const
@@ -4403,6 +4526,8 @@ void PatchCanvas::mouseDoubleClick(const juce::MouseEvent& e)
 void PatchCanvas::mouseDown(const juce::MouseEvent& e)
 {
     grabKeyboardFocus();
+    // A hint box left standing over a knob being turned would just be stale.
+    clearHover();
 
     if (patch == nullptr || themeData == nullptr)
         return;

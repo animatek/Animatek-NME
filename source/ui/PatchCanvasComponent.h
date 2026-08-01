@@ -15,7 +15,8 @@
 #include <random>
 
 class PatchCanvas : public juce::Component,
-                     public juce::DragAndDropTarget
+                     public juce::DragAndDropTarget,
+                     private juce::Timer
 {
 public:
     // Callback types
@@ -69,6 +70,8 @@ public:
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
     void mouseDoubleClick(const juce::MouseEvent& e) override;
+    void mouseMove(const juce::MouseEvent& e) override;
+    void mouseExit(const juce::MouseEvent& e) override;
     bool keyPressed(const juce::KeyPress& key) override;
     void openQuickAddAtMouse();
 
@@ -168,9 +171,33 @@ private:
     void paintResetButtons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintStaticIcons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintOverlay(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
+
+    // Hovering a control reads its value out in a hint box, the way the original
+    // editor does, without having to hold the whole patch's readout open.
+    struct HoverTarget
+    {
+        const Module* module = nullptr;
+        juce::String componentId;
+        juce::Rectangle<float> controlBounds;   // canvas coordinates
+        juce::Rectangle<int>   moduleBounds;
+        bool sameControlAs(const HoverTarget& o) const
+        { return module == o.module && componentId == o.componentId; }
+    };
+    bool findControlAt(juce::Point<int> canvasPos, HoverTarget& out) const;
+    void clearHover();
+    void timerCallback() override;
+    void paintHoverBadge(juce::Graphics& g);
+
+    HoverTarget hoverTarget;
+    bool hoverBadgeVisible = false;
+    static constexpr int hoverDelayMs = 400;
+    // textOverride lets the hover box say something the current overlay mode
+    // wouldn't; empty means "whatever the mode reads out".
     void paintOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
-                                juce::Rectangle<int> moduleBounds, const Parameter& param);
+                                juce::Rectangle<int> moduleBounds, const Parameter& param,
+                                const juce::String& textOverride = {});
     juce::String getOverlayText(const Parameter& param) const;
+    juce::String getParameterValueText(const Parameter& param) const;
     void paintModuleFallback(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds);
 
     // Find parameter value by component-id (e.g. "p1")
