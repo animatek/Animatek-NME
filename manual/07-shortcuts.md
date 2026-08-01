@@ -40,7 +40,7 @@ On macOS, `Ctrl` is `Cmd`.
 |----------|--------|
 | `Enter`, double-click | Quick Add module at mouse position |
 | `F1` | Module help for the hovered/selected module |
-| `F5` | Toggle morph values overlay |
+| `F5` | Toggle parameter values overlay (morphed ones show their range) |
 | `F7` | Toggle morph groups overlay |
 | `Z` | Zoom to selection (or reset when nothing selected) |
 | `Shift+Z` | Reset zoom to 100% |

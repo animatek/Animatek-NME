@@ -207,22 +207,22 @@ PatchCanvas::PatchCanvas()
     setWantsKeyboardFocus(true);
 }
 
-bool PatchCanvas::handleMorphOverlayKey(const juce::KeyPress& key, juce::Component& repaintTarget)
+bool PatchCanvas::handleOverlayKey(const juce::KeyPress& key, juce::Component& repaintTarget)
 {
     if (key == juce::KeyPress::F5Key)
     {
-        morphOverlayMode = (morphOverlayMode == MorphOverlayMode::Values)
-            ? MorphOverlayMode::Off
-            : MorphOverlayMode::Values;
+        overlayMode = (overlayMode == OverlayMode::Values)
+            ? OverlayMode::Off
+            : OverlayMode::Values;
         repaintTarget.repaint();
         return true;
     }
 
     if (key == juce::KeyPress::F7Key)
     {
-        morphOverlayMode = (morphOverlayMode == MorphOverlayMode::Groups)
-            ? MorphOverlayMode::Off
-            : MorphOverlayMode::Groups;
+        overlayMode = (overlayMode == OverlayMode::MorphGroups)
+            ? OverlayMode::Off
+            : OverlayMode::MorphGroups;
         repaintTarget.repaint();
         return true;
     }
@@ -569,7 +569,7 @@ void PatchCanvas::paint(juce::Graphics& g)
 
     paintModules(g, container, 0);
     paintCables(g, container, 0);
-    paintMorphOverlays(g, container, 0);
+    paintOverlays(g, container, 0);
 
     // Cable creation preview (rubber-band cable)
     if (showCablePreview && dragState.sourceConnector != nullptr && dragState.module != nullptr)
@@ -701,9 +701,9 @@ void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& contain
     }
 }
 
-void PatchCanvas::paintMorphOverlays(juce::Graphics& g, const ModuleContainer& container, int yOffset)
+void PatchCanvas::paintOverlays(juce::Graphics& g, const ModuleContainer& container, int yOffset)
 {
-    if (morphOverlayMode == MorphOverlayMode::Off || themeData == nullptr)
+    if (overlayMode == OverlayMode::Off || themeData == nullptr)
         return;
 
     for (auto& modulePtr : container.getModules())
@@ -714,7 +714,7 @@ void PatchCanvas::paintMorphOverlays(juce::Graphics& g, const ModuleContainer& c
             continue;
 
         if (const auto* theme = themeData->getModuleTheme(m.getDescriptor()->componentId))
-            paintMorphOverlay(g, m, rect, *theme);
+            paintOverlay(g, m, rect, *theme);
     }
 }
 
@@ -741,9 +741,9 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int sect
         paintDrumSynthExtras(g, m, bounds);
 }
 
-void PatchCanvas::paintMorphOverlay(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
+void PatchCanvas::paintOverlay(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
 {
-    if (morphOverlayMode == MorphOverlayMode::Off)
+    if (overlayMode == OverlayMode::Off)
         return;
 
     juce::StringArray seen;
@@ -754,9 +754,18 @@ void PatchCanvas::paintMorphOverlay(juce::Graphics& g, const Module& m, juce::Re
             return;
 
         seen.add(componentId);
-        if (auto* param = findParameter(m, componentId))
-            if (param->getMorphGroup() >= 0 && param->getMorphGroup() < 4)
-                paintMorphOverlayBadge(g, controlBounds, bounds, *param);
+        auto* param = findParameter(m, componentId);
+        if (param == nullptr)
+            return;
+
+        // F7 is about morph assignments, so it only has something to say about
+        // assigned parameters. F5 reads out the whole patch, as the original
+        // editor's does, so it draws every control (issue #32).
+        const bool assigned = param->getMorphGroup() >= 0 && param->getMorphGroup() < 4;
+        if (overlayMode == OverlayMode::MorphGroups && !assigned)
+            return;
+
+        paintOverlayBadge(g, controlBounds, bounds, *param);
     };
 
     for (const auto& tk : theme.knobs)
@@ -788,16 +797,19 @@ void PatchCanvas::paintMorphOverlay(juce::Graphics& g, const Module& m, juce::Re
                        static_cast<float>(td.height) });
 }
 
-void PatchCanvas::paintMorphOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
+void PatchCanvas::paintOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
                                          juce::Rectangle<int> moduleBounds, const Parameter& param)
 {
-    auto text = getMorphOverlayText(param);
+    auto text = getOverlayText(param);
     if (text.isEmpty())
         return;
 
     g.setFont(juce::FontOptions("Fira Sans", 10.0f, juce::Font::bold));
     const float badgeH = 14.0f;
-    const float badgeW = juce::jlimit(18.0f, 70.0f, static_cast<float>(text.length()) * 6.0f + 8.0f);
+    // Measured rather than estimated from the character count: a formatted value
+    // ("2.30kHz", "-63.5 dB") is far wider than the "+34" this used to show.
+    const float badgeW = juce::jlimit(18.0f, 82.0f,
+                                      g.getCurrentFont().getStringWidthFloat(text) + 10.0f);
     float bx = controlBounds.getCentreX() - badgeW * 0.5f;
     float by = controlBounds.getY() - badgeH - 2.0f;
 
@@ -808,10 +820,13 @@ void PatchCanvas::paintMorphOverlayBadge(juce::Graphics& g, juce::Rectangle<floa
     by = juce::jlimit(module.getY(), module.getBottom() - badgeH, by);
 
     juce::Rectangle<float> badge(bx, by, badgeW, badgeH);
+    // A morphed parameter keeps its group's colour, which is information worth
+    // carrying. Everything else gets a neutral box: with the whole patch read
+    // out at once, white badges everywhere drowned the modules underneath.
     const int group = param.getMorphGroup();
     const juce::Colour fillColor = (group >= 0 && group < 4)
         ? activeScheme_.morphColor[group].withAlpha(0.92f)
-        : juce::Colours::white;
+        : juce::Colour(0xff1c2229).withAlpha(0.92f);
     const juce::Colour textColor = fillColor.getBrightness() > 0.55f
         ? juce::Colours::black.withAlpha(0.85f)
         : juce::Colours::white;
@@ -823,19 +838,32 @@ void PatchCanvas::paintMorphOverlayBadge(juce::Graphics& g, juce::Rectangle<floa
     g.drawText(text, badge.toNearestInt(), juce::Justification::centred, false);
 }
 
-juce::String PatchCanvas::getMorphOverlayText(const Parameter& param) const
+juce::String PatchCanvas::getOverlayText(const Parameter& param) const
 {
     const int group = param.getMorphGroup();
-    if (group < 0 || group >= 4)
-        return {};
 
-    if (morphOverlayMode == MorphOverlayMode::Groups)
-        return "M" + juce::String(group + 1);
+    if (overlayMode == OverlayMode::MorphGroups)
+        return (group >= 0 && group < 4) ? "M" + juce::String(group + 1) : juce::String();
 
-    if (morphOverlayMode == MorphOverlayMode::Values)
+    if (overlayMode == OverlayMode::Values)
     {
-        const int range = param.getMorphRange();
-        return (range >= 0 ? "+" : "") + juce::String(range);
+        // Values are read out in the parameter's own units, the same way its
+        // display box would show them, so a cutoff reads "440 Hz" rather than
+        // "64". A morphed parameter reads out the span the morph sweeps it
+        // across, from where it sits now to where the morph takes it, which is
+        // what the original editor shows ("46Hz-2.30kHz").
+        auto* pd = param.getDescriptor();
+        if (pd == nullptr)
+            return juce::String(param.getValue());
+
+        const auto fmt = [pd](int v) { return ValueFormatters::format(pd->formatter, v); };
+        const auto start = fmt(param.getValue());
+        if (group < 0 || group >= 4 || param.getMorphRange() == 0)
+            return start;
+
+        const int end = juce::jlimit(pd->minValue, pd->maxValue,
+                                     param.getValue() + param.getMorphRange());
+        return start + "-" + fmt(end);
     }
 
     return {};
@@ -6161,10 +6189,10 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
     // F5 / F7 -> morph overlay display
     if (auto* parent = findParentComponentOfClass<PatchCanvasComponent>())
     {
-        if (handleMorphOverlayKey(key, *parent))
+        if (handleOverlayKey(key, *parent))
             return true;
     }
-    else if (handleMorphOverlayKey(key, *this))
+    else if (handleOverlayKey(key, *this))
     {
         return true;
     }
@@ -7046,7 +7074,7 @@ PatchCanvasComponent::PatchCanvasComponent()
 
 bool PatchCanvasComponent::keyPressed(const juce::KeyPress& key)
 {
-    return PatchCanvas::handleMorphOverlayKey(key, *this);
+    return PatchCanvas::handleOverlayKey(key, *this);
 }
 
 void PatchCanvasComponent::resized()

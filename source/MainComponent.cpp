@@ -1084,7 +1084,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
   if (handleFloaterShortcut(key))
     return true;
   return mainLayout != nullptr
-      && PatchCanvas::handleMorphOverlayKey(key, mainLayout->getCanvas());
+      && PatchCanvas::handleOverlayKey(key, mainLayout->getCanvas());
 }
 
 juce::StringArray MainComponent::getMenuBarNames() {
@@ -3248,7 +3248,7 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "CANVAS\n"
       "  Enter, Double-click Quick Add module at mouse\n"
       "  F1                  Module help (hovered/selected)\n"
-      "  F5                  Morph values overlay\n"
+      "  F5                  Parameter values overlay\n"
       "  F7                  Morph groups overlay\n"
       "  Z                   Zoom to selection / reset\n"
       "  Shift+Z             Reset zoom to 100%\n"

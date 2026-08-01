@@ -50,7 +50,7 @@ public:
     ~PatchCanvas();
 
     void shakeCables();
-    static bool handleMorphOverlayKey(const juce::KeyPress& key, juce::Component& repaintTarget);
+    static bool handleOverlayKey(const juce::KeyPress& key, juce::Component& repaintTarget);
 
     void setTheme(const ColorScheme& cs) { activeScheme_ = cs; repaint(); }
     void setTheme(const ColorScheme& cs, ThemeId id) { activeScheme_ = cs; activeThemeId_ = id; repaint(); }
@@ -145,7 +145,7 @@ public:
 private:
     void paintModules(juce::Graphics& g, const ModuleContainer& container, int yOffset);
     void paintCables(juce::Graphics& g, const ModuleContainer& container, int yOffset);
-    void paintMorphOverlays(juce::Graphics& g, const ModuleContainer& container, int yOffset);
+    void paintOverlays(juce::Graphics& g, const ModuleContainer& container, int yOffset);
     juce::Rectangle<int> getModuleBounds(const Module& m, int yOffset) const;
     juce::Point<int> getConnectorPosition(const Module& m, const Connector& conn, int yOffset) const;
 
@@ -167,10 +167,10 @@ private:
     void paintCustomDisplays(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintResetButtons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintStaticIcons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
-    void paintMorphOverlay(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
-    void paintMorphOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
+    void paintOverlay(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
+    void paintOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
                                 juce::Rectangle<int> moduleBounds, const Parameter& param);
-    juce::String getMorphOverlayText(const Parameter& param) const;
+    juce::String getOverlayText(const Parameter& param) const;
     void paintModuleFallback(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds);
 
     // Find parameter value by component-id (e.g. "p1")
@@ -337,8 +337,11 @@ private:
     float zoomLevel = 1.0f;
     ColorScheme activeScheme_ = kDarkTheme;
     ThemeId activeThemeId_ = ThemeId::Dark;
-    enum class MorphOverlayMode { Off, Groups, Values };
-    inline static MorphOverlayMode morphOverlayMode = MorphOverlayMode::Off;
+    // Hint boxes over the controls, as the original editor's function keys give:
+    // F5 every parameter's value, F7 the morph group of the assigned ones. The
+    // mode is editor-wide, so both areas and every window agree.
+    enum class OverlayMode { Off, MorphGroups, Values };
+    inline static OverlayMode overlayMode = OverlayMode::Off;
 
     // Editor-wide settings (shared across all PatchCanvas instances)
     inline static float cableOpacity   = 0.80f; // 0..1
