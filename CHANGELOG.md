@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.12.0 — 2026-08-01
+
+- **macOS builds run on High Sierra again**: the package claimed Catalina as its minimum,
+  which left older Intel Macs out for no technical reason, since the editor uses nothing
+  newer and the vendored JUCE goes back further still. Release builds now target macOS 10.13,
+  the oldest the current toolchain can deploy to, and packaging verifies both the bundle's
+  minimum version and the Intel binary's own, so the metadata cannot drift back unnoticed.
+
 - **Parameter values read out on hover and on F5** (issue #32). Resting the cursor on a knob,
   slider, button or display box shows its value in a hint box, in the parameter's own units,
   so a cutoff reads "440 Hz" rather than "64". **F5** does the same for the whole patch at
