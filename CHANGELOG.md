@@ -2,12 +2,16 @@
 
 ## Unreleased
 
-- **The sequencers' arrow buttons step both ways again** (issue #34): the four sequencer
-  modules draw their arrows as a left/right pair, but the click was always split top/bottom,
-  so which way the value moved depended on whether the upper or lower half of an arrow was
-  hit, and both arrows appeared to do the same thing. Landscape arrow pairs are now split on
-  x. Only the sequencers were affected; the other 50 arrow pairs in the editor are stacked
-  and were always correct.
+- **Two sequencer fixes** (issue #34). **The arrow buttons step both ways again**: the four
+  sequencer modules draw their arrows as a left/right pair, but the click was always split
+  top/bottom, so which way the value moved depended on whether the upper or lower half of an
+  arrow was hit, and both arrows appeared to do the same thing. Landscape arrow pairs are now
+  split on x. Only the sequencers were affected; the other 50 arrow pairs in the editor are
+  stacked and were always correct. **Clr now clears the steps rather than the sequencer**: it
+  reset every parameter to its minimum, which took the step count down to 1 and the loop and
+  transport settings with it. It now empties only the per-step values, the same set Rnd
+  randomises, so Note Sequencer A and B, the Event Sequencer and the Control Sequencer all
+  keep their step count, loop and transport settings when a pattern is cleared.
 
 - **Per-module DSP cost is visible again** (issue #31): every module's share of the DSP
   budget now shows where you choose a module and where you inspect one. It appears next to

@@ -13,6 +13,34 @@ static juce::Colour contrastingInk(juce::Colour background)
         ? juce::Colours::black : juce::Colours::white;
 }
 
+// A sequencer's per-step value controls, as opposed to its step count, its loop
+// setting and its transport buttons. Both Rnd and Clr act on exactly these, so
+// the rule lives in one place: they used to disagree, and Clr flattening the
+// step count to 1 was the visible half of that (issue #34).
+//   NoteSeqA/CtrlSeq → the vertical sliders
+//   NoteSeqB         → the note ids inside the piano-roll editor
+//   EventSeq         → binary step toggles, named "seq N, step M", which is what
+//                      keeps the active/gate transport toggles out of it
+static std::set<juce::String> sequencerStepIds(const ModuleTheme& theme)
+{
+    std::set<juce::String> ids;
+    for (auto& ts : theme.sliders)
+        ids.insert(ts.componentId);
+    for (auto& cd : theme.customDisplays)
+        if (cd.type == "note-seq-editor")
+            for (auto& id : cd.noteStepIds)
+                if (id.isNotEmpty())
+                    ids.insert(id);
+    return ids;
+}
+
+static bool isSequencerStepParam(const ParameterDescriptor& pd,
+                                 const std::set<juce::String>& stepIds)
+{
+    return stepIds.count(pd.componentId) != 0
+        || (pd.name.startsWithIgnoreCase("seq ") && pd.name.containsIgnoreCase("step "));
+}
+
 // Decoration bitmap cache: iconName ("decoration-N") → loaded juce::Image.
 // PNGs are embedded via juce_add_binary_data in CMakeLists.txt.
 static juce::Image loadDecorationImage(const juce::String& iconName)
@@ -4580,12 +4608,16 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         }
                         else if (tb.callMethod == "clear")
                         {
-                            // Reset all parameters to their minimum, including binary
-                            // step toggles (EventSeq, etc). Loop/play/rec also reset
-                            // to 0 — equivalent to a fresh sequencer.
+                            // Clears the steps, not the sequencer: it used to reset
+                            // every parameter to its minimum, which took the step
+                            // count down to 1 and the loop and transport settings
+                            // with it. Emptying a pattern should leave the shape of
+                            // the sequence alone (issue #34).
+                            const auto stepIds = sequencerStepIds(*theme);
                             for (auto& p : m.getParameters())
                             {
                                 auto* pd = p.getDescriptor();
+                                if (!isSequencerStepParam(*pd, stepIds)) continue;
                                 int newVal = pd->minValue;
                                 if (p.getValue() == newVal) continue;
                                 p.setValue(newVal);
@@ -4598,26 +4630,11 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         {
                             // Sequencer Rnd: randomize only per-step value controls,
                             // leaving Loop/Step-count/transport/UI custom params untouched.
-                            //   NoteSeqA → vertical sliders
-                            //   NoteSeqB → noteStepIds inside the piano-roll editor
-                            //   EventSeq → step toggles (binary), identified by name
-                            //              pattern "seq N, step M" so transport
-                            //              toggles (active/gate1/gate2) stay put.
-                            std::set<juce::String> stepIds;
-                            for (auto& ts : theme->sliders)
-                                stepIds.insert(ts.componentId);
-                            for (auto& cd : theme->customDisplays)
-                                if (cd.type == "note-seq-editor")
-                                    for (auto& id : cd.noteStepIds)
-                                        if (id.isNotEmpty())
-                                            stepIds.insert(id);
+                            const auto stepIds = sequencerStepIds(*theme);
                             for (auto& p : m.getParameters())
                             {
                                 auto* pd = p.getDescriptor();
-                                bool isStep = stepIds.count(pd->componentId) != 0
-                                              || (pd->name.startsWithIgnoreCase("seq ")
-                                                  && pd->name.containsIgnoreCase("step "));
-                                if (!isStep) continue;
+                                if (!isSequencerStepParam(*pd, stepIds)) continue;
                                 if (pd->maxValue - pd->minValue <= 0) continue;
                                 int rndVal = juce::Random::getSystemRandom().nextInt(pd->maxValue - pd->minValue + 1) + pd->minValue;
                                 p.setValue(rndVal);
