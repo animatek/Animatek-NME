@@ -57,6 +57,7 @@ private:
     juce::Label nameLabel;
     juce::TextEditor nameEditor;
     juce::Label sectionLabel;
+    juce::Label dspLabel;      // selected module's DSP cost, right of sectionLabel
 
     // Assignments list (morphs + knobs + CCs)
     juce::Viewport morphViewport;

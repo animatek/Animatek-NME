@@ -97,8 +97,14 @@ void QuickAddPopup::paint(juce::Graphics& g)
         // Module fullname
         g.setColour(i == selectedIdx ? juce::Colours::white : AppTheme::palette().textSecondary);
         g.setFont(juce::Font(juce::FontOptions(13.0f)));
-        g.drawText(entry.desc->fullname, row.withTrimmedLeft(92).withTrimmedRight(26),
+        g.drawText(entry.desc->fullname, row.withTrimmedLeft(92).withTrimmedRight(70),
                    juce::Justification::centredLeft);
+
+        // DSP cost, so the pick can be made on price as well as name (issue #31)
+        g.setColour(AppTheme::palette().textMuted);
+        g.setFont(juce::Font(juce::FontOptions(10.0f)));
+        g.drawText(formatDspCost(entry.desc->cycles), row.withTrimmedRight(28).withWidth(popupWidth - 28),
+                   juce::Justification::centredRight);
 
         // Favorite star: gold when favorite, outline hint on the selected row
         const bool fav = isFavorite(entry.desc->name);

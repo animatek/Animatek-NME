@@ -5244,7 +5244,14 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
 
             if (auto* desc = moduleDescs->getModuleByName(moduleName))
                 if (desc->instantiable)
-                    target.addItem(1000 + desc->index, label != nullptr ? juce::String(label) : desc->fullname);
+                {
+                    // The original editor prints each module's DSP share right
+                    // in this menu, which is how you pick a cheaper alternative
+                    // before placing it (issue #31).
+                    juce::String text = label != nullptr ? juce::String(label) : desc->fullname;
+                    target.addItem(1000 + desc->index,
+                                   text + " (" + formatDspCost(desc->cycles) + ")");
+                }
         };
 
         auto addSubMenuIfNotEmpty = [&addMenu](const juce::String& title, juce::PopupMenu& subMenu)

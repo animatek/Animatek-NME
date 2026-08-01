@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Per-module DSP cost is visible again** (issue #31): every module's share of the DSP
+  budget now shows where you choose a module and where you inspect one. It appears next to
+  each entry in the right-click Add Module menu ("Audio In (2.2%)"), in the module browser,
+  on every Quick Add row, and on the Inspector's header for the selected module. The figure
+  is rounded to two significant figures exactly as the original Clavia editor prints it, so
+  a patch optimised against the hardware editor reads the same numbers here: all seven values
+  quoted in the issue reproduce to the digit. Fixed alongside it, the Load meter was left
+  showing the previous patch's cost after any edit that did not come from the canvas, since
+  the shared repaint path redrew the meter without recomputing it; the MCP bridge and the
+  Mutator both hit that.
+
+- **The DrumSynth preset library moved onto the module's own right-click menu**: a new
+  **Preset** submenu lists every preset, with a check mark on the one in use. Clicking a name
+  recalls it and clicking the small x at the right of the row deletes it, with the built-in
+  presets carrying no x. Saving is in the same list instead of hidden behind a right-click on
+  the little preset display box, which previously offered deleting but no way to recall.
+
 - **About box** (About > About Animatek NME): version and build date, a "Copy version" button
   that puts the version, OS and JUCE build on the clipboard for bug reports, and the credits.
   The credits live in `data/credits.txt` and cover the original nmedit/Nomad developers, the

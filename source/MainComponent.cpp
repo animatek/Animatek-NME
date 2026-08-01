@@ -3321,10 +3321,16 @@ void MainComponent::rebuildUndoContext(int slot)
         // and the SlotWindow's own canvas was never told to redraw — the
         // model updated correctly, but nothing visibly changed until some
         // unrelated event (e.g. clicking the window) forced a repaint.
+        // The load figures are recomputed here rather than at each call site:
+        // repainting the header bar only redraws whatever load it was last told,
+        // so a path that adds or deletes modules without its own explicit
+        // update — the MCP bridge, the Mutator — left the meter reading the
+        // previous patch's cost (issue #31).
         [this, slot]() {
             if (slot == activeSlot) {
                 mainLayout->getCanvas().repaintCanvas();
                 mainLayout->getInspector().refreshMorphList();
+                updateDspLoadDisplay();
                 mainLayout->getHeaderBar().repaint();
                 if (knobFloaterWindow)
                     knobFloaterWindow->refresh();
@@ -3333,6 +3339,7 @@ void MainComponent::rebuildUndoContext(int slot)
                 auto& content = slotWindows[slot]->getContent();
                 content.getCanvas().repaintCanvas();
                 content.getInspector().refreshMorphList();
+                updateSlotWindowDspLoad(slot);
                 content.getHeaderBar().repaint();
             }
         },

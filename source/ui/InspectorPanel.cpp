@@ -616,6 +616,12 @@ InspectorPanel::InspectorPanel()
     sectionLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(sectionLabel);
 
+    // Shares the section row, right-aligned: what this one module costs the DSP
+    // while the header bar shows what the whole patch costs (issue #31).
+    dspLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
+    dspLabel.setJustificationType(juce::Justification::centredRight);
+    addAndMakeVisible(dspLabel);
+
     // Assignments list (morphs + knobs + CCs)
     assignmentsList = std::make_unique<AssignmentsListComponent>();
     assignmentsList->onRemove = [this](Module* mod, int section, int paramIndex, int /*group*/)
@@ -660,6 +666,7 @@ void InspectorPanel::applyTheme()
     titleLabel.setColour(juce::Label::textColourId, theme.textPrimary);
     nameLabel.setColour(juce::Label::textColourId, theme.textMuted);
     sectionLabel.setColour(juce::Label::textColourId, theme.textMuted);
+    dspLabel.setColour(juce::Label::textColourId, theme.textMuted);
     nameEditor.setColour(juce::TextEditor::backgroundColourId, theme.inputBackground);
     nameEditor.setColour(juce::TextEditor::textColourId, theme.textPrimary);
     nameEditor.setColour(juce::TextEditor::outlineColourId, theme.borderColor);
@@ -688,6 +695,7 @@ void InspectorPanel::setPatch(Patch* p)
     {
         titleLabel.setText("Assignments", juce::dontSendNotification);
         sectionLabel.setText("All modules", juce::dontSendNotification);
+        dspLabel.setText({}, juce::dontSendNotification);
         nameLabel.setVisible(false);
         nameEditor.setVisible(false);
         assignmentsList->setPatchWide(p);
@@ -706,6 +714,8 @@ void InspectorPanel::setModule(Module* module, int section)
     auto* desc = module->getDescriptor();
     titleLabel.setText(desc ? desc->fullname : "Module", juce::dontSendNotification);
     sectionLabel.setText(section == 1 ? "Poly" : "Common", juce::dontSendNotification);
+    dspLabel.setText(desc ? formatDspCost(desc->cycles) + " DSP" : juce::String(),
+                     juce::dontSendNotification);
     nameLabel.setVisible(true);
     nameEditor.setVisible(true);
     nameEditor.setEnabled(true);
@@ -725,6 +735,7 @@ void InspectorPanel::clearModule()
     currentSection = -1;
     nameEditor.setText("", juce::dontSendNotification);
     nameEditor.setEnabled(false);
+    dspLabel.setText({}, juce::dontSendNotification);
 
     if (currentPatch != nullptr)
     {
@@ -853,7 +864,12 @@ void InspectorPanel::resized()
 
     const int knobMapSpace = currentPatch != nullptr && getWidth() >= 170 ? 116 : 0;
     titleLabel.setBounds(x, y, juce::jmax(0, w - knobMapSpace), rowH);   y += rowH + 2;
-    sectionLabel.setBounds(x, y, w, 14);   y += 14 + 4;
+    // The cost shares the section row, right-aligned but kept clear of the knob
+    // map, which starts on the title row and hangs down over this one.
+    const int rowW = juce::jmax(0, w - knobMapSpace);
+    const int dspW = juce::jmin(70, rowW / 2);
+    sectionLabel.setBounds(x, y, rowW - dspW, 14);
+    dspLabel.setBounds(x + rowW - dspW, y, dspW, 14);   y += 14 + 4;
 
     if (currentModule != nullptr)
     {

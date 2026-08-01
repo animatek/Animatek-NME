@@ -30,12 +30,12 @@ void ModuleBrowserPanel::ModuleItem::paintItem(juce::Graphics& g, int width, int
     g.setFont(juce::Font(juce::FontOptions(13.0f)));
     g.drawText(descriptor->fullname, 4, 0, width - 80, height, juce::Justification::centredLeft);
 
-    // Cycles cost on the right
+    // DSP cost on the right, formatted as the original editor prints it
     if (descriptor->cycles > 0)
     {
         g.setColour(AppTheme::palette().textMuted);
         g.setFont(juce::Font(juce::FontOptions(11.0f)));
-        g.drawText(juce::String(descriptor->cycles, 1), width - 70, 0, 66, height,
+        g.drawText(formatDspCost(descriptor->cycles), width - 70, 0, 66, height,
                    juce::Justification::centredRight);
     }
 }
