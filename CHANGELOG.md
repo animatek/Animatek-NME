@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The sequencers' arrow buttons step both ways again** (issue #34): the four sequencer
+  modules draw their arrows as a left/right pair, but the click was always split top/bottom,
+  so which way the value moved depended on whether the upper or lower half of an arrow was
+  hit, and both arrows appeared to do the same thing. Landscape arrow pairs are now split on
+  x. Only the sequencers were affected; the other 50 arrow pairs in the editor are stacked
+  and were always correct.
+
 - **Per-module DSP cost is visible again** (issue #31): every module's share of the DSP
   budget now shows where you choose a module and where you inspect one. It appears next to
   each entry in the right-click Add Module menu ("Audio In (2.2%)"), in the module browser,

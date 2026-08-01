@@ -4724,8 +4724,15 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         int newValue;
                         if (tb.isIncrement)
                         {
-                            // Top half → +1, bottom half → -1
-                            bool goUp = relPos.y < tb.y + tb.height / 2;
+                            // A landscape pair is drawn as left and right arrows,
+                            // so it has to be split on x. Splitting it on y like a
+                            // stacked pair made both arrows step the same way,
+                            // decided only by which half of the arrow was hit
+                            // (issue #34). The four sequencers are the only
+                            // modules with landscape arrows.
+                            const bool goUp = tb.landscape
+                                ? (relPos.x >= tb.x + tb.width / 2)
+                                : (relPos.y <  tb.y + tb.height / 2);
                             newValue = juce::jlimit(pd->minValue, pd->maxValue,
                                                     param->getValue() + (goUp ? 1 : -1));
                         }
