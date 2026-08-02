@@ -32,16 +32,16 @@ namespace
     // Layout constants for section widths
     constexpr int padL = 8;
     constexpr int sepGap = 14;
-    constexpr int patchLblW = 44;
+    constexpr int patchLblW = 48;
     constexpr int patchNameW = 150;
     constexpr int saveBtnW = 28;  // Quick save button width
     constexpr int patchSecW = patchLblW + patchNameW + saveBtnW + 8;  // +8 for spacing
-    constexpr int voicesLblW = 50;
+    constexpr int voicesLblW = 54;
     constexpr int voicesValW = 32;
     constexpr int arrowBtnW = 16;
     constexpr int voicesSecW = voicesLblW + voicesValW + arrowBtnW;
-    constexpr int loadLblW = 36;
-    constexpr int loadBarTotalW = 70;
+    constexpr int loadLblW = 40;
+    constexpr int loadBarTotalW = 74;
     constexpr int loadSecW = loadLblW + loadBarTotalW;
 }
 
@@ -53,7 +53,7 @@ PatchHeaderBar::PatchHeaderBar()
     patchNameEditor->setColour(juce::Label::backgroundColourId, AppTheme::palette().inputBackground);
     patchNameEditor->setColour(juce::Label::textColourId, juce::Colours::white);
     patchNameEditor->setColour(juce::Label::outlineColourId, AppTheme::palette().borderColor);
-    patchNameEditor->setFont(juce::FontOptions(12.0f));
+    patchNameEditor->setFont(AppTheme::uiFont(12.0f));
     patchNameEditor->setJustificationType(juce::Justification::centredLeft);
 
     // CRITICAL: Limit input to 15 characters (16+ hangs the synth!)
@@ -345,20 +345,24 @@ void PatchHeaderBar::drawMorphKnob(juce::Graphics& g, float cx, float cy, float 
     g.drawLine(centerX + sinA * size * 0.15f, centerY - cosA * size * 0.15f,
                centerX + sinA * size * 0.4f, centerY - cosA * size * 0.4f, 2.0f);
 
-    // Label below in morph color
-    g.setColour(colour.withAlpha(0.85f));
-    g.setFont(juce::FontOptions(9.0f));
+    // Caption below in the theme's ink, not the macro colour: the dial itself
+    // already carries the colour, and green M2 was unreadable against the light
+    // Nord Classic chrome. All four read as one row this way.
+    g.setColour(AppTheme::macroLabelInk());
+    g.setFont(AppTheme::uiFont(9.0f));
+    // 12 rather than 10: the caption box has to hold the scaled font without
+    // clipping, and the bar is 48 tall so there is room below the dial.
     g.drawText(label, static_cast<int>(cx - 2), static_cast<int>(cy + size + 1),
-               static_cast<int>(size + 4), 10, juce::Justification::centred, false);
+               static_cast<int>(size + 4), 12, juce::Justification::centred, false);
 }
 
 void PatchHeaderBar::drawLoadBar(juce::Graphics& g, int x, int y, int w, int h,
                                   float percent, const juce::String& label)
 {
     // Inner label (PVA: / E:)
-    int lblW = 26;
+    int lblW = 30;
     g.setColour(AppTheme::palette().textSecondary);
-    g.setFont(juce::FontOptions(9.0f));
+    g.setFont(AppTheme::uiFont(9.0f));
     g.drawText(label, x, y, lblW, h, juce::Justification::centredLeft);
 
     int barX = x + lblW;
@@ -380,7 +384,7 @@ void PatchHeaderBar::drawLoadBar(juce::Graphics& g, int x, int y, int w, int h,
         g.fillRect(barX + 1, y + 1, fillW, h - 2);
 
         g.setColour(juce::Colours::white);
-        g.setFont(juce::FontOptions(8.0f));
+        g.setFont(AppTheme::uiFont(8.0f));
         // One decimal, matching the original Clavia editor (e.g. "47.6%"); the
         // load is a client-side estimate so a truncated integer read a hair high
         // (a 99.5%-cycle patch showing "100%").
@@ -390,7 +394,7 @@ void PatchHeaderBar::drawLoadBar(juce::Graphics& g, int x, int y, int w, int h,
     else
     {
         g.setColour(juce::Colour(0xff888888));
-        g.setFont(juce::FontOptions(8.0f));
+        g.setFont(AppTheme::uiFont(8.0f));
         g.drawText("--%", barX, y, barW, h, juce::Justification::centred);
     }
 }
@@ -422,7 +426,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
     // --- Patch Name ---
     int x = patchSecX_;
     g.setColour(AppTheme::palette().textSecondary);
-    g.setFont(juce::FontOptions(11.0f));
+    g.setFont(AppTheme::uiFont(11.0f));
     g.drawText("Patch:", x, 0, patchLblW, h, juce::Justification::centredLeft);
     x += patchLblW;
 
@@ -437,14 +441,14 @@ void PatchHeaderBar::paint(juce::Graphics& g)
 
         juce::String patchName = patch ? patch->getName() : "No Patch";
         g.setColour(juce::Colours::white);
-        g.setFont(juce::FontOptions(12.0f));
+        g.setFont(AppTheme::uiFont(12.0f));
         g.drawText(patchName, nameRect.reduced(6, 0), juce::Justification::centredLeft, true);
     }
 
     // --- Voices ---
     x = voicesSecX_;
     g.setColour(AppTheme::palette().textSecondary);
-    g.setFont(juce::FontOptions(11.0f));
+    g.setFont(AppTheme::uiFont(11.0f));
     g.drawText("Voices:", x, 0, voicesLblW, h, juce::Justification::centredLeft);
     x += voicesLblW;
 
@@ -475,7 +479,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
     // --- Load ---
     x = loadSecX_;
     g.setColour(AppTheme::palette().textSecondary);
-    g.setFont(juce::FontOptions(11.0f));
+    g.setFont(AppTheme::uiFont(11.0f));
     g.drawText("Load:", x, 0, loadLblW, h, juce::Justification::centredLeft);
 
     int barX = loadSecX_ + loadLblW;
@@ -525,7 +529,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         g.setColour(AppTheme::palette().borderColor);
         g.drawRoundedRectangle(sb.reduced(0.5f), 3.0f, 1.0f);
         g.setColour(AppTheme::palette().textSecondary);
-        g.setFont(juce::FontOptions(10.0f).withStyle("Bold"));
+        g.setFont(AppTheme::uiFont(10.0f).withStyle("Bold"));
         g.drawText("S", sb.toNearestInt(), juce::Justification::centred, false);
     }
 
@@ -537,13 +541,13 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         g.setColour(AppTheme::palette().borderColor);
         g.drawRoundedRectangle(bb.reduced(0.5f), 3.0f, 1.0f);
         g.setColour(AppTheme::palette().textSecondary);
-        g.setFont(juce::FontOptions(10.0f).withStyle("Bold"));
+        g.setFont(AppTheme::uiFont(10.0f).withStyle("Bold"));
         g.drawText("Report a bug", bb.toNearestInt(), juce::Justification::centred, false);
     }
 
     // --- Snapshot Buttons (1-8) ---
     {
-        g.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+        g.setFont(AppTheme::uiFont(9.0f).withStyle("Bold"));
         for (int i = 0; i < 8; ++i)
         {
             auto sb = getSnapshotButtonBounds(i);
@@ -572,7 +576,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             auto last = getSnapshotButtonBounds(7);
             float labelX = last.getRight() + 4.0f;
             float labelY = last.getY();
-            g.setFont(juce::FontOptions(9.0f));
+            g.setFont(AppTheme::uiFont(9.0f));
             if (snapshotInterpSeconds > 0.0f)
             {
                 g.setColour(AppTheme::palette().textSecondary);
@@ -597,7 +601,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             g.drawRoundedRectangle(fb.reduced(0.5f), 3.0f, 1.0f);
 
             // A / B end labels (dimmed until that endpoint is captured)
-            g.setFont(juce::FontOptions(8.0f).withStyle("Bold"));
+            g.setFont(AppTheme::uiFont(8.0f).withStyle("Bold"));
             g.setColour(morphHasA ? AppTheme::palette().textSecondary
                                   : AppTheme::palette().textMuted);
             g.drawText("A", juce::Rectangle<float>(fb.getX() + 2.0f, fb.getY(),
@@ -632,7 +636,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             g.drawRoundedRectangle(mb.reduced(0.5f), 2.0f, 1.0f);
             g.setColour(mutatorOpen ? contrastingInk(AppTheme::palette().buttonActive)
                                     : AppTheme::palette().textSecondary);
-            g.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+            g.setFont(AppTheme::uiFont(9.0f).withStyle("Bold"));
             g.drawText("MUT", mb.toNearestInt(), juce::Justification::centred, false);
         }
 
@@ -672,7 +676,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         g.setColour(AppTheme::palette().borderColor);
         g.drawRoundedRectangle(nameRect.toFloat(), 3.0f, 1.0f);
         g.setColour(juce::Colours::white);
-        g.setFont(juce::FontOptions(11.0f));
+        g.setFont(AppTheme::uiFont(11.0f));
         g.drawText(synthName, nameRect.reduced(4, 0), juce::Justification::centredLeft, true);
     }
 }

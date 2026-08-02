@@ -57,7 +57,7 @@ public:
     void paint(juce::Graphics& g) override
     {
         g.setColour(AppTheme::palette().textSecondary);
-        g.setFont(juce::FontOptions(12.0f));
+        g.setFont(AppTheme::uiFont(12.0f));
         g.drawText("Cable Opacity", getLocalBounds().withTrimmedRight(getWidth() - 90).reduced(6, 0),
                    juce::Justification::centredLeft);
     }
@@ -3188,7 +3188,7 @@ public:
     {
         setOpaque(true);
 
-        titleLabel.setFont(juce::Font(juce::FontOptions(15.0f)).boldened());
+        titleLabel.setFont(juce::Font(AppTheme::uiFont(15.0f)).boldened());
         titleLabel.setColour(juce::Label::textColourId, AppTheme::palette().accentActive);
         titleLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
         titleLabel.setText("Animatek NME - Beta", juce::dontSendNotification);
@@ -3202,7 +3202,7 @@ public:
         closeButton.onClick = [this]() { removeFromDesktop(); delete this; };
         addAndMakeVisible(closeButton);
 
-        bodyText.setFont(juce::Font(juce::FontOptions(13.0f)));
+        bodyText.setFont(juce::Font(AppTheme::uiFont(13.0f)));
         bodyText.setColour(juce::Label::textColourId, juce::Colour(0xffdddddd));
         bodyText.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
         bodyText.setText(

@@ -151,7 +151,7 @@ void SlotBar::paint(juce::Graphics& g)
             label += slotNames[i];
 
         g.setColour(active ? juce::Colours::white : AppTheme::palette().textSecondary);
-        g.setFont(juce::FontOptions(12.0f));
+        g.setFont(AppTheme::uiFont(12.0f));
         g.drawText(label, textArea, juce::Justification::centredLeft, true);
 
         // "LOCAL" badge: this slot's editor patch is not known to match the
@@ -163,7 +163,7 @@ void SlotBar::paint(juce::Graphics& g)
             g.setColour(juce::Colour(0xffd08a2c));
             g.fillRoundedRectangle(badge.toFloat(), 3.0f);
             g.setColour(juce::Colours::black);
-            g.setFont(juce::FontOptions(9.0f, juce::Font::bold));
+            g.setFont(AppTheme::uiFont(9.0f).withStyle("Bold"));
             g.drawText("LOCAL", badge, juce::Justification::centred);
         }
 

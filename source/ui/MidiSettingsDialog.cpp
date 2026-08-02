@@ -12,8 +12,8 @@
 
 static void styleLabel (juce::Label& l, bool section = false)
 {
-    l.setFont (section ? juce::Font (juce::FontOptions (10.0f, juce::Font::bold))
-                       : juce::Font (juce::FontOptions (12.0f)));
+    l.setFont (section ? juce::Font (AppTheme::uiFont (10.0f).withStyle ("Bold"))
+                       : juce::Font (AppTheme::uiFont (12.0f)));
     // Section headers: plain adaptive text (dark on light themes, light on dark) —
     // the bold weight carries them, no need for a wash-out accent colour.
     l.setColour (juce::Label::textColourId,       section ? AppTheme::palette().textPrimary : kText);
@@ -49,7 +49,7 @@ MidiSettingsDialog::MidiSettingsDialog()
 
     statusLabel.setColour (juce::Label::textColourId,       kDim);
     statusLabel.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
-    statusLabel.setFont (juce::Font (juce::FontOptions (12.0f)));
+    statusLabel.setFont (juce::Font (AppTheme::uiFont (12.0f)));
     statusLabel.setText ("Disconnected", juce::dontSendNotification);
     addAndMakeVisible (statusLabel);
 
@@ -157,7 +157,7 @@ void MidiSettingsDialog::paint (juce::Graphics& g)
     g.fillAll (kBg);
 
     g.setColour (AppTheme::palette().textPrimary);
-    g.setFont (juce::Font (juce::FontOptions (14.0f)).boldened());
+    g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
     g.drawText ("MIDI Settings", 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
 
     g.setColour (kSep);

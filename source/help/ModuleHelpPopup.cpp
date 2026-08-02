@@ -11,7 +11,7 @@ public:
     explicit HelpContent(const NordHelp::ModuleHelp& help)
     {
         // Module description
-        descLabel.setFont(juce::Font(juce::FontOptions(13.0f)));
+        descLabel.setFont(juce::Font(AppTheme::uiFont(13.0f)));
         descLabel.setColour(juce::Label::textColourId,       juce::Colour(0xffdddddd));
         descLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
         descLabel.setText(help.description, juce::dontSendNotification);
@@ -22,7 +22,7 @@ public:
         for (auto& p : help.params)
         {
             auto* nl = names.add(std::make_unique<juce::Label>());
-            nl->setFont(juce::Font(juce::FontOptions(12.0f)).boldened());
+            nl->setFont(juce::Font(AppTheme::uiFont(12.0f)).boldened());
             nl->setColour(juce::Label::textColourId,       AppTheme::palette().accentWarning);
             nl->setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
             nl->setText(p.name, juce::dontSendNotification);
@@ -30,7 +30,7 @@ public:
             addAndMakeVisible(nl);
 
             auto* dl = descs.add(std::make_unique<juce::Label>());
-            dl->setFont(juce::Font(juce::FontOptions(12.0f)));
+            dl->setFont(juce::Font(AppTheme::uiFont(12.0f)));
             dl->setColour(juce::Label::textColourId,       AppTheme::palette().textSecondary);
             dl->setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
             dl->setText(p.description, juce::dontSendNotification);
@@ -90,7 +90,7 @@ public:
 private:
     static int textHeight(const juce::String& text, int width, float fs, bool bold)
     {
-        auto f = juce::Font(juce::FontOptions(fs));
+        auto f = juce::Font(AppTheme::uiFont(fs));
         if (bold) f = f.boldened();
         // Use AttributedString + TextLayout for accurate multi-line height
         juce::AttributedString as;
@@ -116,7 +116,7 @@ ModuleHelpPopup::ModuleHelpPopup(const NordHelp::ModuleHelp& help,
     setOpaque(true);
 
     // Title bar
-    titleLabel.setFont(juce::Font(juce::FontOptions(14.0f)).boldened());
+    titleLabel.setFont(juce::Font(AppTheme::uiFont(14.0f)).boldened());
     titleLabel.setColour(juce::Label::textColourId,       AppTheme::palette().accentActive);
     titleLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
     titleLabel.setText(help.name, juce::dontSendNotification);

@@ -14,7 +14,7 @@ ModuleBrowserPanel::CategoryItem::CategoryItem(const juce::String& categoryName,
 void ModuleBrowserPanel::CategoryItem::paintItem(juce::Graphics& g, int width, int height)
 {
     g.setColour(AppTheme::palette().textPrimary);
-    g.setFont(juce::Font(juce::FontOptions(14.0f).withStyle("Bold")));
+    g.setFont(juce::Font(AppTheme::uiFont(14.0f).withStyle("Bold")));
     g.drawText(name, 4, 0, width - 4, height, juce::Justification::centredLeft);
 }
 
@@ -27,14 +27,14 @@ void ModuleBrowserPanel::ModuleItem::paintItem(juce::Graphics& g, int width, int
 {
     // Module name
     g.setColour(AppTheme::palette().textSecondary);
-    g.setFont(juce::Font(juce::FontOptions(13.0f)));
+    g.setFont(juce::Font(AppTheme::uiFont(13.0f)));
     g.drawText(descriptor->fullname, 4, 0, width - 80, height, juce::Justification::centredLeft);
 
     // DSP cost on the right, formatted as the original editor prints it
     if (descriptor->cycles > 0)
     {
         g.setColour(AppTheme::palette().textMuted);
-        g.setFont(juce::Font(juce::FontOptions(11.0f)));
+        g.setFont(juce::Font(AppTheme::uiFont(11.0f)));
         g.drawText(formatDspCost(descriptor->cycles), width - 70, 0, 66, height,
                    juce::Justification::centredRight);
     }

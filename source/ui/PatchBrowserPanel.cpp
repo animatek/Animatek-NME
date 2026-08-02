@@ -6,16 +6,16 @@ PatchBrowserPanel::PatchBrowserPanel()
 {
     // Status label for loading state
     statusLabel.setJustificationType(juce::Justification::centred);
-    statusLabel.setFont(juce::Font(juce::FontOptions(14.0f)));
+    statusLabel.setFont(juce::Font(AppTheme::uiFont(14.0f)));
     addAndMakeVisible(statusLabel);
 
     // Search label
     searchLabel.setText("Search:", juce::dontSendNotification);
-    searchLabel.setFont(juce::Font(juce::FontOptions(12.0f)));
+    searchLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
     addAndMakeVisible(searchLabel);
 
     // Search box
-    searchBox.setFont(juce::Font(juce::FontOptions(12.0f)));
+    searchBox.setFont(juce::Font(AppTheme::uiFont(12.0f)));
     searchBox.onTextChange = [this]() { onSearchTextChanged(); };
     addAndMakeVisible(searchBox);
 
@@ -322,20 +322,20 @@ void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, i
     {
         // Bank node — bold
         g.setColour(textColor);
-        g.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
+        g.setFont(juce::Font(AppTheme::uiFont(13.0f)).boldened());
         g.drawText(itemName, 4, 0, width - 4, height, juce::Justification::centredLeft, true);
     }
     else
     {
         g.setColour(textColor);
-        g.setFont(juce::Font(juce::FontOptions(isLoaded ? 12.5f : 12.0f)));
+        g.setFont(juce::Font(AppTheme::uiFont(isLoaded ? 12.5f : 12.0f)));
 
         if (isLoaded)
         {
             // Draw play indicator
-            g.setFont(juce::Font(juce::FontOptions(10.0f)));
+            g.setFont(juce::Font(AppTheme::uiFont(10.0f)));
             g.drawText(juce::CharPointer_UTF8("\xe2\x96\xb6"), 2, 0, 12, height, juce::Justification::centredLeft);
-            g.setFont(juce::Font(juce::FontOptions(12.5f)));
+            g.setFont(juce::Font(AppTheme::uiFont(12.5f)));
             g.drawText(itemName, 16, 0, width - 16, height, juce::Justification::centredLeft, true);
         }
         else

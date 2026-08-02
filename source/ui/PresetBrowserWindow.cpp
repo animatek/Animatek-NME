@@ -111,7 +111,7 @@ void DiskPresetBrowserPanel::FilterIconButton::paintButton(juce::Graphics& g, bo
     }
     else
     {
-        g.setFont(juce::FontOptions(11.0f).withStyle("Bold"));
+        g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
         g.drawText("2", a.toNearestInt(), juce::Justification::centred, false);
         g.drawLine(a.getX() + 2.0f, a.getBottom() - 2.0f, a.getRight() - 2.0f, a.getY() + 2.0f, stroke);
     }
@@ -122,7 +122,7 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     setOpaque(true);
 
     searchLabel.setText("Search", juce::dontSendNotification);
-    searchLabel.setFont(juce::Font(juce::FontOptions(12.0f)));
+    searchLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
     addAndMakeVisible(searchLabel);
 
     searchBox.onTextChange = [this]() { rebuildVisibleEntries(); };
@@ -149,7 +149,7 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     refreshButton.onClick = [this]() { refresh(); };
     addAndMakeVisible(refreshButton);
 
-    statusLabel.setFont(juce::Font(juce::FontOptions(12.0f)));
+    statusLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
     addAndMakeVisible(statusLabel);
 
     listBox.setRowHeight(24);
@@ -306,11 +306,11 @@ void DiskPresetBrowserPanel::paintListBoxItem(int row, juce::Graphics& g, int wi
     g.fillRoundedRectangle(tagArea.toFloat(), 3.0f);
     g.setColour(tagColour);
     g.drawRoundedRectangle(tagArea.toFloat(), 3.0f, 1.0f);
-    g.setFont(juce::Font(juce::FontOptions(10.0f)).boldened());
+    g.setFont(juce::Font(AppTheme::uiFont(10.0f)).boldened());
     g.drawText(getTypeLabel(entry), tagArea, juce::Justification::centred, true);
 
     g.setColour(selected ? juce::Colours::white : kText);
-    g.setFont(juce::Font(juce::FontOptions(12.0f)));
+    g.setFont(juce::Font(AppTheme::uiFont(12.0f)));
     g.drawText(entry.displayName, 62, 0, width - 68, height, juce::Justification::centredLeft, true);
 }
 

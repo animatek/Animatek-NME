@@ -11,8 +11,8 @@ static void styleToggle (juce::ToggleButton& b)
 }
 static void styleLabel (juce::Label& l, bool section = false)
 {
-    l.setFont (section ? juce::Font (juce::FontOptions (11.0f, juce::Font::bold))
-                       : juce::Font (juce::FontOptions (12.0f)));
+    l.setFont (section ? juce::Font (AppTheme::uiFont (11.0f).withStyle ("Bold"))
+                       : juce::Font (AppTheme::uiFont (12.0f)));
     l.setColour (juce::Label::textColourId,       section ? p().textPrimary : p().textSecondary);
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
@@ -275,7 +275,7 @@ void EditorOptionsDialog::paint (juce::Graphics& g)
     g.fillAll (p().backgroundMain);
 
     g.setColour (p().textPrimary);
-    g.setFont (juce::Font (juce::FontOptions (14.0f)).boldened());
+    g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
     g.drawText ("Editor Options", 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
 
     g.setColour (p().buttonActive);

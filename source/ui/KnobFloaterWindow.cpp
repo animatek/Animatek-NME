@@ -85,8 +85,8 @@ public:
     {
         moduleLabel.setColour(juce::Label::textColourId, kTextDim);
         paramLabel.setColour(juce::Label::textColourId, kText);
-        moduleLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
-        paramLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
+        moduleLabel.setFont(juce::Font(AppTheme::uiFont(11.0f)));
+        paramLabel.setFont(juce::Font(AppTheme::uiFont(11.0f)));
         knob.setColour(juce::Slider::rotarySliderFillColourId, kAccent);
         knob.setColour(juce::Slider::rotarySliderOutlineColourId, kBorder);
         knob.setColour(juce::Slider::thumbColourId, kText);
@@ -104,7 +104,7 @@ public:
 
         // Knob number / special name
         g.setColour(kTextDim);
-        g.setFont(juce::Font(juce::FontOptions(knobLabel.length() > 2 ? 10.0f : 14.0f)));
+        g.setFont(juce::Font(AppTheme::uiFont(knobLabel.length() > 2 ? 10.0f : 14.0f)));
         g.drawFittedText(knobLabel, 64, 34, getWidth() - 66, 22, juce::Justification::centredLeft, 1);
     }
 

@@ -98,17 +98,17 @@ void AboutDialog::paint(juce::Graphics& g)
 
     auto line = header.removeFromTop(26);
     g.setColour(pal.textPrimary);
-    g.setFont(juce::Font(juce::FontOptions(20.0f)).boldened());
+    g.setFont(juce::Font(AppTheme::uiFont(20.0f)).boldened());
     g.drawText("Animatek NME", line, juce::Justification::centredLeft, true);
 
     line = header.removeFromTop(20);
     g.setColour(pal.accentActive);
-    g.setFont(juce::Font(juce::FontOptions(13.0f)));
+    g.setFont(juce::Font(AppTheme::uiFont(13.0f)));
     g.drawText("Nord Modular Editor G1", line, juce::Justification::centredLeft, true);
 
     line = header.removeFromTop(18);
     g.setColour(pal.textSecondary);
-    g.setFont(juce::Font(juce::FontOptions(11.5f)));
+    g.setFont(juce::Font(AppTheme::uiFont(11.5f)));
     g.drawText("Version " + juce::String(JUCE_APPLICATION_VERSION_STRING)
                    + "  ·  built " + juce::String(__DATE__),
                line, juce::Justification::centredLeft, true);

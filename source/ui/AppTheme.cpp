@@ -57,9 +57,40 @@ const AppThemePalette deep = makeDeepDarkGrey();
 AppThemePalette active = makeSoftDarkGrey();
 }
 
+namespace
+{
+// 1.15 rather than a round 1.25: the chrome is laid out in fixed row heights and
+// label boxes, and a bigger jump starts clipping descenders in the tightest of
+// them (the header bar's macro captions, the status bar).
+float uiFontScaleValue = 1.15f;
+}
+
 AppThemeId AppTheme::currentTheme()
 {
     return current;
+}
+
+float AppTheme::uiFontScale()
+{
+    return uiFontScaleValue;
+}
+
+void AppTheme::setUiFontScale(float scale)
+{
+    uiFontScaleValue = juce::jlimit(0.75f, 2.0f, scale);
+}
+
+juce::FontOptions AppTheme::uiFont(float points)
+{
+    return juce::FontOptions(points * uiFontScaleValue);
+}
+
+juce::Colour AppTheme::macroLabelInk()
+{
+    // textPrimary is near-white on every dark theme and near-black on Nord
+    // Classic, which is exactly the rule asked for, and it keeps the macro
+    // captions the same colour as every other label around them.
+    return palette().textPrimary;
 }
 
 const AppThemePalette& AppTheme::palette()

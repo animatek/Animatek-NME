@@ -100,7 +100,7 @@ public:
         g.drawRoundedRectangle(r, 4.0f, focused ? 2.0f : 1.0f);
 
         g.setColour(snap.filled ? text() : textDim());
-        g.setFont(juce::FontOptions(10.5f, juce::Font::bold));
+        g.setFont(AppTheme::uiFont(10.5f).withStyle("Bold"));
         g.drawText(label, getLocalBounds().removeFromTop(13), juce::Justification::centred, false);
     }
 
@@ -200,7 +200,7 @@ MutatorPanel::MutatorPanel()
         addAndMakeVisible(s);
         l.setText(name, juce::dontSendNotification);
         l.setJustificationType(juce::Justification::centred);
-        l.setFont(juce::FontOptions(10.5f));
+        l.setFont(AppTheme::uiFont(10.5f));
         addAndMakeVisible(l);
     };
     setupKnob(probSlider, probLabel, "Probability", 0.20, false);
@@ -235,7 +235,7 @@ MutatorPanel::MutatorPanel()
     // Audition morph time (applies when clicking a sound)
     auditionLabel.setText("Audition", juce::dontSendNotification);
     auditionLabel.setJustificationType(juce::Justification::centredRight);
-    auditionLabel.setFont(juce::FontOptions(10.5f));
+    auditionLabel.setFont(AppTheme::uiFont(10.5f));
     addAndMakeVisible(auditionLabel);
     auditionTimeBox.addItem("Instant", 1);
     auditionTimeBox.addItem("0.5 s", 2);
@@ -252,7 +252,7 @@ MutatorPanel::MutatorPanel()
                            juce::dontSendNotification);
     for (auto* l : { &tempLabel, &variationsLabel, &quickLockLabel })
     {
-        l->setFont(juce::FontOptions(10.5f, juce::Font::bold));
+        l->setFont(AppTheme::uiFont(10.5f).withStyle("Bold"));
         addAndMakeVisible(*l);
     }
 

@@ -7,7 +7,7 @@ StatusBar::StatusBar()
     {
         label.setText(text, juce::dontSendNotification);
         label.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
-        label.setFont(juce::Font(juce::FontOptions(12.0f)));
+        label.setFont(juce::Font(AppTheme::uiFont(12.0f)));
         addAndMakeVisible(label);
     };
 
@@ -20,7 +20,7 @@ StatusBar::StatusBar()
     // Message label (centered, initially hidden)
     messageLabel.setJustificationType(juce::Justification::centred);
     messageLabel.setColour(juce::Label::textColourId, AppTheme::palette().accentWarning); // Orange
-    messageLabel.setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::bold)));
+    messageLabel.setFont(juce::Font(AppTheme::uiFont(12.0f).withStyle("Bold")));
     addAndMakeVisible(messageLabel);
     messageLabel.setVisible(false);
 }
@@ -134,7 +134,7 @@ void StatusBar::paint(juce::Graphics& g)
         if (progressText.isNotEmpty())
         {
             g.setColour(AppTheme::palette().textSecondary);
-            g.setFont(juce::Font(juce::FontOptions(11.0f)));
+            g.setFont(juce::Font(AppTheme::uiFont(11.0f)));
             g.drawText(progressText,
                        progressBounds.withTrimmedLeft(static_cast<int>(track.getRight() - progressBounds.getX()) + 8),
                        juce::Justification::centredLeft, true);

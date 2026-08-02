@@ -291,7 +291,7 @@ public:
         if (!hasAny)
         {
             g.setColour(AppTheme::palette().borderColor);
-            g.setFont(juce::FontOptions(11.0f));
+            g.setFont(AppTheme::uiFont(11.0f));
             g.drawText("No assignments", getLocalBounds().reduced(marginX),
                        juce::Justification::centredTop);
             return;
@@ -397,14 +397,14 @@ public:
     {
         const auto& theme = AppTheme::palette();
         g.setColour(theme.textSecondary);
-        g.setFont(juce::FontOptions(fontRow));
+        g.setFont(AppTheme::uiFont(fontRow));
         g.drawText(preset.name, marginX, y, getWidth() - marginX * 2 - xBtnW, rowH,
                    juce::Justification::centredLeft, true);
 
         if (!preset.builtIn)
         {
             g.setColour(theme.textMuted);
-            g.setFont(juce::FontOptions(fontRow + 1.0f));
+            g.setFont(AppTheme::uiFont(fontRow + 1.0f));
             g.drawText(juce::String::fromUTF8("\xc3\x97"), getWidth() - marginX - xBtnW, y,
                        xBtnW, rowH, juce::Justification::centred);
         }
@@ -417,7 +417,7 @@ public:
         g.setColour(theme.borderColor.withAlpha(0.6f));
         g.drawRoundedRectangle(row.toFloat().reduced(0.5f), 3.0f, 1.0f);
         g.setColour(theme.textSecondary);
-        g.setFont(juce::FontOptions(fontRowSmall));
+        g.setFont(AppTheme::uiFont(fontRowSmall));
         g.drawText("+ Save current settings", row, juce::Justification::centred);
     }
 
@@ -541,7 +541,7 @@ private:
         g.fillRect(0, y, getWidth(), sectionTitleH);
         g.setColour(col);
         g.fillRect(0, y, getWidth(), 1);
-        g.setFont(juce::FontOptions(fontTitle).withStyle("Bold"));
+        g.setFont(AppTheme::uiFont(fontTitle).withStyle("Bold"));
         g.drawText(title.toUpperCase(), marginX, y, getWidth() - marginX * 2, sectionTitleH,
                    juce::Justification::centredLeft);
     }
@@ -553,8 +553,10 @@ private:
         g.fillRect(0, y, getWidth(), groupHeaderH);
         g.setColour(gc);
         g.fillRect(0, y, 3, groupHeaderH);
-        g.setFont(juce::FontOptions(11.0f).withStyle("Bold"));
-        g.setColour(gc.brighter(0.3f));
+        g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
+        // Ink, not the macro colour: the stripe and the wash already say which
+        // macro this is, and green Macro 2 disappeared on light themes.
+        g.setColour(AppTheme::macroLabelInk());
         g.drawText(kGroupNames[group], marginX + 6, y, getWidth() - marginX * 2, groupHeaderH,
                    juce::Justification::centredLeft);
     }
@@ -570,7 +572,7 @@ private:
         g.setColour(AppTheme::palette().borderColor);
         juce::Rectangle<int> xRect(marginX, y + (rowH - xBtnW) / 2, xBtnW, xBtnW);
         g.drawRoundedRectangle(xRect.toFloat(), 3.0f, 1.0f);
-        g.setFont(juce::FontOptions(fontSmall));
+        g.setFont(AppTheme::uiFont(fontSmall));
         g.drawText("x", xRect, juce::Justification::centred);
 
         // Name
@@ -596,7 +598,7 @@ private:
             g.setColour(AppTheme::palette().borderColor);
             g.drawVerticalLine(int(midXf), float(amRect.getY()), float(amRect.getBottom()));
             g.setColour(juce::Colours::white.withAlpha(0.9f));
-            g.setFont(juce::FontOptions(10.0f));
+            g.setFont(AppTheme::uiFont(10.0f));
             g.drawText(juce::String(morphRange), amRect, juce::Justification::centred);
             g.setColour(gc.withAlpha(0.4f));
             g.drawRoundedRectangle(amRect.toFloat(), 3.0f, 1.0f);
@@ -614,12 +616,12 @@ private:
         g.setColour(AppTheme::palette().borderColor);
         juce::Rectangle<int> xRect(marginX, y + (rowH - xBtnW) / 2, xBtnW, xBtnW);
         g.drawRoundedRectangle(xRect.toFloat(), 3.0f, 1.0f);
-        g.setFont(juce::FontOptions(fontSmall));
+        g.setFont(AppTheme::uiFont(fontSmall));
         g.drawText("x", xRect, juce::Justification::centred);
 
         // Label badge (e.g. "Knob 3")
         int badgeX = marginX + xBtnW + 4;
-        g.setFont(juce::FontOptions(fontBadge).withStyle("Bold"));
+        g.setFont(AppTheme::uiFont(fontBadge).withStyle("Bold"));
         int labelW = g.getCurrentFont().getStringWidth(r.label) + 8;
         juce::Rectangle<int> badge(badgeX, y + 3, labelW, rowH - 6);
         g.setColour(accent.withAlpha(0.32f));
@@ -639,16 +641,16 @@ private:
         if (isGlobal && moduleName.isNotEmpty())
         {
             g.setColour(AppTheme::palette().textMuted);
-            g.setFont(juce::FontOptions(fontRowSmall));
+            g.setFont(AppTheme::uiFont(fontRowSmall));
             g.drawText(moduleName, x, y, w, rowH / 2, juce::Justification::bottomLeft, true);
             g.setColour(AppTheme::palette().textPrimary);
-            g.setFont(juce::FontOptions(fontRowSmall));
+            g.setFont(AppTheme::uiFont(fontRowSmall));
             g.drawText(paramName, x, y + rowH / 2, w, rowH / 2, juce::Justification::topLeft, true);
         }
         else
         {
             g.setColour(AppTheme::palette().textPrimary);
-            g.setFont(juce::FontOptions(fontRow));
+            g.setFont(AppTheme::uiFont(fontRow));
             g.drawText(paramName, x, y, w, rowH, juce::Justification::centredLeft, true);
         }
     }
@@ -811,28 +813,28 @@ private:
 InspectorPanel::InspectorPanel()
 {
     titleLabel.setText("Inspector", juce::dontSendNotification);
-    titleLabel.setFont(juce::Font(juce::FontOptions(13.0f).withStyle("Bold")));
+    titleLabel.setFont(juce::Font(AppTheme::uiFont(13.0f).withStyle("Bold")));
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(titleLabel);
 
     nameLabel.setText("Name", juce::dontSendNotification);
-    nameLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
+    nameLabel.setFont(juce::Font(AppTheme::uiFont(11.0f)));
     nameLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(nameLabel);
 
-    nameEditor.setFont(juce::Font(juce::FontOptions(13.0f)));
+    nameEditor.setFont(juce::Font(AppTheme::uiFont(13.0f)));
     nameEditor.setInputRestrictions(16);
     nameEditor.addListener(this);
     nameEditor.setEnabled(false);
     addAndMakeVisible(nameEditor);
 
-    sectionLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
+    sectionLabel.setFont(juce::Font(AppTheme::uiFont(11.0f)));
     sectionLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(sectionLabel);
 
     // Shares the section row, right-aligned: what this one module costs the DSP
     // while the header bar shows what the whole patch costs (issue #31).
-    dspLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
+    dspLabel.setFont(juce::Font(AppTheme::uiFont(11.0f)));
     dspLabel.setJustificationType(juce::Justification::centredRight);
     addAndMakeVisible(dspLabel);
 

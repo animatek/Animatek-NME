@@ -69,7 +69,7 @@ void SlotSelectDialog::paint (juce::Graphics& g)
     g.fillAll (kBg);
 
     g.setColour (AppTheme::palette().textPrimary);
-    g.setFont (juce::Font (juce::FontOptions (14.0f)).boldened());
+    g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
     g.drawText (title_, 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
 
     g.setColour (kSep);

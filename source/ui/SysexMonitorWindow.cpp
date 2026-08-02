@@ -48,7 +48,7 @@ SysexMonitorPanel::SysexMonitorPanel()
     };
 
     statsLabel.setJustificationType(juce::Justification::centredRight);
-    statsLabel.setFont(juce::FontOptions(11.0f));
+    statsLabel.setFont(AppTheme::uiFont(11.0f));
     statsLabel.setText("0 messages", juce::dontSendNotification);
 
     logView.setMultiLine(true);

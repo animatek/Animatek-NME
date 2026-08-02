@@ -22,7 +22,7 @@ public:
             g.fillRoundedRectangle (getLocalBounds().toFloat().reduced (2.0f), 4.0f);
         }
         g.setColour (isMouseOver() ? juce::Colours::white : AppTheme::palette().accentActive);
-        g.setFont (juce::Font (juce::FontOptions (15.0f, juce::Font::bold)));
+        g.setFont (juce::Font (AppTheme::uiFont (15.0f).withStyle ("Bold")));
         g.drawText ("x", getLocalBounds(), juce::Justification::centred);
     }
 

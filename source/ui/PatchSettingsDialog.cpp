@@ -27,8 +27,8 @@ static void styleToggle (juce::ToggleButton& b)
 }
 static void styleLabel (juce::Label& l, bool section = false)
 {
-    l.setFont (section ? juce::Font (juce::FontOptions (11.0f, juce::Font::bold))
-                       : juce::Font (juce::FontOptions (12.0f)));
+    l.setFont (section ? juce::Font (AppTheme::uiFont (11.0f).withStyle ("Bold"))
+                       : juce::Font (AppTheme::uiFont (12.0f)));
     l.setColour (juce::Label::textColourId,       section ? AppTheme::palette().textPrimary : kText);
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
@@ -173,7 +173,7 @@ void PatchSettingsDialog::paint (juce::Graphics& g)
 
     // Title
     g.setColour (AppTheme::palette().textPrimary);
-    g.setFont (juce::Font (juce::FontOptions (14.0f)).boldened());
+    g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
     g.drawText ("Patch Settings", 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
 
     // Title bar separator

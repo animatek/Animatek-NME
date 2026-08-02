@@ -13,7 +13,7 @@
 #define kBtnOn  (AppTheme::palette().buttonActive)
 static void styleLabel(juce::Label& l)
 {
-    l.setFont(juce::Font(juce::FontOptions(10.0f, juce::Font::bold)));
+    l.setFont(juce::Font(AppTheme::uiFont(10.0f).withStyle("Bold")));
     l.setColour(juce::Label::textColourId,       kGold);
     l.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
@@ -75,7 +75,7 @@ BankTransferDialog::BankTransferDialog(Mode mode, BankTransferManager& mgr,
     styleLabel(folderLabel);
     folderLabel.setText(mode_ == Mode::SendToSynth ? "SOURCE FOLDER" : "DESTINATION FOLDER",
                         juce::dontSendNotification);
-    folderField.setFont(juce::Font(juce::FontOptions(12.0f)));
+    folderField.setFont(juce::Font(AppTheme::uiFont(12.0f)));
     folderField.setColour(juce::Label::textColourId, kText);
     folderField.setColour(juce::Label::backgroundColourId, kCtrlBg);
     folderField.setColour(juce::Label::outlineColourId, kCtrlBd);
@@ -93,13 +93,13 @@ BankTransferDialog::BankTransferDialog(Mode mode, BankTransferManager& mgr,
     addAndMakeVisible(folderField);
     addAndMakeVisible(browseButton);
 
-    infoLabel.setFont(juce::Font(juce::FontOptions(12.0f)));
+    infoLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
     infoLabel.setColour(juce::Label::textColourId,
                         mode_ == Mode::SaveToDisk ? kText : kAmber);
     infoLabel.setJustificationType(juce::Justification::topLeft);
     addAndMakeVisible(infoLabel);
 
-    statusLabel.setFont(juce::Font(juce::FontOptions(12.0f)));
+    statusLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
     statusLabel.setColour(juce::Label::textColourId, kText);
     addAndMakeVisible(statusLabel);
 
@@ -320,7 +320,7 @@ void BankTransferDialog::paint(juce::Graphics& g)
     g.fillAll(kBg);
 
     g.setColour(kGold);
-    g.setFont(juce::Font(juce::FontOptions(14.0f)).boldened());
+    g.setFont(juce::Font(AppTheme::uiFont(14.0f)).boldened());
     const auto title = mode_ == Mode::SaveToDisk    ? "Save Bank to Disk"
                      : mode_ == Mode::BackupAllBanks ? "Backup All Banks"
                                                      : "Send Bank to Synth";

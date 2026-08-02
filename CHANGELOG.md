@@ -49,6 +49,18 @@
   modules, cables and text remain correctly rendered throughout the transition. Multi-window
   re-tiling keeps the cheaper snapshot path because several canvases can move at once.
 
+- **The application's own text is larger across the board.** Panels, browsers, the inspector,
+  the header bar, the status bar and every dialog were each given their sizes by hand and had
+  drifted small next to the rest of the desktop. They now share one scale, which lifts them
+  together and keeps their relative weights intact. Module bodies on the canvas are deliberately
+  untouched: their text sits inside a fixed grid that comes from the hardware.
+
+- **Fixed: the macro captions were painted in their own macro colour**, which made green M2
+  unreadable on the light Nord Classic chrome and left the four reading as separate things.
+  M1 to M4 above the morph dials, and the Macro 1..4 headers in the Inspector, now use the
+  theme's text colour: light on the dark themes, dark on Nord Classic. The dials and the colour
+  stripes still carry the colour, which is what identifies a macro in the first place.
+
 - **Load a synth patch into a slot you name.** Double-clicking a patch in the Synth browser
   still loads it into the slot you are on; right-clicking now offers **Load to Slot A..D**, so
   with several sub-windows open you can pull a patch into a particular one without leaving the

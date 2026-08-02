@@ -11,7 +11,7 @@
 #define kBtnOn  (AppTheme::palette().buttonActive)
 static void styleLabel (juce::Label& l)
 {
-    l.setFont (juce::Font (juce::FontOptions (10.0f, juce::Font::bold)));
+    l.setFont (juce::Font (AppTheme::uiFont (10.0f).withStyle ("Bold")));
     l.setColour (juce::Label::textColourId,       AppTheme::palette().textPrimary);
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
@@ -147,7 +147,7 @@ void PatchLocationDialog::paint (juce::Graphics& g)
     g.fillAll (kBg);
 
     g.setColour (AppTheme::palette().textPrimary);
-    g.setFont (juce::Font (juce::FontOptions (14.0f)).boldened());
+    g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
     g.drawText (title_, 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
 
     g.setColour (kSep);
