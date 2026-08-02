@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.13.0 — 2026-08-02
+
 - **The four slots now live inside the main window**, as sub-windows in the work area, the way
   the original Clavia editor and Nomad arranged patches. The per-slot pop-out OS windows are
   gone: they got lost behind other windows, could not be arranged, and meant every feature

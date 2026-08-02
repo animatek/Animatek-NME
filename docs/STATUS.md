@@ -1,6 +1,6 @@
 # Animatek NME Status
 
-Current version: **0.12.0** (released 2026-08-01)
+Current version: **0.13.0** (released 2026-08-02)
 
 The project was renamed from **Nomad2026** to **Animatek NME — Nord Modular Editor G1** in 0.6.0.
 
