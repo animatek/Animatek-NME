@@ -13,7 +13,8 @@
   as you open and close them. **Ctrl+Shift+1..4** shows or hides a slot (so does right-clicking
   its row in the slot bar), **Ctrl+1..4** still switches to a slot and opens it if it was
   closed, and **F11** blows the focused slot up to the whole area and back again for a closer
-  look. Dragging or resizing a sub-window leaves the windows where you put them from then on;
+  look, and each sub-window has a maximise button next to its close button that does the same.
+  Dragging or resizing a sub-window leaves the windows where you put them from then on;
   **View > Slots > Tile Slots** re-flows them.
 
   The inspector, header bar, browsers and status bar stay shared and follow whichever slot has

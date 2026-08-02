@@ -64,6 +64,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl+1`..`Ctrl+4` | Switch to slot A..D (opens its sub-window if closed) |
 | `Ctrl+Shift+1`..`Ctrl+Shift+4` | Show/hide slot A..D's sub-window |
 | `F11` | Focus mode: blow the focused slot up to the full area, and back |
+| Maximise button | The same, on that sub-window's own title bar |
 | Right-click a slot row | Show/hide that slot's sub-window |
 | `Ctrl+click` a slot row | Enable/disable the slot without selecting it |
 

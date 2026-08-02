@@ -225,6 +225,12 @@ so the destructor saves as well rather than persisting on every mouse move.
   never consulted anywhere. No `mdiAutoTile` replaces it — dynamic tiling has nothing to
   configure, and View > Slots > Tile Slots is the only control it needs.
 - The focus outline landed early, in commit 8f8f49d.
+- Sub-windows carry a **maximise button** left of the close button, as Linux window
+  decorations do. `MultiDocumentPanelWindow::maximiseButtonPressed()` is overridden rather
+  than inherited: the base flips the whole panel into tabbed mode, which is not a layout this
+  editor offers and would strand the tiling somewhere unreachable. It routes out through
+  `onSlotMaximiseRequested` to the same code F11 uses, so both paths keep the same guard and
+  status message.
 
 **A real bug this phase turned up:** Free mode latched on by itself and then stuck, because
 `windowMovedOrResized` treated *any* move of a sub-window as the user dragging it.

@@ -77,6 +77,10 @@ public:
     }
 
     std::function<void(int)> onSlotFocused;
+    // The maximise button on a sub-window's title bar. Routed out rather than
+    // handled here so it goes through the same place as F11, message and all.
+    std::function<void(int)> onSlotMaximiseRequested;
+    void requestMaximise(juce::Component* view);
     // Fired after a sub-window has actually gone, including from its own close
     // button, which bypasses closeSlot() entirely.
     std::function<void(int)> onSlotClosed;

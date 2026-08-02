@@ -187,6 +187,15 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     if (inSlotFocusChange || restoringMdiLayout) return;
     switchToSlot(slot);
   };
+  // Maximise button: same thing as F11, on the slot whose button was pressed.
+  mainLayout->getPatchArea().onSlotMaximiseRequested = [this](int slot) {
+    auto& area = mainLayout->getPatchArea();
+    // Focus mode always blows up whichever slot has focus, so maximising a
+    // window that does not have it has to take it first.
+    if (!area.isFocusMode() && area.getFocusedSlot() != slot)
+      area.focusSlot(slot);
+    toggleFocusMode();
+  };
   // A slot whose window the user closed keeps its patch; if it was the active
   // one, hand the shared surfaces to whatever is still on screen.
   mainLayout->getPatchArea().onSlotClosed = [this](int slot) {
@@ -3141,6 +3150,7 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Ctrl+1..4           Switch to slot A..D (opens it if closed)\n"
       "  Ctrl+Shift+1..4     Show/hide slot A..D's sub-window\n"
       "  F11                 Focus mode: blow the focused slot up, and back\n"
+      "  Maximise button     Same, on that sub-window's title bar\n"
       "  Right-click slot    Show/hide that slot's sub-window\n"
       "  Ctrl+click slot     Enable/disable without selecting\n"
       "\n"

@@ -16,10 +16,19 @@ public:
     explicit SlotSubWindow(juce::Colour background)
         : juce::MultiDocumentPanelWindow(background)
     {
-        // JUCE's default maximise button flips the whole panel into tabbed mode,
-        // which is not one of the layouts this editor offers and would strand
-        // the tiling in an unreachable state. Leave only the close button.
-        setTitleBarButtonsRequired(juce::DocumentWindow::closeButton, false);
+        setTitleBarButtonsRequired(juce::DocumentWindow::maximiseButton
+                                       | juce::DocumentWindow::closeButton,
+                                   false);
+    }
+
+    void maximiseButtonPressed() override
+    {
+        // NOT the base class's behaviour, which flips the whole panel into
+        // tabbed mode — not a layout this editor offers, and it would strand
+        // the tiling somewhere the user cannot get out of. Maximising a slot
+        // means focus mode: fill the work area with it, press again to go back.
+        if (auto* owner = findParentComponentOfClass<SlotMdiArea>())
+            owner->requestMaximise(getContentComponent());
     }
 
     void setFocusedLook(bool shouldLookFocused)
@@ -422,6 +431,13 @@ void SlotMdiArea::tryToCloseDocumentAsync(juce::Component* component,
 juce::MultiDocumentPanelWindow* SlotMdiArea::createNewDocumentWindow()
 {
     return new SlotSubWindow(getBackgroundColour());
+}
+
+void SlotMdiArea::requestMaximise(juce::Component* view)
+{
+    if (auto* slotView = dynamic_cast<SlotView*>(view))
+        if (onSlotMaximiseRequested)
+            onSlotMaximiseRequested(slotView->getSlot());
 }
 
 void SlotMdiArea::updateFocusHighlight()
