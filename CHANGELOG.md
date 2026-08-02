@@ -30,9 +30,10 @@
   sub-windows slide to their new places rather than jumping; turn that off with **Animate Slot
   Tiling** in Editor Options if you prefer it instant.
 
-  The focused sub-window is outlined in the theme's accent colour, so with four tiled you can
-  always see which one you are editing, and its title carries the LOCAL badge when that slot's
-  patch is not in sync with the synth. The inspector picks up whichever module that slot had
+  The focused sub-window is edged faintly in the theme's accent colour, so with several tiled
+  you can always see which one you are editing; it stays out of the way when a single window
+  fills the area, where there is nothing to tell apart. Its title carries the LOCAL badge when
+  that slot's patch is not in sync with the synth. The inspector picks up whichever module that slot had
   selected instead of going blank, since each canvas keeps its selection while it sits in the
   background.
 

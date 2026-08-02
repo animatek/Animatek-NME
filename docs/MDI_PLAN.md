@@ -225,7 +225,10 @@ so the destructor saves as well rather than persisting on every mouse move.
 - The dead `recycleWindows` option is gone: it was saved, loaded and drawn as a toggle, and
   never consulted anywhere. No `mdiAutoTile` replaces it — dynamic tiling has nothing to
   configure, and View > Slots > Tile Slots is the only control it needs.
-- The focus outline landed early, in commit 8f8f49d.
+- The focus outline landed early, in commit 8f8f49d. It is the theme accent at **10% alpha**
+  over 2px — the first cut was the accent at full strength and competed with the patch — and
+  it is suppressed whenever a single window covers the work area (one open slot, or focus
+  mode), where it would frame the whole area without telling you anything.
 - Sub-windows carry a **maximise button** left of the close button, as Linux window
   decorations do. `MultiDocumentPanelWindow::maximiseButtonPressed()` is overridden rather
   than inherited: the base flips the whole panel into tabbed mode, which is not a layout this

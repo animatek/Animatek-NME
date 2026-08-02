@@ -277,6 +277,8 @@ void SlotMdiArea::setFocusMode(bool shouldBeFocused)
         tileMode = TileMode::Auto;
 
     applyLayout(/*animate*/ true);
+    // Entering or leaving focus mode changes whether the outline is shown at all.
+    updateFocusHighlight();
     if (onLayoutChanged)
         onLayoutChanged();
 }
