@@ -244,7 +244,9 @@ Restoring also ran a full `switchToSlot` per slot it opened, since each new docu
 focus as it appears. `restoringMdiLayout` now gates `onSlotFocused` too, and restore does one
 switch at the end for the slot that should actually end up focused.
 
-**Animate the re-tile** (from EdenQwQ's niri `animations.nix`, reviewed 2026-08-02). Opening
+**Animate the re-tile** (idea from EdenQwQ's niri `animations.nix`, reviewed 2026-08-02; see
+the licensing note below — the concept is used, none of the code, and there is none to use
+since it is compositor shaders and Nix config). Opening
 or closing a slot currently makes the other windows jump to their new tiles. Sliding them
 instead makes the re-flow legible, and JUCE gives it for free: run the `setBounds` calls
 `applyLayout()` already computes through `Desktop::getAnimator().animateComponent()`.
@@ -268,6 +270,19 @@ their own, so an exact partition of the area beats packing and leaves no gaps by
 construction. Where it does fit is Free mode, after the user has dragged and resized: a
 "tidy these up without changing my sizes" command next to Tile Slots. Worth having, not worth
 blocking on.
+
+**Licensing — read before writing any of it.** Neither the gist nor the repository states a
+licence, and the repository was archived in January 2025. No licence means all rights
+reserved, not "free because it is on GitHub": that code cannot be copied into this project
+even with attribution, and it would not be GPL-3.0 compatible if it were. What is fine is
+reimplementing the *approach* from the description above — algorithms are not copyrightable,
+only their expression is — so write it from scratch in C++ and credit the gist as the
+inspiration, as this document does. Do not translate the Python line by line; that is a
+derivative work. If its actual code is ever wanted, it needs the author's permission.
+
+Nothing from these gists has been used so far. The dynamic tiling in phase 3 came from
+Javier's own spec (one full, two split, three in thirds, four 2x2), which is an exact
+partition of the area and shares no code or approach with the packing heuristic above.
 
 ## Effort
 
