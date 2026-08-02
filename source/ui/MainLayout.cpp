@@ -375,9 +375,9 @@ void MainLayout::applyTheme()
     rightBrowserTabs.setTabBackgroundColour(0, AppTheme::palette().backgroundPanel);
     rightBrowserTabs.setTabBackgroundColour(1, AppTheme::palette().backgroundPanel);
 
-    // Shows around and between the slot sub-windows, so it has to follow the theme
-    // like any other chrome.
-    patchArea.setBackgroundColour(AppTheme::palette().backgroundPanel);
+    // The work area behind the slot sub-windows, their own backgrounds and the
+    // focus outline all follow the theme like any other chrome.
+    patchArea.applyTheme();
 
     patchBrowserPanel.applyTheme();
     diskPresetBrowserPanel.applyTheme();

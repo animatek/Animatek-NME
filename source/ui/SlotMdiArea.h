@@ -50,6 +50,10 @@ public:
     void setFocusMode(bool shouldBeFocused);
     bool isFocusMode() const { return focusMode; }
 
+    // Re-read the palette: the panel background, each sub-window's background
+    // (captured when it was created) and the focus outline.
+    void applyTheme();
+
     // Which slots are open, the tile mode or the focus mode changed — the View
     // menu's tick marks are stale until this fires.
     std::function<void()> onLayoutChanged;
@@ -103,6 +107,8 @@ private:
     // mode, and with fewer than two open (JUCE gives a lone document the whole
     // area itself, with no window frame at all).
     void applyLayout();
+    // Outline the sub-window you are editing in the theme's accent colour.
+    void updateFocusHighlight();
 
     static constexpr int minUsableSize = 120;
 

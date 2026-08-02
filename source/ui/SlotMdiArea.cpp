@@ -3,6 +3,47 @@
 #include <utility>
 #include <vector>
 
+namespace
+{
+// A sub-window that says whether it is the one you are editing. With four of
+// them tiled edge to edge the title bar alone is not enough to tell at a glance,
+// so the focused one is outlined in the theme's accent colour and the rest get a
+// hairline in the border colour, which also keeps adjacent tiles from reading as
+// one big canvas.
+class SlotSubWindow : public juce::MultiDocumentPanelWindow
+{
+public:
+    explicit SlotSubWindow(juce::Colour background)
+        : juce::MultiDocumentPanelWindow(background)
+    {
+        // JUCE's default maximise button flips the whole panel into tabbed mode,
+        // which is not one of the layouts this editor offers and would strand
+        // the tiling in an unreachable state. Leave only the close button.
+        setTitleBarButtonsRequired(juce::DocumentWindow::closeButton, false);
+    }
+
+    void setFocusedLook(bool shouldLookFocused)
+    {
+        if (focused == shouldLookFocused)
+            return;
+        focused = shouldLookFocused;
+        repaint();
+    }
+
+    void paintOverChildren(juce::Graphics& g) override
+    {
+        const auto& pal = AppTheme::palette();
+        g.setColour(focused ? pal.accentActive : pal.borderColor);
+        g.drawRect(getLocalBounds(), focused ? focusedBorder : idleBorder);
+    }
+
+private:
+    bool focused = false;
+    static constexpr int focusedBorder = 2;
+    static constexpr int idleBorder = 1;
+};
+}  // namespace
+
 SlotMdiArea::SlotMdiArea()
 {
     for (int s = 0; s < numSlots; ++s)
@@ -41,6 +82,7 @@ void SlotMdiArea::openSlot(int slot)
             if (auto* window = windowFor(s))
                 giveUsableBounds(*window, s);
 
+    updateFocusHighlight();
     if (onLayoutChanged)
         onLayoutChanged();
 }
@@ -288,6 +330,7 @@ void SlotMdiArea::tryToCloseDocumentAsync(juce::Component* component,
 
     // One fewer window: the remaining ones re-flow to fill the area.
     applyLayout();
+    updateFocusHighlight();
     if (onLayoutChanged)
         onLayoutChanged();
 
@@ -297,12 +340,27 @@ void SlotMdiArea::tryToCloseDocumentAsync(juce::Component* component,
 
 juce::MultiDocumentPanelWindow* SlotMdiArea::createNewDocumentWindow()
 {
-    auto* window = MultiDocumentPanel::createNewDocumentWindow();
-    // JUCE's default maximise button flips the whole panel into tabbed mode,
-    // which is not one of the layouts this editor offers, and would strand the
-    // tiling in an unreachable state. Leave only the close button.
-    window->setTitleBarButtonsRequired(juce::DocumentWindow::closeButton, false);
-    return window;
+    return new SlotSubWindow(getBackgroundColour());
+}
+
+void SlotMdiArea::updateFocusHighlight()
+{
+    const int focused = getFocusedSlot();
+    for (int s = 0; s < numSlots; ++s)
+        if (auto* window = dynamic_cast<SlotSubWindow*>(windowFor(s)))
+            window->setFocusedLook(s == focused);
+}
+
+void SlotMdiArea::applyTheme()
+{
+    setBackgroundColour(AppTheme::palette().backgroundPanel);
+    for (int s = 0; s < numSlots; ++s)
+        if (auto* window = windowFor(s))
+        {
+            // The window captured the old colour when it was created.
+            window->setBackgroundColour(getBackgroundColour());
+            window->repaint();
+        }
 }
 
 void SlotMdiArea::activeDocumentChanged()
@@ -314,6 +372,8 @@ void SlotMdiArea::activeDocumentChanged()
     // focus moves which window is blown up.
     if (focusMode)
         applyLayout();
+
+    updateFocusHighlight();
 
     const int slot = getFocusedSlot();
     if (slot >= 0 && onSlotFocused != nullptr)
