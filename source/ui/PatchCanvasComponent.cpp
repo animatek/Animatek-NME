@@ -575,11 +575,24 @@ void PatchCanvas::paint(juce::Graphics& g)
     for (int y = startY; y < clip.getBottom(); y += gridY)
         g.drawHorizontalLine(y, static_cast<float>(clip.getX()), static_cast<float>(clip.getRight()));
 
+    // Where to centre the "empty canvas" hint. Deliberately NOT g.getClipBounds():
+    // a partial repaint clips to the dirty rectangle, so centring there draws one
+    // copy of the text per region that happens to be invalidated, and they pile
+    // up on screen. The sub-windows made that obvious — they repaint in pieces
+    // far more often than a single full-width canvas did.
+    auto placeholderArea = [this]
+    {
+        auto visible = getLocalBounds();
+        if (auto* vp = findParentComponentOfClass<juce::Viewport>())
+            visible = vp->getViewArea();
+        return visible.toFloat() / juce::jmax(0.01f, zoomLevel);
+    };
+
     if (patch == nullptr)
     {
         g.setColour(activeScheme_.moduleText.withAlpha(0.28f));
         g.setFont(juce::FontOptions(28.0f));
-        g.drawText("Press Enter to add modules", clip, juce::Justification::centred, false);
+        g.drawText("Press Enter to add modules", placeholderArea(), juce::Justification::centred, false);
         return;
     }
 
@@ -591,7 +604,7 @@ void PatchCanvas::paint(juce::Graphics& g)
     {
         g.setColour(activeScheme_.moduleText.withAlpha(0.28f));
         g.setFont(juce::FontOptions(28.0f));
-        g.drawText("Press Enter to add modules", clip, juce::Justification::centred, false);
+        g.drawText("Press Enter to add modules", placeholderArea(), juce::Justification::centred, false);
     }
 
     paintModules(g, container, 0);

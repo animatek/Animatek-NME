@@ -26,6 +26,67 @@ void SlotMdiArea::openSlot(int slot)
         return;
 
     addDocument(views[(size_t) slot].get(), getBackgroundColour(), /*deleteWhenRemoved*/ false);
+
+    // Going from one document to two wraps both views in windows, so check them
+    // all, not only the one just opened.
+    for (int s = 0; s < numSlots; ++s)
+        if (auto* window = windowFor(s))
+            giveUsableBounds(*window, s);
+}
+
+juce::MultiDocumentPanelWindow* SlotMdiArea::windowFor(int slot) const
+{
+    if (slot < 0 || slot >= numSlots)
+        return nullptr;
+
+    const auto* view = views[(size_t) slot].get();
+    for (auto* child : getChildren())
+        if (auto* window = dynamic_cast<juce::MultiDocumentPanelWindow*>(child))
+            if (window->getContentComponent() == view)
+                return window;
+
+    return nullptr;
+}
+
+void SlotMdiArea::giveUsableBounds(juce::MultiDocumentPanelWindow& window, int slot)
+{
+    const auto area = getLocalBounds();
+    if (area.isEmpty())
+        return;  // not laid out yet; resized() will come back to this
+
+    const bool degenerate = window.getWidth()  < minUsableSize
+                         || window.getHeight() < minUsableSize;
+    const bool adrift = !area.contains(window.getPosition());
+
+    if (! degenerate && ! adrift)
+        return;  // wherever the user put it is fine
+
+    if (degenerate)
+    {
+        // Big enough to actually patch in, small enough that a second window
+        // beside it is still useful.
+        window.setSize(juce::jmax(minUsableSize, (area.getWidth()  * 3) / 4),
+                       juce::jmax(minUsableSize, (area.getHeight() * 3) / 4));
+    }
+
+    // Cascade by slot so A..D never land exactly on top of each other.
+    const int step = 24;
+    window.setTopLeftPosition(
+        juce::jmin(slot * step, juce::jmax(0, area.getWidth()  - window.getWidth())),
+        juce::jmin(slot * step, juce::jmax(0, area.getHeight() - window.getHeight())));
+}
+
+void SlotMdiArea::resized()
+{
+    MultiDocumentPanel::resized();
+
+    // The base class only lays out children in tabbed or single-document mode,
+    // so floating sub-windows are ours to look after. Phase 3 adds real tiling;
+    // this only rescues windows that are unusable or have drifted off the area,
+    // and leaves anything the user has arranged alone.
+    for (int s = 0; s < numSlots; ++s)
+        if (auto* window = windowFor(s))
+            giveUsableBounds(*window, s);
 }
 
 void SlotMdiArea::closeSlot(int slot)
@@ -65,24 +126,34 @@ int SlotMdiArea::getFocusedSlot() const
     return -1;
 }
 
-void SlotMdiArea::showOnlySlot(int slot)
+void SlotMdiArea::tryToCloseDocumentAsync(juce::Component* component,
+                                          std::function<void(bool)> callback)
 {
-    if (slot < 0 || slot >= numSlots)
-        return;
+    // Closing a sub-window only takes the slot off screen; its patch, undo
+    // history and variations stay exactly where they are. So there is never
+    // anything to save first, and this always says yes.
+    const auto* view = dynamic_cast<SlotView*>(component);
+    const int slot = view != nullptr ? view->getSlot() : -1;
 
-    // Close the others first so the panel never briefly holds two documents:
-    // that would drop out of fullscreen mode, build a floating sub-window for
-    // each, and tear it straight back down — a visible flash on every slot
-    // change. Going through zero documents only shows the empty background for
-    // the rest of this call.
-    suppressFocusCallback = true;
-    for (int s = 0; s < numSlots; ++s)
-        if (s != slot)
-            closeSlot(s);
-    suppressFocusCallback = false;
+    // The panel closes the document from inside this callback, so by the time
+    // it returns the window is already gone and onSlotClosed can report a fact
+    // rather than an intention. This is also the only hook that catches the
+    // window's own close button, which never goes through closeSlot().
+    if (callback)
+        callback(true);
 
-    openSlot(slot);
-    focusSlot(slot);
+    if (slot >= 0 && ! suppressFocusCallback && onSlotClosed != nullptr)
+        onSlotClosed(slot);
+}
+
+juce::MultiDocumentPanelWindow* SlotMdiArea::createNewDocumentWindow()
+{
+    auto* window = MultiDocumentPanel::createNewDocumentWindow();
+    // JUCE's default maximise button flips the whole panel into tabbed mode,
+    // which is not one of the layouts this editor offers, and would strand the
+    // tiling in an unreachable state. Leave only the close button.
+    window->setTitleBarButtonsRequired(juce::DocumentWindow::closeButton, false);
+    return window;
 }
 
 void SlotMdiArea::activeDocumentChanged()

@@ -34,7 +34,7 @@ public:
 
     std::function<void(int)> onSlotChanged;
     std::function<void(int)> onSlotEnableToggled;  // Ctrl+click on this slot
-    std::function<void(int)> onSlotWindowRequested;  // Right-click: pop out this slot
+    std::function<void(int)> onSlotViewToggled;  // Right-click: show/hide this slot
 
 private:
     void timerCallback() override;
@@ -57,8 +57,8 @@ private:
 };
 
 // Narrow clickable strip with a chevron that collapses/expands the panel it
-// sits next to, the same affordance the pop-out slot windows use for their
-// inspector. It stays put when the panel is hidden, so it is also the way back.
+// sits next to. It stays put when the panel is hidden, so it is also the way
+// back.
 class PanelToggleStrip : public juce::Component
 {
 public:
@@ -128,7 +128,7 @@ public:
     std::function<void(bool)> onPanelToggleRequested;
 
     std::function<void(int)> onSlotChanged;  // called with slot index 0-3
-    std::function<void(int)> onSlotWindowRequested;  // right-click a slot row: pop it out
+    std::function<void(int)> onSlotViewToggled;  // right-click a slot row: show/hide its sub-window
     std::function<void()> onMidiSettingsClicked;
     std::function<void()> onStoreToBankClicked;
     std::function<void()> onLibraryFolderClicked;

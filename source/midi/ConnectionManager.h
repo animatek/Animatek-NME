@@ -233,7 +233,7 @@ private:
     // slot < 0 (default) discards the whole queue, for the truly global cases
     // (disconnect). Any other value discards only that slot's entries — a
     // fetch/upload for one slot must not silently drop another slot's
-    // unrelated queued edits (e.g. from a background SlotWindow).
+    // unrelated queued edits (e.g. made in a background slot's sub-window).
     void invalidateParamQueue(const char* reason, int slot = -1);
     std::uint64_t paramContextGeneration_ = 0;
     std::uint64_t queuedParamGeneration_ = 0;

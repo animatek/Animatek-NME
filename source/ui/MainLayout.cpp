@@ -198,7 +198,7 @@ void SlotBar::mouseDown(const juce::MouseEvent& e)
         // Ctrl/Cmd+click keeps its existing meaning (enable toggle) even on
         // platforms where that combination is itself reported as a popup-menu
         // click — check it first so a plain right-click (no modifier) is the
-        // only thing that pops the slot out into its own window.
+        // only thing that shows or hides the slot's sub-window.
         if (e.mods.isCtrlDown() || e.mods.isCommandDown())
         {
             if (onSlotEnableToggled)
@@ -206,8 +206,8 @@ void SlotBar::mouseDown(const juce::MouseEvent& e)
         }
         else if (e.mods.isPopupMenu())
         {
-            if (onSlotWindowRequested)
-                onSlotWindowRequested(i);
+            if (onSlotViewToggled)
+                onSlotViewToggled(i);
         }
         else if (i != activeIndex)
         {
@@ -309,9 +309,9 @@ MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
         if (onSlotChanged)
             onSlotChanged(idx);
     };
-    slotBar.onSlotWindowRequested = [this](int idx) {
-        if (onSlotWindowRequested)
-            onSlotWindowRequested(idx);
+    slotBar.onSlotViewToggled = [this](int idx) {
+        if (onSlotViewToggled)
+            onSlotViewToggled(idx);
     };
 
     midiButton.onClick = [this]() { if (onMidiSettingsClicked) onMidiSettingsClicked(); };

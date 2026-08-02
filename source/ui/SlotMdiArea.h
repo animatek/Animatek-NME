@@ -31,11 +31,6 @@ public:
     // -1 when no slot is open.
     int getFocusedSlot() const;
 
-    // Phase 1 of the MDI keeps exactly one slot on screen, filling the area,
-    // which is how the editor behaves today. Phase 2 opens several at once and
-    // this collapses into openSlot() + focusSlot().
-    void showOnlySlot(int slot);
-
     // Every slot's canvas, open or not. Editor-wide settings (theme, the F5-F10
     // overlay modes) have to reach the closed ones too, or a canvas comes back
     // on screen still drawing the previous state.
@@ -47,23 +42,30 @@ public:
     }
 
     std::function<void(int)> onSlotFocused;
+    // Fired after a sub-window has actually gone, including from its own close
+    // button, which bypasses closeSlot() entirely.
+    std::function<void(int)> onSlotClosed;
 
     void activeDocumentChanged() override;
-
-    void tryToCloseDocumentAsync(juce::Component*, std::function<void(bool)> callback) override
-    {
-        // Closing a sub-window only takes the slot off screen; its patch, undo
-        // history and variations stay exactly where they are. So there is never
-        // anything to save first.
-        if (callback)
-            callback(true);
-    }
+    void tryToCloseDocumentAsync(juce::Component*, std::function<void(bool)> callback) override;
+    juce::MultiDocumentPanelWindow* createNewDocumentWindow() override;
+    void resized() override;
 
    #if JUCE_MODAL_LOOPS_PERMITTED
     bool tryToCloseDocument(juce::Component*) override { return true; }
    #endif
 
 private:
+    // The container window a slot's view currently sits in, or null when the
+    // slot is closed or the panel is in its single-document fullscreen mode.
+    juce::MultiDocumentPanelWindow* windowFor(int slot) const;
+    // Give a sub-window usable bounds if it has none. JUCE sizes a new window to
+    // its content, and a SlotView that has never been laid out measures 0x0,
+    // which lands on screen as a sliver of title bar.
+    void giveUsableBounds(juce::MultiDocumentPanelWindow& window, int slot);
+
+    static constexpr int minUsableSize = 120;
+
     std::array<std::unique_ptr<SlotView>, numSlots> views;
     bool suppressFocusCallback = false;
 

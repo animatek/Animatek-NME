@@ -107,8 +107,6 @@ set(NME_SHARED_SOURCES
     source/ui/PatchNotesFloaterWindow.cpp
     source/ui/MutatorWindow.cpp
     source/ui/SysexMonitorWindow.cpp
-    source/ui/SlotWindowContent.cpp
-    source/ui/SlotWindow.cpp
     source/ui/SlotView.cpp
     source/ui/SlotMdiArea.cpp
 

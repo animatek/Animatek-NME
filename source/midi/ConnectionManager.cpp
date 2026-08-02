@@ -784,7 +784,7 @@ void ConnectionManager::drainParamQueue()
 
     // A fetch/upload in flight must not be interleaved with a parameter send
     // for the SAME slot (the G1 can't handle that), but it says nothing about
-    // OTHER slots' queued edits (e.g. from a background SlotWindow) — those
+    // OTHER slots' queued edits (e.g. from a background sub-window) — those
     // still drain normally. Held entries just wait for the next tick instead
     // of being dropped (found in code review: this used to clear the whole
     // queue for any in-flight fetch/upload, regardless of slot).

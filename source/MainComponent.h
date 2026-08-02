@@ -22,7 +22,6 @@
 #include "ui/PatchNotesFloaterWindow.h"
 #include "ui/MutatorWindow.h"
 #include "ui/SysexMonitorWindow.h"
-#include "ui/SlotWindow.h"
 #if NME_MCP_BRIDGE
 #include "mcp/McpBridgeServer.h"
 #endif
@@ -123,11 +122,7 @@ private:
     void togglePatchNotesFloater();
     void toggleMutatorWindow();
     void toggleSysexMonitor();
-    void toggleSlotWindow(int slot);  // Open/reuse the pop-out window for one slot
-    void wireSlotWindowContent(SlotWindow& window, int slot);  // Editing callbacks, wired once per window
-    void updateSlotWindowDspLoad(int slot);  // Slot-scoped equivalent of updateDspLoadDisplay()
-    void updateSlotWindowFocusIndicators();  // Mark which open slot window has synth hardware focus
-    void mirrorLiveUpdateToSlotWindow();     // Repaint the focused slot's window on live synth updates (issue #22)
+    void toggleSlotOpen(int slot);  // Show/hide one slot's sub-window in the work area
     bool handleFloaterShortcut(const juce::KeyPress& key);  // Ctrl+1..9, T
     void showFloaterWindow(juce::DocumentWindow& window, const juce::String& settingsPrefix);
     void saveFloaterState();
@@ -190,7 +185,6 @@ private:
     std::unique_ptr<PatchSynchronizer> slotSynchronizers[numSlots];
     juce::UndoManager slotUndoManagers[numSlots];
     std::unique_ptr<UndoContext> slotUndoContexts[numSlots];
-    std::unique_ptr<SlotWindow> slotWindows[numSlots];  // Optional pop-out view per slot
     // A slot is "local" when its editor patch is not known to match the synth:
     // loaded via the Local option, or loaded/built while disconnected. Cleared
     // once the patch is uploaded to, or fetched from, the synth. Drives the
@@ -228,7 +222,18 @@ private:
     juce::UndoManager& undoManager() { return slotUndoManagers[activeSlot]; }
     std::unique_ptr<UndoContext>& undoContext() { return slotUndoContexts[activeSlot]; }
 
-    void switchToSlot(int slot, bool notifySynth = true);
+    // bringOnScreen=false is the synth-initiated path: adopt the slot, but never
+    // open a sub-window the user has closed and never yank focus mid-drag.
+    void switchToSlot(int slot, bool notifySynth = true, bool bringOnScreen = true);
+    // Telling the synth which slot to focus is debounced: walking focus across
+    // four sub-windows must not spray SlotActivated messages down the wire.
+    void notifySynthOfSlot(int slot);
+    // Zero a canvas's LEDs and meters. The synth streams them for one slot at a
+    // time, so the slot being left has to be blanked or it freezes lit.
+    void clearLightMeterData(int slot);
+    int  pendingSynthSlot = -1;
+    int  synthSlotGeneration = 0;
+    bool inSlotFocusChange = false;   // switchToSlot -> focusSlot -> onSlotFocused
     void updateDspLoadDisplay();
 
     // Module presets. wirePresetCallbacks() serves both the main window's

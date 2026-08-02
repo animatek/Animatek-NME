@@ -1,8 +1,8 @@
 # MDI: the four slots inside the main window
 
 Phased plan for replacing the per-slot OS pop-out windows with internal sub-windows in the
-main window's central area. Written 2026-08-01 against 0.12.0. Phases 0 and 1 are done;
-phases 2-5 are not started.
+main window's central area. Written 2026-08-01 against 0.12.0. Phases 0, 1 and 2 are done;
+phases 3-5 are not started.
 
 ## Why
 
@@ -86,7 +86,8 @@ left working, so nothing regresses mid-branch.
   window title).
 - New `source/ui/SlotMdiArea.{h,cpp}`: derives from `MultiDocumentPanel`; owns all four
   `SlotView`s for the whole session, `openSlot/closeSlot/focusSlot`, `forEachCanvas`,
-  `onSlotFocused`, plus `showOnlySlot()` for this phase's single-document behaviour. **It
+  `onSlotFocused`, plus a `showOnlySlot()` for this phase's single-document behaviour (phase
+  2 replaced it with plain `openSlot` + `focusSlot`). **It
   closes its documents in its own destructor**: `~MultiDocumentPanel` closes them in its body
   (`juce_MultiDocumentPanel.cpp:107-110`), by which time the derived members are gone. Note
   `JUCE_MODAL_LOOPS_PERMITTED` is 0 here, so the synchronous `closeAllDocuments` overload does
@@ -116,20 +117,39 @@ Line count is roughly flat (`MainComponent.cpp` +21): `wireSlotView` is new whil
 block and the three activeSlot-only save helpers went. The duplication is only actually
 *removed* in phase 2, when `wireSlotWindowContent` and the `SlotWindow` machinery go with it.
 
-### Phase 2 — Multiple open, focus, and removing the pop-outs (~1.5-2 days)
+### Phase 2 — Multiple open, focus, and removing the pop-outs (DONE)
 
-- `activeDocumentChanged()` → `onSlotFocused(slot)` → `switchToSlot(slot)`, with a
-  reentrancy guard (`focusSlot` → `setActiveDocument` → `toFront` → back round).
-- `selectSlot` to the synth **debounced (~250 ms)** and skipped when already on that slot,
-  so walking focus across four windows does not spray slot messages.
-- Synth to editor: focus a window only if it is already open, never open one, and never
-  steal focus while the mouse is dragging (today `updateSlotWindowFocusIndicators` calls
-  `toFront(true)` unconditionally).
-- Lights and meters go only to the hardware-focused slot's canvas, with zeros pushed to the
-  one being left so LEDs do not freeze lit.
-- **Delete**: `SlotWindow.*`, `SlotWindowContent.*`, `toggleSlotWindow`,
+- `activeDocumentChanged()` → `onSlotFocused(slot)` → `switchToSlot(slot)`, with the
+  reentrancy guard held across the whole of `switchToSlot` rather than just the focus call,
+  so the round trip (`focusSlot` → `setActiveDocument` → back) is dropped outright.
+- `selectSlot` to the synth **debounced (250 ms)** in `notifySynthOfSlot` and skipped when
+  the synth is already on that slot, so walking focus across four windows does not spray
+  slot messages.
+- Synth to editor: `switchToSlot(slot, false, /*bringOnScreen=*/false)` focuses a window
+  only if it is already open, never opens one, and never steals focus while a mouse button
+  is down (`Desktop::getNumDraggingMouseSources()`).
+- Lights and meters go only to the hardware-focused slot's canvas, and `clearLightMeterData`
+  zeroes the one being left so its LEDs do not freeze lit.
+- Right-clicking a slot row now shows/hides that slot's sub-window (`onSlotViewToggled`,
+  renamed from `onSlotWindowRequested`). It refuses to close the last open one.
+- **Deleted**: `SlotWindow.*`, `SlotWindowContent.*`, `toggleSlotWindow`,
   `wireSlotWindowContent`, `updateSlotWindowDspLoad`, `updateSlotWindowFocusIndicators`,
   `mirrorLiveUpdateToSlotWindow`, the `slotWindows[]` array and the CMake entries.
+
+Two things this phase turned up:
+
+- **A new sub-window is sized to its content**, and `setContentNonOwned(view, true)` on a
+  `SlotView` that has never been laid out measures 0x0 — the window lands on screen as a
+  sliver of title bar. `giveUsableBounds()` gives any degenerate or off-area window a
+  cascaded 3/4-size rectangle, from `openSlot` and from `resized`. Real tiling is phase 3;
+  this only rescues unusable windows and leaves arranged ones alone.
+- **The empty-canvas hint was centred on `g.getClipBounds()`**, so a partial repaint drew one
+  copy of "Press Enter to add modules" per invalidated region and they piled up. It now
+  centres on the viewport's visible area. Pre-existing, but the sub-windows repaint in
+  pieces far more often than one full-width canvas did, which is what made it show.
+
+The `slotWindowA..D{X,Y,W,H,Open}` settings keys are no longer written or read. Which slots
+are open is therefore not persisted until phase 4.
 
 ### Phase 3 — Tiling and the View menu (~1 day)
 
