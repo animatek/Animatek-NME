@@ -32,6 +32,11 @@
   Which slots you had open, which one had focus, and how they were arranged all come back
   when you reopen the editor.
 
+- **Load a synth patch into a slot you name.** Double-clicking a patch in the Synth browser
+  still loads it into the slot you are on; right-clicking now offers **Load to Slot A..D**, so
+  with several sub-windows open you can pull a patch into a particular one without leaving the
+  slot you are working in first.
+
 - **Removed the "Recycle Windows" editor option**, which has never done anything: it was
   saved, loaded and drawn as a checkbox, and nothing ever read it.
 

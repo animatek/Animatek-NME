@@ -305,18 +305,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // Wire patch browser callbacks
   mainLayout->getPatchBrowser().onPatchDoubleClicked = [this](int section, int position) {
-    const int targetSlot = activeSlot;
-    pendingBrowserLoadSlot = targetSlot;
-    mainLayout->getSlotBar().setCurrentTab(targetSlot);
-
-    const char* slotLetters[] = {"A", "B", "C", "D"};
-    std::cout << "[MAIN] Loading patch from browser: section=" << section
-              << " pos=" << position
-              << " targetSlot=" << slotLetters[targetSlot] << std::endl;
-
-    connectionManager.loadPatchFromBank(section, position, targetSlot);
-    mainLayout->getHeaderBar().setCurrentLocation(section, position);
-    mainLayout->getPatchBrowser().setLoadedPatch(section, position);
+    loadBankPatchIntoSlot(section, position, activeSlot);
+  };
+  mainLayout->getPatchBrowser().onPatchLoadToSlot = [this](int section, int position, int slot) {
+    loadBankPatchIntoSlot(section, position, slot);
   };
 
   mainLayout->getPatchBrowser().onRefreshRequested = [this]() {
@@ -1835,6 +1827,31 @@ void MainComponent::setSlotLocal(int slot, bool local) {
   slotIsLocal[slot] = local;
   mainLayout->getSlotBar().setSlotLocal(slot, local);
   mainLayout->getPatchArea().getView(slot).setLocal(local);
+}
+
+// Fetch a patch out of the synth's banks into one slot. Double-clicking in the
+// browser aims at the active slot; the right-click menu names one, which is what
+// makes four sub-windows worth having.
+void MainComponent::loadBankPatchIntoSlot(int section, int position, int slot) {
+  if (slot < 0 || slot >= numSlots)
+    return;
+
+  pendingBrowserLoadSlot = slot;
+
+  // Show the destination, so the patch does not arrive somewhere off screen.
+  // notifySynth is false deliberately: loadPatchFromBank carries the slot in its
+  // SysEx envelope, so moving hardware focus first is unnecessary and only adds
+  // competing ACKs to a fetch that is already in flight.
+  switchToSlot(slot, /*notifySynth=*/false);
+
+  std::cout << "[MAIN] Loading patch from browser: section=" << section
+            << " pos=" << position
+            << " targetSlot=" << juce::String::charToString(static_cast<char>('A' + slot))
+            << std::endl;
+
+  connectionManager.loadPatchFromBank(section, position, slot);
+  mainLayout->getHeaderBar().setCurrentLocation(section, position);
+  mainLayout->getPatchBrowser().setLoadedPatch(section, position);
 }
 
 void MainComponent::storePatchToBank() {

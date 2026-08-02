@@ -25,6 +25,10 @@ public:
 
     // Callbacks
     std::function<void(int section, int position)> onPatchDoubleClicked;
+    // Right-click > Load to Slot A..D. Double-clicking loads into whichever slot
+    // is active; this names the destination, which is the whole point of having
+    // four of them on screen at once.
+    std::function<void(int section, int position, int slot)> onPatchLoadToSlot;
     std::function<void()> onRefreshRequested;
     std::function<void(int section, int position)> onPatchRename;
     std::function<void(int section, int position)> onPatchDelete;

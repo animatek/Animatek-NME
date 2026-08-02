@@ -386,6 +386,11 @@ void PatchBrowserPanel::PatchTreeItem::showContextMenu()
         return;
 
     juce::PopupMenu menu;
+    // Ids 10..13 are Load to Slot A..D.
+    for (int slot = 0; slot < 4; ++slot)
+        menu.addItem(10 + slot,
+                     "Load to Slot " + juce::String::charToString(static_cast<char>('A' + slot)));
+    menu.addSeparator();
     menu.addItem(1, "Delete (clear)");
     menu.addSeparator();
     menu.addItem(2, "Copy to...");
@@ -414,6 +419,8 @@ void PatchBrowserPanel::PatchTreeItem::showContextMenu()
                     break;
 
                 default:
+                    if (result >= 10 && result < 14 && panel->onPatchLoadToSlot)
+                        panel->onPatchLoadToSlot(section, position, result - 10);
                     break;
             }
         });

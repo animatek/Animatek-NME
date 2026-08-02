@@ -91,6 +91,9 @@ private:
     void newPatch();
     void openPatch();
     void storePatchToBank();
+    // Fetch a bank patch into a named slot (browser double-click and its
+    // right-click "Load to Slot A..D").
+    void loadBankPatchIntoSlot(int section, int position, int slot);
     // Opening a .pch shows the slot chooser (issue #21); the chosen destination
     // and Local flag are then applied by loadPatchFromFile.
     void openPatchFileWithChooser(const juce::File& file);

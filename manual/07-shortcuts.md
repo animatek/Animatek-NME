@@ -66,6 +66,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `F11` | Focus mode: blow the focused slot up to the full area, and back |
 | Maximise button | The same, on that sub-window's own title bar |
 | Right-click a slot row | Show/hide that slot's sub-window |
+| Right-click a patch in the Synth browser | **Load to Slot A..D**: fetch it into a named slot |
 | `Ctrl+click` a slot row | Enable/disable the slot without selecting it |
 
 Open slots tile themselves, the way a tiling window manager does: one fills the
