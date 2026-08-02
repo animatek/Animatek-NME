@@ -192,6 +192,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     if (next >= 0 && next != activeSlot)
       switchToSlot(next);
   };
+  // Open/closed, tile mode and focus mode all show as tick marks in the View
+  // menu, and the native macOS menu bar keeps a stale tick unless it is rebuilt.
+  mainLayout->getPatchArea().onLayoutChanged = [this]() { menuItemsChanged(); };
+
   mainLayout->getPatchArea().openSlot(activeSlot);
 
   // The main window's inspector follows whichever slot is active, so it binds to
@@ -880,6 +884,30 @@ void MainComponent::resized() {
   mainLayout->setBounds(area);
 }
 
+// Which slot Ctrl+Shift+<digit> means.
+//
+// X11 reports a shifted digit by its symbol rather than by the digit: when Ctrl
+// swallows the character, JUCE falls back to the *shifted* keysym, so
+// Ctrl+Shift+1 arrives as '!' and never as '1'. It is the same mechanism behind
+// the "Ctrl+8 arrives as DEL" workaround in the canvas. Letters survive it
+// because KeyPress::operator== case-folds 'S' onto 's'; digits have no such
+// luck. Cover the layouts we know and let the View menu carry the rest.
+static int slotDigitFromShiftedKey(const juce::KeyPress& key)
+{
+  const int code = key.getKeyCode();
+  if (code >= '1' && code <= '4')
+    return code - '1';
+
+  switch (code)
+  {
+    case '!':               return 0;
+    case '@': case '"':     return 1;   // US, Spanish
+    case '#': case 0xB7: case 0xA3: return 2;   // US, Spanish middle dot, UK pound
+    case '$':               return 3;
+    default:                return -1;
+  }
+}
+
 bool MainComponent::keyPressed(const juce::KeyPress& key) {
   if (key == juce::KeyPress(',', juce::ModifierKeys::commandModifier, 0))
   {
@@ -914,6 +942,24 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
     else
       toggleLeftPanel();
     return true;
+  }
+  // F11 blows the focused slot up to fill the work area and back, the way a
+  // tiling window manager's monocle does.
+  if (key == juce::KeyPress::F11Key)
+  {
+    toggleFocusMode();
+    return true;
+  }
+  // Ctrl+Shift+1..4 show or hide a slot's sub-window. Ctrl+1..4 (no Shift) still
+  // means "make this slot the active one", which also opens it.
+  if (key.getModifiers().isCommandDown() && key.getModifiers().isShiftDown())
+  {
+    const int slot = slotDigitFromShiftedKey(key);
+    if (slot >= 0)
+    {
+      toggleSlotOpen(slot);
+      return true;
+    }
   }
   if (handleFloaterShortcut(key))
     return true;
@@ -979,6 +1025,25 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
                         i == editorOptions.uiThemeIndex);
     menu.addSubMenu("Theme\tCtrl+T", themeMenu);
     menu.addItem(66, "Wireframe Modules\tCtrl+W", true, editorOptions.wireframe);
+    menu.addSeparator();
+
+    auto& patchArea = mainLayout->getPatchArea();
+    juce::PopupMenu slotMenu;
+    for (int i = 0; i < numSlots; ++i)
+    {
+        auto letter = juce::String::charToString(static_cast<char>('A' + i));
+        auto name = slotPatches[i] ? slotPatches[i]->getName() : juce::String("empty");
+        slotMenu.addItem(90 + i, "Slot " + letter + " - " + name
+                                 + "\tCtrl+Shift+" + juce::String(i + 1),
+                         true, patchArea.isSlotOpen(i));
+    }
+    slotMenu.addSeparator();
+    slotMenu.addItem(94, "Tile Slots", patchArea.getNumOpenSlots() > 1,
+                     patchArea.getTileMode() == SlotMdiArea::TileMode::Auto);
+    slotMenu.addItem(95, "Focus Mode\tF11", patchArea.getNumOpenSlots() > 1,
+                     patchArea.isFocusMode());
+    menu.addSubMenu("Slots", slotMenu);
+
     menu.addSeparator();
     menu.addItem(67, "Inspector Panel\tCtrl+I", true, mainLayout->isLeftPanelVisible());
     menu.addItem(68, "Patch Browser\tCtrl+Shift+I", true, mainLayout->isRightPanelVisible());
@@ -1208,6 +1273,16 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 84:  // SysEx Monitor
     toggleSysexMonitor();
     break;
+  case 90: case 91: case 92: case 93:  // show/hide slot A..D
+    toggleSlotOpen(menuItemID - 90);
+    break;
+  case 94:  // Tile Slots
+    mainLayout->getPatchArea().retile();
+    mainLayout->getStatusBar().showMessage("Slots tiled", 2000);
+    break;
+  case 95:  // Focus Mode
+    toggleFocusMode();
+    break;
 
   default:
     if (menuItemID >= 200 && menuItemID < 200 + ThemeRegistry::count())
@@ -1353,6 +1428,19 @@ void MainComponent::clearLightMeterData(int slot) {
     return;
   static const int zeros[128] = {};
   canvasFor(slot).setLightMeterData(zeros, zeros);
+}
+
+void MainComponent::toggleFocusMode() {
+  auto& area = mainLayout->getPatchArea();
+  if (area.getNumOpenSlots() < 2) {
+    mainLayout->getStatusBar().showMessage(
+        "Focus mode needs a second slot open (Ctrl+Shift+1..4)", 2500);
+    return;
+  }
+  const bool on = !area.isFocusMode();
+  area.setFocusMode(on);
+  mainLayout->getStatusBar().showMessage(
+      on ? "Focus mode on - F11 to go back to the tiling" : "Focus mode off", 2500);
 }
 
 void MainComponent::toggleSlotOpen(int slot) {
@@ -2941,9 +3029,15 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Middle-drag         Pan canvas\n"
       "\n"
       "SLOTS\n"
-      "  Ctrl+1..4           Switch to slot A..D\n"
-      "  Right-click slot    Open that slot in its own window\n"
+      "  Ctrl+1..4           Switch to slot A..D (opens it if closed)\n"
+      "  Ctrl+Shift+1..4     Show/hide slot A..D's sub-window\n"
+      "  F11                 Focus mode: blow the focused slot up, and back\n"
+      "  Right-click slot    Show/hide that slot's sub-window\n"
       "  Ctrl+click slot     Enable/disable without selecting\n"
+      "\n"
+      "  Open slots tile themselves: one fills the area, two split it, three\n"
+      "  go in thirds, four go 2x2. Dragging or resizing a sub-window leaves\n"
+      "  the windows where you put them; View > Slots > Tile Slots re-flows.\n"
       "\n"
       "FLOATERS\n"
       "  Ctrl+5              Knob Floater\n"
@@ -2952,10 +3046,10 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Ctrl+8              Patch Mutator\n"
       "  Ctrl+9              SysEx Monitor\n"
       "\n"
-      "SLOT WINDOW (window focused)\n"
-      "  Ctrl+I              Toggle inspector panel\n"
+      "SUB-WINDOW (the one with focus)\n"
       "  Ctrl+R / Ctrl+Shift+R  Randomize (uniform / gaussian)\n"
       "  Ctrl+S / Ctrl+Shift+S  Save / Save as\n"
+      "  These act on that window's own slot and selection.\n"
       "\n"
       "PATCH MUTATOR (window focused)\n"
       "  1-8                 Focus Mother / Children / Father\n"

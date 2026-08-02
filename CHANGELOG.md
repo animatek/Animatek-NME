@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- **The four slots now live inside the main window**, as sub-windows in the work area, the way
+  the original Clavia editor and Nomad arranged patches. The per-slot pop-out OS windows are
+  gone: they got lost behind other windows, could not be arranged, and meant every feature
+  touching the canvas had to be written twice, once for the main window and once for a pop-out.
+  There is one canvas now, wired once per slot.
+
+  Open slots **tile themselves**, the way a tiling window manager does: one fills the work
+  area, two split it down the middle, three go in thirds, four go 2x2, and the layout re-flows
+  as you open and close them. **Ctrl+Shift+1..4** shows or hides a slot (so does right-clicking
+  its row in the slot bar), **Ctrl+1..4** still switches to a slot and opens it if it was
+  closed, and **F11** blows the focused slot up to the whole area and back again for a closer
+  look. Dragging or resizing a sub-window leaves the windows where you put them from then on;
+  **View > Slots > Tile Slots** re-flows them.
+
+  The inspector, header bar, browsers and status bar stay shared and follow whichever slot has
+  focus. Telling the synth which slot you moved to is now coalesced, so walking focus across
+  four windows no longer sprays slot messages down the MIDI cable, and a front-panel slot press
+  will not steal focus in the middle of a cable drag. Dragging a module out of the browser
+  works into any sub-window, which never worked in the pop-outs.
+
+  Which slots are open is not remembered between sessions yet.
+
+- **Fixed: "Press Enter to add modules" could pile up on itself** on an empty canvas. The hint
+  was centred on whatever rectangle was being repainted rather than on the canvas, so a partial
+  repaint left a copy behind at its own position.
+
 ## 0.12.0 — 2026-08-01
 
 - **macOS builds run on High Sierra again**: the package claimed Catalina as its minimum,

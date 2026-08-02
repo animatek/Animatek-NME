@@ -61,9 +61,17 @@ On macOS, `Ctrl` is `Cmd`.
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+1`..`Ctrl+4` | Switch to slot A..D |
-| Right-click a slot row | Open that slot in its own window |
+| `Ctrl+1`..`Ctrl+4` | Switch to slot A..D (opens its sub-window if closed) |
+| `Ctrl+Shift+1`..`Ctrl+Shift+4` | Show/hide slot A..D's sub-window |
+| `F11` | Focus mode: blow the focused slot up to the full area, and back |
+| Right-click a slot row | Show/hide that slot's sub-window |
 | `Ctrl+click` a slot row | Enable/disable the slot without selecting it |
+
+Open slots tile themselves, the way a tiling window manager does: one fills the
+work area, two split it down the middle, three go in thirds, four go 2x2. The
+layout re-flows whenever you open or close one. Dragging or resizing a
+sub-window leaves the windows where you put them from then on; **View > Slots >
+Tile Slots** puts them back.
 
 ## Floaters
 
@@ -75,13 +83,12 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl+8` | Patch Mutator |
 | `Ctrl+9` | SysEx Monitor |
 
-## Slot Window (window focused)
+## Sub-window (the one with focus)
 
 All of these act on that window's own slot and selection.
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+I` | Toggle inspector panel |
 | `Ctrl+R` / `Ctrl+Shift+R` | Randomize parameters (uniform / gaussian) |
 | `Ctrl+S` / `Ctrl+Shift+S` | Save / Save as |
 

@@ -1,5 +1,7 @@
 #include "SlotMdiArea.h"
 #include "AppTheme.h"
+#include <utility>
+#include <vector>
 
 SlotMdiArea::SlotMdiArea()
 {
@@ -27,11 +29,20 @@ void SlotMdiArea::openSlot(int slot)
 
     addDocument(views[(size_t) slot].get(), getBackgroundColour(), /*deleteWhenRemoved*/ false);
 
-    // Going from one document to two wraps both views in windows, so check them
-    // all, not only the one just opened.
+    // Going from one document to two wraps both views in windows, so every
+    // window is new as far as we are concerned, not only the one just opened.
     for (int s = 0; s < numSlots; ++s)
         if (auto* window = windowFor(s))
-            giveUsableBounds(*window, s);
+            window->addComponentListener(&watcher);  // idempotent
+
+    applyLayout();
+    if (tileMode == TileMode::Free)
+        for (int s = 0; s < numSlots; ++s)
+            if (auto* window = windowFor(s))
+                giveUsableBounds(*window, s);
+
+    if (onLayoutChanged)
+        onLayoutChanged();
 }
 
 juce::MultiDocumentPanelWindow* SlotMdiArea::windowFor(int slot) const
@@ -81,12 +92,139 @@ void SlotMdiArea::resized()
     MultiDocumentPanel::resized();
 
     // The base class only lays out children in tabbed or single-document mode,
-    // so floating sub-windows are ours to look after. Phase 3 adds real tiling;
-    // this only rescues windows that are unusable or have drifted off the area,
-    // and leaves anything the user has arranged alone.
+    // so the floating sub-windows are ours to look after.
+    applyLayout();
+
+    if (tileMode == TileMode::Free)
+        for (int s = 0; s < numSlots; ++s)
+            if (auto* window = windowFor(s))
+                giveUsableBounds(*window, s);
+}
+
+int SlotMdiArea::getNumOpenSlots() const
+{
+    int n = 0;
     for (int s = 0; s < numSlots; ++s)
-        if (auto* window = windowFor(s))
-            giveUsableBounds(*window, s);
+        if (isSlotOpen(s))
+            ++n;
+    return n;
+}
+
+void SlotMdiArea::retile()
+{
+    tileMode = TileMode::Auto;
+    applyLayout();
+    if (onLayoutChanged)
+        onLayoutChanged();
+}
+
+void SlotMdiArea::setFocusMode(bool shouldBeFocused)
+{
+    if (focusMode == shouldBeFocused)
+        return;
+
+    focusMode = shouldBeFocused;
+    // Focus mode is a view of the tiling, not an alternative to it: turning it
+    // on from Free would have nothing coherent to fall back to.
+    if (focusMode)
+        tileMode = TileMode::Auto;
+
+    applyLayout();
+    if (onLayoutChanged)
+        onLayoutChanged();
+}
+
+void SlotMdiArea::applyLayout()
+{
+    if (tileMode != TileMode::Auto)
+        return;
+
+    const auto area = getLocalBounds();
+    if (area.isEmpty())
+        return;  // not laid out yet; resized() will come back to this
+
+    std::vector<int> open;
+    for (int s = 0; s < numSlots; ++s)
+        if (isSlotOpen(s))
+            open.push_back(s);
+
+    // One document has no window frame at all — the base class gives the view
+    // the whole area — so there is nothing to place.
+    if (open.size() < 2)
+        return;
+
+    const juce::ScopedValueSetter<bool> guard(applyingLayout, true);
+
+    if (focusMode)
+    {
+        // Leave the others tiled where they are and lay the focused one over the
+        // top. Coming back out is then just a re-tile, with nothing to restore.
+        if (auto* window = windowFor(getFocusedSlot()))
+        {
+            window->setBounds(area);
+            window->toFront(true);
+            return;
+        }
+    }
+
+    const int n = static_cast<int>(open.size());
+
+    // Boundaries are computed from the area rather than accumulated from a
+    // width, so the columns always add up to exactly the full width with no
+    // rounding gap between them.
+    auto split = [](int start, int extent, int index, int count)
+    {
+        const int a = start + (extent * index)       / count;
+        const int b = start + (extent * (index + 1)) / count;
+        return std::make_pair(a, b - a);
+    };
+
+    if (n == 4)
+    {
+        // 2x2, in slot order: A top-left, B top-right, C bottom-left, D bottom-right.
+        for (int i = 0; i < 4; ++i)
+        {
+            auto* window = windowFor(open[(size_t) i]);
+            if (window == nullptr)
+                continue;
+            const auto [x, w] = split(area.getX(), area.getWidth(),  i % 2, 2);
+            const auto [y, h] = split(area.getY(), area.getHeight(), i / 2, 2);
+            window->setBounds(x, y, w, h);
+        }
+    }
+    else
+    {
+        // Two or three: side-by-side columns. A patch canvas is much wider than
+        // it is tall, so splitting the width keeps both halves readable in a way
+        // that stacking them would not.
+        for (int i = 0; i < n; ++i)
+        {
+            auto* window = windowFor(open[(size_t) i]);
+            if (window == nullptr)
+                continue;
+            const auto [x, w] = split(area.getX(), area.getWidth(), i, n);
+            window->setBounds(x, area.getY(), w, area.getHeight());
+        }
+    }
+}
+
+void SlotMdiArea::windowMovedOrResized(juce::Component& component,
+                                       bool wasMoved, bool wasResized)
+{
+    if (applyingLayout || !(wasMoved || wasResized))
+        return;
+    if (dynamic_cast<juce::MultiDocumentPanelWindow*>(&component) == nullptr)
+        return;
+
+    // The user dragged or resized a sub-window. Stop re-flowing it out from
+    // under them; the View menu's Tile Slots is the way back.
+    if (tileMode == TileMode::Auto)
+    {
+        tileMode = TileMode::Free;
+        focusMode = false;
+        if (onLayoutChanged)
+            onLayoutChanged();
+    }
 }
 
 void SlotMdiArea::closeSlot(int slot)
@@ -94,7 +232,10 @@ void SlotMdiArea::closeSlot(int slot)
     if (slot < 0 || slot >= numSlots || !isSlotOpen(slot))
         return;
 
-    closeDocumentAsync(views[(size_t) slot].get(), false, nullptr);
+    // checkItsOkToCloseFirst=true so this goes through tryToCloseDocumentAsync,
+    // the one place that re-flows the layout and reports the close — the
+    // window's own close button can only reach us that way.
+    closeDocumentAsync(views[(size_t) slot].get(), true, nullptr);
 }
 
 bool SlotMdiArea::isSlotOpen(int slot) const
@@ -142,7 +283,15 @@ void SlotMdiArea::tryToCloseDocumentAsync(juce::Component* component,
     if (callback)
         callback(true);
 
-    if (slot >= 0 && ! suppressFocusCallback && onSlotClosed != nullptr)
+    if (suppressFocusCallback)
+        return;
+
+    // One fewer window: the remaining ones re-flow to fill the area.
+    applyLayout();
+    if (onLayoutChanged)
+        onLayoutChanged();
+
+    if (slot >= 0 && onSlotClosed != nullptr)
         onSlotClosed(slot);
 }
 
@@ -158,10 +307,15 @@ juce::MultiDocumentPanelWindow* SlotMdiArea::createNewDocumentWindow()
 
 void SlotMdiArea::activeDocumentChanged()
 {
-    if (suppressFocusCallback || onSlotFocused == nullptr)
+    if (suppressFocusCallback)
         return;
 
+    // In focus mode the maximised window is whichever one has focus, so moving
+    // focus moves which window is blown up.
+    if (focusMode)
+        applyLayout();
+
     const int slot = getFocusedSlot();
-    if (slot >= 0)
+    if (slot >= 0 && onSlotFocused != nullptr)
         onSlotFocused(slot);
 }

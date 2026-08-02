@@ -1,8 +1,8 @@
 # MDI: the four slots inside the main window
 
 Phased plan for replacing the per-slot OS pop-out windows with internal sub-windows in the
-main window's central area. Written 2026-08-01 against 0.12.0. Phases 0, 1 and 2 are done;
-phases 3-5 are not started.
+main window's central area. Written 2026-08-01 against 0.12.0. Phases 0 to 3 are done;
+phases 4 and 5 are not started.
 
 ## Why
 
@@ -151,23 +151,52 @@ Two things this phase turned up:
 The `slotWindowA..D{X,Y,W,H,Open}` settings keys are no longer written or read. Which slots
 are open is therefore not persisted until phase 4.
 
-### Phase 3 — Tiling and the View menu (~1 day)
+### Phase 3 — Tiling and the View menu (DONE)
 
-`applyTiling()` over the container windows in slot order A-D: 2x2 (with sensible 3-window
-and 2-window fallbacks), side by side, stacked, cascade. Dragging or resizing a window drops
-the mode to Free. View menu gets per-slot open/close entries with tick marks plus
-`Ctrl+Shift+1..4`.
+Javier asked for **dynamic tiling**, the way niri and Hyprland do it, rather than the list of
+manual layout modes originally planned: the layout is a function of how many sub-windows are
+open, not something the user arranges. One fills the area (JUCE's
+`useFullscreenWhenOneDocument`, no window frame at all), two split it down the middle, three
+go in thirds, four go 2x2 in slot order. `applyLayout()` re-flows on every open, close and
+resize. Column boundaries are computed from the area (`start + extent * i / n`) rather than
+accumulated from a width, so they always add up with no rounding gap.
 
-Collision to handle: `handleFloaterShortcut` (`MainComponent.cpp:2428-2452`) matches
-`Ctrl` without Shift and would swallow `Ctrl+Alt+T` into the theme cycle.
+Plus a **focus mode** (`F11`), the tiling-WM monocle: the focused sub-window is laid over the
+whole area while the others stay tiled behind it, so coming back out is just a re-tile with
+nothing to restore. Moving focus in focus mode moves which window is blown up.
 
-### Phase 4 — Persistence (~0.5-1 day)
+Dragging or resizing a window drops the mode to **Free** and the windows stay put;
+`View > Slots > Tile Slots` goes back to Auto. Detecting that needs a
+`ComponentListener` on the container windows, and `juce::MultiDocumentPanel` inherits
+`ComponentListener` **privately**, so `SlotMdiArea` cannot register itself — hence the
+`WindowWatcher` forwarder. An `applyingLayout` flag keeps our own `setBounds` calls from
+being mistaken for the user dragging.
+
+The View menu gets a **Slots** submenu: per-slot open/close with tick marks and the patch
+name, Tile Slots, and Focus Mode. `onLayoutChanged` → `menuItemsChanged()`, or the native
+macOS menu bar keeps stale ticks.
+
+Keyboard gotcha, worse than the collision originally noted: **X11 reports a shifted digit by
+its symbol**. When Ctrl swallows the character JUCE falls back to the *shifted* keysym
+(`juce_XWindowSystem_linux.cpp`, `keyCode = unicodeChar` then the `< 0x20` fallback at
+level 1), so `Ctrl+Shift+1` arrives as `'!'`, never as `'1'`. Letters survive this because
+`KeyPress::operator==` case-folds `'S'` onto `'s'`; digits have no such luck. That is the same
+mechanism behind the existing "Ctrl+8 arrives as DEL" workaround in the canvas.
+`slotDigitFromShiftedKey()` maps the US, Spanish and UK symbols; the View menu covers any
+layout it does not.
+
+Still open: `Ctrl+Alt+T` was never bound, so the `handleFloaterShortcut` collision the plan
+warned about did not arise. Note it still would — that function matches `Ctrl` without
+checking `Alt`.
+
+### Phase 4 — Persistence (~0.5-1 day) — NEXT
 
 Retire the `slotWindowA..D{X,Y,W,H,Open}` keys: the generic floater mechanism clamps against
 **screen** coordinates (`showFloaterWindow`), which means nothing for a child window. New
 keys: `mdiOpenSlots` (bitmask), `mdiFocusedSlot`, `mdiTileMode`, and each window's bounds
 **normalised** to the area, which sidesteps the whole class of "the area is a different size
-now" bugs when panels collapse or the monitor changes.
+now" bugs when panels collapse or the monitor changes. With dynamic tiling the bounds only
+matter in Free mode; in Auto the open-slot bitmask is enough to reproduce the layout.
 
 ### Phase 5 — Polish (~1 day)
 
