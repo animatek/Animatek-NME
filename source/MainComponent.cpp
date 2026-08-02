@@ -169,6 +169,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         });
   });
 
+  mainLayout->getPatchArea().setAnimated(editorOptions.animateTiling);
+
   initModulePresetLibrary();
 
   // Every slot's canvas is wired the same way, once, against its own slot. The
@@ -975,6 +977,29 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
       toggleSlotOpen(slot);
       return true;
     }
+    // Which slot sits in which tile, the way Hyprland's swapwindow and rollnext
+    // reorder a layout without changing what is in it. Arrow keysyms are stable
+    // under Shift, unlike the digits above.
+    if (key.getKeyCode() == juce::KeyPress::leftKey)
+    {
+      mainLayout->getPatchArea().swapFocusedTile(-1);
+      return true;
+    }
+    if (key.getKeyCode() == juce::KeyPress::rightKey)
+    {
+      mainLayout->getPatchArea().swapFocusedTile(1);
+      return true;
+    }
+    if (key.getKeyCode() == juce::KeyPress::upKey)
+    {
+      mainLayout->getPatchArea().rotateTiles(1);
+      return true;
+    }
+    if (key.getKeyCode() == juce::KeyPress::downKey)
+    {
+      mainLayout->getPatchArea().rotateTiles(-1);
+      return true;
+    }
   }
   if (handleFloaterShortcut(key))
     return true;
@@ -1053,7 +1078,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
                          true, patchArea.isSlotOpen(i));
     }
     slotMenu.addSeparator();
-    slotMenu.addItem(94, "Tile Slots", patchArea.getNumOpenSlots() > 1,
+    const bool severalOpen = patchArea.getNumOpenSlots() > 1;
+    slotMenu.addItem(96, "Move Slot Left\tCtrl+Shift+Left", severalOpen);
+    slotMenu.addItem(97, "Move Slot Right\tCtrl+Shift+Right", severalOpen);
+    slotMenu.addItem(98, "Rotate Slots\tCtrl+Shift+Up", severalOpen);
+    slotMenu.addSeparator();
+    slotMenu.addItem(94, "Tile Slots", severalOpen,
                      patchArea.getTileMode() == SlotMdiArea::TileMode::Auto);
     slotMenu.addItem(95, "Focus Mode\tF11", patchArea.getNumOpenSlots() > 1,
                      patchArea.isFocusMode());
@@ -1297,6 +1327,15 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 95:  // Focus Mode
     toggleFocusMode();
+    break;
+  case 96:  // Move the focused slot one tile left
+    mainLayout->getPatchArea().swapFocusedTile(-1);
+    break;
+  case 97:  // ...and right
+    mainLayout->getPatchArea().swapFocusedTile(1);
+    break;
+  case 98:  // Rotate every slot round one tile
+    mainLayout->getPatchArea().rotateTiles(1);
     break;
 
   default:
@@ -2063,6 +2102,7 @@ void MainComponent::applyEditorOptions(const EditorOptions& opts) {
   PatchCanvas::setKnobControl  (static_cast<int>(opts.knobControl));
   PatchCanvas::setAutoUpload   (opts.autoUpload);
   PatchCanvas::setCableOpacity (opts.cableOpacity);
+  mainLayout->getPatchArea().setAnimated(opts.animateTiling);
   applyUiTheme(editorOptions.uiThemeIndex, false);
 
   // Synth parameter send speed (Mutator/Random throughput)
@@ -2301,6 +2341,7 @@ void MainComponent::saveMdiLayout() {
   settings->setValue("mdiFocusedSlot", activeSlot);
   settings->setValue("mdiFreeLayout", freeMode);
   settings->setValue("mdiFocusMode", area.isFocusMode());
+  settings->setValue("mdiTileOrder", area.getTileOrderString());
 
   // Only in Free mode, and only for slots that are actually on screen: writing
   // zeroes for a closed slot would restore as an empty rectangle.
@@ -2333,6 +2374,8 @@ void MainComponent::restoreMdiLayout() {
 
   // Default to the slot that is already open, so a first run and a corrupt or
   // empty mask both land somewhere sensible rather than on an empty work area.
+  area.setTileOrderString(settings->getValue("mdiTileOrder", "0123"));
+
   int openMask = settings->getIntValue("mdiOpenSlots", 1 << activeSlot);
   if ((openMask & 0x0f) == 0)
     openMask = 1 << activeSlot;
@@ -2355,7 +2398,8 @@ void MainComponent::restoreMdiLayout() {
 
   std::cout << "[MDI] Restored layout: openMask=" << openMask
             << " free=" << settings->getBoolValue("mdiFreeLayout", false)
-            << " open=" << mainLayout->getPatchArea().getNumOpenSlots() << std::endl;
+            << " open=" << mainLayout->getPatchArea().getNumOpenSlots()
+            << " tileOrder=" << mainLayout->getPatchArea().getTileOrderString() << std::endl;
 
   const int focused = settings->getIntValue("mdiFocusedSlot", activeSlot);
   if (focused >= 0 && focused < numSlots && (openMask & (1 << focused)))
@@ -3168,6 +3212,8 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Ctrl+Shift+1..4     Show/hide slot A..D's sub-window\n"
       "  F11                 Focus mode: blow the focused slot up, and back\n"
       "  Maximise button     Same, on that sub-window's title bar\n"
+      "  Ctrl+Shift+Left/Right  Move the focused slot one tile over\n"
+      "  Ctrl+Shift+Up/Down     Rotate every slot round one tile\n"
       "  Right-click slot    Show/hide that slot's sub-window\n"
       "  Ctrl+click slot     Enable/disable without selecting\n"
       "\n"

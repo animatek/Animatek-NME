@@ -58,6 +58,7 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.knobControl    = static_cast<KnobControl> (props->getIntValue  ("knobControl",     0));
     o.autoUpload     = props->getBoolValue  ("autoUpload",     true);
     o.wireframe      = props->getBoolValue  ("wireframe",      false);
+    o.animateTiling  = props->getBoolValue  ("animateTiling",  true);
     o.mcpBridgeEnabled = props->getBoolValue("mcpBridgeEnabled", false);
     o.cableOpacity   = static_cast<float>   (props->getDoubleValue("cableOpacity", 0.80));
     o.sendRateIndex  = juce::jlimit (0, static_cast<int> (sendRates().size()) - 1,
@@ -76,6 +77,7 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("knobControl",     static_cast<int> (knobControl));
     props->setValue ("autoUpload",      autoUpload);
     props->setValue ("wireframe",       wireframe);
+    props->setValue ("animateTiling",   animateTiling);
     props->setValue ("mcpBridgeEnabled", mcpBridgeEnabled);
     props->setValue ("cableOpacity",    static_cast<double>(cableOpacity));
     props->setValue ("sendRateIndex",   sendRateIndex);
@@ -171,11 +173,14 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     styleLabel (behaviourLabel, true);
     styleToggle (autoUploadToggle);
     styleToggle (wireframeToggle);
+    styleToggle (animateTilingToggle);
     autoUploadToggle.setToggleState (options.autoUpload,     juce::dontSendNotification);
     wireframeToggle .setToggleState (options.wireframe,      juce::dontSendNotification);
+    animateTilingToggle.setToggleState (options.animateTiling, juce::dontSendNotification);
     addAndMakeVisible (behaviourLabel);
     addAndMakeVisible (autoUploadToggle);
     addAndMakeVisible (wireframeToggle);
+    addAndMakeVisible (animateTilingToggle);
 
     // Send speed selector — synth parameter throughput (Mutator/Random)
     styleLabel (sendRateLabel);
@@ -354,6 +359,8 @@ int EditorOptionsDialog::layoutComponents (bool apply)
     place (autoUploadToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH;
     place (wireframeToggle, pad + 8, y, w - pad * 2 - 8, rowH);
+    y += rowH;
+    place (animateTilingToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH + 4;
     place (sendRateLabel,    pad + 8,  y, 80, rowH);
     place (sendRateSelector, pad + 92, y, w - pad * 2 - 100, rowH);
@@ -444,6 +451,7 @@ void EditorOptionsDialog::apply()
     options.uiThemeIndex   = themeSelector.getSelectedId() - 1;
     options.autoUpload     = autoUploadToggle.getToggleState();
     options.wireframe      = wireframeToggle  .getToggleState();
+    options.animateTiling  = animateTilingToggle.getToggleState();
     options.sendRateIndex  = sendRateSelector.getSelectedId() - 1;
     options.mcpBridgeEnabled = mcpBridgeToggle.getToggleState();
 

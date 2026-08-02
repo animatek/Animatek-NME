@@ -2,6 +2,7 @@
 #include "AppTheme.h"
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 namespace
 {
@@ -85,7 +86,7 @@ void SlotMdiArea::openSlot(int slot)
         if (auto* window = windowFor(s))
             window->addComponentListener(&watcher);  // idempotent
 
-    applyLayout();
+    applyLayout(/*animate*/ true);
     if (tileMode == TileMode::Free)
         for (int s = 0; s < numSlots; ++s)
             if (auto* window = windowFor(s))
@@ -252,12 +253,43 @@ void SlotMdiArea::setFocusMode(bool shouldBeFocused)
     if (focusMode)
         tileMode = TileMode::Auto;
 
-    applyLayout();
+    applyLayout(/*animate*/ true);
     if (onLayoutChanged)
         onLayoutChanged();
 }
 
-void SlotMdiArea::applyLayout()
+std::vector<int> SlotMdiArea::openSlotsInTileOrder() const
+{
+    std::vector<int> open;
+    for (int slot : tileOrder)
+        if (isSlotOpen(slot))
+            open.push_back(slot);
+    return open;
+}
+
+void SlotMdiArea::placeWindow(juce::MultiDocumentPanelWindow& window,
+                              juce::Rectangle<int> bounds, bool animate)
+{
+    if (window.getBounds() == bounds)
+        return;
+
+    if (! animate || ! animateLayout)
+    {
+        window.setBounds(bounds);
+        return;
+    }
+
+    // useProxyComponent: JUCE animates a snapshot image and only moves the real
+    // window at the end. Animating the real bounds would run
+    // PatchCanvasComponent::resized() on every frame, relaying out modules and
+    // viewports for up to four canvases while the synth streams lights and
+    // meters. Same trick as a compositor animating a texture rather than the
+    // surface itself.
+    juce::Desktop::getInstance().getAnimator().animateComponent(
+        &window, bounds, 1.0f, animationMs, /*useProxyComponent*/ true, 0.0, 1.0);
+}
+
+void SlotMdiArea::applyLayout(bool animate)
 {
     if (tileMode != TileMode::Auto)
         return;
@@ -266,10 +298,7 @@ void SlotMdiArea::applyLayout()
     if (area.isEmpty())
         return;  // not laid out yet; resized() will come back to this
 
-    std::vector<int> open;
-    for (int s = 0; s < numSlots; ++s)
-        if (isSlotOpen(s))
-            open.push_back(s);
+    const auto open = openSlotsInTileOrder();
 
     // One document has no window frame at all — the base class gives the view
     // the whole area — so there is nothing to place.
@@ -284,7 +313,7 @@ void SlotMdiArea::applyLayout()
         // top. Coming back out is then just a re-tile, with nothing to restore.
         if (auto* window = windowFor(getFocusedSlot()))
         {
-            window->setBounds(area);
+            placeWindow(*window, area, animate);
             window->toFront(true);
             return;
         }
@@ -312,7 +341,7 @@ void SlotMdiArea::applyLayout()
                 continue;
             const auto [x, w] = split(area.getX(), area.getWidth(),  i % 2, 2);
             const auto [y, h] = split(area.getY(), area.getHeight(), i / 2, 2);
-            window->setBounds(x, y, w, h);
+            placeWindow(*window, { x, y, w, h }, animate);
         }
     }
     else
@@ -326,7 +355,7 @@ void SlotMdiArea::applyLayout()
             if (window == nullptr)
                 continue;
             const auto [x, w] = split(area.getX(), area.getWidth(), i, n);
-            window->setBounds(x, area.getY(), w, area.getHeight());
+            placeWindow(*window, { x, area.getY(), w, area.getHeight() }, animate);
         }
     }
 }
@@ -419,7 +448,7 @@ void SlotMdiArea::tryToCloseDocumentAsync(juce::Component* component,
         return;
 
     // One fewer window: the remaining ones re-flow to fill the area.
-    applyLayout();
+    applyLayout(/*animate*/ true);
     updateFocusHighlight();
     if (onLayoutChanged)
         onLayoutChanged();
@@ -431,6 +460,81 @@ void SlotMdiArea::tryToCloseDocumentAsync(juce::Component* component,
 juce::MultiDocumentPanelWindow* SlotMdiArea::createNewDocumentWindow()
 {
     return new SlotSubWindow(getBackgroundColour());
+}
+
+void SlotMdiArea::swapFocusedTile(int direction)
+{
+    const auto open = openSlotsInTileOrder();
+    const int focused = getFocusedSlot();
+    if (open.size() < 2 || focused < 0 || direction == 0)
+        return;
+
+    // Position of the focused slot among the ones on screen, then its
+    // neighbour, wrapping so the ends are reachable in one step.
+    const auto it = std::find(open.begin(), open.end(), focused);
+    if (it == open.end())
+        return;
+    const int n = static_cast<int>(open.size());
+    const int from = static_cast<int>(std::distance(open.begin(), it));
+    const int to = ((from + direction) % n + n) % n;
+
+    // tileOrder holds every slot, open or not, so swap the two entries there
+    // rather than in the filtered list.
+    const auto posOf = [this](int slot) {
+        return std::distance(tileOrder.begin(),
+                             std::find(tileOrder.begin(), tileOrder.end(), slot));
+    };
+    std::swap(tileOrder[(size_t) posOf(open[(size_t) from])],
+              tileOrder[(size_t) posOf(open[(size_t) to])]);
+
+    applyLayout(/*animate*/ true);
+    if (onLayoutChanged)
+        onLayoutChanged();
+}
+
+void SlotMdiArea::rotateTiles(int direction)
+{
+    if (getNumOpenSlots() < 2 || direction == 0)
+        return;
+
+    if (direction > 0)
+        std::rotate(tileOrder.begin(), tileOrder.begin() + 1, tileOrder.end());
+    else
+        std::rotate(tileOrder.rbegin(), tileOrder.rbegin() + 1, tileOrder.rend());
+
+    applyLayout(/*animate*/ true);
+    if (onLayoutChanged)
+        onLayoutChanged();
+}
+
+juce::String SlotMdiArea::getTileOrderString() const
+{
+    juce::String out;
+    for (int slot : tileOrder)
+        out += juce::String(slot);
+    return out;
+}
+
+void SlotMdiArea::setTileOrderString(const juce::String& order)
+{
+    // Only accept a genuine permutation of 0..numSlots-1; anything else and the
+    // tiling would drop or duplicate a slot.
+    if (order.length() != numSlots)
+        return;
+
+    std::array<int, numSlots> candidate {};
+    bool seen[numSlots] = {};
+    for (int i = 0; i < numSlots; ++i)
+    {
+        const int slot = order[i] - '0';
+        if (slot < 0 || slot >= numSlots || seen[slot])
+            return;
+        seen[slot] = true;
+        candidate[(size_t) i] = slot;
+    }
+
+    tileOrder = candidate;
+    applyLayout();
 }
 
 void SlotMdiArea::requestMaximise(juce::Component* view)

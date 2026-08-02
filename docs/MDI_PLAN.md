@@ -1,9 +1,9 @@
 # MDI: the four slots inside the main window
 
 Phased plan for replacing the per-slot OS pop-out windows with internal sub-windows in the
-main window's central area. Written 2026-08-01 against 0.12.0. **All phases are done.** The
-re-tile animation described in phase 5 was dropped: Javier looked at where the idea came from
-and did not want it. The optional "Arrange" command for Free mode is still unbuilt.
+main window's central area. Written 2026-08-01 against 0.12.0. **All phases are done**, plus
+tile reordering and the re-tile animation (added 2026-08-02 after a second look at Hyprland
+itself). The optional "Arrange" command for Free mode is still unbuilt.
 
 ## Why
 
@@ -245,10 +245,39 @@ Restoring also ran a full `switchToSlot` per slot it opened, since each new docu
 focus as it appears. `restoringMdiLayout` now gates `onSlotFocused` too, and restore does one
 switch at the end for the slot that should actually end up focused.
 
-**Animate the re-tile — NOT WANTED** (idea from EdenQwQ's niri `animations.nix`, reviewed
-2026-08-02; dropped 2026-08-02 once it was clear the gists were one user's personal config
-rather than anything of Hyprland's, and that the effect was not actually wanted). Kept here
-only so the reasoning is not rediscovered from scratch. Opening
+**Animate the re-tile — DONE.** Dropped once, then done after looking at Hyprland proper
+rather than one user's config. Sub-windows slide to their new tiles over 140 ms, behind
+**Animate Slot Tiling** in Editor Options.
+
+The thing that makes this cheap is `useProxyComponent` on
+`Desktop::getAnimator().animateComponent()`: JUCE animates a snapshot image and only moves
+the real window at the end. Animating the real bounds would run
+`PatchCanvasComponent::resized()` every frame, relaying out modules and viewports for up to
+four canvases while the synth streams lights and meters. It is the same asymmetry that makes
+Hyprland's own animation code useless to us — it animates GPU textures inside its render
+loop, so there is nothing to port even though BSD-3-Clause would allow it.
+
+Animation is opt-in per call (`applyLayout(animate)`): opening, closing, reordering and focus
+mode animate; a plain window resize does not, or dragging the main window's edge would fire a
+new animation on every resize event.
+
+What Hyprland has that JUCE does not is arbitrary cubic-bezier easing — their default curve
+overshoots slightly (`0.05, 0.9, 0.1, 1.05`), which is what makes their movement feel alive.
+`animateComponent` only offers start/end speeds, so this is a plain ease-out. If the overshoot
+is ever wanted it is a ~30-line timer-driven curve, needing nobody's code.
+
+### Tile reordering (DONE)
+
+The tiling is fixed by how many slots are open, but which slot lands in which tile is the
+user's to change — Hyprland's `swapwindow` and `rollnext` within a layout.
+`Ctrl+Shift+Left/Right` swaps the focused slot with its neighbour, `Ctrl+Shift+Up/Down`
+rotates them all, and both are in View > Slots. Arrow keysyms are stable under Shift, unlike
+the digits (see phase 3), and the canvas only nudges modules with unmodified arrows.
+
+`tileOrder` is a permutation of slot indices that `applyLayout` iterates instead of 0..3. It
+persists as `mdiTileOrder`, validated on load as a genuine permutation: a duplicate or a
+short string would silently drop or double a slot, so both fall back to `0123`. Verified with
+seeds `3120` (honoured), `3121` and `012` (both rejected). Opening
 or closing a slot currently makes the other windows jump to their new tiles. Sliding them
 instead makes the re-flow legible, and JUCE gives it for free: run the `setBounds` calls
 `applyLayout()` already computes through `Desktop::getAnimator().animateComponent()`.

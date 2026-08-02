@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <array>
 #include <memory>
+#include <vector>
 #include "SlotView.h"
 
 // The main window's central work area: the four slots as internal sub-windows,
@@ -51,6 +52,18 @@ public:
     // is closed. Only meaningful in Free mode; Auto recomputes the tiling.
     juce::Rectangle<float> getNormalisedSlotBounds(int slot) const;
     void setNormalisedSlotBounds(int slot, juce::Rectangle<float> bounds);
+
+    // Which tile each slot sits in. The tiling itself is fixed by how many slots
+    // are open, but which slot lands where is the user's to change — the same
+    // thing Hyprland's swapwindow and rollnext do within a layout.
+    void swapFocusedTile(int direction);   // -1 previous tile, +1 next
+    void rotateTiles(int direction);       // shift every slot round one tile
+    juce::String getTileOrderString() const;
+    void setTileOrderString(const juce::String& order);
+
+    // Slide sub-windows to their new tiles instead of jumping. Off restores the
+    // instant behaviour; either way the end state is identical.
+    void setAnimated(bool shouldAnimate) { animateLayout = shouldAnimate; }
 
     // Focus mode: the focused sub-window fills the area while the others stay
     // tiled behind it. Toggling it off drops straight back into the tiling that
@@ -118,7 +131,11 @@ private:
     // Re-flow the open sub-windows for the current mode and count. No-op in Free
     // mode, and with fewer than two open (JUCE gives a lone document the whole
     // area itself, with no window frame at all).
-    void applyLayout();
+    void applyLayout(bool animate = false);
+    void placeWindow(juce::MultiDocumentPanelWindow& window,
+                     juce::Rectangle<int> bounds, bool animate);
+    // Open slots in tile order, which is what applyLayout lays out.
+    std::vector<int> openSlotsInTileOrder() const;
     // Free mode keeps whatever the user arranged, but in proportion: when the
     // work area changes size the windows scale with it instead of being
     // stranded in a corner.
@@ -136,7 +153,11 @@ private:
     // Set while we are the ones moving windows, so our own setBounds calls are
     // not mistaken for the user dragging one and do not drop us into Free.
     bool applyingLayout = false;
+    bool animateLayout = true;
+    static constexpr int animationMs = 140;
     juce::Rectangle<int> lastArea;
+    // A permutation of slot indices: tileOrder[i] is the slot in tile i.
+    std::array<int, numSlots> tileOrder { { 0, 1, 2, 3 } };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SlotMdiArea)
 };

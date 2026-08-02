@@ -23,6 +23,12 @@
   will not steal focus in the middle of a cable drag. Dragging a module out of the browser
   works into any sub-window, which never worked in the pop-outs.
 
+  Which slot sits in which tile is yours to change: **Ctrl+Shift+Left/Right** moves the
+  focused slot one tile over and **Ctrl+Shift+Up/Down** rotates them all round, so you can put
+  the patch you are working on where you want it without closing and reopening anything. The
+  sub-windows slide to their new places rather than jumping; turn that off with **Animate Slot
+  Tiling** in Editor Options if you prefer it instant.
+
   The focused sub-window is outlined in the theme's accent colour, so with four tiled you can
   always see which one you are editing, and its title carries the LOCAL badge when that slot's
   patch is not in sync with the synth. The inspector picks up whichever module that slot had

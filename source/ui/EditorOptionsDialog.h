@@ -15,6 +15,7 @@ struct EditorOptions
     KnobControl knobControl    = KnobControl::Horizontal;
     bool        autoUpload     = true;
     bool        wireframe      = false; // outline-only module rendering (theme-independent)
+    bool        animateTiling  = true;  // slide slot sub-windows to their new tiles
     bool        mcpBridgeEnabled = false; // embedded MCP control socket (source/mcp/), if built in; opt-in so no localhost port opens unless asked
     float       cableOpacity   = 0.80f;
     int         sendRateIndex  = 1;   // index into sendRates() — synth param throughput
@@ -105,6 +106,7 @@ private:
     juce::Label    behaviourLabel    { {}, "BEHAVIOUR" };
     juce::ToggleButton autoUploadToggle   { "Auto Upload  (send parameter changes to synth immediately)" };
     juce::ToggleButton wireframeToggle    { "Wireframe modules  (outline only — works with any theme)" };
+    juce::ToggleButton animateTilingToggle { "Animate Slot Tiling  (slide sub-windows into place)" };
     juce::Label    sendRateLabel     { {}, "Send speed" };
     juce::ComboBox sendRateSelector;
 
