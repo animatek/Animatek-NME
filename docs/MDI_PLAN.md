@@ -1,8 +1,8 @@
 # MDI: the four slots inside the main window
 
 Phased plan for replacing the per-slot OS pop-out windows with internal sub-windows in the
-main window's central area. Written 2026-08-01 against 0.12.0. Phase 0 is done; phases 1-5
-are not started.
+main window's central area. Written 2026-08-01 against 0.12.0. Phases 0 and 1 are done;
+phases 2-5 are not started.
 
 ## Why
 
@@ -76,27 +76,45 @@ Both are real bugs today and both get hit constantly once four canvases share a 
 Still open from the original phase 0: `PatchCanvasComponent::getPrimarySelection()`, needed
 only by phase 5, deliberately not added until it has a caller.
 
-### Phase 1 — Structural swap, one open document (~2-3 days)
+### Phase 1 — Structural swap, one open document (DONE)
 
 Behaviour-neutral: one slot visible, fullscreen, exactly as today. The pop-out windows are
 left working, so nothing regresses mid-branch.
 
-- New `source/ui/SlotView.{h,cpp}` (~70 lines): a `Component` owning one
-  `PatchCanvasComponent`, with `setPatchTitle()` riding `Component::setName` (which
-  `MultiDocumentPanel` mirrors into the window title).
-- New `source/ui/SlotMdiArea.{h,cpp}` (~350 lines): derives from `MultiDocumentPanel`;
-  `openSlot/closeSlot/focusSlot`, `forEachCanvas`, `onSlotFocused`. **It must close its
-  documents in its own destructor**: `~MultiDocumentPanel` closes them in its body
-  (`juce_MultiDocumentPanel.cpp:107-110`), by which time the derived members are gone.
-- `MainLayout`: `PatchCanvasComponent canvasComponent` (`MainLayout.h:140`) becomes
-  `SlotMdiArea patchArea`, in the same slot of the 5-item layout (`MainLayout.cpp:403-409`).
-  **No `getCanvas()` shim** — a shim resolving to "the focused canvas" would reintroduce the
-  `activeSlot` coupling this removes.
-- `MainComponent`: add `canvasFor(slot)`, `activeCanvas()`, `wireSlotView(slot)`,
-  `handleSlotFileCommand(slot, cmd)`. Delete the inline block and rewrite the ~63
-  `mainLayout->getCanvas()` sites as `canvasFor(slot)` (model-driven) or `activeCanvas()`
+- New `source/ui/SlotView.{h,cpp}`: a `Component` owning one `PatchCanvasComponent`, with
+  `setPatchTitle()` riding `Component::setName` (which `MultiDocumentPanel` mirrors into the
+  window title).
+- New `source/ui/SlotMdiArea.{h,cpp}`: derives from `MultiDocumentPanel`; owns all four
+  `SlotView`s for the whole session, `openSlot/closeSlot/focusSlot`, `forEachCanvas`,
+  `onSlotFocused`, plus `showOnlySlot()` for this phase's single-document behaviour. **It
+  closes its documents in its own destructor**: `~MultiDocumentPanel` closes them in its body
+  (`juce_MultiDocumentPanel.cpp:107-110`), by which time the derived members are gone. Note
+  `JUCE_MODAL_LOOPS_PERMITTED` is 0 here, so the synchronous `closeAllDocuments` overload does
+  not exist; `closeAllDocumentsAsync(false, nullptr)` runs synchronously and is what is used.
+- `MainLayout`: `PatchCanvasComponent canvasComponent` becomes `SlotMdiArea patchArea`, in the
+  same slot of the 5-item layout. **No `getCanvas()` shim** — a shim resolving to "the focused
+  canvas" would reintroduce the `activeSlot` coupling this removes. `setTheme` fans out over
+  `forEachCanvas`.
+- `MainComponent`: added `canvasFor(slot)`, `activeCanvas()`, `repaintAllCanvases()`,
+  `wireSlotView(slot)`, `handleSlotFileCommand(slot, cmd)`. The inline block is gone and every
+  `mainLayout->getCanvas()` site is now `canvasFor(slot)` (model-driven) or `activeCanvas()`
   (focus-driven).
-- `randomizeParameters` and `savePatch/As` keep only their slot-scoped forms.
+- `randomizeParameters`, `savePatch`, `savePatchAs` and `savePatchToFile` are deleted;
+  `initializeModule` and `importSnippetFromFile` took a slot argument. The File/Edit menus
+  pass `activeSlot` explicitly, which is what they mean by "the current patch".
+
+Two things worth carrying forward:
+
+- **Ordering matters in `replacePatchInSlot`.** `setPatch` on the slot's canvas has to happen
+  immediately after `slotPatches[slot] = std::move(patch)`, not at the end: the old `Patch`
+  is already destroyed by then and `switchToSlot()` in between brings the sub-window on
+  screen and resizes it, which reads the patch. This is risk 2 below, met for real.
+- **`handleOverlayKey` must stay a single call.** Phase 0 made it repaint every live canvas
+  itself, so looping it over `forEachCanvas` toggles the editor-wide mode four times.
+
+Line count is roughly flat (`MainComponent.cpp` +21): `wireSlotView` is new while the inline
+block and the three activeSlot-only save helpers went. The duplication is only actually
+*removed* in phase 2, when `wireSlotWindowContent` and the `SlotWindow` machinery go with it.
 
 ### Phase 2 — Multiple open, focus, and removing the pop-outs (~1.5-2 days)
 
@@ -151,7 +169,8 @@ leave the code better even if the MDI stopped there.
 2. **Dangling `Module*` in a background canvas**: every patch replacement must call
    `setPatch` on that slot's canvas unconditionally. Audit `setPatchDataCallback`,
    `replacePatchInSlot`, `newPatch`, `loadPatchFromFile`. Same shape as the slot-replace
-   crash fixed in 0.12.0.
+   crash fixed in 0.12.0. (Done in phase 1; `replacePatchInSlot` needed the call moved to
+   right after the `std::move`, see above.)
 3. **`switchToSlot` running inside a mouse-down**: must not open modals or destroy the
    clicked component.
 4. **Keyboard focus when going from 1 to 2 documents**: JUCE reparents the first view into a

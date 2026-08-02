@@ -344,7 +344,7 @@ MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
     addAndMakeVisible(rightToggleStrip);
     addAndMakeVisible(leftColumn);
     addAndMakeVisible(headerBar);
-    addAndMakeVisible(canvasComponent);
+    addAndMakeVisible(patchArea);
     addAndMakeVisible(rightBrowserTabs);
     addAndMakeVisible(statusBar);
     addAndMakeVisible(resizerBar1);
@@ -375,6 +375,10 @@ void MainLayout::applyTheme()
     rightBrowserTabs.setTabBackgroundColour(0, AppTheme::palette().backgroundPanel);
     rightBrowserTabs.setTabBackgroundColour(1, AppTheme::palette().backgroundPanel);
 
+    // Shows around and between the slot sub-windows, so it has to follow the theme
+    // like any other chrome.
+    patchArea.setBackgroundColour(AppTheme::palette().backgroundPanel);
+
     patchBrowserPanel.applyTheme();
     diskPresetBrowserPanel.applyTheme();
     inspectorPanel.applyTheme();
@@ -401,7 +405,7 @@ void MainLayout::resized()
     rightToggleStrip.setBounds(area.removeFromRight(PanelToggleStrip::stripWidth));
 
     juce::Component* comps[] = {
-        &leftColumn, &resizerBar1, &canvasComponent, &resizerBar2, &rightBrowserTabs
+        &leftColumn, &resizerBar1, &patchArea, &resizerBar2, &rightBrowserTabs
     };
     layoutManager.layOutComponents(comps, 5,
                                    area.getX(), area.getY(),

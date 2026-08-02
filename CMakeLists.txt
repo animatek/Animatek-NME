@@ -109,6 +109,8 @@ set(NME_SHARED_SOURCES
     source/ui/SysexMonitorWindow.cpp
     source/ui/SlotWindowContent.cpp
     source/ui/SlotWindow.cpp
+    source/ui/SlotView.cpp
+    source/ui/SlotMdiArea.cpp
 
     # MIDI/SysEx
     source/midi/SysExCodec.cpp

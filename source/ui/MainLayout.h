@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <array>
 #include "PatchCanvasComponent.h"
+#include "SlotMdiArea.h"
 #include "InspectorPanel.h"
 #include "PatchBrowserPanel.h"
 #include "StatusBar.h"
@@ -92,9 +93,18 @@ public:
     void resized() override;
     void applyTheme();
 
-    PatchCanvasComponent& getCanvas()      { return canvasComponent; }
-    void setTheme(const ColorScheme& cs)   { canvasComponent.setTheme(cs); }
-    void setTheme(const ColorScheme& cs, ThemeId id) { canvasComponent.setTheme(cs, id); }
+    // The four slots live here as sub-windows. There is deliberately no
+    // getCanvas() returning "the" canvas: with several on screen, resolving a
+    // canvas without naming a slot is wrong by construction (docs/MDI_PLAN.md).
+    SlotMdiArea&          getPatchArea()   { return patchArea; }
+    void setTheme(const ColorScheme& cs)
+    {
+        patchArea.forEachCanvas([&cs](int, PatchCanvasComponent& c) { c.setTheme(cs); });
+    }
+    void setTheme(const ColorScheme& cs, ThemeId id)
+    {
+        patchArea.forEachCanvas([&cs, id](int, PatchCanvasComponent& c) { c.setTheme(cs, id); });
+    }
     InspectorPanel&       getInspector()   { return inspectorPanel; }
     PatchBrowserPanel&    getPatchBrowser() { return patchBrowserPanel; }
     DiskPresetBrowserPanel& getDiskPresetBrowser() { return diskPresetBrowserPanel; }
@@ -137,7 +147,7 @@ private:
     PanelToggleStrip  leftToggleStrip { true };
     PanelToggleStrip  rightToggleStrip { false };
 
-    PatchCanvasComponent canvasComponent; // centre — patch canvas
+    SlotMdiArea       patchArea;          // centre — the slots as sub-windows
     PatchBrowserPanel patchBrowserPanel;  // right tab — synth patch browser
     DiskPresetBrowserPanel diskPresetBrowserPanel; // right tab — disk presets/snippets
     juce::TabbedComponent rightBrowserTabs { juce::TabbedButtonBar::TabsAtTop };

@@ -77,10 +77,20 @@ public:
     void prepareSlotModuleDeletion(int slot);
 
 private:
+    // The four slot canvases. There is deliberately no "the canvas" accessor:
+    // canvasFor() is for anything driven by the model (a patch arriving for a
+    // given slot, a light/meter frame), activeCanvas() only for what genuinely
+    // follows the user's focus (zoom, shake, the View menu). See docs/MDI_PLAN.md.
+    PatchCanvasComponent& canvasFor(int slot);
+    PatchCanvasComponent& activeCanvas();
+    void wireSlotView(int slot);
+    void handleSlotFileCommand(int slot, const juce::String& cmd);
+    // For the editor-wide canvas flags (mutator mode): a canvas left out comes
+    // back on screen still drawing the previous state.
+    void repaintAllCanvases();
+
     void newPatch();
     void openPatch();
-    void savePatch();
-    void savePatchAs();
     void storePatchToBank();
     // Opening a .pch shows the slot chooser (issue #21); the chosen destination
     // and Local flag are then applied by loadPatchFromFile.
@@ -89,10 +99,9 @@ private:
     bool replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
                             const juce::File& sourceFile, bool activate,
                             bool loadVariations, juce::String& error);
-    bool savePatchToFile(const juce::File& file);
     void importSnippet();
-    void importSnippetFromFile(const juce::File& file);
-    void importSnippetFromFile(const juce::File& file, int targetGridX, int targetGridY);
+    void importSnippetFromFile(int slot, const juce::File& file);
+    void importSnippetFromFile(int slot, const juce::File& file, int targetGridX, int targetGridY);
     void saveSnippet(SnipData snip);
     void choosePresetLibraryFolder();
     void applyEditorOptions(const EditorOptions& opts);
@@ -131,11 +140,10 @@ private:
     void openSynthSettingsDialog();
     void showBetaWarning(bool forceShow = false);
     void showKeyboardShortcutsDialog();
-    void randomizeParameters(bool gaussian);
     void randomizeSlotParameters(int slot, PatchCanvasComponent& canvas, bool gaussian);  // issue #22
-    void saveSlotPatch(int slot);     // Ctrl+S from a SlotWindow (issue #22)
-    void saveSlotPatchAs(int slot);   // Ctrl+Shift+S from a SlotWindow (issue #22)
-    void initializeModule(int section, Module* module);
+    void saveSlotPatch(int slot);     // Ctrl+S: save this slot, not "the" slot (issue #22)
+    void saveSlotPatchAs(int slot);   // Ctrl+Shift+S, same
+    void initializeModule(int slot, int section, Module* module);
     void handleSnapshotClick(int index, bool isShiftClick);
     void saveSnapshot(int index);
     void recallSnapshot(int index);
