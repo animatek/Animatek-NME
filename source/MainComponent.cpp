@@ -181,7 +181,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // the window in turn, so this comes straight back round; inSlotFocusChange
   // breaks the loop.
   mainLayout->getPatchArea().onSlotFocused = [this](int slot) {
-    if (inSlotFocusChange) return;
+    // Restoring opens slots one by one and each one takes focus as it appears,
+    // which would run a full slot switch per slot; restoreMdiLayout does one at
+    // the end for the slot that should actually end up focused.
+    if (inSlotFocusChange || restoringMdiLayout) return;
     switchToSlot(slot);
   };
   // A slot whose window the user closed keeps its patch; if it was the active
@@ -1351,7 +1354,8 @@ void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen)
   if (notifySynth)
     notifySynthOfSlot(slot);
 
-  // Clear inspector (points into old slot's patch)
+  // The inspector points into the old slot's patch, so it has to let go before
+  // activeSlot moves. It picks the new slot's own selection back up below.
   mainLayout->getInspector().clearModule();
   if (knobFloaterWindow)
     knobFloaterWindow->setPatch(nullptr);
@@ -1365,6 +1369,11 @@ void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen)
       knobFloaterWindow->setPatch(currentPatch().get());
     if (patchNotesFloaterWindow)
       patchNotesFloaterWindow->setPatch(currentPatch().get());
+    // Adopt whatever this slot's canvas already had selected, rather than
+    // leaving the inspector blank: each canvas keeps its selection while it is
+    // in the background, so coming back to a slot should look like you left it.
+    if (auto sel = canvasFor(slot).getPrimarySelection(); sel.module != nullptr)
+      mainLayout->getInspector().setModule(sel.module, sel.section);
     updateDspLoadDisplay();
     if (mutatorWindow) {
       mutatorWindow->getPanel().clearAll();  // snapshots referenced the old slot's patch
@@ -1816,6 +1825,7 @@ void MainComponent::setSlotLocal(int slot, bool local) {
     return;
   slotIsLocal[slot] = local;
   mainLayout->getSlotBar().setSlotLocal(slot, local);
+  mainLayout->getPatchArea().getView(slot).setLocal(local);
 }
 
 void MainComponent::storePatchToBank() {
@@ -2266,6 +2276,8 @@ void MainComponent::saveMdiLayout() {
   settings->setValue("mdiFreeLayout", freeMode);
   settings->setValue("mdiFocusMode", area.isFocusMode());
 
+  // Only in Free mode, and only for slots that are actually on screen: writing
+  // zeroes for a closed slot would restore as an empty rectangle.
   if (freeMode)
     for (int i = 0; i < numSlots; ++i) {
       const auto key = "mdiSlot" + juce::String::charToString(static_cast<char>('A' + i));

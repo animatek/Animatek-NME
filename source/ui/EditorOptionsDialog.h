@@ -14,7 +14,6 @@ struct EditorOptions
     CableStyle  cableStyle     = CableStyle::CurvedThick;
     KnobControl knobControl    = KnobControl::Horizontal;
     bool        autoUpload     = true;
-    bool        recycleWindows = true;
     bool        wireframe      = false; // outline-only module rendering (theme-independent)
     bool        mcpBridgeEnabled = false; // embedded MCP control socket (source/mcp/), if built in; opt-in so no localhost port opens unless asked
     float       cableOpacity   = 0.80f;
@@ -105,7 +104,6 @@ private:
     // Behaviour
     juce::Label    behaviourLabel    { {}, "BEHAVIOUR" };
     juce::ToggleButton autoUploadToggle   { "Auto Upload  (send parameter changes to synth immediately)" };
-    juce::ToggleButton recycleWinToggle   { "Recycle Windows  (reuse patch windows)" };
     juce::ToggleButton wireframeToggle    { "Wireframe modules  (outline only — works with any theme)" };
     juce::Label    sendRateLabel     { {}, "Send speed" };
     juce::ComboBox sendRateSelector;

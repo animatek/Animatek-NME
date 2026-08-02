@@ -1,8 +1,8 @@
 # MDI: the four slots inside the main window
 
 Phased plan for replacing the per-slot OS pop-out windows with internal sub-windows in the
-main window's central area. Written 2026-08-01 against 0.12.0. Phases 0 to 4 are done;
-phase 5 is not started.
+main window's central area. Written 2026-08-01 against 0.12.0. Phases 0 to 5 are done bar
+the re-tile animation, which is deferred.
 
 ## Why
 
@@ -73,8 +73,8 @@ Both are real bugs today and both get hit constantly once four canvases share a 
 2. The overlay readouts (F5, F7-F10) set an editor-wide mode but repainted only the canvas
    the key reached, leaving any other canvas stale.
 
-Still open from the original phase 0: `PatchCanvasComponent::getPrimarySelection()`, needed
-only by phase 5, deliberately not added until it has a caller.
+`PatchCanvasComponent::getPrimarySelection()` was deferred here until it had a caller; phase
+5 gave it one.
 
 ### Phase 1 — Structural swap, one open document (DONE)
 
@@ -214,13 +214,29 @@ Verified all three by seeding the settings file and reading the `[MDI]` line bac
 Free-mode drags do not fire `onLayoutChanged` (only the first one does, when it leaves Auto),
 so the destructor saves as well rather than persisting on every mouse move.
 
-### Phase 5 — Polish (~1 day)
+### Phase 5 — Polish (DONE, bar the animation)
 
-Inspector adopts the newly focused canvas's selection instead of blanking; delete the dead
-`recycleWindows` option (`EditorOptionsDialog.h:17`, never consulted anywhere) and put
-`mdiAutoTile` in its row; window titles carry the LOCAL badge (the patch name landed in
-phase 1); docs updated (`manual/07-shortcuts.md`, the in-app shortcuts dialog, CHANGELOG,
-this file, STATUS). The focus outline landed early, in commit 8f8f49d.
+- The inspector adopts the newly focused canvas's selection instead of blanking, through the
+  new `PatchCanvasComponent::getPrimarySelection()`. Each canvas keeps its selection while it
+  is in the background, so coming back to a slot looks like you left it.
+- Sub-window titles carry the LOCAL badge (the patch name landed in phase 1). With four
+  tiled, the slot bar's badge alone does not tell you which window is out of sync.
+- The dead `recycleWindows` option is gone: it was saved, loaded and drawn as a toggle, and
+  never consulted anywhere. No `mdiAutoTile` replaces it — dynamic tiling has nothing to
+  configure, and View > Slots > Tile Slots is the only control it needs.
+- The focus outline landed early, in commit 8f8f49d.
+
+**A real bug this phase turned up:** Free mode latched on by itself and then stuck, because
+`windowMovedOrResized` treated *any* move of a sub-window as the user dragging it.
+`applyingLayout` covers our own `setBounds`, but JUCE moves these windows too — it positions
+each new one as it is created and re-wraps them all when the document count crosses one. One
+stray programmatic move switched tiling off, phase 4 then persisted that, and restoring it
+re-armed the same state on the next launch, so it never recovered. It is now gated on
+`Desktop::getNumDraggingMouseSources()`: a drag means a button is down.
+
+Restoring also ran a full `switchToSlot` per slot it opened, since each new document takes
+focus as it appears. `restoringMdiLayout` now gates `onSlotFocused` too, and restore does one
+switch at the end for the slot that should actually end up focused.
 
 **Animate the re-tile** (from EdenQwQ's niri `animations.nix`, reviewed 2026-08-02). Opening
 or closing a slot currently makes the other windows jump to their new tiles. Sliding them

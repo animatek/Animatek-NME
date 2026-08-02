@@ -22,8 +22,17 @@
   will not steal focus in the middle of a cable drag. Dragging a module out of the browser
   works into any sub-window, which never worked in the pop-outs.
 
+  The focused sub-window is outlined in the theme's accent colour, so with four tiled you can
+  always see which one you are editing, and its title carries the LOCAL badge when that slot's
+  patch is not in sync with the synth. The inspector picks up whichever module that slot had
+  selected instead of going blank, since each canvas keeps its selection while it sits in the
+  background.
+
   Which slots you had open, which one had focus, and how they were arranged all come back
   when you reopen the editor.
+
+- **Removed the "Recycle Windows" editor option**, which has never done anything: it was
+  saved, loaded and drawn as a checkbox, and nothing ever read it.
 
 - **Fixed: "Press Enter to add modules" could pile up on itself** on an empty canvas. The hint
   was centred on whatever rectangle was being repainted rather than on the canvas, so a partial

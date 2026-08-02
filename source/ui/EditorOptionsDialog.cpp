@@ -57,7 +57,6 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.cableStyle     = static_cast<CableStyle>  (props->getIntValue  ("cableStyle",      0));
     o.knobControl    = static_cast<KnobControl> (props->getIntValue  ("knobControl",     0));
     o.autoUpload     = props->getBoolValue  ("autoUpload",     true);
-    o.recycleWindows = props->getBoolValue  ("recycleWindows", true);
     o.wireframe      = props->getBoolValue  ("wireframe",      false);
     o.mcpBridgeEnabled = props->getBoolValue("mcpBridgeEnabled", false);
     o.cableOpacity   = static_cast<float>   (props->getDoubleValue("cableOpacity", 0.80));
@@ -76,7 +75,6 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("cableStyle",      static_cast<int> (cableStyle));
     props->setValue ("knobControl",     static_cast<int> (knobControl));
     props->setValue ("autoUpload",      autoUpload);
-    props->setValue ("recycleWindows",  recycleWindows);
     props->setValue ("wireframe",       wireframe);
     props->setValue ("mcpBridgeEnabled", mcpBridgeEnabled);
     props->setValue ("cableOpacity",    static_cast<double>(cableOpacity));
@@ -172,14 +170,11 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     // Behaviour toggles
     styleLabel (behaviourLabel, true);
     styleToggle (autoUploadToggle);
-    styleToggle (recycleWinToggle);
     styleToggle (wireframeToggle);
     autoUploadToggle.setToggleState (options.autoUpload,     juce::dontSendNotification);
-    recycleWinToggle.setToggleState (options.recycleWindows, juce::dontSendNotification);
     wireframeToggle .setToggleState (options.wireframe,      juce::dontSendNotification);
     addAndMakeVisible (behaviourLabel);
     addAndMakeVisible (autoUploadToggle);
-    addAndMakeVisible (recycleWinToggle);
     addAndMakeVisible (wireframeToggle);
 
     // Send speed selector — synth parameter throughput (Mutator/Random)
@@ -358,8 +353,6 @@ int EditorOptionsDialog::layoutComponents (bool apply)
     y += secH + 2;
     place (autoUploadToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH;
-    place (recycleWinToggle, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH;
     place (wireframeToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH + 4;
     place (sendRateLabel,    pad + 8,  y, 80, rowH);
@@ -450,7 +443,6 @@ void EditorOptionsDialog::apply()
 
     options.uiThemeIndex   = themeSelector.getSelectedId() - 1;
     options.autoUpload     = autoUploadToggle.getToggleState();
-    options.recycleWindows = recycleWinToggle .getToggleState();
     options.wireframe      = wireframeToggle  .getToggleState();
     options.sendRateIndex  = sendRateSelector.getSelectedId() - 1;
     options.mcpBridgeEnabled = mcpBridgeToggle.getToggleState();

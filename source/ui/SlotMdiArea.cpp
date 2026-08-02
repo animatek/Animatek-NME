@@ -107,6 +107,8 @@ void SlotMdiArea::giveUsableBounds(juce::MultiDocumentPanelWindow& window, int s
     if (area.isEmpty())
         return;  // not laid out yet; resized() will come back to this
 
+    const juce::ScopedValueSetter<bool> guard(applyingLayout, true);
+
     const bool degenerate = window.getWidth()  < minUsableSize
                          || window.getHeight() < minUsableSize;
     const bool adrift = !area.contains(window.getPosition());
@@ -326,6 +328,15 @@ void SlotMdiArea::windowMovedOrResized(juce::Component& component,
     if (applyingLayout || !(wasMoved || wasResized))
         return;
     if (dynamic_cast<juce::MultiDocumentPanelWindow*>(&component) == nullptr)
+        return;
+
+    // Only a move the user is actually making counts. applyingLayout covers our
+    // own setBounds calls, but JUCE moves these windows too — it positions each
+    // new one as it is created, and re-wraps them all when the document count
+    // crosses one — and a stray programmatic move used to switch tiling off for
+    // good, since the mode is persisted and restoring it re-armed the same
+    // state next launch. A drag means a button is down.
+    if (juce::Desktop::getInstance().getNumDraggingMouseSources() == 0)
         return;
 
     // The user dragged or resized a sub-window. Stop re-flowing it out from

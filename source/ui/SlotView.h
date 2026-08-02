@@ -22,9 +22,17 @@ public:
     void resized() override;
 
     void setPatchTitle(const juce::String& patchName);
+    // A slot is "local" when its patch is not known to match the synth. The slot
+    // bar already badges it; the sub-window title has to say so too, or with
+    // four of them tiled you cannot tell which one is out of sync.
+    void setLocal(bool isLocal);
 
 private:
+    void refreshTitle();
+
     const int slot_;
+    juce::String patchName_;
+    bool local_ = false;
     PatchCanvasComponent canvas;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SlotView)

@@ -77,6 +77,9 @@ public:
 
     void setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td = nullptr);
     void clearModuleSelection() { clearSelection(); repaint(); }
+    // The most recently selected module in this section, or nullptr.
+    Module* getSelectedModule() const { return selectedModule; }
+    int     getSelectedSection() const { return selectedSection; }
     void setLightMeterData(const int lights[128], const int meters[128]);
 
     /** Returns list of currently selected modules as (module*, section) pairs */
@@ -434,6 +437,20 @@ public:
     {
         polyCanvas.clearModuleSelection();
         commonCanvas.clearModuleSelection();
+    }
+
+    // What the Inspector should be showing for this canvas: the selected module
+    // and its section, or {nullptr, -1} when nothing is selected. Poly wins if
+    // both sections somehow hold a selection, matching the order the two
+    // canvases report through moduleSelectedCallback.
+    struct Selection { Module* module = nullptr; int section = -1; };
+    Selection getPrimarySelection() const
+    {
+        if (auto* m = polyCanvas.getSelectedModule())
+            return { m, polyCanvas.getSelectedSection() };
+        if (auto* m = commonCanvas.getSelectedModule())
+            return { m, commonCanvas.getSelectedSection() };
+        return {};
     }
 
     // --- Callbacks forwarded to both section canvases ---
