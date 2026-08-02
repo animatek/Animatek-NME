@@ -52,12 +52,12 @@ A live TX/RX hex log of all MIDI traffic between editor and synth, the tool to
 grab when something doesn't sync and you want to see why (or to attach to a bug
 report). Zero overhead when closed; works in release builds without a console.
 
-## Slot pop-out windows
+## Slot sub-windows
 
-Not a floater, but the other way to get more than one thing on screen:
-right-click a slot row to edit that slot in its own window, with its own canvas,
-Inspector and undo history. See
-[Working with the Synth](04-working-with-the-synth.md#slot-pop-out-windows).
+Not a floater, but the other way to get more than one thing on screen: the four
+slots are tiled sub-windows inside the main window, each with its own canvas,
+selection and undo history. `Ctrl+Shift+1`–`Ctrl+Shift+4` shows and hides them.
+See [Working with the Synth](04-working-with-the-synth.md#the-four-slots-on-screen).
 
 ## The MCP bridge
 

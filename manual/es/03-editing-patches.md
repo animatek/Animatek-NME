@@ -7,11 +7,16 @@
   categorías y en una tabla de etiquetas escrita a mano (prueba `reverb`,
   `random`, `snare`…).
 - **Navegador de módulos**: recorre la paleta completa por categorías y arrastra
-  módulos al canvas.
+  módulos al canvas, a la subventana sobre la que los sueltes.
+- **Add Module**: clic derecho en canvas vacío para el menú completo por
+  categorías.
 
 Las áreas Poly y Common aceptan conjuntos de módulos distintos, igual que el
-hardware. Los módulos consumen recursos de DSP en el sintetizador; la barra de
-estado sigue la carga.
+hardware. Los módulos consumen recursos de DSP en el sintetizador, y las tres
+vías imprimen el coste del módulo junto a su nombre ("Audio In (2.2%)") para que
+elijas con el presupuesto a la vista. Los medidores Load de la cabecera siguen el
+total del patch; mira
+[Voces y carga de DSP](02-interface.md#voces-y-carga-de-dsp).
 
 ## Selección y organización
 
@@ -28,8 +33,8 @@ estado sigue la carga.
 
 Ponle a un módulo tu propio nombre desde su menú contextual, o desde el campo
 **Name** arriba del Inspector. Renombrar es una edición normal y deshacible
-(`Ctrl+Z` lo revierte) y funciona igual en una ventana de slot. El nombre vive
-dentro del patch y llega al sintetizador con la siguiente subida completa.
+(`Ctrl+Z` lo revierte). El nombre vive dentro del patch y llega al sintetizador
+con la siguiente subida completa.
 
 ## Cables
 
@@ -48,12 +53,40 @@ dentro del patch y llega al sintetizador con la siguiente subida completa.
 
 - Knobs, sliders, botones y selectores se editan en vivo y se sincronizan con el
   sintetizador.
+- **Deja el cursor** sobre cualquier control para leer su valor en las unidades
+  del parámetro; arrástralo y la lectura sigue el movimiento en vivo.
 - Clic derecho en un parámetro para asignarlo a un **grupo de morph**, a un
   **knob de hardware** o a un **controlador MIDI**, y para **bloquearlo** frente
   a la randomización.
-- El módulo **DrumSynth** tiene un selector de presets local (esquina inferior
-  derecha): clic derecho para guardar o gestionar tus propios presets de
-  percusión.
+
+## Leer un patch: las teclas de superposición
+
+Cinco teclas de función etiquetan el patch entero de una vez. Son conmutadores,
+así que puedes dejar una lectura abierta mientras trabajas en vez de mantener la
+tecla pulsada.
+
+| Tecla | Qué etiqueta |
+|-------|--------------|
+| `F5` | El valor de cada parámetro. Un parámetro con morph muestra el recorrido que barre el morph, p. ej. "46Hz-2.30kHz" |
+| `F7` | Pertenencia a grupos de morph |
+| `F8` | Asignaciones de knobs de hardware |
+| `F9` | Asignaciones de MIDI CC |
+| `F10` | El coste de DSP de cada módulo |
+
+## Presets de módulo
+
+Selecciona cualquier módulo y el Inspector añade una sección **Presets** bajo sus
+asignaciones: clic en un nombre para recuperarlo, la **x** para borrarlo, clic
+derecho para renombrar, y **+ Save current settings** para capturar el módulo tal
+como está. La sección se pliega desde el chevron de su título, y la misma lista
+está en el menú contextual del propio módulo.
+
+Recuperar un preset es un único paso de deshacer, no uno por parámetro. Un preset
+no es más que una instantánea con nombre de los parámetros de un tipo de módulo,
+así que cualquier módulo puede tenerlos: secuenciadores, filtros, el DrumSynth,
+lo que sea. Viven en una carpeta **Presets** de tu librería, como un paquete
+`.pchp` por tipo de módulo; mira
+[Archivos y formatos](06-files-and-formats.md#pchp-presets-de-módulo).
 
 ## Morphs
 
@@ -62,8 +95,8 @@ asigna parámetros a un grupo (clic derecho → morph), fija el rango de morph d
 cada parámetro, y mueve el knob del grupo para desplazarlos todos. Los controles
 asignados de cualquier tipo (knobs, selectores 4-1, conmutadores, botones de
 incremento y sliders) muestran el color de su grupo en el canvas, y el Inspector
-lista todas las asignaciones de un módulo. Las superposiciones también los
-visualizan: `F5` muestra los valores de morph, `F7` la pertenencia a grupos.
+lista todas las asignaciones de un módulo. `F7` etiqueta la pertenencia a grupos
+en todo el patch y `F5` muestra el recorrido que barre cada parámetro con morph.
 
 ## Randomize, initialize y bloqueos
 

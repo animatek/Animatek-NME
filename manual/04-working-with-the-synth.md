@@ -23,29 +23,48 @@ time is instant instead of triggering a full fetch. Switching back to a slot the
 editor already holds an up-to-date copy of doesn't re-download it either; a
 genuine change on the synth (program change, bank load, reconnect) always does.
 
-## Slot pop-out windows
+## The four slots on screen
 
-**Right-click a slot row** in the slot bar to open that slot's patch in its own
-window. This is how you work on two or more patches side by side; the main
-window keeps its A–D slots working exactly as before.
+The slots are **sub-windows inside the main window**, tiled the way the original
+Clavia editor and Nomad arranged patches. This is how you work on two or more
+patches side by side, and nothing ever gets lost behind another application.
 
-Inside a slot window, everything is independent: canvas, modules, cables,
-parameters, morph/knob/MIDI-CC assignment, module rename and its own undo/redo
-history. Edits land on the right slot even when it doesn't have hardware focus.
+Open slots **tile themselves**: one fills the work area, two split it down the
+middle, three go in thirds, four go 2x2, and the layout re-flows as you open and
+close them. Nothing to arrange unless you want to: drag or resize a sub-window
+and the windows stay where you put them from then on, with **View > Slots > Tile
+Slots** to re-flow.
 
-- The window follows the synth live: turning a physical knob on the front panel,
-  or a light or meter moving, animates that slot's window too.
-- `Ctrl+R` / `Ctrl+Shift+R` randomize (uniform / gaussian) and `Ctrl+S` /
-  `Ctrl+Shift+S` save / save-as act on **that window's** slot and honour its own
-  module selection.
-- `Ctrl+I`, or the thin arrow strip at the canvas's left edge, hides the
-  Inspector to give the canvas the window's full width.
-- When the synth's front-panel focus moves to a slot that has a window open,
-  that window comes forward and its title gains **"- Focused"**, mirroring the
-  original Nomad editor's highlighted title bar.
+- `Ctrl+Shift+1`–`Ctrl+Shift+4` shows or hides a slot's sub-window, and so does
+  right-clicking its row in the slot bar.
+- `Ctrl+1`–`Ctrl+4` switches to a slot, opening it if it was closed.
+- `F11`, or a sub-window's maximise button, blows the focused slot up to the
+  whole work area and back again for a closer look.
+- `Ctrl+Shift+` an arrow moves the focused slot to the neighbouring tile, so the
+  patch you are working on goes where you want it. **View > Slots > Rotate
+  Slots** shifts them all round at once.
 
-The top settings bar (macros, CPU/voice meters) stays in the main window only,
-matching the original editor.
+The sub-windows slide to their new places rather than jumping. Turn that off
+with **Animate Slot Tiling** in Editor Options (`Ctrl+,`) if you prefer it
+instant.
+
+Each slot keeps its own canvas, selection and undo history, and edits land on
+the right slot even when it doesn't have hardware focus. Every sub-window
+follows the synth live: turning a physical knob on the front panel, or a light or
+meter moving, animates the right slot. `Ctrl+R` / `Ctrl+Shift+R` randomize
+(uniform / gaussian) and `Ctrl+S` / `Ctrl+Shift+S` save / save-as act on the
+**focused** slot and honour its own module selection.
+
+The Inspector, header bar, browsers and status bar are shared and follow
+whichever sub-window has focus, and a background canvas keeps its selection, so
+the Inspector picks up where that slot left off instead of going blank. The
+focused sub-window is edged in the theme's text colour.
+
+Which slots you had open, which one had focus and how they were arranged all come
+back when you reopen the editor. Connecting to the Nord then lines the work area
+up with the slots the synth actually has enabled, once; after that the windows
+are yours alone, and pressing slot buttons on the front panel moves focus without
+ever closing one.
 
 ## Editor ↔ synth sync
 
@@ -77,7 +96,10 @@ badge clears as soon as that patch is uploaded to, or fetched from, the synth.
 The right-side browser (`Ctrl+B`) lists the synth's 9 internal banks. You can:
 
 - search and hide empty positions,
-- **load** a patch into a slot,
+- **load** a patch into a slot: double-click puts it in the slot you are on, and
+  right-click offers **Load to Slot A..D** so that with several sub-windows open
+  you can pull a patch into a particular one without leaving the slot you are
+  working in,
 - **store** the current patch to a bank position,
 - **copy, move and delete** patches inside synth memory.
 

@@ -53,6 +53,7 @@ al instante, y mover un knob en el panel frontal actualiza el editor.
 ## Dónde se guarda todo
 
 El editor mantiene una carpeta de **librería de presets** (configurable desde el
-navegador de presets) con subcarpetas `Patches/`, `Snippets/` y `Banks/`. Los
-backups de bancos, los snippets y tus patches guardados acaban ahí y aparecen en
-el navegador integrado (`Ctrl+B`).
+navegador de presets) con subcarpetas `Patches/`, `Snippets/`, `Presets/` y
+`Banks/`. Los backups de bancos, los snippets, los presets de módulo y tus
+patches guardados acaban ahí, y los patches aparecen en el navegador integrado
+(`Ctrl+B`).

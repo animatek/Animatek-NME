@@ -53,6 +53,6 @@ editor.
 ## Where things live on disk
 
 The editor keeps a **preset library** folder (configurable in the preset
-browser) with `Patches/`, `Snippets/` and `Banks/` subfolders. Bank backups,
-snippets and your saved patches all land there and show up in the built-in
-browser (`Ctrl+B`).
+browser) with `Patches/`, `Snippets/`, `Presets/` and `Banks/` subfolders. Bank
+backups, snippets, module presets and your saved patches all land there, and the
+patches show up in the built-in browser (`Ctrl+B`).

@@ -26,6 +26,21 @@ viven en un archivo `.var` junto al patch: `MiPatch.pch` + `MiPatch.var`. Así e
 mover o hacer copia de seguridad de tus patches**: sin su archivo auxiliar, un
 patch carga bien pero pierde sus variaciones.
 
+## `.pchp` presets de módulo
+
+Un preset de módulo es una instantánea con nombre de los parámetros de un tipo de
+módulo, que se recupera desde la sección **Presets** del Inspector o desde el
+menú contextual del módulo (mira
+[Editar patches](03-editing-patches.md#presets-de-módulo)).
+
+Los presets se guardan como un paquete `.pchp` por tipo de módulo en la carpeta
+`Presets/` de la librería. El formato es texto plano y está pensado para editarse
+a mano, ya que transcribir los presets del editor original se hace a mano. Los
+valores se identifican por el nombre del parámetro y no por su posición, así que
+un preset que nombra dos parámetros ajusta esos dos y deja el resto del módulo
+como estaba. Los presets guardados por versiones anteriores a la 0.12 se migran
+automáticamente al primer arranque.
+
 ## Snippets
 
 Un snippet es un grupo reutilizable de módulos con sus cables y valores de
@@ -44,6 +59,7 @@ El navegador de disco escanea recursivamente una carpeta configurable de
 <raíz de la librería>/
   Patches/    tus patches guardados (con la estructura de carpetas que quieras)
   Snippets/   snippets exportados
+  Presets/    un paquete .pchp de presets por tipo de módulo
   Banks/      carpetas espejo Bank1 … Bank9 de "Backup All Banks"
 ```
 

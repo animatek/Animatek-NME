@@ -24,6 +24,19 @@ The 8 per-slot patch variations (and per-module mutation exclusions) live in a
 `.pch` byte-standard. **Keep the two files together when moving or backing up
 patches**: without its sidecar a patch loads fine but loses its variations.
 
+## `.pchp` module presets
+
+A module preset is a named parameter snapshot of one module type, recalled from
+the **Presets** section of the Inspector or the module's right-click menu (see
+[Editing Patches](03-editing-patches.md#module-presets)).
+
+Presets are stored as one `.pchp` pack per module type in the library's
+`Presets/` folder. The format is plain text and meant to be edited by hand, since
+transcribing the original editor's own presets is done by hand. Values are keyed
+by parameter name rather than by position, so a preset that names two parameters
+sets those two and leaves the rest of the module alone. Presets saved by versions
+before 0.12 are migrated automatically on first run.
+
 ## Snippets
 
 A snippet is a reusable group of modules with their cables and parameter
@@ -40,6 +53,7 @@ The disk browser scans a configurable **preset library** folder recursively:
 <library root>/
   Patches/    your saved patches (any folder structure you like)
   Snippets/   exported snippets
+  Presets/    one .pchp pack of module presets per module type
   Banks/      Bank1 … Bank9 mirror folders from "Backup All Banks"
 ```
 

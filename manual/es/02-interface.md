@@ -11,30 +11,36 @@ De arriba abajo:
   **Voices** con sus flechas, los medidores **Load**, los cuatro **knobs de
   morph** y los **botones de variación** (8 por slot).
 - **Inspector** (columna izquierda): todo lo del módulo seleccionado que no está
-  en su cara visible: su nombre (editable, y deshacible), su sección, y sus
-  **asignaciones** (grupos de morph, knobs de hardware y MIDI CCs). Junto al
-  título de asignaciones hay un **mapa de knobs de hardware**: un diagrama de
-  cuatro paneles y 18 LEDs que replica la disposición física, con los knobs
-  asignados en verde vivo y los libres en el color apagado de la lente del
-  hardware. Sin nada seleccionado, lista las asignaciones del patch entero.
+  en su cara visible: su nombre (editable, y deshacible), su sección, sus
+  **asignaciones** (grupos de morph, knobs de hardware y MIDI CCs), su **coste
+  de DSP** y sus **presets**. Junto al título de asignaciones hay un **mapa de
+  knobs de hardware**: un diagrama de cuatro paneles y 18 LEDs que replica la
+  disposición física, con los knobs asignados en verde vivo y los libres en el
+  color apagado de la lente del hardware. Sin nada seleccionado, lista las
+  asignaciones del patch entero. `Ctrl+I` pliega la columna entera.
 - **Barra de slots** (bajo el Inspector): los cuatro slots de hardware A–D con
   LEDs al estilo del aparato: un LED *parpadeando* es el slot seleccionado, los
   LEDs *fijos* son los slots activos. El clic normal selecciona un slot;
   `Ctrl+click` activa o desactiva un slot sin seleccionarlo, igual que
-  `Shift+botón de slot` en el panel frontal; **el clic derecho saca el slot a su
-  propia ventana** (mira
-  [Trabajar con el sintetizador](04-working-with-the-synth.md#ventanas-de-slot)).
+  `Shift+botón de slot` en el panel frontal; **el clic derecho muestra u oculta
+  la subventana de ese slot** (mira
+  [Trabajar con el sintetizador](04-working-with-the-synth.md#los-cuatro-slots-en-pantalla)).
   Un slot con la insignia **LOCAL** tiene un patch que el sintetizador no conoce.
-- **Canvas de patch**: el corazón del editor, dividido en **área Poly** (una
-  instancia por voz) y **área Common** (una por patch: teclado, secuenciadores,
-  efectos, salidas). Un separador arrastrable las divide. El arrastre con el
-  botón central hace pan, `Ctrl++`/`Ctrl+-` hace zoom, y `Z` hace zoom a la
-  selección.
+- **Área de trabajo**: los cuatro slots viven aquí como **subventanas**,
+  distribuidas en mosaico dentro de la ventana principal. Cada una contiene un
+  **canvas de patch**, dividido en **área Poly** (una instancia por voz) y **área
+  Common** (una por patch: teclado, secuenciadores, efectos, salidas). Un
+  separador arrastrable las divide. El arrastre con el botón central hace pan,
+  `Ctrl++`/`Ctrl+-` hace zoom, y `Z` hace zoom a la selección.
 - **Navegador de presets** (derecha, `Ctrl+B`): dos mundos en un mismo panel, la
   memoria interna del sintetizador (9 bancos) y tu librería en disco, con
-  búsqueda y filtros de patch, snippet y banco.
+  búsqueda y filtros de patch, snippet y banco. `Ctrl+Shift+I` lo pliega.
 - **Barra de estado**: estado de conexión, información del sintetizador y
   actividad.
+
+El Inspector, la cabecera, los navegadores y la barra de estado son compartidos:
+siguen a la subventana que tenga el foco, y esa subventana lleva un borde del
+color de texto del tema para que siempre veas qué slot estás editando.
 
 ## Voces y carga de DSP
 
@@ -50,6 +56,15 @@ como hacía el editor original: `PVA:` para el área poly/voz y `E:` para el ár
 común (efectos). La cifra es una estimación propia del editor a partir del coste
 en ciclos de cada módulo; el sintetizador no informa de su carga.
 
+El coste individual de cada módulo aparece allí donde eliges o inspeccionas un
+módulo: en el menú contextual **Add Module** ("Audio In (2.2%)"), en el navegador
+de módulos, en cada fila de Quick Add y en el Inspector. **Doble clic en un
+módulo** para ver su coste, como hace el editor original, o pulsa `F10` para
+etiquetarlos todos a la vez, que es la vista que quieres cuando un patch se pasa
+de presupuesto y buscas qué recortar. Las cifras están redondeadas a las dos
+cifras significativas que imprime el editor original de Clavia, así que un patch
+optimizado contra el editor de hardware muestra aquí los mismos números.
+
 ## Módulos en el canvas
 
 Cada módulo está dibujado fiel al píxel respecto al editor original: knobs,
@@ -62,6 +77,9 @@ conexión.
   MIDI CC, knob de hardware, bloqueos).
 - Arrastra un módulo por su título o cuerpo para moverlo por la rejilla;
   multi-selección con banda elástica o `Shift`-clic.
+- **Deja el cursor sobre cualquier control** para leer su valor en las unidades
+  del propio parámetro, de forma que un cutoff se lee "440 Hz" y no "64".
+  Arrástralo y el valor sigue el movimiento en vivo.
 - `F1` muestra la ayuda del módulo bajo el cursor, directamente de la
   documentación original del Nord Modular.
 

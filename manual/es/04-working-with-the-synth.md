@@ -24,31 +24,51 @@ el editor ya tiene una copia al día tampoco lo vuelve a descargar; un cambio
 real en el sintetizador (program change, carga de banco, reconexión) siempre lo
 hace.
 
-## Ventanas de slot
+## Los cuatro slots en pantalla
 
-**Clic derecho en una fila de slot** para abrir el patch de ese slot en su
-propia ventana. Así se trabaja con dos o más patches en paralelo; la ventana
-principal mantiene sus slots A–D funcionando exactamente igual que antes.
+Los slots son **subventanas dentro de la ventana principal**, distribuidas en
+mosaico como colocaban los patches el editor original de Clavia y Nomad. Así se
+trabaja con dos o más patches en paralelo, y nunca se pierde nada detrás de otra
+aplicación.
 
-Dentro de una ventana de slot todo es independiente: canvas, módulos, cables,
-parámetros, asignación de morph/knob/MIDI-CC, renombrado de módulos y su propio
-historial de deshacer. Las ediciones caen en el slot correcto aunque no tenga el
-foco del hardware.
+Los slots abiertos **se reparten solos** el espacio: uno ocupa toda el área de
+trabajo, dos la parten por la mitad, tres van en tercios, cuatro en 2x2, y la
+distribución se rehace al abrir y cerrar. No hay nada que colocar salvo que
+quieras: arrastra o redimensiona una subventana y las ventanas se quedan donde
+las pongas a partir de ese momento, con **View > Slots > Tile Slots** para
+volver al mosaico.
 
-- La ventana sigue al sintetizador en vivo: girar un knob físico del panel
-  frontal, o el movimiento de una luz o un medidor, anima también la ventana de
-  ese slot.
-- `Ctrl+R` / `Ctrl+Shift+R` randomizan (uniforme / gaussiano) y `Ctrl+S` /
-  `Ctrl+Shift+S` guardan y guardan como, actuando sobre el slot **de esa
-  ventana** y respetando su propia selección de módulos.
-- `Ctrl+I`, o la tira de flecha fina en el borde izquierdo del canvas, oculta el
-  Inspector para darle al canvas todo el ancho de la ventana.
-- Cuando el foco del panel frontal pasa a un slot que tiene ventana abierta, esa
-  ventana pasa al frente y su título gana **"- Focused"**, replicando la barra
-  de título resaltada del Nomad original.
+- `Ctrl+Shift+1`–`Ctrl+Shift+4` muestra u oculta la subventana de un slot, igual
+  que el clic derecho en su fila de la barra de slots.
+- `Ctrl+1`–`Ctrl+4` cambia a un slot, abriéndolo si estaba cerrado.
+- `F11`, o el botón de maximizar de una subventana, agranda el slot con foco a
+  toda el área de trabajo y lo devuelve, para mirarlo de cerca.
+- `Ctrl+Shift+` una flecha mueve el slot con foco a la casilla vecina, así el
+  patch en el que trabajas va donde tú quieres. **View > Slots > Rotate Slots**
+  los desplaza todos a la vez.
 
-La barra de ajustes superior (macros, medidores de CPU y voces) se queda solo en
-la ventana principal, igual que en el editor original.
+Las subventanas se deslizan hasta su nuevo sitio en vez de saltar. Desactívalo
+con **Animate Slot Tiling** en Editor Options (`Ctrl+,`) si lo prefieres
+instantáneo.
+
+Cada slot conserva su propio canvas, su selección y su historial de deshacer, y
+las ediciones caen en el slot correcto aunque no tenga el foco del hardware.
+Todas las subventanas siguen al sintetizador en vivo: girar un knob físico del
+panel frontal, o el movimiento de una luz o un medidor, anima el slot que toca.
+`Ctrl+R` / `Ctrl+Shift+R` randomizan (uniforme / gaussiano) y `Ctrl+S` /
+`Ctrl+Shift+S` guardan y guardan como, actuando sobre el slot **con foco** y
+respetando su propia selección de módulos.
+
+El Inspector, la cabecera, los navegadores y la barra de estado son compartidos y
+siguen a la subventana con foco, y un canvas de fondo conserva su selección, así
+que el Inspector retoma donde ese slot lo dejó en vez de quedarse en blanco. La
+subventana con foco lleva un borde del color de texto del tema.
+
+Qué slots tenías abiertos, cuál tenía el foco y cómo estaban colocados vuelven al
+reabrir el editor. Al conectar con el Nord, el área de trabajo se alinea una vez
+con los slots que el sintetizador tiene activados; a partir de ahí las ventanas
+son solo tuyas, y pulsar los botones de slot del panel frontal mueve el foco sin
+cerrar ninguna.
 
 ## Sincronización editor ↔ sintetizador
 
@@ -82,7 +102,10 @@ El navegador de la derecha (`Ctrl+B`) lista los 9 bancos internos del
 sintetizador. Desde ahí puedes:
 
 - buscar y ocultar posiciones vacías,
-- **cargar** un patch en un slot,
+- **cargar** un patch en un slot: el doble clic lo pone en el slot en el que
+  estás, y el clic derecho ofrece **Load to Slot A..D**, de modo que con varias
+  subventanas abiertas puedes llevar un patch a una concreta sin salir antes del
+  slot en el que trabajas,
 - **almacenar** el patch actual en una posición de banco,
 - **copiar, mover y borrar** patches dentro de la memoria del sintetizador.
 

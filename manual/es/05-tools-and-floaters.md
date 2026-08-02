@@ -55,12 +55,13 @@ sintetizador, la herramienta a la que recurrir cuando algo no sincroniza y
 quieres ver por qué (o para adjuntarlo a un informe de error). Coste cero cuando
 está cerrado; funciona en builds de release sin consola.
 
-## Ventanas de slot
+## Subventanas de slot
 
 No es un flotante, pero es la otra manera de tener más de una cosa en pantalla:
-clic derecho en una fila de slot para editar ese slot en su propia ventana, con
-su canvas, su Inspector y su historial de deshacer. Mira
-[Trabajar con el sintetizador](04-working-with-the-synth.md#ventanas-de-slot).
+los cuatro slots son subventanas en mosaico dentro de la ventana principal, cada
+una con su canvas, su selección y su historial de deshacer.
+`Ctrl+Shift+1`–`Ctrl+Shift+4` las muestra y las oculta. Mira
+[Trabajar con el sintetizador](04-working-with-the-synth.md#los-cuatro-slots-en-pantalla).
 
 ## El puente MCP
 

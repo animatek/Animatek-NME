@@ -11,27 +11,33 @@ From top to bottom:
   counter with up/down arrows, the **Load** meters, the four **morph group
   knobs**, and the **snapshot/variation buttons** (8 per slot).
 - **Inspector** (left column): everything about the selected module that isn't
-  on its face: its name (editable, and undoable), its section, and its
-  **assignments** (morph groups, hardware knobs and MIDI CCs). Beside the
-  Assignments heading sits a **hardware knob map**: a four-panel, 18-LED
-  diagram mirroring the physical knob layout, with assigned knobs lit bright
-  green and free knobs in the hardware's dark unlit-lens colour. With nothing
-  selected it lists the assignments of the whole patch.
+  on its face: its name (editable, and undoable), its section, its
+  **assignments** (morph groups, hardware knobs and MIDI CCs), its **DSP cost**,
+  and its **presets**. Beside the Assignments heading sits a **hardware knob
+  map**: a four-panel, 18-LED diagram mirroring the physical knob layout, with
+  assigned knobs lit bright green and free knobs in the hardware's dark
+  unlit-lens colour. With nothing selected it lists the assignments of the whole
+  patch. `Ctrl+I` folds the whole column away.
 - **Slot bar** (below the Inspector): the four hardware slots A–D with
   hardware-style LEDs: a *blinking* LED is the selected slot, *steady* LEDs are
   enabled slots. Plain click selects a slot; `Ctrl+click` enables/disables a
   slot without selecting it, exactly like `Shift+slot button` on the front
-  panel; **right-click pops the slot out into its own window** (see
-  [Working with the Synth](04-working-with-the-synth.md#slot-pop-out-windows)).
+  panel; **right-click shows or hides that slot's sub-window** (see
+  [Working with the Synth](04-working-with-the-synth.md#the-four-slots-on-screen)).
   A slot showing a **LOCAL** badge holds a patch the synth doesn't have.
-- **Patch canvas**: the heart of the editor, split into the **Poly area**
+- **Work area**: the four slots live here as **sub-windows**, tiled inside the
+  main window. Each holds a **patch canvas**, split into the **Poly area**
   (one instance per voice) and the **Common area** (one instance per patch,
   e.g. keyboard, sequencers, effects, outputs). A draggable divider separates
   them. Middle-drag pans, `Ctrl++`/`Ctrl+-` zooms, `Z` zooms to selection.
 - **Preset browser** (right side, `Ctrl+B`) holds two worlds in one panel: the
   synth's internal memory (9 banks) and your disk preset library, with search
-  and patch/snippet/bank filters.
+  and patch/snippet/bank filters. `Ctrl+Shift+I` folds it away.
 - **Status bar**: connection state, synth information and activity.
+
+The Inspector, header bar, browsers and status bar are shared: they follow
+whichever sub-window has focus, and the focused one is edged in the theme's text
+colour so you can always see which slot you are editing.
 
 ## Voices and DSP load
 
@@ -46,6 +52,15 @@ place, as the original editor did: `PVA:` for the poly/voice area and `E:` for
 the common (effects) area. The figure is the editor's own estimate from each
 module's cycle cost; the synth does not report its load.
 
+Each module's individual share is on screen wherever you pick or inspect a
+module: in the right-click **Add Module** menu ("Audio In (2.2%)"), in the module
+browser, on every Quick Add row, and in the Inspector. **Double-click a module**
+for its own cost, as the original editor does, or press `F10` to label every
+module at once, which is the view you want when a patch is over budget and you
+are looking for what to cut. The figures are rounded to the two significant
+figures the original Clavia editor prints, so a patch optimised against the
+hardware editor reads the same numbers here.
+
 ## Modules on the canvas
 
 Each module is drawn pixel-faithful to the original editor: knobs, buttons,
@@ -57,6 +72,9 @@ the **VU meters and LEDs** in real time while connected.
   hardware knob, locks).
 - Drag a module by its title/body to move it on the grid; multi-select with a
   rubber band or `Shift`-click.
+- **Rest the cursor on any control** to read its value in the parameter's own
+  units, so a cutoff reads "440 Hz" rather than "64". Drag it and the value
+  follows live.
 - `F1` shows help for the hovered module, straight from the original Nord
   Modular documentation.
 
