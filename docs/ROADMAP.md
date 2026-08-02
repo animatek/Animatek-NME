@@ -58,23 +58,26 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](../CHANGELOG
   are already part of the patch model and upload path (`buildHwFromPatch` reads
   `patch->knobAssignments`), so this is plumbing rather than new protocol work.
 
-- [ ] **MDI: the four slots inside the main window.** Replace the per-slot OS pop-out
-  windows with internal sub-windows in the central area, as the original Clavia editor and
-  Nomad do, so the four patches can be tiled 2x2. Each sub-window carries only its canvas;
-  the Inspector, browsers, header and status bar stay shared and follow the focused slot.
-  `juce::MultiDocumentPanel` is already available in the vendored JUCE and provides the
-  windows and focus; tiling is ours to add.
+- [x] **MDI: the four slots inside the main window.** Done, unreleased. The per-slot OS
+  pop-out windows are replaced by internal sub-windows in the central area, as the original
+  Clavia editor and Nomad do. Each sub-window carries only its canvas; the Inspector,
+  browsers, header and status bar stay shared and follow the focused slot.
 
-  The real argument is that it **removes** code rather than adding it. Canvas wiring exists
-  twice today, inline in the constructor resolving through `activeSlot`
-  (`MainComponent.cpp:173-808`) and again per fixed slot in `wireSlotWindowContent`
-  (`:2735-2958`), with 19 distinct main-vs-slot-window special cases between them. With
-  several canvases visible, resolving through `activeSlot` stops being correct by
-  construction, which forces the two paths to become one. Phased plan, effort estimate
-  (~7-9 days) and verification steps in [`docs/MDI_PLAN.md`](MDI_PLAN.md); phase 0 is done
-  (commit e1c4b2f).
+  Tiling turned out better than the 2x2-plus-modes originally planned: it is dynamic, the way
+  niri and Hyprland do it, so the layout is a function of how many slots are open (one full,
+  two split, three in thirds, four 2x2) and re-flows as you open and close them. Plus a focus
+  mode on F11 and on each sub-window's maximise button.
 
-  This supersedes the old "slot windows: live fan-out and global commands"
+  It did what it was for: canvas wiring existed twice, inline in the constructor resolving
+  through `activeSlot` and again per fixed slot in `wireSlotWindowContent`, with 19
+  main-vs-slot-window special cases between them. There is one `wireSlotView(slot)` now, and
+  `SlotWindow`/`SlotWindowContent` are gone.
+
+  All phases and what each one turned up are in [`docs/MDI_PLAN.md`](MDI_PLAN.md). Two things
+  are deliberately left out: the re-tile animation (not wanted) and an optional "Arrange"
+  command for the manual Free layout.
+
+  This superseded the old "slot windows: live fan-out and global commands"
   ([#22](https://github.com/animatek/Animatek-NME/issues/22)) item, whose live fan-out and
   per-window `Ctrl+R`/`Ctrl+S` shipped in 0.11.0.
 

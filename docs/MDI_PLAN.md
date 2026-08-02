@@ -1,8 +1,9 @@
 # MDI: the four slots inside the main window
 
 Phased plan for replacing the per-slot OS pop-out windows with internal sub-windows in the
-main window's central area. Written 2026-08-01 against 0.12.0. Phases 0 to 5 are done bar
-the re-tile animation, which is deferred.
+main window's central area. Written 2026-08-01 against 0.12.0. **All phases are done.** The
+re-tile animation described in phase 5 was dropped: Javier looked at where the idea came from
+and did not want it. The optional "Arrange" command for Free mode is still unbuilt.
 
 ## Why
 
@@ -244,9 +245,10 @@ Restoring also ran a full `switchToSlot` per slot it opened, since each new docu
 focus as it appears. `restoringMdiLayout` now gates `onSlotFocused` too, and restore does one
 switch at the end for the slot that should actually end up focused.
 
-**Animate the re-tile** (idea from EdenQwQ's niri `animations.nix`, reviewed 2026-08-02; see
-the licensing note below — the concept is used, none of the code, and there is none to use
-since it is compositor shaders and Nix config). Opening
+**Animate the re-tile — NOT WANTED** (idea from EdenQwQ's niri `animations.nix`, reviewed
+2026-08-02; dropped 2026-08-02 once it was clear the gists were one user's personal config
+rather than anything of Hyprland's, and that the effect was not actually wanted). Kept here
+only so the reasoning is not rediscovered from scratch. Opening
 or closing a slot currently makes the other windows jump to their new tiles. Sliding them
 instead makes the re-flow legible, and JUCE gives it for free: run the `setBounds` calls
 `applyLayout()` already computes through `Desktop::getAnimator().animateComponent()`.

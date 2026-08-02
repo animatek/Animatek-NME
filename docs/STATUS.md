@@ -12,7 +12,7 @@ This file tracks the current project state at a practical level. Detailed versio
 - Native JUCE/C++ application builds and runs as a desktop editor.
 - MIDI SysEx connection, handshake, patch request/load flow, patch upload, and live editor/synth sync are implemented.
 - `.pch` file load/save is implemented with compatibility fixes for original editors.
-- Four slot workflow is implemented for A/B/C/D with separate patch state, undo managers, synchronizers, and active hardware slot switching. Any slot can also be popped out into its own window (right-click its row) for editing 2+ slots side by side, addressed correctly on the synth regardless of which slot has front-panel focus.
+- Four slot workflow is implemented for A/B/C/D with separate patch state, undo managers, synchronizers, and active hardware slot switching. The slots are sub-windows inside the main window's work area, any number of them on screen at once, and they tile themselves: one fills the area, two split it, three go in thirds, four go 2x2. `F11` or a sub-window's maximise button blows the focused one up and back. Edits are addressed to the right slot on the synth regardless of which one has front-panel focus, and which slots were open comes back on restart.
 - Patch canvas editing is functional: add, delete, move, multi-select, copy/paste, duplicate, cable create/delete, QuickAdd, and context menus.
 - Parameter edits, morph assignments/ranges, hardware knob assignments, and MIDI CC assignments sync to the synth.
 - Patch Settings and Synth Settings dialogs are implemented and synced.
