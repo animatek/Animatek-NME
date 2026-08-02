@@ -40,6 +40,18 @@ public:
         repaint();
     }
 
+    void visibilityChanged() override
+    {
+        // Deliberately NOT TopLevelWindow::visibilityChanged(), which calls
+        // toFront(true) whenever a window becomes visible. These are child
+        // windows inside the work area, and the animator hides and re-shows
+        // each one when it animates through a proxy — letting them pull
+        // themselves to the front as they finish would hand the active
+        // document, and the keyboard focus, to whichever animation ended last.
+        // Opening a slot brings its window forward explicitly anyway
+        // (MultiDocumentPanel::addWindow).
+    }
+
     void paintOverChildren(juce::Graphics& g) override
     {
         const auto& pal = AppTheme::palette();
@@ -462,21 +474,46 @@ juce::MultiDocumentPanelWindow* SlotMdiArea::createNewDocumentWindow()
     return new SlotSubWindow(getBackgroundColour());
 }
 
-void SlotMdiArea::swapFocusedTile(int direction)
+void SlotMdiArea::moveFocusedTile(Direction direction)
 {
     const auto open = openSlotsInTileOrder();
     const int focused = getFocusedSlot();
-    if (open.size() < 2 || focused < 0 || direction == 0)
+    const int n = static_cast<int>(open.size());
+    if (n < 2 || focused < 0)
         return;
 
-    // Position of the focused slot among the ones on screen, then its
-    // neighbour, wrapping so the ends are reachable in one step.
     const auto it = std::find(open.begin(), open.end(), focused);
     if (it == open.end())
         return;
-    const int n = static_cast<int>(open.size());
     const int from = static_cast<int>(std::distance(open.begin(), it));
-    const int to = ((from + direction) % n + n) % n;
+
+    // Where the tiles actually are, mirroring applyLayout: four is a 2x2 grid,
+    // two and three are columns. An edge move is a no-op rather than a wrap, so
+    // the arrow key always means what it says.
+    int to = -1;
+    if (n == 4)
+    {
+        switch (direction)
+        {
+            case Direction::Left:  if (from % 2 == 1) to = from - 1; break;
+            case Direction::Right: if (from % 2 == 0) to = from + 1; break;
+            case Direction::Up:    if (from >= 2)     to = from - 2; break;
+            case Direction::Down:  if (from < 2)      to = from + 2; break;
+        }
+    }
+    else  // columns: up and down have nowhere to go
+    {
+        switch (direction)
+        {
+            case Direction::Left:  if (from > 0)     to = from - 1; break;
+            case Direction::Right: if (from < n - 1) to = from + 1; break;
+            case Direction::Up:
+            case Direction::Down:  break;
+        }
+    }
+
+    if (to < 0 || to >= n)
+        return;
 
     // tileOrder holds every slot, open or not, so swap the two entries there
     // rather than in the filtered list.
@@ -488,6 +525,9 @@ void SlotMdiArea::swapFocusedTile(int direction)
               tileOrder[(size_t) posOf(open[(size_t) to])]);
 
     applyLayout(/*animate*/ true);
+    // The moved slot keeps focus: only its tile changed, not which patch you
+    // are editing.
+    reassertFocus(focused);
     if (onLayoutChanged)
         onLayoutChanged();
 }
@@ -502,9 +542,25 @@ void SlotMdiArea::rotateTiles(int direction)
     else
         std::rotate(tileOrder.rbegin(), tileOrder.rbegin() + 1, tileOrder.rend());
 
+    const int focused = getFocusedSlot();
     applyLayout(/*animate*/ true);
+    reassertFocus(focused);
     if (onLayoutChanged)
         onLayoutChanged();
+}
+
+// Put the active document back where it was. Reordering only changes which tile
+// a slot occupies, never which slot you are editing, but the windows are hidden
+// and re-shown by the animator and JUCE re-derives the active document from
+// window state along the way.
+void SlotMdiArea::reassertFocus(int slot)
+{
+    if (slot < 0 || slot >= numSlots || !isSlotOpen(slot))
+        return;
+
+    const juce::ScopedValueSetter<bool> guard(suppressFocusCallback, true);
+    focusSlot(slot);
+    updateFocusHighlight();
 }
 
 juce::String SlotMdiArea::getTileOrderString() const

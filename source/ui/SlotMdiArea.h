@@ -56,7 +56,12 @@ public:
     // Which tile each slot sits in. The tiling itself is fixed by how many slots
     // are open, but which slot lands where is the user's to change — the same
     // thing Hyprland's swapwindow and rollnext do within a layout.
-    void swapFocusedTile(int direction);   // -1 previous tile, +1 next
+    // Directions are geometric, not positions in a list: with four slots the
+    // tiles are a 2x2 grid, so "left" has to mean the tile to the left and not
+    // the previous one in sequence. Nothing happens at an edge — no wrapping,
+    // which is what made "move left" appear to move a slot right.
+    enum class Direction { Left, Right, Up, Down };
+    void moveFocusedTile(Direction direction);
     void rotateTiles(int direction);       // shift every slot round one tile
     juce::String getTileOrderString() const;
     void setTileOrderString(const juce::String& order);
@@ -142,6 +147,7 @@ private:
     void rescaleFreeWindows(juce::Rectangle<int> area);
     // Outline the sub-window you are editing in the theme's accent colour.
     void updateFocusHighlight();
+    void reassertFocus(int slot);
 
     static constexpr int minUsableSize = 120;
 

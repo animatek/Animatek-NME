@@ -23,9 +23,10 @@
   will not steal focus in the middle of a cable drag. Dragging a module out of the browser
   works into any sub-window, which never worked in the pop-outs.
 
-  Which slot sits in which tile is yours to change: **Ctrl+Shift+Left/Right** moves the
-  focused slot one tile over and **Ctrl+Shift+Up/Down** rotates them all round, so you can put
-  the patch you are working on where you want it without closing and reopening anything. The
+  Which slot sits in which tile is yours to change: **Ctrl+Shift+** an arrow moves the focused
+  slot to the neighbouring tile, so you can put the patch you are working on where you want it
+  without closing and reopening anything. **View > Slots > Rotate Slots** shifts them all round
+  at once. The
   sub-windows slide to their new places rather than jumping; turn that off with **Animate Slot
   Tiling** in Editor Options if you prefer it instant.
 

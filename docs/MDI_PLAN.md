@@ -270,9 +270,26 @@ is ever wanted it is a ~30-line timer-driven curve, needing nobody's code.
 
 The tiling is fixed by how many slots are open, but which slot lands in which tile is the
 user's to change — Hyprland's `swapwindow` and `rollnext` within a layout.
-`Ctrl+Shift+Left/Right` swaps the focused slot with its neighbour, `Ctrl+Shift+Up/Down`
-rotates them all, and both are in View > Slots. Arrow keysyms are stable under Shift, unlike
-the digits (see phase 3), and the canvas only nudges modules with unmodified arrows.
+`Ctrl+Shift+` an arrow moves the focused slot to the neighbouring tile; Rotate Slots is on the
+View menu. Arrow keysyms are stable under Shift, unlike the digits (see phase 3), and the
+canvas only nudges modules with unmodified arrows.
+
+**Directions are geometric, and that took a correction.** The first cut swapped along the
+linear tile index, which reads as left/right in the two- and three-column layouts but not in
+the 2x2, where "left" from the bottom-left tile landed a slot in the top-right. It also
+wrapped, so with two slots open "move left" visibly moved a slot right. Now Left/Right flip
+the column and Up/Down the row, an edge move is a no-op, and up/down simply do nothing in the
+column layouts. Rotate lost its arrow binding so the arrows mean one thing.
+
+**The animation broke focus, and the fix is not obvious.** After a reorder the accent outline
+and the active document jumped to some other window. `useProxyComponent` hides the real
+window and re-shows it at the end, and `TopLevelWindow::visibilityChanged()` answers a show
+with `toFront(true)` — these windows are children but `Component::getPeer()` walks up to the
+main window's peer, so the guard in that function does not spare them. `broughtToFront()` then
+tells the panel it is the active document, and with four windows animating the last one to
+finish won. `SlotSubWindow::visibilityChanged()` overrides it to do nothing (opening a slot
+already brings its window forward explicitly), and reordering re-asserts the focused slot
+afterwards for good measure.
 
 `tileOrder` is a permutation of slot indices that `applyLayout` iterates instead of 0..3. It
 persists as `mdiTileOrder`, validated on load as a genuine permutation: a duplicate or a

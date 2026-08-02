@@ -65,8 +65,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl+Shift+1`..`Ctrl+Shift+4` | Show/hide slot A..D's sub-window |
 | `F11` | Focus mode: blow the focused slot up to the full area, and back |
 | Maximise button | The same, on that sub-window's own title bar |
-| `Ctrl+Shift+Left` / `Ctrl+Shift+Right` | Move the focused slot one tile over, swapping with its neighbour |
-| `Ctrl+Shift+Up` / `Ctrl+Shift+Down` | Rotate every slot round one tile |
+| `Ctrl+Shift+` arrows | Move the focused slot to the neighbouring tile, swapping with whatever is there. Up and down only exist in the four-slot 2x2; nothing happens at an edge |
 | Right-click a slot row | Show/hide that slot's sub-window |
 | Right-click a patch in the Synth browser | **Load to Slot A..D**: fetch it into a named slot |
 | `Ctrl+click` a slot row | Enable/disable the slot without selecting it |

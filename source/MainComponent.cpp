@@ -980,24 +980,19 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
     // Which slot sits in which tile, the way Hyprland's swapwindow and rollnext
     // reorder a layout without changing what is in it. Arrow keysyms are stable
     // under Shift, unlike the digits above.
-    if (key.getKeyCode() == juce::KeyPress::leftKey)
+    // All four arrows move the focused slot to the neighbouring tile in that
+    // direction. Rotating every slot at once is a separate command, on the View
+    // menu only, so the arrows mean one thing and mean it literally.
+    using Dir = SlotMdiArea::Direction;
+    const int code = key.getKeyCode();
+    if (code == juce::KeyPress::leftKey  || code == juce::KeyPress::rightKey
+        || code == juce::KeyPress::upKey || code == juce::KeyPress::downKey)
     {
-      mainLayout->getPatchArea().swapFocusedTile(-1);
-      return true;
-    }
-    if (key.getKeyCode() == juce::KeyPress::rightKey)
-    {
-      mainLayout->getPatchArea().swapFocusedTile(1);
-      return true;
-    }
-    if (key.getKeyCode() == juce::KeyPress::upKey)
-    {
-      mainLayout->getPatchArea().rotateTiles(1);
-      return true;
-    }
-    if (key.getKeyCode() == juce::KeyPress::downKey)
-    {
-      mainLayout->getPatchArea().rotateTiles(-1);
+      mainLayout->getPatchArea().moveFocusedTile(
+          code == juce::KeyPress::leftKey  ? Dir::Left
+        : code == juce::KeyPress::rightKey ? Dir::Right
+        : code == juce::KeyPress::upKey    ? Dir::Up
+                                           : Dir::Down);
       return true;
     }
   }
@@ -1079,9 +1074,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     }
     slotMenu.addSeparator();
     const bool severalOpen = patchArea.getNumOpenSlots() > 1;
+    const bool grid = patchArea.getNumOpenSlots() == 4;  // up/down only exist in the 2x2
     slotMenu.addItem(96, "Move Slot Left\tCtrl+Shift+Left", severalOpen);
     slotMenu.addItem(97, "Move Slot Right\tCtrl+Shift+Right", severalOpen);
-    slotMenu.addItem(98, "Rotate Slots\tCtrl+Shift+Up", severalOpen);
+    slotMenu.addItem(99, "Move Slot Up\tCtrl+Shift+Up", grid);
+    slotMenu.addItem(100, "Move Slot Down\tCtrl+Shift+Down", grid);
+    slotMenu.addItem(98, "Rotate Slots", severalOpen);
     slotMenu.addSeparator();
     slotMenu.addItem(94, "Tile Slots", severalOpen,
                      patchArea.getTileMode() == SlotMdiArea::TileMode::Auto);
@@ -1329,13 +1327,19 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     toggleFocusMode();
     break;
   case 96:  // Move the focused slot one tile left
-    mainLayout->getPatchArea().swapFocusedTile(-1);
+    mainLayout->getPatchArea().moveFocusedTile(SlotMdiArea::Direction::Left);
     break;
   case 97:  // ...and right
-    mainLayout->getPatchArea().swapFocusedTile(1);
+    mainLayout->getPatchArea().moveFocusedTile(SlotMdiArea::Direction::Right);
     break;
   case 98:  // Rotate every slot round one tile
     mainLayout->getPatchArea().rotateTiles(1);
+    break;
+  case 99:  // Move up (2x2 only)
+    mainLayout->getPatchArea().moveFocusedTile(SlotMdiArea::Direction::Up);
+    break;
+  case 100:  // ...and down
+    mainLayout->getPatchArea().moveFocusedTile(SlotMdiArea::Direction::Down);
     break;
 
   default:
@@ -3212,8 +3216,8 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Ctrl+Shift+1..4     Show/hide slot A..D's sub-window\n"
       "  F11                 Focus mode: blow the focused slot up, and back\n"
       "  Maximise button     Same, on that sub-window's title bar\n"
-      "  Ctrl+Shift+Left/Right  Move the focused slot one tile over\n"
-      "  Ctrl+Shift+Up/Down     Rotate every slot round one tile\n"
+      "  Ctrl+Shift+arrows   Move the focused slot to the neighbouring tile\n"
+      "                      (up/down only exist in the four-slot 2x2)\n"
       "  Right-click slot    Show/hide that slot's sub-window\n"
       "  Ctrl+click slot     Enable/disable without selecting\n"
       "\n"
