@@ -42,7 +42,15 @@ public:
     enum class TileMode { Auto, Free };
 
     TileMode getTileMode() const { return tileMode; }
+    void setTileMode(TileMode mode);
     void retile();  // back to Auto, and lay out now
+
+    // A sub-window's bounds as fractions of the work area. Persisting these
+    // rather than pixels is what lets a Free-mode layout survive a collapsed
+    // panel, a resized main window or a different monitor. Empty when the slot
+    // is closed. Only meaningful in Free mode; Auto recomputes the tiling.
+    juce::Rectangle<float> getNormalisedSlotBounds(int slot) const;
+    void setNormalisedSlotBounds(int slot, juce::Rectangle<float> bounds);
 
     // Focus mode: the focused sub-window fills the area while the others stay
     // tiled behind it. Toggling it off drops straight back into the tiling that
@@ -107,6 +115,10 @@ private:
     // mode, and with fewer than two open (JUCE gives a lone document the whole
     // area itself, with no window frame at all).
     void applyLayout();
+    // Free mode keeps whatever the user arranged, but in proportion: when the
+    // work area changes size the windows scale with it instead of being
+    // stranded in a corner.
+    void rescaleFreeWindows(juce::Rectangle<int> area);
     // Outline the sub-window you are editing in the theme's accent colour.
     void updateFocusHighlight();
 
@@ -120,6 +132,7 @@ private:
     // Set while we are the ones moving windows, so our own setBounds calls are
     // not mistaken for the user dragging one and do not drop us into Free.
     bool applyingLayout = false;
+    juce::Rectangle<int> lastArea;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SlotMdiArea)
 };

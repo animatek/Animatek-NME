@@ -129,6 +129,16 @@ private:
     void saveFloaterState();
     void restoreFloaterWindows();  // reopen floaters that were open last session
 
+    // Which slots are on screen, how they are arranged, and which one has focus.
+    // Kept apart from the floater state: floaters are OS windows saved in screen
+    // coordinates, which mean nothing for a sub-window of the work area.
+    void saveMdiLayout();
+    void restoreMdiLayout();
+    // Starts true: the constructor opens a slot before restoreMdiLayout() runs,
+    // and that fires onLayoutChanged, which would save the default layout over
+    // the stored one before it was ever read. Cleared when restore finishes.
+    bool restoringMdiLayout = true;
+
     void showMidiSettingsDialog();
     void showPatchSettingsDialog();
     void showSynthSettingsDialog();

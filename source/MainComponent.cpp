@@ -194,9 +194,13 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   };
   // Open/closed, tile mode and focus mode all show as tick marks in the View
   // menu, and the native macOS menu bar keeps a stale tick unless it is rebuilt.
-  mainLayout->getPatchArea().onLayoutChanged = [this]() { menuItemsChanged(); };
+  // Which slots are open is also persisted from here; restoreMdiLayout() below
+  // is what actually opens them, so nothing opens a slot before then.
+  mainLayout->getPatchArea().onLayoutChanged = [this]() {
+    menuItemsChanged();
+    saveMdiLayout();
+  };
 
-  mainLayout->getPatchArea().openSlot(activeSlot);
 
   // The main window's inspector follows whichever slot is active, so it binds to
   // "the active slot" rather than to a fixed one the way a slot window does.
@@ -805,6 +809,9 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   setSize(1280, 800);
 
+  // After setSize, so the work area has real bounds to lay sub-windows out in.
+  restoreMdiLayout();
+
   // Auto-connect after UI is set up (with delay to let ALSA enumerate devices)
   {
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -862,6 +869,10 @@ MainComponent::~MainComponent() {
 #endif
   menuBar.reset();
   saveFloaterState();
+  // Dragging a sub-window around inside Free mode does not fire onLayoutChanged
+  // (only the first drag does, when it leaves Auto), so catch the final
+  // arrangement here rather than saving on every mouse move.
+  saveMdiLayout();
   knobFloaterWindow.reset();
   keyboardFloaterWindow.reset();
   mainLayout.reset();
@@ -2229,6 +2240,92 @@ void MainComponent::showFloaterWindow(juce::DocumentWindow& window,
   window.setVisible(true);
   window.toFront(true);
   saveFloaterState();
+}
+
+// Free-mode geometry is stored as fractions of the work area rather than in
+// pixels, so a layout still means the same thing after a panel is collapsed, the
+// window is resized or the editor moves to a different monitor. In Auto mode the
+// tiling recomputes everything from the open-slot mask, so only the mask matters.
+void MainComponent::saveMdiLayout() {
+  if (restoringMdiLayout)
+    return;
+  auto* settings = appProperties.getUserSettings();
+  if (settings == nullptr || mainLayout == nullptr)
+    return;
+
+  auto& area = mainLayout->getPatchArea();
+  const bool freeMode = area.getTileMode() == SlotMdiArea::TileMode::Free;
+
+  int openMask = 0;
+  for (int i = 0; i < numSlots; ++i)
+    if (area.isSlotOpen(i))
+      openMask |= (1 << i);
+
+  settings->setValue("mdiOpenSlots", openMask);
+  settings->setValue("mdiFocusedSlot", activeSlot);
+  settings->setValue("mdiFreeLayout", freeMode);
+  settings->setValue("mdiFocusMode", area.isFocusMode());
+
+  if (freeMode)
+    for (int i = 0; i < numSlots; ++i) {
+      const auto key = "mdiSlot" + juce::String::charToString(static_cast<char>('A' + i));
+      const auto bounds = area.getNormalisedSlotBounds(i);
+      settings->setValue(key + "X", bounds.getX());
+      settings->setValue(key + "Y", bounds.getY());
+      settings->setValue(key + "W", bounds.getWidth());
+      settings->setValue(key + "H", bounds.getHeight());
+    }
+
+  settings->saveIfNeeded();
+}
+
+void MainComponent::restoreMdiLayout() {
+  // Whatever happens, stop suppressing saves on the way out — the flag starts
+  // true so the constructor's own openSlot cannot overwrite the stored layout.
+  struct Unsuppress {
+    bool& flag;
+    ~Unsuppress() { flag = false; }
+  } unsuppress { restoringMdiLayout };
+
+  auto* settings = appProperties.getUserSettings();
+  if (settings == nullptr)
+    return;
+
+  auto& area = mainLayout->getPatchArea();
+
+  // Default to the slot that is already open, so a first run and a corrupt or
+  // empty mask both land somewhere sensible rather than on an empty work area.
+  int openMask = settings->getIntValue("mdiOpenSlots", 1 << activeSlot);
+  if ((openMask & 0x0f) == 0)
+    openMask = 1 << activeSlot;
+
+  for (int i = 0; i < numSlots; ++i)
+    if (openMask & (1 << i))
+      area.openSlot(i);
+
+  if (settings->getBoolValue("mdiFreeLayout", false)) {
+    area.setTileMode(SlotMdiArea::TileMode::Free);
+    for (int i = 0; i < numSlots; ++i) {
+      const auto key = "mdiSlot" + juce::String::charToString(static_cast<char>('A' + i));
+      area.setNormalisedSlotBounds(i,
+          { (float) settings->getDoubleValue(key + "X"),
+            (float) settings->getDoubleValue(key + "Y"),
+            (float) settings->getDoubleValue(key + "W"),
+            (float) settings->getDoubleValue(key + "H") });
+    }
+  }
+
+  std::cout << "[MDI] Restored layout: openMask=" << openMask
+            << " free=" << settings->getBoolValue("mdiFreeLayout", false)
+            << " open=" << mainLayout->getPatchArea().getNumOpenSlots() << std::endl;
+
+  const int focused = settings->getIntValue("mdiFocusedSlot", activeSlot);
+  if (focused >= 0 && focused < numSlots && (openMask & (1 << focused)))
+    switchToSlot(focused, /*notifySynth=*/false);
+
+  // Last, so it maximises the slot that ended up focused.
+  if (settings->getBoolValue("mdiFocusMode", false))
+    area.setFocusMode(true);
 }
 
 void MainComponent::saveFloaterState() {

@@ -133,14 +133,84 @@ void SlotMdiArea::resized()
 {
     MultiDocumentPanel::resized();
 
+    const auto area = getLocalBounds();
+
     // The base class only lays out children in tabbed or single-document mode,
     // so the floating sub-windows are ours to look after.
-    applyLayout();
-
     if (tileMode == TileMode::Free)
+    {
+        rescaleFreeWindows(area);
         for (int s = 0; s < numSlots; ++s)
             if (auto* window = windowFor(s))
                 giveUsableBounds(*window, s);
+    }
+    else
+    {
+        applyLayout();
+    }
+
+    if (! area.isEmpty())
+        lastArea = area;
+}
+
+void SlotMdiArea::rescaleFreeWindows(juce::Rectangle<int> area)
+{
+    if (area.isEmpty() || lastArea.isEmpty()
+        || (area.getWidth() == lastArea.getWidth() && area.getHeight() == lastArea.getHeight()))
+        return;
+
+    const double sx = (double) area.getWidth()  / lastArea.getWidth();
+    const double sy = (double) area.getHeight() / lastArea.getHeight();
+
+    const juce::ScopedValueSetter<bool> guard(applyingLayout, true);
+    for (int s = 0; s < numSlots; ++s)
+        if (auto* window = windowFor(s))
+            window->setBounds(
+                area.getX() + juce::roundToInt((window->getX() - lastArea.getX()) * sx),
+                area.getY() + juce::roundToInt((window->getY() - lastArea.getY()) * sy),
+                juce::roundToInt(window->getWidth()  * sx),
+                juce::roundToInt(window->getHeight() * sy));
+}
+
+void SlotMdiArea::setTileMode(TileMode mode)
+{
+    if (tileMode == mode)
+        return;
+
+    tileMode = mode;
+    if (tileMode == TileMode::Free)
+        focusMode = false;  // focus mode is a view of the tiling, not of Free
+
+    applyLayout();
+    if (onLayoutChanged)
+        onLayoutChanged();
+}
+
+juce::Rectangle<float> SlotMdiArea::getNormalisedSlotBounds(int slot) const
+{
+    const auto area = getLocalBounds();
+    const auto* window = windowFor(slot);
+    if (window == nullptr || area.isEmpty())
+        return {};
+
+    return { (float) (window->getX() - area.getX()) / (float) area.getWidth(),
+             (float) (window->getY() - area.getY()) / (float) area.getHeight(),
+             (float) window->getWidth()  / (float) area.getWidth(),
+             (float) window->getHeight() / (float) area.getHeight() };
+}
+
+void SlotMdiArea::setNormalisedSlotBounds(int slot, juce::Rectangle<float> bounds)
+{
+    const auto area = getLocalBounds();
+    auto* window = windowFor(slot);
+    if (window == nullptr || area.isEmpty() || bounds.isEmpty())
+        return;
+
+    const juce::ScopedValueSetter<bool> guard(applyingLayout, true);
+    window->setBounds(area.getX() + juce::roundToInt(bounds.getX() * area.getWidth()),
+                      area.getY() + juce::roundToInt(bounds.getY() * area.getHeight()),
+                      juce::roundToInt(bounds.getWidth()  * area.getWidth()),
+                      juce::roundToInt(bounds.getHeight() * area.getHeight()));
 }
 
 int SlotMdiArea::getNumOpenSlots() const

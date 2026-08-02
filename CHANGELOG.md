@@ -22,7 +22,8 @@
   will not steal focus in the middle of a cable drag. Dragging a module out of the browser
   works into any sub-window, which never worked in the pop-outs.
 
-  Which slots are open is not remembered between sessions yet.
+  Which slots you had open, which one had focus, and how they were arranged all come back
+  when you reopen the editor.
 
 - **Fixed: "Press Enter to add modules" could pile up on itself** on an empty canvas. The hint
   was centred on whatever rectangle was being repainted rather than on the canvas, so a partial

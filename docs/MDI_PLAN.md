@@ -1,8 +1,8 @@
 # MDI: the four slots inside the main window
 
 Phased plan for replacing the per-slot OS pop-out windows with internal sub-windows in the
-main window's central area. Written 2026-08-01 against 0.12.0. Phases 0 to 3 are done;
-phases 4 and 5 are not started.
+main window's central area. Written 2026-08-01 against 0.12.0. Phases 0 to 4 are done;
+phase 5 is not started.
 
 ## Why
 
@@ -189,22 +189,63 @@ Still open: `Ctrl+Alt+T` was never bound, so the `handleFloaterShortcut` collisi
 warned about did not arise. Note it still would — that function matches `Ctrl` without
 checking `Alt`.
 
-### Phase 4 — Persistence (~0.5-1 day) — NEXT
+### Phase 4 — Persistence (DONE)
 
-Retire the `slotWindowA..D{X,Y,W,H,Open}` keys: the generic floater mechanism clamps against
-**screen** coordinates (`showFloaterWindow`), which means nothing for a child window. New
-keys: `mdiOpenSlots` (bitmask), `mdiFocusedSlot`, `mdiTileMode`, and each window's bounds
-**normalised** to the area, which sidesteps the whole class of "the area is a different size
-now" bugs when panels collapse or the monitor changes. With dynamic tiling the bounds only
-matter in Free mode; in Auto the open-slot bitmask is enough to reproduce the layout.
+The `slotWindowA..D{X,Y,W,H,Open}` keys are retired (they went in phase 2): the generic
+floater mechanism clamps against **screen** coordinates, which means nothing for a child
+window. New keys: `mdiOpenSlots` (bitmask), `mdiFocusedSlot`, `mdiFreeLayout`, `mdiFocusMode`,
+and in Free mode each window's bounds **normalised** to the area, which sidesteps the whole
+class of "the area is a different size now" bugs when panels collapse or the monitor changes.
+In Auto the bitmask alone reproduces the layout, so no geometry is written at all.
+
+`SlotMdiArea` grew `getNormalisedSlotBounds`/`setNormalisedSlotBounds`, a public
+`setTileMode` (restoring Free must not have to fake a drag), and `rescaleFreeWindows`, which
+scales a Free arrangement with the work area instead of stranding windows in a corner when
+the main window is resized.
+
+**The ordering trap, hit for real:** `restoringMdiLayout` starts **true**, not false. Saving
+is wired to `onLayoutChanged`, and the constructor used to open a slot before
+`restoreMdiLayout()` ran — that fired the callback and wrote the default one-slot layout over
+the stored one before anything had read it, so a seeded mask of 6 came back as 1. The
+constructor no longer opens anything; `restoreMdiLayout()` is the only thing that does, and
+its default mask (`1 << activeSlot`) covers a first run, an absent key and a corrupt `0`.
+Verified all three by seeding the settings file and reading the `[MDI]` line back.
+
+Free-mode drags do not fire `onLayoutChanged` (only the first one does, when it leaves Auto),
+so the destructor saves as well rather than persisting on every mouse move.
 
 ### Phase 5 — Polish (~1 day)
 
 Inspector adopts the newly focused canvas's selection instead of blanking; delete the dead
 `recycleWindows` option (`EditorOptionsDialog.h:17`, never consulted anywhere) and put
-`mdiAutoTile` in its row; window titles carry the patch name and LOCAL badge; theme applied
-to all four; docs updated (`manual/07-shortcuts.md`, the in-app shortcuts dialog, CHANGELOG,
-this file, STATUS).
+`mdiAutoTile` in its row; window titles carry the LOCAL badge (the patch name landed in
+phase 1); docs updated (`manual/07-shortcuts.md`, the in-app shortcuts dialog, CHANGELOG,
+this file, STATUS). The focus outline landed early, in commit 8f8f49d.
+
+**Animate the re-tile** (from EdenQwQ's niri `animations.nix`, reviewed 2026-08-02). Opening
+or closing a slot currently makes the other windows jump to their new tiles. Sliding them
+instead makes the re-flow legible, and JUCE gives it for free: run the `setBounds` calls
+`applyLayout()` already computes through `Desktop::getAnimator().animateComponent()`.
+Two conditions. Keep it short — niri uses 800 ms, which is fine for a desktop but absurd
+inside an editor; ~150 ms. And measure it: animating four canvases while the synth streams
+lights and meters is not obviously free, so it needs an Editor Options switch to turn off.
+The gist's expanding-circle and crossfade shaders are compositor GLSL and have no cheap
+equivalent here — the idea transfers, the implementation does not.
+
+### Optional — "Arrange" for Free mode
+
+From EdenQwQ's `smart-tile.py` ([gist](https://gist.github.com/EdenQwQ/a0c700315f6c704d03badfab6d6e45ce),
+[repo](https://github.com/EdenQwQ/smart-tiling)): sort windows by area descending, anchor the
+largest at the origin, then for each next window try the corners of the already-placed ones as
+candidate positions, reject overlaps, score by free space (preferring unbounded), and centre
+the result.
+
+**It does not belong in Auto mode.** Its purpose is packing windows whose sizes the user
+already chose, which is Hyprland's floating-window problem; our sub-windows have no size of
+their own, so an exact partition of the area beats packing and leaves no gaps by
+construction. Where it does fit is Free mode, after the user has dragged and resized: a
+"tidy these up without changing my sizes" command next to Tile Slots. Worth having, not worth
+blocking on.
 
 ## Effort
 
