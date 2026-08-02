@@ -8,7 +8,7 @@ namespace
 {
 // A sub-window that says whether it is the one you are editing. With four of
 // them tiled edge to edge the title bar alone is not enough to tell at a glance,
-// so the focused one is outlined in the theme's accent colour and the rest get a
+// so the focused one is outlined in the theme's primary colour and the rest get a
 // hairline in the border colour, which also keeps adjacent tiles from reading as
 // one big canvas.
 class SlotSubWindow : public juce::MultiDocumentPanelWindow
@@ -55,7 +55,11 @@ public:
     void paintOverChildren(juce::Graphics& g) override
     {
         const auto& pal = AppTheme::palette();
-        g.setColour(focused ? pal.accentActive : pal.borderColor);
+        auto focusColour = pal.textPrimary;
+        if (focusColour.getPerceivedBrightness() < 0.5f)
+            focusColour = focusColour.contrasting();
+
+        g.setColour(focused ? focusColour.withAlpha(0.75f) : pal.borderColor);
         g.drawRect(getLocalBounds(), focused ? focusedBorder : idleBorder);
     }
 
@@ -276,7 +280,10 @@ void SlotMdiArea::setFocusMode(bool shouldBeFocused)
     if (focusMode)
         tileMode = TileMode::Auto;
 
-    applyLayout(/*animate*/ true);
+    // F11 moves only the focused window. Repaint that real window as it grows
+    // instead of scaling a bitmap snapshot, which visibly stretched modules
+    // and cables until the animation completed.
+    applyLayout(/*animate*/ true, /*useProxy*/ false);
     // Entering or leaving focus mode changes whether the outline is shown at all.
     updateFocusHighlight();
     if (onLayoutChanged)
@@ -293,7 +300,7 @@ std::vector<int> SlotMdiArea::openSlotsInTileOrder() const
 }
 
 void SlotMdiArea::placeWindow(juce::MultiDocumentPanelWindow& window,
-                              juce::Rectangle<int> bounds, bool animate)
+                              juce::Rectangle<int> bounds, bool animate, bool useProxy)
 {
     if (window.getBounds() == bounds)
         return;
@@ -304,17 +311,16 @@ void SlotMdiArea::placeWindow(juce::MultiDocumentPanelWindow& window,
         return;
     }
 
-    // useProxyComponent: JUCE animates a snapshot image and only moves the real
-    // window at the end. Animating the real bounds would run
-    // PatchCanvasComponent::resized() on every frame, relaying out modules and
-    // viewports for up to four canvases while the synth streams lights and
-    // meters. Same trick as a compositor animating a texture rather than the
-    // surface itself.
+    // Proxy snapshots stay useful when several windows move during a re-tile:
+    // they avoid relaying out up to four canvases on every frame. F11 passes
+    // useProxy=false because it moves only one window and a scaled snapshot
+    // visibly stretches its modules and cables. Start at speed and ease to
+    // rest: the previous 0 -> 1 curve lingered and then stopped abruptly.
     juce::Desktop::getInstance().getAnimator().animateComponent(
-        &window, bounds, 1.0f, animationMs, /*useProxyComponent*/ true, 0.0, 1.0);
+        &window, bounds, 1.0f, animationMs, useProxy, 1.0, 0.0);
 }
 
-void SlotMdiArea::applyLayout(bool animate)
+void SlotMdiArea::applyLayout(bool animate, bool useProxy)
 {
     if (tileMode != TileMode::Auto)
         return;
@@ -338,8 +344,8 @@ void SlotMdiArea::applyLayout(bool animate)
         // top. Coming back out is then just a re-tile, with nothing to restore.
         if (auto* window = windowFor(getFocusedSlot()))
         {
-            placeWindow(*window, area, animate);
-            window->toFront(true);
+            placeWindow(*window, area, animate, useProxy);
+            window->toFront(false);
             return;
         }
     }
@@ -366,7 +372,7 @@ void SlotMdiArea::applyLayout(bool animate)
                 continue;
             const auto [x, w] = split(area.getX(), area.getWidth(),  i % 2, 2);
             const auto [y, h] = split(area.getY(), area.getHeight(), i / 2, 2);
-            placeWindow(*window, { x, y, w, h }, animate);
+            placeWindow(*window, { x, y, w, h }, animate, useProxy);
         }
     }
     else
@@ -380,7 +386,7 @@ void SlotMdiArea::applyLayout(bool animate)
             if (window == nullptr)
                 continue;
             const auto [x, w] = split(area.getX(), area.getWidth(), i, n);
-            placeWindow(*window, { x, area.getY(), w, area.getHeight() }, animate);
+            placeWindow(*window, { x, area.getY(), w, area.getHeight() }, animate, useProxy);
         }
     }
 }
@@ -445,13 +451,15 @@ void SlotMdiArea::focusSlot(int slot)
     const bool changed = (focusedSlot != slot);
     focusedSlot = slot;
 
-    // Keep the base class roughly in step for anything of its own that reads it,
-    // but never rely on it: setActiveDocument only calls toFront and re-derives
-    // the active document from isActiveWindow(), which child windows do not
-    // report reliably.
-    setActiveDocument(views[(size_t) slot].get());
+    // Do not call MultiDocumentPanel::setActiveDocument() here. In floating
+    // mode it calls toFront(true), stealing keyboard focus from the canvas that
+    // was just clicked. The deep mouse listener reaches focusSlot() after the
+    // canvas's own mouseDown(), so that made canvas shortcuts such as zoom stop
+    // working as soon as the documents were wrapped in two or more windows.
+    // We track the focused slot ourselves because JUCE cannot reliably derive
+    // an active document from these child windows anyway.
     if (auto* window = windowFor(slot))
-        window->toFront(true);
+        window->toFront(false);
 
     // In focus mode the maximised window is whichever one has focus.
     if (changed && focusMode)

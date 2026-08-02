@@ -28,17 +28,26 @@
   without closing and reopening anything. **View > Slots > Rotate Slots** shifts them all round
   at once. The
   sub-windows slide to their new places rather than jumping; turn that off with **Animate Slot
-  Tiling** in Editor Options if you prefer it instant.
+  Tiling** in Editor Options if you prefer it instant. F11 and the other transitions now start
+  promptly and decelerate into place over 120 ms instead of hesitating and stopping abruptly.
 
-  The focused sub-window is edged faintly in the theme's accent colour, so with several tiled
+  The focused sub-window is edged in the theme's primary colour (automatically changed to a
+  light contrast when that primary is dark), so with several tiled
   you can always see which one you are editing; it stays out of the way when a single window
   fills the area, where there is nothing to tell apart. Its title carries the LOCAL badge when
   that slot's patch is not in sync with the synth. The inspector picks up whichever module that slot had
   selected instead of going blank, since each canvas keeps its selection while it sits in the
-  background.
+  background. Clicking a tiled sub-window also leaves keyboard focus on the clicked canvas, so
+  its zoom and editing shortcuts keep working with two or more slots open.
 
   Which slots you had open, which one had focus, and how they were arranged all come back
-  when you reopen the editor.
+  when you reopen the editor. Connecting to the Nord then lines the work area up with the slots
+  the synth actually has enabled, once: after that the windows are yours alone, and pressing
+  slot buttons on the panel never closes one.
+
+  F11 now animates the real focused window instead of stretching a bitmap snapshot of it, so
+  modules, cables and text remain correctly rendered throughout the transition. Multi-window
+  re-tiling keeps the cheaper snapshot path because several canvases can move at once.
 
 - **Load a synth patch into a slot you name.** Double-clicking a patch in the Synth browser
   still loads it into the slot you are on; right-clicking now offers **Load to Slot A..D**, so

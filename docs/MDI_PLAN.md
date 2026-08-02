@@ -195,9 +195,10 @@ checking `Alt`.
 The `slotWindowA..D{X,Y,W,H,Open}` keys are retired (they went in phase 2): the generic
 floater mechanism clamps against **screen** coordinates, which means nothing for a child
 window. New keys: `mdiOpenSlots` (bitmask), `mdiFocusedSlot`, `mdiFreeLayout`, `mdiFocusMode`,
-and in Free mode each window's bounds **normalised** to the area, which sidesteps the whole
-class of "the area is a different size now" bugs when panels collapse or the monitor changes.
-In Auto the bitmask alone reproduces the layout, so no geometry is written at all.
+`mdiTileOrder`, and in Free mode each window's bounds **normalised** to the area, which
+sidesteps the whole class of "the area is a different size now" bugs when panels collapse or
+the monitor changes. In Auto the bitmask alone reproduces the layout, so no geometry is
+written at all.
 
 `SlotMdiArea` grew `getNormalisedSlotBounds`/`setNormalisedSlotBounds`, a public
 `setTileMode` (restoring Free must not have to fake a drag), and `rescaleFreeWindows`, which
@@ -212,6 +213,27 @@ constructor no longer opens anything; `restoreMdiLayout()` is the only thing tha
 its default mask (`1 << activeSlot`) covers a first run, an absent key and a corrupt `0`.
 Verified all three by seeding the settings file and reading the `[MDI]` line back.
 
+**The synth's enable mask is consulted once per connection, never continuously.** An earlier
+cut had every `SlotsSelected` (0x07) and `SlotActivated` (0x09) re-derive the open windows from
+the mask, which looked right on paper and was badly wrong in practice: that mask is *pinned +
+selected*, and with nothing pinned it is a **single slot** that changes on every slot press. The
+result was that the work area collapsed to one window and stayed there: every sub-window the
+user opened was closed again the moment the synth echoed the slot change. Traced live:
+
+```
+[SLOT] Enabled slots: A
+[MDI] Synced windows to enabled slots: mask=1 focused=A open=1
+[SLOT] Enabled slots: B
+[MDI] Synced windows to enabled slots: mask=2 focused=B open=1
+```
+
+So `reconcileSlotWindowsWithSynth()` now runs **once per connection**, latched by
+`slotWindowsReconciled` and re-armed on disconnect. `scheduleSlotWindowReconcile()` defers it
+400 ms past the first mask because `SlotsSelected` and `SlotActivated` arrive in either order
+during the handshake, and a mask paired with a stale focused slot would leave a spurious window
+open for the rest of the session. Reconciling drops focus mode if it ended up opening a second
+window, so a restored F11 state cannot hide what just appeared.
+
 Free-mode drags do not fire `onLayoutChanged` (only the first one does, when it leaves Auto),
 so the destructor saves as well rather than persisting on every mouse move.
 
@@ -225,10 +247,16 @@ so the destructor saves as well rather than persisting on every mouse move.
 - The dead `recycleWindows` option is gone: it was saved, loaded and drawn as a toggle, and
   never consulted anywhere. No `mdiAutoTile` replaces it — dynamic tiling has nothing to
   configure, and View > Slots > Tile Slots is the only control it needs.
-- The focus outline landed early, in commit 8f8f49d. It is the theme accent at **10% alpha**
-  over 2px — the first cut was the accent at full strength and competed with the patch — and
+- The focus outline landed early, in commit 8f8f49d. It is the theme's primary colour at
+  **75% alpha** over 2px; dark primary tones such as Nord Classic's are inverted to a light
+  contrast so the outline remains visible over the canvas. The first cut was the accent at
+  full strength and competed with the patch, and
   it is suppressed whenever a single window covers the work area (one open slot, or focus
   mode), where it would frame the whole area without telling you anything.
+- Focus changes bring a tiled sub-window to the front without asking the window itself to take
+  keyboard focus. The MDI mouse watcher runs after the canvas's own `mouseDown`, so using
+  `toFront(true)` there stole back the focus that the canvas had just acquired and disabled its
+  zoom and editing shortcuts whenever two or more slots were open.
 - Sub-windows carry a **maximise button** left of the close button, as Linux window
   decorations do. `MultiDocumentPanelWindow::maximiseButtonPressed()` is overridden rather
   than inherited: the base flips the whole panel into tabbed mode, which is not a layout this
@@ -249,24 +277,26 @@ focus as it appears. `restoringMdiLayout` now gates `onSlotFocused` too, and res
 switch at the end for the slot that should actually end up focused.
 
 **Animate the re-tile — DONE.** Dropped once, then done after looking at Hyprland proper
-rather than one user's config. Sub-windows slide to their new tiles over 140 ms, behind
+rather than one user's config. Sub-windows slide to their new tiles over 120 ms, behind
 **Animate Slot Tiling** in Editor Options.
 
-The thing that makes this cheap is `useProxyComponent` on
+Multi-window re-tiling stays cheap through `useProxyComponent` on
 `Desktop::getAnimator().animateComponent()`: JUCE animates a snapshot image and only moves
-the real window at the end. Animating the real bounds would run
-`PatchCanvasComponent::resized()` every frame, relaying out modules and viewports for up to
-four canvases while the synth streams lights and meters. It is the same asymmetry that makes
+the real windows at the end. F11 is the deliberate exception: only one window moves, so it
+animates the real component and keeps modules, cables and text freshly rendered instead of
+stretching the snapshot. It is the same asymmetry that makes
 Hyprland's own animation code useless to us — it animates GPU textures inside its render
 loop, so there is nothing to port even though BSD-3-Clause would allow it.
 
-Animation is opt-in per call (`applyLayout(animate)`): opening, closing, reordering and focus
-mode animate; a plain window resize does not, or dragging the main window's edge would fire a
-new animation on every resize event.
+Animation is opt-in per call (`applyLayout(animate, useProxy)`): opening, closing and
+reordering use a proxy; focus mode does not. A plain window resize never animates, or dragging
+the main window's edge would fire a new animation on every resize event.
 
 What Hyprland has that JUCE does not is arbitrary cubic-bezier easing — their default curve
 overshoots slightly (`0.05, 0.9, 0.1, 1.05`), which is what makes their movement feel alive.
-`animateComponent` only offers start/end speeds, so this is a plain ease-out. If the overshoot
+`animateComponent` only offers start/end speeds, so this uses a 1 → 0 ease-out: it responds
+immediately and decelerates into the target. The original 0 → 1 values were an ease-in that
+lingered at the start and stopped at full speed, which made F11 feel slow and abrupt. If the overshoot
 is ever wanted it is a ~30-line timer-driven curve, needing nobody's code.
 
 ### Tile reordering (DONE)
@@ -382,7 +412,9 @@ Without hardware:
 - Close B: its patch survives and the slot bar still shows it.
 - Tile 2x2 with 2, 3 and 4 windows; collapse `Ctrl+I` and `Ctrl+Shift+I` and confirm the
   windows rescale without drifting off the area.
-- Restart: open slots, focus and layout come back.
+- Restart: open slots, focus and layout come back. Then connect: the windows line up with the
+  synth's enabled slots once, and pressing slot buttons on the panel afterwards moves focus
+  without closing anything.
 - **New capability worth testing**: drag a module from the browser into any sub-window. It
   never worked in the OS pop-outs because `MainLayout` is the only `DragAndDropContainer`;
   in the MDI every sub-window is inside it.

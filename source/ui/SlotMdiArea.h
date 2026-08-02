@@ -150,16 +150,16 @@ private:
     // Re-flow the open sub-windows for the current mode and count. No-op in Free
     // mode, and with fewer than two open (JUCE gives a lone document the whole
     // area itself, with no window frame at all).
-    void applyLayout(bool animate = false);
+    void applyLayout(bool animate = false, bool useProxy = true);
     void placeWindow(juce::MultiDocumentPanelWindow& window,
-                     juce::Rectangle<int> bounds, bool animate);
+                     juce::Rectangle<int> bounds, bool animate, bool useProxy);
     // Open slots in tile order, which is what applyLayout lays out.
     std::vector<int> openSlotsInTileOrder() const;
     // Free mode keeps whatever the user arranged, but in proportion: when the
     // work area changes size the windows scale with it instead of being
     // stranded in a corner.
     void rescaleFreeWindows(juce::Rectangle<int> area);
-    // Outline the sub-window you are editing in the theme's accent colour.
+    // Outline the sub-window you are editing in the theme's primary colour.
     void updateFocusHighlight();
     void reassertFocus(int slot);
 
@@ -175,7 +175,7 @@ private:
     // not mistaken for the user dragging one and do not drop us into Free.
     bool applyingLayout = false;
     bool animateLayout = true;
-    static constexpr int animationMs = 140;
+    static constexpr int animationMs = 120;
     juce::Rectangle<int> lastArea;
     // A permutation of slot indices: tileOrder[i] is the slot in tile i.
     std::array<int, numSlots> tileOrder { { 0, 1, 2, 3 } };

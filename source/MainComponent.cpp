@@ -201,6 +201,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // A slot whose window the user closed keeps its patch; if it was the active
   // one, hand the shared surfaces to whatever is still on screen.
   mainLayout->getPatchArea().onSlotClosed = [this](int slot) {
+    if (syncingSlotWindows) return;
     if (slot != activeSlot) return;
     const int next = mainLayout->getPatchArea().getFocusedSlot();
     if (next >= 0 && next != activeSlot)
@@ -786,8 +787,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   connectionManager.setSlotsEnabledCallback([this](const std::array<bool, 4>& enabled) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::MessageManager::callAsync([safeThis, enabled]() {
-      if (safeThis)
-        safeThis->mainLayout->getSlotBar().setSlotsEnabled(enabled);
+      if (!safeThis) return;
+      safeThis->mainLayout->getSlotBar().setSlotsEnabled(enabled);
+      safeThis->lastEnabledSlots = enabled;
+      safeThis->slotEnableStateKnown = true;
+      // Only the first mask of a connection touches the sub-windows.
+      safeThis->scheduleSlotWindowReconcile();
     });
   });
 
@@ -2327,7 +2332,7 @@ void MainComponent::showFloaterWindow(juce::DocumentWindow& window,
 // window is resized or the editor moves to a different monitor. In Auto mode the
 // tiling recomputes everything from the open-slot mask, so only the mask matters.
 void MainComponent::saveMdiLayout() {
-  if (restoringMdiLayout)
+  if (restoringMdiLayout || syncingSlotWindows)
     return;
   auto* settings = appProperties.getUserSettings();
   if (settings == nullptr || mainLayout == nullptr)
@@ -2376,10 +2381,14 @@ void MainComponent::restoreMdiLayout() {
 
   auto& area = mainLayout->getPatchArea();
 
-  // Default to the slot that is already open, so a first run and a corrupt or
-  // empty mask both land somewhere sensible rather than on an empty work area.
+  // Which windows are open is the editor's own state and comes back as it was
+  // left. Connecting reconciles it once against the synth's enabled slots
+  // (reconcileSlotWindowsWithSynth), so a session started offline still opens
+  // where the user left it rather than on an empty work area.
   area.setTileOrderString(settings->getValue("mdiTileOrder", "0123"));
 
+  // Default to the slot that is already open, so a first run and a corrupt or
+  // empty mask both land somewhere sensible rather than on an empty work area.
   int openMask = settings->getIntValue("mdiOpenSlots", 1 << activeSlot);
   if ((openMask & 0x0f) == 0)
     openMask = 1 << activeSlot;
@@ -2412,6 +2421,110 @@ void MainComponent::restoreMdiLayout() {
   // Last, so it maximises the slot that ended up focused.
   if (settings->getBoolValue("mdiFocusMode", false))
     area.setFocusMode(true);
+}
+
+// The synth's enable mask is "pinned + selected", and with nothing pinned that
+// is a single slot which changes on every slot press. Following it live would
+// close every window but one the moment the synth echoed a slot change, so it
+// is consulted exactly once per connection: the work area adopts the slots the
+// Nord currently has enabled, and from then on opening and closing sub-windows
+// is the user's business alone.
+void MainComponent::scheduleSlotWindowReconcile() {
+  if (slotWindowsReconciled || slotWindowsReconcileScheduled)
+    return;
+
+  slotWindowsReconcileScheduled = true;
+
+  // SlotsSelected (the mask) and SlotActivated (the focused slot) are separate
+  // messages arriving in either order during the connect handshake. Let both
+  // land before reconciling, or a mask processed first pairs with a stale
+  // focused slot and leaves a spurious window open for the rest of the session.
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  juce::Timer::callAfterDelay(400, [safeThis]() {
+    if (safeThis == nullptr || !safeThis->slotWindowsReconcileScheduled)
+      return;
+    safeThis->slotWindowsReconcileScheduled = false;
+    if (safeThis->slotEnableStateKnown)
+      safeThis->reconcileSlotWindowsWithSynth(safeThis->lastEnabledSlots);
+  });
+}
+
+void MainComponent::reconcileSlotWindowsWithSynth(const std::array<bool, 4>& enabled) {
+  if (mainLayout == nullptr)
+    return;
+
+  slotWindowsReconciled = true;
+
+  auto& area = mainLayout->getPatchArea();
+  const int focused = juce::jlimit(0, numSlots - 1, connectionManager.getCurrentSlot());
+
+  int desiredMask = 1 << focused;  // focused slot must always remain reachable
+  for (int slot = 0; slot < numSlots; ++slot)
+    if (enabled[static_cast<size_t>(slot)])
+      desiredMask |= 1 << slot;
+
+  int currentMask = 0;
+  for (int slot = 0; slot < numSlots; ++slot)
+    if (area.isSlotOpen(slot))
+      currentMask |= 1 << slot;
+
+  if (currentMask == desiredMask) {
+    std::cout << "[MDI] Slot windows already match the synth: mask=" << desiredMask
+              << std::endl;
+    return;
+  }
+
+  {
+    const juce::ScopedValueSetter<bool> syncGuard(syncingSlotWindows, true);
+    // Reconciliation can close a window immediately after opening another one.
+    // Animating that transient state leaves JUCE proxy snapshots alive while
+    // their document windows are being removed.
+    area.setAnimated(false);
+
+    // Open first, so the work area is never momentarily empty while the stored
+    // layout is being replaced by the synth's.
+    {
+      const juce::ScopedValueSetter<bool> focusGuard(inSlotFocusChange, true);
+      for (int slot = 0; slot < numSlots; ++slot)
+        if ((desiredMask & (1 << slot)) != 0 && !area.isSlotOpen(slot))
+          area.openSlot(slot);
+    }
+
+    // Adopt hardware focus before closing anything; onSlotClosed is suppressed
+    // by syncGuard, so this reconciliation never sends a slot command back.
+    switchToSlot(focused, /*notifySynth=*/false, /*bringOnScreen=*/false);
+
+    for (int slot = 0; slot < numSlots; ++slot)
+      if ((desiredMask & (1 << slot)) == 0 && area.isSlotOpen(slot))
+        area.closeSlot(slot);
+
+    // A restored F11 state would leave the newly opened windows underneath the
+    // maximised one, where they look lost. Reconciling changed the layout, so
+    // show it.
+    if (area.isFocusMode() && area.getNumOpenSlots() > 1)
+      area.setFocusMode(false);
+
+    // Slots opened here still need their saved Free geometry; Auto mode has
+    // already tiled itself from desiredMask.
+    if (area.getTileMode() == SlotMdiArea::TileMode::Free)
+      if (auto* settings = appProperties.getUserSettings())
+        for (int slot = 0; slot < numSlots; ++slot) {
+          if (!area.isSlotOpen(slot)) continue;
+          const auto key = "mdiSlot" + juce::String::charToString(static_cast<char>('A' + slot));
+          area.setNormalisedSlotBounds(slot,
+              { (float) settings->getDoubleValue(key + "X"),
+                (float) settings->getDoubleValue(key + "Y"),
+                (float) settings->getDoubleValue(key + "W"),
+                (float) settings->getDoubleValue(key + "H") });
+        }
+
+    area.setAnimated(editorOptions.animateTiling);
+  }
+
+  saveMdiLayout();
+  std::cout << "[MDI] Reconciled slot windows with the synth: mask=" << desiredMask
+            << " focused=" << static_cast<char>('A' + focused)
+            << " open=" << area.getNumOpenSlots() << std::endl;
 }
 
 void MainComponent::saveFloaterState() {
@@ -2921,6 +3034,13 @@ void MainComponent::handleDisconnectionRequest() {
 void MainComponent::onConnectionStatusChanged(
     const ConnectionManager::Status &status) {
   bool connected = (status.state == ConnectionManager::State::Connected);
+  if (!connected) {
+    // Reconciling with the synth is a once-per-connection thing, so losing the
+    // connection arms it again for the next one.
+    slotEnableStateKnown = false;
+    slotWindowsReconciled = false;
+    slotWindowsReconcileScheduled = false;
+  }
   mainLayout->getStatusBar().setConnectionStatus(status.message, connected);
   menuItemsChanged(); // rebuild native macOS menu bar to update enabled states
 
