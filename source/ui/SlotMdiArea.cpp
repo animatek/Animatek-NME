@@ -69,7 +69,10 @@ private:
 SlotMdiArea::SlotMdiArea()
 {
     for (int s = 0; s < numSlots; ++s)
+    {
         views[(size_t) s] = std::make_unique<SlotView>(s);
+        views[(size_t) s]->addMouseListener(&watcher, /*allNestedChildren*/ true);
+    }
 
     setLayoutMode(FloatingWindows);
     useFullscreenWhenOneDocument(true);
@@ -90,6 +93,12 @@ void SlotMdiArea::openSlot(int slot)
     if (slot < 0 || slot >= numSlots || isSlotOpen(slot))
         return;
 
+    // A slot that has just been opened belongs at the end of the tile order, so
+    // new windows appear to the right of what is already there rather than
+    // jumping in front of it because their letter happens to come first.
+    const auto entry = std::find(tileOrder.begin(), tileOrder.end(), slot);
+    std::rotate(entry, entry + 1, tileOrder.end());
+
     addDocument(views[(size_t) slot].get(), getBackgroundColour(), /*deleteWhenRemoved*/ false);
 
     // Going from one document to two wraps both views in windows, so every
@@ -104,7 +113,9 @@ void SlotMdiArea::openSlot(int slot)
             if (auto* window = windowFor(s))
                 giveUsableBounds(*window, s);
 
-    updateFocusHighlight();
+    // Opening a slot focuses it, the way clicking one does.
+    focusSlot(slot);
+
     if (onLayoutChanged)
         onLayoutChanged();
 }
@@ -429,15 +440,36 @@ void SlotMdiArea::focusSlot(int slot)
     if (! isSlotOpen(slot))
         return;
 
+    const bool changed = (focusedSlot != slot);
+    focusedSlot = slot;
+
+    // Keep the base class roughly in step for anything of its own that reads it,
+    // but never rely on it: setActiveDocument only calls toFront and re-derives
+    // the active document from isActiveWindow(), which child windows do not
+    // report reliably.
     setActiveDocument(views[(size_t) slot].get());
+    if (auto* window = windowFor(slot))
+        window->toFront(true);
+
+    // In focus mode the maximised window is whichever one has focus.
+    if (changed && focusMode)
+        applyLayout(/*animate*/ true);
+
+    updateFocusHighlight();
+
+    if (changed && ! suppressFocusCallback && onSlotFocused != nullptr)
+        onSlotFocused(slot);
 }
 
-int SlotMdiArea::getFocusedSlot() const
+void SlotMdiArea::viewClicked(const juce::MouseEvent& e)
 {
-    if (auto* view = dynamic_cast<SlotView*>(getActiveDocument()))
-        return view->getSlot();
-
-    return -1;
+    for (int s = 0; s < numSlots; ++s)
+        if (views[(size_t) s].get() == e.eventComponent
+            || views[(size_t) s]->isParentOf(e.eventComponent))
+        {
+            focusSlot(s);
+            return;
+        }
 }
 
 void SlotMdiArea::tryToCloseDocumentAsync(juce::Component* component,
@@ -461,6 +493,14 @@ void SlotMdiArea::tryToCloseDocumentAsync(juce::Component* component,
 
     // One fewer window: the remaining ones re-flow to fill the area.
     applyLayout(/*animate*/ true);
+
+    if (slot == focusedSlot)
+    {
+        focusedSlot = -1;
+        const auto open = openSlotsInTileOrder();
+        if (! open.empty())
+            focusSlot(open.front());
+    }
     updateFocusHighlight();
     if (onLayoutChanged)
         onLayoutChanged();
@@ -620,19 +660,9 @@ void SlotMdiArea::applyTheme()
         }
 }
 
-void SlotMdiArea::activeDocumentChanged()
-{
-    if (suppressFocusCallback)
-        return;
-
-    // In focus mode the maximised window is whichever one has focus, so moving
-    // focus moves which window is blown up.
-    if (focusMode)
-        applyLayout();
-
-    updateFocusHighlight();
-
-    const int slot = getFocusedSlot();
-    if (slot >= 0 && onSlotFocused != nullptr)
-        onSlotFocused(slot);
-}
+// Deliberately empty. MultiDocumentPanel derives its active document from
+// TopLevelWindow::isActiveWindow(), which child windows inside a work area do
+// not report dependably — following it here is what made focus jump to an
+// unrelated slot. focusSlot() is the only thing that moves focus now, driven by
+// clicks (WindowWatcher::mouseDown), opening a slot, and closing one.
+void SlotMdiArea::activeDocumentChanged() {}

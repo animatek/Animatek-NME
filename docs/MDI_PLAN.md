@@ -281,15 +281,31 @@ wrapped, so with two slots open "move left" visibly moved a slot right. Now Left
 the column and Up/Down the row, an edge move is a no-op, and up/down simply do nothing in the
 column layouts. Rotate lost its arrow binding so the arrows mean one thing.
 
-**The animation broke focus, and the fix is not obvious.** After a reorder the accent outline
-and the active document jumped to some other window. `useProxyComponent` hides the real
-window and re-shows it at the end, and `TopLevelWindow::visibilityChanged()` answers a show
-with `toFront(true)` — these windows are children but `Component::getPeer()` walks up to the
-main window's peer, so the guard in that function does not spare them. `broughtToFront()` then
-tells the panel it is the active document, and with four windows animating the last one to
-finish won. `SlotSubWindow::visibilityChanged()` overrides it to do nothing (opening a slot
-already brings its window forward explicitly), and reordering re-asserts the focused slot
-afterwards for good measure.
+**Focus is tracked here, not read back from `MultiDocumentPanel`.** After a reorder the
+accent outline and the inspector followed the wrong slot, and the cause was deeper than the
+animation: `MultiDocumentPanel::setActiveDocument()` **does not assign the active document**.
+It calls `toFront()` and lets `updateActiveDocumentFromUIState()` re-derive it from
+`TopLevelWindow::isActiveWindow()`, which is dependable for real desktop windows and not for
+child windows inside a work area. Instrumenting it showed `focusSlot(0)` leaving the focused
+slot at 3 — it had been doing nothing at all, so "keep focus on the moved slot" could not work
+by construction.
+
+`SlotMdiArea` now owns `focusedSlot`. `focusSlot()` sets it, brings the window forward, and
+fires `onSlotFocused`; a `MouseListener` registered on each `SlotView` with
+`wantsEventsForAllNestedChildComponents` catches clicks anywhere in a canvas; opening and
+closing a slot move it. `activeDocumentChanged()` is overridden to do nothing, since following
+it is what made focus jump. Related: `SlotSubWindow::visibilityChanged()` also overrides
+`TopLevelWindow`'s, which answers a show with `toFront(true)` — child windows are not spared
+because `Component::getPeer()` walks up to the main window's peer, so each window finishing
+its proxy animation was yanking itself to the front.
+
+Verified by driving the sequence in code and reading back the tile order and focused slot:
+from `0123` with A focused, Right → `1023`, Down → `1320`, Left → `1302`, Up → `0312`, focus
+on A throughout.
+
+**Newly opened slots go on the right.** `openSlot` moves the slot to the end of `tileOrder`,
+so a window appears after whatever is already open instead of jumping ahead of it because its
+letter sorts first. Verified: opening A, B, C, D one at a time gives A, AB, ABC, ABCD.
 
 `tileOrder` is a permutation of slot indices that `applyLayout` iterates instead of 0..3. It
 persists as `mdiTileOrder`, validated on load as a genuine permutation: a duplicate or a

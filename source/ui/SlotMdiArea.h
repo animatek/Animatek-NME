@@ -30,7 +30,15 @@ public:
     void focusSlot(int slot);
 
     // -1 when no slot is open.
-    int getFocusedSlot() const;
+    //
+    // Tracked here rather than read back from MultiDocumentPanel. Its
+    // setActiveDocument() does not assign the active document: it calls
+    // toFront() and lets updateActiveDocumentFromUIState() re-derive it from
+    // TopLevelWindow::isActiveWindow(). That works for real desktop windows and
+    // not for child windows inside a work area — focusSlot() was silently doing
+    // nothing, which is why the outline and the inspector followed the wrong
+    // slot after a reorder.
+    int getFocusedSlot() const { return isSlotOpen(focusedSlot) ? focusedSlot : -1; }
     int getNumOpenSlots() const;
 
     // Dynamic tiling, the way niri and Hyprland do it: the layout is a function
@@ -115,15 +123,21 @@ public:
 private:
     // juce::MultiDocumentPanel inherits ComponentListener privately, so this
     // class cannot be registered as one. A forwarder does the job.
-    struct WindowWatcher : public juce::ComponentListener
+    struct WindowWatcher : public juce::ComponentListener,
+                           public juce::MouseListener
     {
         explicit WindowWatcher(SlotMdiArea& o) : owner(o) {}
         void componentMovedOrResized(juce::Component& c, bool moved, bool resized) override
         {
             owner.windowMovedOrResized(c, moved, resized);
         }
+        // Clicking anywhere in a slot's canvas focuses that slot. Registered on
+        // each SlotView with wantsEventsForAllNestedChildComponents, so it does
+        // not matter what the click actually lands on.
+        void mouseDown(const juce::MouseEvent& e) override { owner.viewClicked(e); }
         SlotMdiArea& owner;
     };
+    void viewClicked(const juce::MouseEvent& e);
     void windowMovedOrResized(juce::Component&, bool wasMoved, bool wasResized);
 
     // The container window a slot's view currently sits in, or null when the
@@ -154,6 +168,7 @@ private:
     WindowWatcher watcher { *this };
     std::array<std::unique_ptr<SlotView>, numSlots> views;
     bool suppressFocusCallback = false;
+    int focusedSlot = -1;
     TileMode tileMode = TileMode::Auto;
     bool focusMode = false;
     // Set while we are the ones moving windows, so our own setBounds calls are
