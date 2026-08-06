@@ -11,6 +11,8 @@ every box must pass before tagging.
 - [ ] `CHANGELOG.md`: move Unreleased entries under the release version + date and remove
       superseded or duplicate descriptions.
 - [ ] `ROADMAP.md` / `STATUS.md` reflect what actually shipped.
+- [ ] `README.md`: the version quoted in the "Status and how to get it" block matches
+      `CMakeLists.txt`.
 
 ## 2. Build targets
 

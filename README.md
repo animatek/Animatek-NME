@@ -4,10 +4,24 @@ Animatek NME (formerly Nomad2026) is a modern native editor for the **Clavia Nor
 synthesizer. It is a JUCE/C++ reimplementation inspired by the original Java Nomad editor, built
 to run on current macOS, Windows, and Linux systems without requiring an old Java runtime.
 
+## Status and how to get it
+
+**Animatek NME is in active beta** (current version 0.13.0, see
+[CHANGELOG.md](CHANGELOG.md)). There are two ways to get it, and both give you the
+same application:
+
+- **Ready-to-run builds** for macOS, Windows, and Linux are available to patrons at
+  [patreon.com/animatek](https://www.patreon.com/c/animatek). Patreon pays for the
+  hardware, the testing, and the per-platform packaging.
+- **Building it yourself is free and fully supported.** Everything needed is in this
+  repository: no missing pieces, no disabled features, no separate "pro" branch. See
+  [Building](#building) below.
+
+That is why the repo has no GitHub Releases: binaries are distributed through Patreon,
+while the code stays GPLv3 for anyone who wants to compile it, fork it, or read it.
+
 > Nord Modular is a trademark of Clavia DMI AB. This project is an independent,
 > community-developed editor and is not affiliated with or endorsed by Clavia.
-
-Support this project: https://www.patreon.com/c/animatek
 
 ![Animatek NME editor](https://animatek.net/wp-content/uploads/2026/06/Editor_animatek.png)
 
@@ -66,6 +80,22 @@ https://github.com/animatek/Animatek-NME/issues
 
 ## Building
 
+You need CMake 3.22 or newer, a C++17 compiler, and Git. JUCE comes with the repository
+as a submodule, so there is nothing else to download by hand.
+
+On Debian/Ubuntu, the development packages JUCE needs are:
+
+```bash
+sudo apt-get install -y build-essential cmake git \
+  libasound2-dev libjack-jackd2-dev \
+  libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+  libxinerama-dev libxrandr-dev libxrender-dev \
+  libfreetype6-dev libfontconfig1-dev
+```
+
+On macOS, Xcode command line tools and CMake. On Windows, Visual Studio 2022 with the
+C++ desktop workload.
+
 Clone with submodules:
 
 ```bash
@@ -78,23 +108,23 @@ If the repo is already cloned:
 git submodule update --init --recursive
 ```
 
-Configure and build:
+Configure and build. Use `Release` for everyday use and `Debug` when developing:
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 ```
 
 Run on Linux/Windows:
 
 ```bash
-./build/AnimatekNME_artefacts/Debug/AnimatekNME
+./build/AnimatekNME_artefacts/Release/AnimatekNME
 ```
 
 Run on macOS:
 
 ```bash
-build/AnimatekNME_artefacts/Debug/AnimatekNME.app/Contents/MacOS/AnimatekNME
+build/AnimatekNME_artefacts/Release/AnimatekNME.app/Contents/MacOS/AnimatekNME
 ```
 
 macOS universal binary:
@@ -116,7 +146,9 @@ cmake -B build-win-release -G "Visual Studio 17 2022" -A x64
 cmake --build build-win-release --config Release
 ```
 
-Requires JUCE via the included `JUCE/` submodule and a C++17 compiler.
+If the build fails or the app cannot see your MIDI interface, open an
+[issue](https://github.com/animatek/Animatek-NME/issues): building from source is meant to
+work, and a broken build is a bug.
 
 ## Experimental Plugin Build
 
