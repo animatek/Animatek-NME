@@ -55,7 +55,9 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     const int legacyIndex = props->getIntValue("appearanceTheme", -1) == 1 ? 2 : 6;
     o.uiThemeIndex   = props->getIntValue("uiThemeIndex", legacyIndex);
     o.cableStyle     = static_cast<CableStyle>  (props->getIntValue  ("cableStyle",      0));
-    o.knobControl    = static_cast<KnobControl> (props->getIntValue  ("knobControl",     0));
+    // Vertical is the default: it is how the original editor behaves, and
+    // what people reach for first.
+    o.knobControl    = static_cast<KnobControl> (props->getIntValue  ("knobControl",     2));
     o.autoUpload     = props->getBoolValue  ("autoUpload",     true);
     o.wireframe      = props->getBoolValue  ("wireframe",      false);
     o.animateTiling  = props->getBoolValue  ("animateTiling",  true);

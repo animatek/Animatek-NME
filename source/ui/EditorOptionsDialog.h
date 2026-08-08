@@ -12,7 +12,7 @@ struct EditorOptions
 
     int         uiThemeIndex   = 6;   // index into ThemeRegistry ("Nord")
     CableStyle  cableStyle     = CableStyle::CurvedThick;
-    KnobControl knobControl    = KnobControl::Horizontal;
+    KnobControl knobControl    = KnobControl::Vertical;
     bool        autoUpload     = true;
     bool        wireframe      = false; // outline-only module rendering (theme-independent)
     bool        animateTiling  = true;  // slide slot sub-windows to their new tiles

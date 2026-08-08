@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Changed
+
+- **Knobs start out answering vertical movement**, which is how the original editor behaves and
+  what most people reach for first. Only the default changes: whatever you have chosen under
+  **Ctrl+, > Knob Control** is left alone.
+- **Circular knob control reads the dial, rather than counting turns.** Grab a knob at the point
+  marked 100 and it goes to 100, instead of turning up by 100 from wherever it was. The angle is
+  measured around the knob's centre over the same -135 to +135 degree arc the pointer is drawn
+  with, so the spot you touch is the value you get, and the response no longer speeds up near the
+  point you grabbed and crawls far from it. A knob does not move until the drag has actually
+  moved, so a plain click leaves it alone and a double-click still just restores the default.
+
 ### Added
 
 - **The overlay readouts are on the View menu** as well as on their function keys (#44), under
@@ -11,6 +23,14 @@
 
 ### Fixed
 
+- **The morph knobs follow the knob-control setting** (#47). They had always read vertical
+  movement and nothing else, whatever the editor was set to, because the header bar carried its
+  own copy of the knob-dragging code. There is one copy now, shared with the module knobs.
+- **Turning a knob is no longer stopped by the edge of the desktop** (#46). The pointer is hidden
+  while you turn, as in the original editor, and comes back on the knob when you let go, so a
+  sweep covers the whole range wherever the knob sits on screen. This applies to module knobs and
+  sliders as well as to the morph knobs, which suffered worst: they sit at the top of the window,
+  a few pixels from the top of the screen.
 - **Accented and typographic characters no longer come out as garbage** (#43). The slot chooser
   showed `Local (editor only â€ don't upload)` on macOS, and the same fault ran much deeper: every
   quotation mark in the module help text was mangled too, because JUCE decodes a plain C++ string

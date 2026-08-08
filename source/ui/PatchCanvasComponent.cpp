@@ -1,5 +1,6 @@
 #include "PatchCanvasComponent.h"
 #include "QuickAddPopup.h"
+#include "KnobDrag.h"
 #include "../format/ValueFormatters.h"
 #include "../protocol/KnobAssignmentMessage.h"
 #include "BinaryData.h"
@@ -4848,6 +4849,9 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         dragState.section = area.section;
                         dragState.startPos = pos;
                         dragState.startValue = param->getValue();
+                        // Let the sweep run past the edge of the screen, and
+                        // tell circular mode where the knob's centre is.
+                        KnobDrag::begin(e, *this, relPos - knobRect.getCentre());
                         return;
                     }
                 }
@@ -4906,6 +4910,8 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         dragState.section = area.section;
                         dragState.startPos = pos;
                         dragState.startValue = param->getValue();
+                        // A slider runs out of desktop the same way a knob does.
+                        KnobDrag::begin(e, *this, {});
                         return;
                     }
                 }
@@ -6044,58 +6050,26 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
 
     int newValue = dragState.startValue;
 
-    if (dragState.type == DragState::Knob)
+    if (dragState.type == DragState::Knob || dragState.type == DragState::Slider)
     {
-        int rawDelta = 0;
-        if (knobControlIdx == 1)
-        {
-            // Circular: clockwise from top = increase.
-            // atan2(dx, -dy): 0=up, +π/2=right, -π/2=left.
-            // 90° arc = full parameter range. Clamp at ±153° to avoid bottom discontinuity.
-            auto d = currentPos - dragState.startPos;
-            const float len = std::sqrt(static_cast<float>(d.x * d.x + d.y * d.y));
-            if (len >= 5.0f)
-            {
-                constexpr float kHalfPi = juce::MathConstants<float>::pi / 2.0f;
-                constexpr float kClamp  = juce::MathConstants<float>::pi * 0.85f;
-                float angle = std::atan2(static_cast<float>(d.x), static_cast<float>(-d.y));
-                angle = juce::jlimit(-kClamp, kClamp, angle);
-                const int range = pd->maxValue - pd->minValue;
-                rawDelta = static_cast<int>(angle / kHalfPi * range);
-            }
-        }
-        else if (knobControlIdx == 2)
-        {
-            // Vertical: up = increase
-            rawDelta = dragState.startPos.y - currentPos.y;
-        }
-        else
-        {
-            // Horizontal (default): right = increase
-            rawDelta = currentPos.x - dragState.startPos.x;
-        }
-        int valueDelta = static_cast<int>(rawDelta * 0.5f);
-        newValue = juce::jlimit(pd->minValue, pd->maxValue, dragState.startValue + valueDelta);
-    }
-    else if (dragState.type == DragState::Slider)
-    {
-        // Linear control: drag along slider axis
-        // Determine if vertical or horizontal
-        bool isVertical = true;  // Default, could check theme orientation
+        // Movement since the knob was picked up, counted in screen pixels so
+        // the desktop border cannot cut a sweep short. Zoom used to scale the
+        // drag because it worked in canvas coordinates, so keep that: a knob
+        // drawn twice as big takes twice the travel.
+        auto travel = KnobDrag::travel(e);
+        if (zoomLevel > 0.0f && zoomLevel != 1.0f)
+            travel = (travel.toFloat() / zoomLevel).roundToInt();
 
-        if (isVertical)
+        if (dragState.type == DragState::Knob)
         {
-            // Vertical slider: drag up = increase
-            int deltaY = dragState.startPos.y - currentPos.y;
-            float normalized = static_cast<float>(deltaY) / 100.0f;  // 100px = full range
-            int valueDelta = static_cast<int>(normalized * range);
-            newValue = juce::jlimit(pd->minValue, pd->maxValue, dragState.startValue + valueDelta);
+            newValue = KnobDrag::valueFor(travel, dragState.startValue,
+                                          pd->minValue, pd->maxValue);
         }
         else
         {
-            // Horizontal slider: drag right = increase
-            int deltaX = currentPos.x - dragState.startPos.x;
-            float normalized = static_cast<float>(deltaX) / 100.0f;
+            // Linear control: up increases, over 100px of travel for the whole
+            // range. Sliders are drawn vertically throughout the module set.
+            float normalized = static_cast<float>(-travel.y) / 100.0f;
             int valueDelta = static_cast<int>(normalized * range);
             newValue = juce::jlimit(pd->minValue, pd->maxValue, dragState.startValue + valueDelta);
         }
@@ -6123,6 +6097,11 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
 
 void PatchCanvas::mouseUp(const juce::MouseEvent& e)
 {
+    // Unconditional, and before the early return: a knob drag must give the
+    // pointer back on every path out, or it stays captured. No-op if no knob
+    // or slider drag took it.
+    KnobDrag::end(e, *this);
+
     if (dragState.type == DragState::None)
         return;
 

@@ -1,5 +1,6 @@
 #include "PatchHeaderBar.h"
 #include "AppTheme.h"
+#include "KnobDrag.h"
 #include "../protocol/KnobAssignmentMessage.h"
 
 namespace
@@ -701,6 +702,10 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
         dragState.startPos = pos;
         dragState.lastSentValue = -1;
         dragState.lastSendTime = 0;
+        // The header bar sits at the top of the window, so a vertical sweep
+        // reaches the top of the screen almost immediately (issue #46).
+        KnobDrag::begin(e, *this,
+                        pos - getMorphKnobBounds(morphIdx).getCentre().roundToInt());
         return;
     }
 
@@ -1064,8 +1069,9 @@ void PatchHeaderBar::mouseDrag(const juce::MouseEvent& e)
     if (dragState.morphIndex < 0 || patch == nullptr)
         return;
 
-    int deltaY = dragState.startPos.y - e.getPosition().y;
-    int newVal = juce::jlimit(0, 127, dragState.startValue + static_cast<int>(deltaY * 0.5f));
+    // Same reading of the mouse the canvas knobs get, so the editor's
+    // knob-control setting means one thing everywhere (issue #47).
+    int newVal = KnobDrag::valueFor(KnobDrag::travel(e), dragState.startValue, 0, 127);
     patch->morphValues[static_cast<size_t>(dragState.morphIndex)] = newVal;
     repaint();
 
@@ -1081,8 +1087,11 @@ void PatchHeaderBar::mouseDrag(const juce::MouseEvent& e)
     }
 }
 
-void PatchHeaderBar::mouseUp(const juce::MouseEvent&)
+void PatchHeaderBar::mouseUp(const juce::MouseEvent& e)
 {
+    // Give the pointer back before anything else can return early.
+    KnobDrag::end(e, *this);
+
     if (morphDragging)
     {
         morphDragging = false;

@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "ui/KnobDrag.h"
 #include "model/PatchParser.h"
 #include "model/PchFileIO.h"
 #include "ui/BankTransferDialog.h"
@@ -73,7 +74,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   AppTheme::setPalette(ThemeRegistry::get(editorOptions.uiThemeIndex).app);
   editorOptions.ensureLibraryFolders();
   PatchCanvas::setCableStyle   (static_cast<int>(editorOptions.cableStyle));
-  PatchCanvas::setKnobControl  (static_cast<int>(editorOptions.knobControl));
+  KnobDrag::setMode           (static_cast<int>(editorOptions.knobControl));
   PatchCanvas::setAutoUpload   (editorOptions.autoUpload);
   PatchCanvas::setCableOpacity (editorOptions.cableOpacity);
   {
@@ -2145,7 +2146,7 @@ void MainComponent::applyEditorOptions(const EditorOptions& opts) {
   modulePresets.setFolder(presetsFolder());
   refreshInspectorPresets();
   PatchCanvas::setCableStyle   (static_cast<int>(opts.cableStyle));
-  PatchCanvas::setKnobControl  (static_cast<int>(opts.knobControl));
+  KnobDrag::setMode           (static_cast<int>(opts.knobControl));
   PatchCanvas::setAutoUpload   (opts.autoUpload);
   PatchCanvas::setCableOpacity (opts.cableOpacity);
   mainLayout->getPatchArea().setAnimated(opts.animateTiling);

@@ -91,6 +91,7 @@ set(NME_SHARED_SOURCES
     source/ui/InspectorPanel.cpp
     source/ui/StatusBar.cpp
     source/ui/PatchHeaderBar.cpp
+    source/ui/KnobDrag.cpp
     source/ui/PatchLocationDialog.cpp
     source/ui/AboutDialog.cpp
     source/ui/SlotSelectDialog.cpp
