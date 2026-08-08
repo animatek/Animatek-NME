@@ -113,7 +113,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // Load module descriptions — prefer embedded BinaryData, fall back to disk
   if (BinaryData::modules_xmlSize > 0)
-    moduleDescs.loadFromXmlString(juce::String(BinaryData::modules_xml, BinaryData::modules_xmlSize));
+    moduleDescs.loadFromXmlString(juce::String::createStringFromData(
+        BinaryData::modules_xml, BinaryData::modules_xmlSize));
   else {
     auto xmlPath = findDataFile("nmedit/libs/nordmodular/data/module-descriptions/modules.xml");
     if (xmlPath.existsAsFile()) moduleDescs.loadFromFile(xmlPath);
@@ -124,7 +125,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // Load classic theme — prefer embedded BinaryData, fall back to disk
   if (BinaryData::classictheme_xmlSize > 0)
-    themeData.loadFromXmlString(juce::String(BinaryData::classictheme_xml, BinaryData::classictheme_xmlSize));
+    themeData.loadFromXmlString(juce::String::createStringFromData(
+        BinaryData::classictheme_xml, BinaryData::classictheme_xmlSize));
   else {
     auto themePath = findDataFile("nmedit/libs/nordmodular/data/classic-theme/classic-theme.xml");
     if (themePath.existsAsFile()) themeData.loadFromFile(themePath);
@@ -359,7 +361,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   connectionManager.setPatchDataCallback(
       [this](const std::vector<std::vector<uint8_t>> &sections, int targetSlot) {
         DBG("Patch data received: " + juce::String(sections.size()) +
-            " sections — parsing...");
+            " sections, parsing...");
 
         PatchParser parser(moduleDescs);
         auto patch = parser.parse(sections);
@@ -748,7 +750,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
     mainLayout->getStatusBar().showMessage(
         "ERROR: Synth error code " + juce::String(errorCode)
-        + " (" + description + ") — check console for details", 8000);
+        + " (" + description + "): check console for details", 8000);
   });
 
   // Wire toolbar buttons
@@ -3569,7 +3571,7 @@ void MainComponent::assignMorphKnob(int knobIndex) {
     }
     if (group < 0) {
         mainLayout->getStatusBar().showMessage(
-            "No free morph group to use as carrier — all 4 are in use", 4000);
+            "No free morph group to use as carrier: all 4 are in use", 4000);
         return;
     }
 
@@ -3776,7 +3778,7 @@ void MainComponent::startInterpolationTo(const ParamSnapshot& toSnap, float seco
     const juce::String targetName = targetVariation >= 0
         ? "variation " + juce::String(targetVariation + 1)
         : juce::String("mutator sound");
-    std::cout << "[SNAP] Interpolation START → " << targetName
+    std::cout << "[SNAP] Interpolation START -> " << targetName
               << ", " << interpolation.from.size() << " params, "
               << seconds << "s (" << interpolation.durationMs << "ms)" << std::endl;
 
@@ -3884,7 +3886,7 @@ void MainComponent::onInterpolationTick() {
 
         mainLayout->getStatusBar().showMessage(
             interpolation.targetSnapshot >= 0
-                ? "Interpolation complete — Variation " +
+                ? "Interpolation complete: Variation " +
                       juce::String(interpolation.targetSnapshot + 1)
                 : juce::String("Interpolation complete"), 2000);
     }
@@ -4004,7 +4006,7 @@ void MainComponent::randomizeSlotParameters(int slot, PatchCanvasComponent& canv
   juce::String scope = hasSelection ? " (selection)" : " (all)";
   mainLayout->getStatusBar().showMessage(
       "Randomized " + juce::String(numChanges) + " parameters" + scope
-      + (gaussian ? " — Gaussian" : " — Simple"), 3000);
+      + (gaussian ? " (Gaussian)" : " (Simple)"), 3000);
 }
 
 void MainComponent::updateDspLoadDisplay() {

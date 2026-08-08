@@ -110,7 +110,7 @@ void AboutDialog::paint(juce::Graphics& g)
     g.setColour(pal.textSecondary);
     g.setFont(juce::Font(AppTheme::uiFont(11.5f)));
     g.drawText("Version " + juce::String(JUCE_APPLICATION_VERSION_STRING)
-                   + "  ·  built " + juce::String(__DATE__),
+                   + "  -  built " + juce::String(__DATE__),
                line, juce::Justification::centredLeft, true);
 
     g.setColour(pal.buttonActive);

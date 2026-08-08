@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Accented and typographic characters no longer come out as garbage** (#43). The slot chooser
+  showed `Local (editor only â€ don't upload)` on macOS, and the same fault ran much deeper: every
+  quotation mark in the module help text was mangled too, because JUCE decodes a plain C++ string
+  literal as Latin-1 rather than UTF-8. All of the editor's own text is now plain ASCII, and the
+  build fails if a non-ASCII character creeps back into a literal.
+
 ## 0.13.0 — 2026-08-02
 
 - **The four slots now live inside the main window**, as sub-windows in the work area, the way

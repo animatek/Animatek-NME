@@ -414,7 +414,7 @@ void ConnectionManager::setSlotEnabled(int slot, bool enabled)
     // single-bit mask and disable every other enabled slot on the synth.
     if (!slotEnableMaskKnown)
     {
-        std::cout << "[SLOT] Enable mask unknown — requesting synth settings first" << std::endl;
+        std::cout << "[SLOT] Enable mask unknown, requesting synth settings first" << std::endl;
         requestSynthSettings();
         return;
     }
@@ -598,7 +598,7 @@ void ConnectionManager::sendNextUploadSection()
                       << " " << (uploadSections.size() > static_cast<size_t>(sentSection)
                           ? describePdlSection(uploadSections[static_cast<size_t>(sentSection)])
                           : "type=-1 (Unknown)")
-                      << " — aborting upload" << std::endl;
+                      << ", aborting upload" << std::endl;
             waitingForUploadAck = false;
             invalidateParamQueue("upload timeout", uploadSlot);
             uploadSections.clear();
@@ -967,7 +967,7 @@ void ConnectionManager::drainAckedQueue()
         if (!*aliveFlag) return;
         if (ackedQueueWaiting && ackedQueueGeneration == generation)
         {
-            std::cout << "[QUEUE] ACK timeout (gen=" << generation << ") — unblocking queue ("
+            std::cout << "[QUEUE] ACK timeout (gen=" << generation << "), unblocking queue ("
                       << ackedQueue.size() << " pending)" << std::endl;
             ackedQueueWaiting = false;
             ackedQueueWaitingAllowsNewPatchInSlot = false;
@@ -1012,7 +1012,7 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
         if (pendingPatchSlot == currentSlot)
             currentPatchId = msg.pid1;
         DBG("Patch ACK for slot " + juce::String(pendingPatchSlot)
-            + ", patchId=" + juce::String(msg.pid1) + " — sending GetPatch for all 13 sections");
+            + ", patchId=" + juce::String(msg.pid1) + ", sending GetPatch for all 13 sections");
         sendGetPatchMessages(msg.pid1, pendingPatchSlot);
         startPatchTimeout();
         return;
@@ -1366,7 +1366,7 @@ void ConnectionManager::retryMissingSections()
     patchTimeoutGeneration++;  // invalidate the timers of the stalled attempt
 
     std::cout << "[PATCH] Fetch stalled at " << sectionsReceived << "/" << totalSections
-              << " — re-requesting " << missing.size() << " missing sections ("
+              << ", re-requesting " << missing.size() << " missing sections ("
               << (maxSectionRetries - sectionRetriesLeft) << "/" << maxSectionRetries
               << " retries)" << std::endl;
 
@@ -1402,7 +1402,7 @@ void ConnectionManager::finalizePatch()
     }
 
     DBG(juce::String(sectionsReceived < totalSections ? "Partial" : "All") + " "
-        + juce::String(patchSections.size()) + " sections — invoking parser");
+        + juce::String(patchSections.size()) + " sections, invoking parser");
 
     const int completedSlot = pendingPatchSlot;
 
@@ -1703,7 +1703,7 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
                     requestPatch(activeSlot);
                 else
                     std::cout << "[SLOT] Reusing in-memory patch for slot " << activeSlot
-                              << " — skipping re-fetch" << std::endl;
+                              << ", skipping re-fetch" << std::endl;
             }
             // else: busy with something else (manual reload, bank op) — skip,
             // same as before phase 2's background prefetch existed.
@@ -1721,7 +1721,7 @@ void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
     if (ackedQueueWaiting)
     {
         ackedQueueWaiting = false;
-        std::cout << "[QUEUE] PatchPacket received — unblocking queue ("
+        std::cout << "[QUEUE] PatchPacket received, unblocking queue ("
                   << ackedQueue.size() << " pending)" << std::endl;
         drainAckedQueue();
     }
@@ -1804,7 +1804,7 @@ void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
         {
             if (sectionSeen[static_cast<size_t>(sectionKind)])
             {
-                DBG("Duplicate patch section (kind " + juce::String(sectionKind) + ") — dropped");
+                DBG("Duplicate patch section (kind " + juce::String(sectionKind) + "), dropped");
                 sectionAccumulator.clear();
                 startSectionStaleTimeout();
                 return;
@@ -1842,7 +1842,7 @@ void ConnectionManager::onError(const ErrorMessage& msg)
     if (ackedQueueWaiting)
     {
         std::cout << "[QUEUE] Error from synth (code " << msg.errorCode
-                  << ") — unblocking queue (" << ackedQueue.size() << " pending)" << std::endl;
+                  << "), unblocking queue (" << ackedQueue.size() << " pending)" << std::endl;
         ackedQueueWaiting = false;
         drainAckedQueue();
     }
@@ -1894,7 +1894,7 @@ void ConnectionManager::startSlotDetectionFallback()
         {
             // currentSlot may already hold the real focus (seeded from the
             // extended synth settings); fall back to it rather than slot 0.
-            std::cout << "[SLOT] No SlotActivated received — fetching slot "
+            std::cout << "[SLOT] No SlotActivated received, fetching slot "
                       << static_cast<char>('A' + currentSlot) << std::endl;
             requestPatch(currentSlot);
         }

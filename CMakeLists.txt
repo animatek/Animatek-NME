@@ -145,6 +145,21 @@ set(NME_SHARED_SOURCES
     source/help/ModuleHelpPopup.cpp
 )
 
+# --- Source hygiene ---
+# juce::String(const char*) decodes bytes as Latin-1, so a stray em dash or
+# curly quote in a narrow literal reaches the UI as mojibake (issue #43). Catch
+# it at build time. Skipped silently where no Python interpreter is available.
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+    add_custom_target(check_ascii_literals ALL
+        COMMAND ${Python3_EXECUTABLE}
+                "${CMAKE_CURRENT_SOURCE_DIR}/packaging/check-ascii-literals.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}"
+        COMMENT "Checking string literals are ASCII-only"
+        VERBATIM
+    )
+endif()
+
 # --- Standalone Application ---
 juce_add_gui_app(AnimatekNME
     PRODUCT_NAME "AnimatekNME"

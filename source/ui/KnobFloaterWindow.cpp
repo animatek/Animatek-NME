@@ -146,7 +146,7 @@ private:
         constexpr int maxChars = 13;
         if (text.length() > maxChars)
         {
-            label.setText(text.substring(0, maxChars - 1) + "…", juce::dontSendNotification);
+            label.setText(text.substring(0, maxChars - 3) + "...", juce::dontSendNotification);
             label.setTooltip(text);
         }
         else

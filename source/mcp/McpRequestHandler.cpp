@@ -378,7 +378,7 @@ juce::var McpRequestHandler::mutatePatch(const juce::var& params)
 
     if (changes.empty())
     {
-        result->setProperty("note", "Nothing changed — every parameter was locked or excluded.");
+        result->setProperty("note", "Nothing changed: every parameter was locked or excluded.");
         return juce::var(result);
     }
 

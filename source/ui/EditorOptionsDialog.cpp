@@ -194,7 +194,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     sendRateSelector.setColour (juce::ComboBox::arrowColourId,      p().textSecondary);
     sendRateSelector.setTooltip ("How fast parameter changes are streamed to the synth. "
                                  "Higher is more responsive for the Mutator but may overrun "
-                                 "the G1 on big patches — lower it if the connection drops.");
+                                 "the G1 on big patches. Lower it if the connection drops.");
     addAndMakeVisible (sendRateLabel);
     addAndMakeVisible (sendRateSelector);
 

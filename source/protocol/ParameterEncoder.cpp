@@ -462,7 +462,7 @@ std::vector<int> ParameterEncoder::getParameterBitWidths(int moduleType)
             {
                 warnedTypes.insert(moduleType);
                 std::cout << "[ParameterEncoder] WARNING: unknown module type " << moduleType
-                          << " — falling back to 7-bit encoding (add entry to fix)" << std::endl;
+                          << ", falling back to 7-bit encoding (add entry to fix)" << std::endl;
             }
             return {};
     }

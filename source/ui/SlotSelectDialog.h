@@ -52,7 +52,7 @@ private:
     FlatCloseButton closeButton;
 
     std::array<juce::ToggleButton, 4> slotButtons;
-    juce::ToggleButton localButton { "Local (editor only — don't upload)" };
+    juce::ToggleButton localButton { "Local (editor only, do not upload)" };
 
     juce::TextButton okButton     { "OK" };
     juce::TextButton cancelButton { "Cancel" };
