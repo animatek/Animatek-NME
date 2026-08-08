@@ -4125,6 +4125,12 @@ void MainComponent::initModulePresetLibrary()
         {  86,   2,  76,  65,  99,   0,  67,   0,  56,  76,   0,  86,  86,  81, 117 } },
       { "DrumSynth", "Tom2 2",
         {  69,   2,  77,  66,  99,   0,  67,   0,  56,  76,   0,  86,  86,  81, 117 } },
+      // Tom2 3 was missing from the patch the rest came from; read off the
+      // original editor instead. Every value it shares with Tom2 1 and Tom2 2,
+      // which differ from each other only in tuning and the two decays, is
+      // confirmed by both.
+      { "DrumSynth", "Tom2 3",
+        {  55,   2,  79,  70,  99,   0,  67,   0,  56,  78,   0,  86,  86,  81, 117 } },
       { "DrumSynth", "Tom3 1",
         {  70,  28,  64,  72, 113,  81, 102,   4,  12,  68,   0,  44,  67,  96,  97 } },
       { "DrumSynth", "Tom3 2",

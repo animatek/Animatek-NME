@@ -28,6 +28,14 @@
 
 ### Fixed
 
+- **The Drum Synthesizer's filter type was labelled the wrong way round.** HP and LP were
+  swapped, so picking LP sent the synth the value it reads as HP: the label said one thing and
+  the module played the other. Clavia's own factory presets settle it (their filter values are
+  LP, BP, HP in that order), and every patch built or loaded now reads correctly.
+- **A new Drum Synthesizer comes up the way the original's does**, with its own default settings
+  rather than a middle value in every knob. Its preset box reads `none` until you recall one,
+  instead of naming the first preset in the list as though it were loaded.
+
 - **The editor no longer corrupts its own memory as it closes.** Both browser panels let their
   tree view outlive the item it was displaying, and JUCE writes to that item as the view goes
   away, so every session ended by writing into memory that had just been freed. It aborted on

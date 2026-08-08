@@ -5262,7 +5262,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 if (upRect.contains(relPos) || dnRect.contains(relPos))
                 {
                     int key = m.getContainerIndex();
-                    int cur = 0;
+                    int cur = -1;   // "none": either arrow steps onto the first
                     auto it = drumPresetState.find(key);
                     if (it != drumPresetState.end()) cur = it->second;
 
@@ -7423,15 +7423,17 @@ void PatchCanvas::paintDrumSynthExtras(juce::Graphics& g, const Module& m, juce:
     g.drawLine((float)dispX, (float)(dispY+dispH), (float)(dispX+dispW), (float)(dispY+dispH), 1.0f);
     g.drawLine((float)(dispX+dispW), (float)dispY, (float)(dispX+dispW), (float)(dispY+dispH), 1.0f);
 
-    // Preset name text
-    int presetIdx = 0;
+    // Preset name text. A module nobody has recalled a preset into reads
+    // "none", as the original editor's does. Naming the first preset in the
+    // list said a preset was loaded when the module was still at its defaults.
+    int presetIdx = -1;
     auto it = drumPresetState.find(m.getContainerIndex());
     if (it != drumPresetState.end())
         presetIdx = it->second;
-    presetIdx = juce::jlimit(0, static_cast<int>(drumPresets().size()) - 1, presetIdx);
 
-    juce::String presetName = drumPresets().empty() ? "none"
-                              : drumPresets()[static_cast<size_t>(presetIdx)].name;
+    juce::String presetName = "none";
+    if (presetIdx >= 0 && presetIdx < static_cast<int>(drumPresets().size()))
+        presetName = drumPresets()[static_cast<size_t>(presetIdx)].name;
 
     g.setColour(juce::Colours::white);
     g.setFont(juce::FontOptions(8.5f));
@@ -7592,7 +7594,9 @@ juce::PopupMenu PatchCanvas::buildDrumPresetMenu(Module& m, std::shared_ptr<int>
 {
     juce::PopupMenu menu;
 
-    int currentIdx = 0;
+    // -1 until a preset is recalled, so nothing is ticked on a module that is
+    // still at its defaults.
+    int currentIdx = -1;
     auto it = drumPresetState.find(m.getContainerIndex());
     if (it != drumPresetState.end())
         currentIdx = it->second;
