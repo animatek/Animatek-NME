@@ -3,6 +3,7 @@
 #include <juce_data_structures/juce_data_structures.h>
 #include "../model/Patch.h"
 #include "../model/ModuleDescriptions.h"
+#include "../model/ModulePlacement.h"
 #include "../model/SnipFileIO.h"
 #include "../midi/ConnectionManager.h"
 #include "../sync/PatchSynchronizer.h"
@@ -52,8 +53,21 @@ public:
 
     bool perform() override
     {
+        // The new module keeps the spot it was dropped on; whatever was already
+        // there moves down the column (issue #36).
+        pushed_.clear();
+        auto& container = ctx_.patch.getContainer(section_);
+        if (auto* desc = ctx_.descs.getModuleByIndex(typeId_))
+            if (container.canAdd(*desc))
+                pushed_ = makeRoomForModule(container, section_, gridX_, gridY_, desc->height);
+
         auto* mod = ctx_.patch.createModule(section_, typeId_, gridX_, gridY_, name_, ctx_.descs);
-        if (!mod) return false;
+        if (!mod)
+        {
+            restorePushedModules(ctx_.patch, pushed_);
+            pushed_.clear();
+            return false;
+        }
         containerIndex_ = mod->getContainerIndex();
         ctx_.repaint();
         return true;
@@ -69,6 +83,7 @@ public:
             SyncSuppressor guard(ctx_.syncPtr);
             container.removeModule(mod);
         }
+        restorePushedModules(ctx_.patch, pushed_);
         ctx_.repaint();
         if (ctx_.syncToSynth) ctx_.syncToSynth();
         return true;
@@ -86,6 +101,7 @@ private:
     int section_, typeId_, gridX_, gridY_;
     juce::String name_;
     int containerIndex_ = -1;
+    std::vector<PushedModule> pushed_;
 };
 
 // ============================================================================
@@ -898,61 +914,68 @@ private:
 class InsertSnippetAction : public juce::UndoableAction
 {
 public:
-    InsertSnippetAction(UndoContext& ctx, SnipData snip, int offsetX, int offsetY)
-        : ctx_(ctx), snip_(std::move(snip)), offsetX_(offsetX), offsetY_(offsetY) {}
+    /** `targetSection` of -1 keeps every module in the area it was saved from,
+        which is what importing a snippet file wants. Naming an area instead
+        drops the whole block there, which is how pasting can cross between poly
+        and common (issue #42). */
+    InsertSnippetAction(UndoContext& ctx, SnipData snip, int offsetX, int offsetY,
+                        int targetSection = -1)
+        : ctx_(ctx), snip_(std::move(snip)), offsetX_(offsetX), offsetY_(offsetY),
+          targetSection_(targetSection) {}
 
     bool perform() override
     {
         createdIndices_.clear();
+        pushed_.clear();
         bool createdAny = false;
+
+        // Modules this insert has already placed keep their spot, so the block
+        // arrives with the shape it was copied with and pushes the patch around
+        // it out of the way rather than shuffling within itself.
+        std::vector<int> ownIndices[2];
 
         for (auto& entry : snip_.entries)
         {
+            const int section = (targetSection_ >= 0) ? targetSection_ : entry.section;
+
             if (isSnippetExcludedModuleType(entry.typeIndex))
             {
-                createdIndices_.push_back({ entry.section, -1 });
+                createdIndices_.push_back({ section, -1 });
                 continue;
             }
 
-            auto& container = ctx_.patch.getContainer(entry.section);
+            auto& container = ctx_.patch.getContainer(section);
             int tx = entry.gridPos.x + offsetX_;
             int ty = entry.gridPos.y + offsetY_;
-            if (tx < 0) tx = 0;
-            if (ty < 0) ty = 0;
-
-            // Simple Y overlap avoidance
-            int h = 1;
-            if (auto* desc = ctx_.descs.getModuleByIndex(entry.typeIndex))
-                h = desc->height;
-            for (int attempt = 0; attempt < 128; ++attempt)
-            {
-                bool occupied = false;
-                for (auto& m : container.getModules())
-                {
-                    int mh = m->getDescriptor() ? m->getDescriptor()->height : 1;
-                    if (m->getPosition().x == tx &&
-                        std::abs(m->getPosition().y - ty) < std::max(h, mh))
-                    { occupied = true; break; }
-                }
-                if (!occupied) break;
-                ++ty;
-            }
+            tx = juce::jlimit(0, 39, tx);
+            ty = juce::jlimit(0, modulePlacementRows - 1, ty);
 
             auto* desc = ctx_.descs.getModuleByIndex(entry.typeIndex);
             if (!desc || !container.canAdd(*desc))
             {
-                createdIndices_.push_back({ entry.section, -1 });
+                createdIndices_.push_back({ section, -1 });
                 continue;
             }
 
             auto module = Module::createFromDescriptor(*desc);
             if (!module)
             {
-                createdIndices_.push_back({ entry.section, -1 });
+                createdIndices_.push_back({ section, -1 });
                 continue;
             }
 
-            module->setContainerIndex(nextContainerIndex(container));
+            const int newIndex = nextContainerIndex(container);
+            if (newIndex < 0)
+            {
+                createdIndices_.push_back({ section, -1 });
+                continue;
+            }
+
+            auto roomMade = makeRoomForModule(container, section, tx, ty, desc->height,
+                                              ownIndices[section == 1 ? 1 : 0]);
+            pushed_.insert(pushed_.end(), roomMade.begin(), roomMade.end());
+
+            module->setContainerIndex(newIndex);
             module->setPosition({ tx, ty });
             module->setTitle(entry.name.isNotEmpty() ? entry.name : desc->name);
 
@@ -961,7 +984,8 @@ public:
                 params[i].setValue(entry.paramValues[i]);
 
             auto* mod = container.addModule(std::move(module));
-            createdIndices_.push_back({ entry.section, mod->getContainerIndex() });
+            createdIndices_.push_back({ section, mod->getContainerIndex() });
+            ownIndices[section == 1 ? 1 : 0].push_back(mod->getContainerIndex());
             createdAny = true;
         }
 
@@ -1000,23 +1024,40 @@ public:
             if (mod)
                 container.removeModule(mod);
         }
+        restorePushedModules(ctx_.patch, pushed_);
         ctx_.repaint();
         return true;
     }
 
     int getSizeInUnits() override { return (int)snip_.entries.size(); }
 
+    /** {section, containerIndex} per snippet entry, -1 where nothing was
+        created. Valid after perform(); lets the caller select what it inserted. */
+    const std::vector<std::pair<int, int>>& getCreatedIndices() const { return createdIndices_; }
+
 private:
     UndoContext& ctx_;
     SnipData snip_;
     int offsetX_, offsetY_;
+    int targetSection_;
     std::vector<std::pair<int, int>> createdIndices_;  // {section, containerIndex}
+    std::vector<PushedModule> pushed_;
 
+    // Indices are serialized in seven bits, so counting up from the highest one
+    // in use overflows after enough add/delete cycles. Reuse the lowest free
+    // index instead, which is what Patch::createModule does.
     static int nextContainerIndex(const ModuleContainer& container)
     {
-        int maxIndex = 0;
+        std::array<bool, 128> used {};
         for (auto& m : container.getModules())
-            maxIndex = std::max(maxIndex, m->getContainerIndex());
-        return maxIndex + 1;
+        {
+            const int index = m->getContainerIndex();
+            if (index >= 1 && index <= 127)
+                used[static_cast<size_t>(index)] = true;
+        }
+        for (int index = 1; index <= 127; ++index)
+            if (!used[static_cast<size_t>(index)])
+                return index;
+        return -1;   // full: nothing can be inserted here
     }
 };
