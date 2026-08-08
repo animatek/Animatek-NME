@@ -1,30 +1,6 @@
 # Changelog
 
-## Unreleased
-
-### Changed
-
-- **Knobs start out answering vertical movement**, which is how the original editor behaves and
-  what most people reach for first. Only the default changes: whatever you have chosen under
-  **Ctrl+, > Knob Control** is left alone.
-- **Circular knob control reads the dial, rather than counting turns.** Grab a knob at the point
-  marked 100 and it goes to 100, instead of turning up by 100 from wherever it was. The angle is
-  measured around the knob's centre over the same -135 to +135 degree arc the pointer is drawn
-  with, so the spot you touch is the value you get, and the response no longer speeds up near the
-  point you grabbed and crawls far from it. A knob does not move until the drag has actually
-  moved, so a plain click leaves it alone and a double-click still just restores the default.
-
-### Added
-
-- **The Drum Synthesizer's factory presets ship with the editor** (#33): all 29 of Clavia's own,
-  from Kick 1 to Perc 6. They sit in a **Factory** group, folded away by default in the Inspector
-  and behind a **Factory** submenu on the module's right-click menu, so the presets you saved
-  yourself stay where you can reach them. Factory presets cannot be renamed or deleted, and never
-  touch your own preset files.
-- **The overlay readouts are on the View menu** as well as on their function keys (#44), under
-  **View > Overlays**, ticked to show which one is open. They had been on `F5` and `F7`-`F10`
-  only, which is easy to miss: the request that prompted this was for a whole-patch module cost
-  readout, which `F10` had been giving since 0.13.0.
+## 0.14.0 — 2026-08-08
 
 ### Changed
 
@@ -50,6 +26,28 @@
 - **Paste and Duplicate can be undone**, which they could not before: both created their modules
   outside the undo history, so `Ctrl+Z` after either one did nothing. They now go through the same
   undoable insert the snippet browser uses.
+
+- **Knobs start out answering vertical movement**, which is how the original editor behaves and
+  what most people reach for first. Only the default changes: whatever you have chosen under
+  **Ctrl+, > Knob Control** is left alone.
+- **Circular knob control reads the dial, rather than counting turns.** Grab a knob at the point
+  marked 100 and it goes to 100, instead of turning up by 100 from wherever it was. The angle is
+  measured around the knob's centre over the same -135 to +135 degree arc the pointer is drawn
+  with, so the spot you touch is the value you get, and the response no longer speeds up near the
+  point you grabbed and crawls far from it. A knob does not move until the drag has actually
+  moved, so a plain click leaves it alone and a double-click still just restores the default.
+
+### Added
+
+- **The Drum Synthesizer's factory presets ship with the editor** (#33): all 29 of Clavia's own,
+  from Kick 1 to Perc 6. They sit in a **Factory** group, folded away by default in the Inspector
+  and behind a **Factory** submenu on the module's right-click menu, so the presets you saved
+  yourself stay where you can reach them. Factory presets cannot be renamed or deleted, and never
+  touch your own preset files.
+- **The overlay readouts are on the View menu** as well as on their function keys (#44), under
+  **View > Overlays**, ticked to show which one is open. They had been on `F5` and `F7`-`F10`
+  only, which is easy to miss: the request that prompted this was for a whole-patch module cost
+  readout, which `F10` had been giving since 0.13.0.
 
 ### Fixed
 
