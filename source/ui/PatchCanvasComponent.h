@@ -53,6 +53,13 @@ public:
     // Snippet save: fires with SnipData after "Save as Snippet" in context menu
     using SnippetSaveCallback = std::function<void(SnipData)>;
     using SnippetDropCallback = std::function<void(const juce::File& file, int section, int gridX, int gridY)>;
+    // Insert a block of modules, undoably, shifting every entry by
+    // (offsetX, offsetY) and reporting where each one landed as
+    // {section, containerIndex}. A section of -1 leaves each module in the area
+    // it came from; naming one puts the whole block there. Paste and Duplicate
+    // place modules the same way the snippet browser does, so they share this.
+    using SnippetInsertCallback = std::function<std::vector<std::pair<int, int>>(
+        SnipData, int section, int offsetX, int offsetY)>;
 
     PatchCanvas();
     ~PatchCanvas();
@@ -113,6 +120,7 @@ public:
     void setInitModuleCallback(InitModuleCallback cb) { initModuleCallback = std::move(cb); }
     void setSnippetSaveCallback(SnippetSaveCallback cb) { snippetSaveCallback_ = std::move(cb); }
     void setSnippetDropCallback(SnippetDropCallback cb) { snippetDropCallback_ = std::move(cb); }
+    void setSnippetInsertCallback(SnippetInsertCallback cb) { snippetInsertCallback_ = std::move(cb); }
     void saveSelectionAsSnippet();
     void setCableCreatedCallback(CableCallback cb) { cableCreatedCallback = std::move(cb); }
     void setCableDeletedCallback(CableCallback cb) { cableDeletedCallback = std::move(cb); }
@@ -283,6 +291,7 @@ private:
     InitModuleCallback initModuleCallback;
     SnippetSaveCallback snippetSaveCallback_;
     SnippetDropCallback snippetDropCallback_;
+    SnippetInsertCallback snippetInsertCallback_;
     CableCallback cableCreatedCallback;
     CableCallback cableDeletedCallback;
     std::function<void()> undoCallback;
@@ -296,6 +305,8 @@ private:
     int dropPreviewSection = 0;
     int dropPreviewGridX = 0;
     int dropPreviewGridY = 0;
+
+    void paintGhostOutline(juce::Graphics& g, int typeIndex, int gx, int gy) const;
 
     // Cable creation preview
     juce::Point<int> cablePreviewEnd;
@@ -354,8 +365,51 @@ private:
         int dstConnectorIdx = 0;
         bool dstIsOutput = false;
     };
-    std::vector<ClipboardEntry> clipboard;
-    std::vector<ClipboardCable> clipboardCables;
+    // One clipboard for the whole editor, not one per canvas: copying in the
+    // poly area and pasting into common is the same gesture as copying in one
+    // slot and pasting into another, and both were impossible while every
+    // canvas kept its own (issue #42). Nothing in here points at a patch, so it
+    // stays valid however the patches come and go.
+    inline static std::vector<ClipboardEntry> clipboard;
+    inline static std::vector<ClipboardCable> clipboardCables;
+
+    // What a click is about to drop. Paste and Add Module do not place anything
+    // themselves: they hang outlines off the pointer, and you click where you
+    // want them, which is how the original editor works and is what lets one
+    // gesture choose the area as well as the spot (issues #42 and #36).
+    struct PendingDrop
+    {
+        enum class Kind { None, Paste, AddModule };
+        Kind kind = Kind::None;
+        // Ghost outlines, in grid units relative to the block's top-left.
+        struct Ghost { int typeIndex = 0; int dx = 0; int dy = 0; };
+        std::vector<Ghost> ghosts;
+        juce::String addName;      // AddModule: title for the new module
+        int addTypeIndex = 0;
+        bool active() const { return kind != Kind::None && !ghosts.empty(); }
+    };
+    // Defined in the .cpp: a default member initializer inside PendingDrop
+    // cannot be used while PatchCanvas is still an incomplete type.
+    static PendingDrop pendingDrop;
+    // The canvas under the pointer, which is the one drawing the ghosts and the
+    // one a click would drop on. Null while the pointer is off every canvas.
+    inline static PatchCanvas* pendingHost = nullptr;
+    inline static juce::Point<int> pendingGrid;
+
+    void armPendingDrop(PendingDrop drop);
+    void updatePendingGhost(juce::Point<int> canvasPos);
+    void dropPendingAt(juce::Point<int> canvasPos);
+    // The selected modules and the cables running between them. Copy, Duplicate
+    // and Save as Snippet all want exactly this, so they read it from here.
+    void collectSelection(std::vector<ClipboardEntry>& entriesOut,
+                          std::vector<ClipboardCable>& cablesOut) const;
+    // `normaliseToOrigin` moves the block's top-left to (0, 0), which is what
+    // pasting at a chosen spot needs; leaving it alone keeps the positions the
+    // modules were copied from, which is what Duplicate wants.
+    static SnipData toSnip(const std::vector<ClipboardEntry>& entries,
+                           const std::vector<ClipboardCable>& cables,
+                           bool normaliseToOrigin);
+    void selectCreated(const std::vector<std::pair<int, int>>& created);
 
     // Parameter context menu (right-click on knob/slider/button)
     void showParameterContextMenu(Module& m, int section, Parameter& param);
@@ -369,14 +423,12 @@ private:
     void deleteSelection();
     void duplicateSelection(bool withCables);
     void copySelectionToClipboard();
-    // Anchored to the pointer: the context menu knows where you clicked.
-    void pasteFromClipboard(juce::Point<int> mousePos);
-    // Anchored to where the modules were copied from, the way Duplicate places
-    // its copies. Ctrl+V has no pointer to work from (issue #42).
-    void pasteFromClipboard();
-private:
-    void pasteClipboard(const juce::Point<int>* mousePos);
-public:
+    // Paste does not place anything: it hangs the copied modules off the
+    // pointer and the click that follows puts them down (issue #42).
+    void beginPasteGhost();
+    void beginAddModuleGhost(int typeIndex, const juce::String& name);
+    // Puts the clipboard down with its top-left at this grid position.
+    void pasteBlockAt(int gx, int gy);
 
     // Legacy single-module selection (kept for compatibility during move)
     Module* selectedModule = nullptr;
@@ -419,8 +471,13 @@ public:
         deleteSelection();
     }
     void copySelection()      { if (!selection.empty()) copySelectionToClipboard(); }
-    void pasteClipboard()     { if (!clipboard.empty()) pasteFromClipboard(); }
+    void pasteClipboard()     { if (!clipboard.empty()) beginPasteGhost(); }
     void duplicateSelected()  { if (!selection.empty()) duplicateSelection(true); }
+
+    // A pending paste or add belongs to the editor, not to one canvas, so
+    // Escape has to reach it from wherever the keyboard focus happens to be.
+    static bool isDropPending() { return pendingDrop.active(); }
+    static void cancelPendingDrop();
 
     static void setCableOpacity (float v)  { cableOpacity   = juce::jlimit(0.0f, 1.0f, v); }
     static void setCableStyle   (int idx)  { cableStyleIdx  = idx; }
@@ -585,9 +642,16 @@ public:
         commonCanvas.setSnippetDropCallback(std::move(cb));
     }
 
-    // The two areas are separate canvases with a clipboard each, so every
-    // command goes to whichever one it applies to. Copying in one area and
-    // pasting into the other is a separate matter, still open on issue #42.
+    void setSnippetInsertCallback(PatchCanvas::SnippetInsertCallback cb)
+    {
+        polyCanvas.setSnippetInsertCallback(cb);
+        commonCanvas.setSnippetInsertCallback(std::move(cb));
+    }
+
+    // The two areas are separate canvases, so every command goes to whichever
+    // one it applies to. The clipboard itself is shared, and paste hands the
+    // block to the pointer, so which area it ends up in is decided by where you
+    // click rather than by where you copied from (issue #42).
     bool hasSelection() const { return polyCanvas.hasSelection() || commonCanvas.hasSelection(); }
     bool canPaste()     const { return polyCanvas.canPaste()     || commonCanvas.canPaste(); }
 
@@ -603,9 +667,11 @@ public:
     }
     void pasteClipboard()
     {
-        // Only the area you copied from holds anything, so this picks itself.
-        if (polyCanvas.canPaste())        polyCanvas.pasteClipboard();
-        else if (commonCanvas.canPaste()) commonCanvas.pasteClipboard();
+        // Either canvas can arm the ghost, since it follows the pointer from
+        // one area to the other. Arming it from the one under the pointer just
+        // means the outlines show up straight away.
+        if (commonCanvas.isMouseOver(true)) commonCanvas.pasteClipboard();
+        else                                polyCanvas.pasteClipboard();
     }
     void duplicateSelected()
     {

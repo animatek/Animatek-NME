@@ -26,17 +26,38 @@
   only, which is easy to miss: the request that prompted this was for a whole-patch module cost
   readout, which `F10` had been giving since 0.13.0.
 
+### Changed
+
+- **Paste and Add Module hand you the modules on the pointer** (#42, #36), the way the original
+  editor does: instead of placing anything, they show the modules as outlines that follow the
+  cursor, and the click that follows puts them down. `Escape` or a right-click calls it off.
+  Because the click chooses the spot, it chooses the area too, so the same gesture pastes from
+  Poly into Common, or into another slot's window, and the clipboard is now shared by the whole
+  editor rather than kept per area. That closes the rest of what was reported: copies landing far
+  away, no way to cross between the two areas, and no way to paste into Common at all. Dragging
+  from the module browser is unchanged, since a drag already ends where you release it.
+
+- **Whatever is in the way moves down instead of being buried** (#36). Dropping a module on top of
+  another one used to leave the older module hidden underneath, with no sign it was still there.
+  Now the modules below shift down their column to make room, and anything they run into shifts
+  down too. Undo puts the whole column back.
+
+- **Paste and Duplicate can be undone**, which they could not before: both created their modules
+  outside the undo history, so `Ctrl+Z` after either one did nothing. They now go through the same
+  undoable insert the snippet browser uses.
+
 ### Fixed
 
 - **Cut, Copy, Paste and Duplicate are on the Edit menu** (#42), where anyone would look for them.
   They have always been on the keyboard and on a module's right-click menu, and nowhere else.
 
-- **Pasted modules land beside the ones they were copied from** (#42), the way duplicating them
-  does, and in the area you are working in. `Ctrl+V` used to aim at the middle of the whole
-  canvas, which on any real patch is thousands of pixels from wherever you were working, so the
-  copies effectively vanished; and the target area was worked out from a layout the editor has
-  not had since the slots became sub-windows, so a paste could also land in the wrong one.
-  Pasting from the right-click menu still puts them under the pointer.
+- **Saving a selection as a snippet no longer overwrites the clipboard.** It read the selection
+  through the clipboard, so anything copied earlier was quietly replaced.
+
+- **A long-lived patch can no longer run out of module slots when inserting a snippet.** Snippet
+  insertion numbered new modules one past the highest in use, and the number is stored in seven
+  bits, so enough add-and-delete cycles pushed it past 127 and the insert failed. It now reuses
+  the lowest free number, which is what adding a single module already did.
 
 - **On macOS, showing and hiding a slot moves to `Cmd+Alt+1`-`Cmd+Alt+4`** (#49). macOS keeps
   `Cmd+Shift+3` and `Cmd+Shift+4` for its own screen capture and never passes them on, so two of

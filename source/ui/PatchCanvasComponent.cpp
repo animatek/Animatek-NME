@@ -8,6 +8,8 @@
 #include <set>
 #include <unordered_map>
 
+PatchCanvas::PendingDrop PatchCanvas::pendingDrop;
+
 static juce::Colour contrastingInk(juce::Colour background)
 {
     return background.getPerceivedBrightness() > 0.5f
@@ -356,6 +358,13 @@ PatchCanvas::~PatchCanvas()
     liveCanvases.erase(std::remove(liveCanvases.begin(), liveCanvases.end(), this),
                        liveCanvases.end());
 
+    // A pending drop outlives one canvas — closing a slot window while modules
+    // hang off the pointer must not leave it pointing at this one.
+    if (pendingHost == this)
+        pendingHost = nullptr;
+    if (liveCanvases.empty())
+        pendingDrop = {};
+
     // If the popup is still open when we're destroyed, clear its callbacks
     // first so it can't fire onDismiss with a dangling 'this' pointer.
     if (activeQuickAdd != nullptr)
@@ -687,32 +696,38 @@ void PatchCanvas::paint(juce::Graphics& g)
         g.drawRect(rb, 1.5f);
     }
 
-    // Module drop preview (ghost outline)
-    if (showModuleDropPreview && moduleDescs != nullptr)
-    {
-        auto* descriptor = moduleDescs->getModuleByIndex(dropPreviewTypeId);
-        if (descriptor != nullptr)
-        {
-            int x = dropPreviewGridX * gridX;
-            int y = dropPreviewGridY * gridY;
-            int width = gridX;
-            int height = descriptor->height * gridY;
+    // Module drop preview, while dragging one in from the module browser
+    if (showModuleDropPreview)
+        paintGhostOutline(g, dropPreviewTypeId, dropPreviewGridX, dropPreviewGridY);
 
-            juce::Rectangle<int> previewBounds(x, y, width, height);
+    // Modules hanging off the pointer after Paste or Add Module, waiting for
+    // the click that puts them down
+    if (pendingDrop.active() && pendingHost == this)
+        for (auto& ghost : pendingDrop.ghosts)
+            paintGhostOutline(g, ghost.typeIndex,
+                              pendingGrid.x + ghost.dx, pendingGrid.y + ghost.dy);
+}
 
-            // Draw semi-transparent module outline
-            g.setColour(juce::Colours::cyan.withAlpha(0.3f));
-            g.fillRoundedRectangle(previewBounds.toFloat(), 3.0f);
+void PatchCanvas::paintGhostOutline(juce::Graphics& g, int typeIndex, int gx, int gy) const
+{
+    if (moduleDescs == nullptr)
+        return;
 
-            g.setColour(juce::Colours::cyan.withAlpha(0.8f));
-            g.drawRoundedRectangle(previewBounds.toFloat(), 3.0f, 2.0f);
+    auto* descriptor = moduleDescs->getModuleByIndex(typeIndex);
+    if (descriptor == nullptr)
+        return;
 
-            // Module name
-            g.setColour(juce::Colours::white.withAlpha(0.8f));
-            g.setFont(juce::FontOptions(10.0f));
-            g.drawText(descriptor->fullname, previewBounds.reduced(4, 4), juce::Justification::centred, true);
-        }
-    }
+    juce::Rectangle<int> bounds(gx * gridX, gy * gridY, gridX, descriptor->height * gridY);
+
+    g.setColour(juce::Colours::cyan.withAlpha(0.3f));
+    g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
+
+    g.setColour(juce::Colours::cyan.withAlpha(0.8f));
+    g.drawRoundedRectangle(bounds.toFloat(), 3.0f, 2.0f);
+
+    g.setColour(juce::Colours::white.withAlpha(0.8f));
+    g.setFont(juce::FontOptions(10.0f));
+    g.drawText(descriptor->fullname, bounds.reduced(4, 4), juce::Justification::centred, true);
 }
 
 void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& container, int yOffset)
@@ -963,6 +978,16 @@ void PatchCanvas::paintDragValueBadge(juce::Graphics& g)
 
 void PatchCanvas::mouseMove(const juce::MouseEvent& e)
 {
+    // Modules waiting to be dropped follow the pointer, into this canvas from
+    // whichever one it was over before. Nothing else is worth reading out while
+    // they do.
+    if (pendingDrop.active())
+    {
+        updatePendingGhost(screenToCanvas(e.getPosition()));
+        clearHover();
+        return;
+    }
+
     HoverTarget target;
     const bool found = findControlAt(screenToCanvas(e.getPosition()), target);
 
@@ -990,6 +1015,14 @@ void PatchCanvas::mouseMove(const juce::MouseEvent& e)
 void PatchCanvas::mouseExit(const juce::MouseEvent&)
 {
     clearHover();
+
+    // The block stays on the pointer when it leaves; it just stops being drawn
+    // here, and the next canvas it enters picks it up.
+    if (pendingHost == this)
+    {
+        pendingHost = nullptr;
+        repaint();
+    }
 }
 
 void PatchCanvas::clearHover()
@@ -4654,7 +4687,6 @@ void PatchCanvas::openQuickAddAtMouse()
 
     auto mousePos = screenToCanvas(getMouseXYRelative());
 
-    int section = mySection;
     int gx = juce::jlimit(0, 39, mousePos.x / gridX);
     int gy = juce::jlimit(0, 127, mousePos.y / gridY);
 
@@ -4662,13 +4694,12 @@ void PatchCanvas::openQuickAddAtMouse()
 
     activeQuickAdd = new QuickAddPopup(
         *moduleDescs, screenPos, gx, gy,
-        [this, section](const ModuleDescriptor* desc, int pgx, int pgy)
+        [this](const ModuleDescriptor* desc, int, int)
         {
-            if (moduleDropCallback && desc)
-            {
-                if (undoManager) undoManager->beginNewTransaction("Add Module");
-                moduleDropCallback(desc->index, section, pgx, pgy, desc->name);
-            }
+            // Picking a module hands it to the pointer rather than placing it:
+            // the click that follows chooses the spot, and the area (issue #36).
+            if (desc != nullptr)
+                beginAddModuleGhost(desc->index, desc->name);
         },
         [this]() { activeQuickAdd = nullptr; }
     );
@@ -4711,6 +4742,18 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
         return;
 
     auto pos = screenToCanvas(e.getPosition());
+
+    // A block hanging off the pointer takes the click: the left button puts it
+    // down here, the right one throws it away, and nothing underneath is
+    // selected or dragged in the meantime.
+    if (pendingDrop.active())
+    {
+        if (e.mods.isPopupMenu() || e.mods.isMiddleButtonDown())
+            cancelPendingDrop();
+        else
+            dropPendingAt(pos);
+        return;
+    }
 
     // Middle-click: start canvas pan (drag to scroll viewport)
     if (e.mods.isMiddleButtonDown())
@@ -5827,9 +5870,10 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
         menu.showMenuAsync(juce::PopupMenu::Options{},
             [this, clickSection, clickGX, clickGY, pos](int result)
             {
+                juce::ignoreUnused(clickSection, clickGX, clickGY, pos);
                 if (result == 1)
                 {
-                    pasteFromClipboard(pos);
+                    beginPasteGhost();
                 }
                 else if (result == 2)
                 {
@@ -5843,12 +5887,8 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 else if (result >= 1000)
                 {
                     int typeIndex = result - 1000;
-                    auto* desc = moduleDescs->getModuleByIndex(typeIndex);
-                    if (desc && moduleDropCallback)
-                    {
-                        if (undoManager) undoManager->beginNewTransaction("Add Module");
-                        moduleDropCallback(typeIndex, clickSection, clickGX, clickGY, desc->name);
-                    }
+                    if (auto* desc = moduleDescs->getModuleByIndex(typeIndex))
+                        beginAddModuleGhost(typeIndex, desc->name);
                 }
             });
     }
@@ -6262,6 +6302,14 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
 
 bool PatchCanvas::keyPressed(const juce::KeyPress& key)
 {
+    // Escape drops whatever is hanging off the pointer before it means
+    // anything else
+    if (key == juce::KeyPress::escapeKey && pendingDrop.active())
+    {
+        cancelPendingDrop();
+        return true;
+    }
+
     // Delete / Backspace → delete selection
     if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey)
     {
@@ -6339,12 +6387,13 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         }
     }
 
-    // Ctrl+V → paste beside the modules it was copied from
+    // Ctrl+V → hang the copied modules off the pointer, to be dropped by the
+    // click that follows
     if (key == juce::KeyPress('v', juce::ModifierKeys::commandModifier, 0))
     {
         if (!clipboard.empty())
         {
-            pasteFromClipboard();
+            beginPasteGhost();
             return true;
         }
     }
@@ -6991,135 +7040,35 @@ void PatchCanvas::deleteSelection()
 
 void PatchCanvas::duplicateSelection(bool withCables)
 {
-    if (selection.empty() || patch == nullptr || moduleDescs == nullptr) return;
+    if (selection.empty() || patch == nullptr || !snippetInsertCallback_) return;
+
+    std::vector<ClipboardEntry> entries;
+    std::vector<ClipboardCable> cables;
+    collectSelection(entries, cables);
+    if (entries.empty()) return;
+    if (!withCables) cables.clear();
 
     if (undoManager)
         undoManager->beginNewTransaction("Duplicate");
 
-    // Offset for duplicates: 1 column to the right, 0 rows down
-    const int offsetX = 1, offsetY = 2;
-
-    // Map old Module* → {new Module*, section} — section stored at creation to
-    // avoid a redundant O(N) search when building the new selection below.
-    std::map<Module*, std::pair<Module*, int>> oldToNew;
-
-    for (auto& sel : selection)
-    {
-        auto* desc = sel.module->getDescriptor();
-        if (!desc) continue;
-
-        auto& container = patch->getContainer(sel.section);
-        auto pos = sel.module->getPosition();
-        int newX = pos.x + offsetX;
-        int newY = findNearestFreeY(container, nullptr, newX, pos.y + offsetY, desc->height);
-
-        auto* newMod = patch->createModule(sel.section, desc->index, newX, newY,
-                                           sel.module->getTitle(), *moduleDescs);
-        if (!newMod) continue;
-
-        // Copy parameter values
-        auto& srcParams = sel.module->getParameters();
-        auto& dstParams = newMod->getParameters();
-        for (size_t i = 0; i < srcParams.size() && i < dstParams.size(); ++i)
-            dstParams[i].setValue(srcParams[i].getValue());
-
-        oldToNew[sel.module] = { newMod, sel.section };
-    }
-
-    // Recreate internal cables if requested
-    if (withCables)
-    {
-        // Gather all selected module pointers
-        std::set<Module*> selSet;
-        for (auto& s : selection) selSet.insert(s.module);
-
-        std::set<int> sections;
-        for (auto& s : selection) sections.insert(s.section);
-
-        struct CableToDuplicate
-        {
-            int section = 0;
-            Module* srcMod = nullptr;
-            Module* dstMod = nullptr;
-            int srcConnIndex = 0;
-            bool srcIsOutput = false;
-            int dstConnIndex = 0;
-            bool dstIsOutput = false;
-        };
-        std::vector<CableToDuplicate> cablesToDuplicate;
-
-        for (int section : sections)
-        {
-            auto& container = patch->getContainer(section);
-            const auto originalConnections = container.getConnections();
-
-            for (const auto& cable : originalConnections)
-            {
-                // Find which modules own output and input
-                Module* srcMod = nullptr;
-                Module* dstMod = nullptr;
-                Connector* srcConn = cable.output;
-                Connector* dstConn = cable.input;
-
-                for (auto& m : container.getModules())
-                {
-                    for (auto& c : m->getConnectors())
-                    {
-                        if (&c == srcConn) srcMod = m.get();
-                        if (&c == dstConn) dstMod = m.get();
-                    }
-                }
-
-                // Only duplicate cable if BOTH endpoints are in the selection
-                if (srcMod && dstMod && selSet.count(srcMod) && selSet.count(dstMod))
-                {
-                    // Find matching connectors by descriptor index
-                    auto* srcDesc = srcConn->getDescriptor();
-                    auto* dstDesc = dstConn->getDescriptor();
-                    if (!srcDesc || !dstDesc) continue;
-
-                    cablesToDuplicate.push_back({ section, srcMod, dstMod,
-                                                  srcDesc->index, srcDesc->isOutput,
-                                                  dstDesc->index, dstDesc->isOutput });
-                }
-            }
-        }
-
-        for (const auto& cable : cablesToDuplicate)
-        {
-            auto srcIt = oldToNew.find(cable.srcMod);
-            auto dstIt = oldToNew.find(cable.dstMod);
-            if (srcIt == oldToNew.end() || dstIt == oldToNew.end()) continue;
-
-            auto* newSrcMod = srcIt->second.first;
-            auto* newDstMod = dstIt->second.first;
-            if (!newSrcMod || !newDstMod) continue;
-
-            Connector* newSrc = newSrcMod->getConnector(cable.srcConnIndex, cable.srcIsOutput);
-            Connector* newDst = newDstMod->getConnector(cable.dstConnIndex, cable.dstIsOutput);
-            if (newSrc && newDst)
-                patch->getContainer(cable.section).addConnection(newSrc, newDst);
-        }
-    }
-
-    // Select the new modules — section is already known from creation time
-    clearSelection();
-    for (auto& [old, newModAndSection] : oldToNew)
-    {
-        auto* newMod = newModAndSection.first;
-        int section  = newModAndSection.second;
-        selection.push_back({ newMod, section });
-    }
-
-    repaint();
+    // Copies land one column right and two rows down of their originals, each
+    // in the area the original lives in — Duplicate never moves a module across.
+    selectCreated(snippetInsertCallback_(toSnip(entries, cables, false), -1, 1, 2));
 }
 
 void PatchCanvas::copySelectionToClipboard()
 {
     if (selection.empty() || patch == nullptr) return;
 
-    clipboard.clear();
-    clipboardCables.clear();
+    collectSelection(clipboard, clipboardCables);
+}
+
+void PatchCanvas::collectSelection(std::vector<ClipboardEntry>& entriesOut,
+                                   std::vector<ClipboardCable>& cablesOut) const
+{
+    entriesOut.clear();
+    cablesOut.clear();
+    if (selection.empty() || patch == nullptr) return;
 
     std::map<Module*, int> modToClipIdx;
 
@@ -7133,7 +7082,7 @@ void PatchCanvas::copySelectionToClipboard()
         entry.gridPos = sel.module->getPosition();
         for (auto& p : sel.module->getParameters())
             entry.paramValues.push_back(p.getValue());
-        clipboard.push_back(entry);
+        entriesOut.push_back(entry);
         modToClipIdx[sel.module] = i;
     }
 
@@ -7162,104 +7111,203 @@ void PatchCanvas::copySelectionToClipboard()
                 auto* srcDesc = cable.output->getDescriptor();
                 auto* dstDesc = cable.input->getDescriptor();
                 if (srcDesc && dstDesc)
-                    clipboardCables.push_back({ modToClipIdx[srcMod], srcDesc->index, srcDesc->isOutput,
-                                                modToClipIdx[dstMod], dstDesc->index, dstDesc->isOutput });
+                    cablesOut.push_back({ modToClipIdx[srcMod], srcDesc->index, srcDesc->isOutput,
+                                          modToClipIdx[dstMod], dstDesc->index, dstDesc->isOutput });
             }
         }
     }
 }
 
-void PatchCanvas::pasteFromClipboard(juce::Point<int> mousePos)
+SnipData PatchCanvas::toSnip(const std::vector<ClipboardEntry>& entries,
+                             const std::vector<ClipboardCable>& cables,
+                             bool normaliseToOrigin)
 {
-    pasteClipboard(&mousePos);
-}
+    SnipData snip;
+    snip.name = "clipboard";
+    if (entries.empty())
+        return snip;
 
-void PatchCanvas::pasteFromClipboard()
-{
-    pasteClipboard(nullptr);
-}
-
-void PatchCanvas::pasteClipboard(const juce::Point<int>* mousePos)
-{
-    if (clipboard.empty() || patch == nullptr || moduleDescs == nullptr) return;
-
-    if (undoManager)
-        undoManager->beginNewTransaction("Paste");
-
-    const bool atPointer = (mousePos != nullptr);
-
-    // Where the block lands. With a pointer, the top-left of the copied block
-    // goes under it. Without one, each module lands beside the one it was
-    // copied from and in the section it came from, which is what Duplicate
-    // does. Ctrl+V used to aim at the middle of the whole canvas, thousands of
-    // pixels from wherever you were looking (issue #42).
-    const int offsetX = 1, offsetY = 2;
-
-    int minX = clipboard[0].gridPos.x, minY = clipboard[0].gridPos.y;
-    int pasteGridX = 0, pasteGridY = 0;
-
-    if (atPointer)
+    int minX = 0, minY = 0;
+    if (normaliseToOrigin)
     {
-        for (auto& e : clipboard)
+        minX = entries[0].gridPos.x;
+        minY = entries[0].gridPos.y;
+        for (auto& e : entries)
         {
             minX = std::min(minX, e.gridPos.x);
             minY = std::min(minY, e.gridPos.y);
         }
-
-        pasteGridX = mousePos->x / gridX;
-        pasteGridY = mousePos->y / gridY;
     }
 
-    // Modules land in the area you are looking at. Each canvas shows one
-    // section, so that is simply its own. The pointer path used to work the
-    // section out from where the click fell relative to a separator, which is
-    // how it was when a single canvas stacked both areas: in the poly canvas
-    // the click is always above that imaginary line, so it happened to be
-    // right, and in the common canvas it would have been wrong.
-    const int pasteSection = (mySection >= 0) ? mySection : clipboard[0].section;
-
-    std::vector<std::pair<Module*, int>> pasted;
-    for (auto& entry : clipboard)
+    for (auto& e : entries)
     {
-        const int section = pasteSection;
-        const int gx = atPointer ? pasteGridX + (entry.gridPos.x - minX)
-                                 : entry.gridPos.x + offsetX;
-        const int gy = atPointer ? pasteGridY + (entry.gridPos.y - minY)
-                                 : entry.gridPos.y + offsetY;
-
-        auto* desc = moduleDescs->getModuleByIndex(entry.typeIndex);
-        auto& container = patch->getContainer(section);
-        int newY = findNearestFreeY(container, nullptr, gx, gy, desc ? desc->height : 1);
-
-        auto* newMod = patch->createModule(section, entry.typeIndex, gx, newY,
-                                           entry.name, *moduleDescs);
-        if (!newMod) { pasted.push_back({ nullptr, section }); continue; }
-
-        auto& params = newMod->getParameters();
-        for (size_t i = 0; i < entry.paramValues.size() && i < params.size(); ++i)
-            params[i].setValue(entry.paramValues[i]);
-        pasted.push_back({ newMod, section });
+        SnipEntry se;
+        se.typeIndex   = e.typeIndex;
+        se.name        = e.name;
+        se.section     = e.section;
+        se.gridPos     = { e.gridPos.x - minX, e.gridPos.y - minY };
+        se.paramValues = e.paramValues;
+        snip.entries.push_back(std::move(se));
     }
 
-    // Recreate cables, in the container the pasted source module ended up in.
-    for (auto& cb : clipboardCables)
+    for (auto& cb : cables)
     {
-        if (cb.srcModuleClipIdx >= (int)pasted.size()) continue;
-        if (cb.dstModuleClipIdx >= (int)pasted.size()) continue;
-        auto [s, sSection] = pasted[static_cast<size_t>(cb.srcModuleClipIdx)];
-        auto [d, dSection] = pasted[static_cast<size_t>(cb.dstModuleClipIdx)];
-        if (!s || !d || sSection != dSection) continue;
-        auto* sc = s->getConnector(cb.srcConnectorIdx, cb.srcIsOutput);
-        auto* dc = d->getConnector(cb.dstConnectorIdx, cb.dstIsOutput);
-        if (sc && dc) patch->getContainer(sSection).addConnection(sc, dc);
+        SnipCable sc;
+        sc.srcIdx      = cb.srcModuleClipIdx;
+        sc.srcConn     = cb.srcConnectorIdx;
+        sc.srcIsOutput = cb.srcIsOutput;
+        sc.dstIdx      = cb.dstModuleClipIdx;
+        sc.dstConn     = cb.dstConnectorIdx;
+        sc.dstIsOutput = cb.dstIsOutput;
+        snip.cables.push_back(sc);
     }
 
-    // Select pasted modules
+    return snip;
+}
+
+void PatchCanvas::selectCreated(const std::vector<std::pair<int, int>>& created)
+{
+    if (patch == nullptr)
+        return;
+
     clearSelection();
-    for (auto& [m, section] : pasted)
-        if (m) selection.push_back({ m, section });
-
+    for (auto& [section, containerIndex] : created)
+    {
+        if (containerIndex < 0)
+            continue;
+        if (auto* m = patch->getContainer(section).getModuleByIndex(containerIndex))
+            selection.push_back({ m, section });
+    }
     repaint();
+}
+
+void PatchCanvas::beginPasteGhost()
+{
+    if (clipboard.empty() || moduleDescs == nullptr)
+        return;
+
+    int minX = clipboard[0].gridPos.x, minY = clipboard[0].gridPos.y;
+    for (auto& e : clipboard)
+    {
+        minX = std::min(minX, e.gridPos.x);
+        minY = std::min(minY, e.gridPos.y);
+    }
+
+    PendingDrop drop;
+    drop.kind = PendingDrop::Kind::Paste;
+    for (auto& e : clipboard)
+        drop.ghosts.push_back({ e.typeIndex, e.gridPos.x - minX, e.gridPos.y - minY });
+
+    armPendingDrop(std::move(drop));
+}
+
+void PatchCanvas::beginAddModuleGhost(int typeIndex, const juce::String& name)
+{
+    if (moduleDescs == nullptr || moduleDescs->getModuleByIndex(typeIndex) == nullptr)
+        return;
+
+    PendingDrop drop;
+    drop.kind = PendingDrop::Kind::AddModule;
+    drop.addTypeIndex = typeIndex;
+    drop.addName = name;
+    drop.ghosts.push_back({ typeIndex, 0, 0 });
+
+    armPendingDrop(std::move(drop));
+}
+
+void PatchCanvas::armPendingDrop(PendingDrop drop)
+{
+    if (!drop.active())
+        return;
+
+    pendingDrop = std::move(drop);
+    pendingHost = nullptr;
+
+    // Every canvas takes the copy cursor, because the block can be dropped on
+    // any of them: the other voice area, or another slot's window.
+    for (auto* c : liveCanvases)
+    {
+        if (c == nullptr)
+            continue;
+        c->setMouseCursor(juce::MouseCursor::CopyingCursor);
+        c->repaint();
+    }
+
+    // Show the outlines straight away when the pointer is already over a
+    // canvas, rather than waiting for it to move.
+    for (auto* c : liveCanvases)
+        if (c != nullptr && c->isMouseOverOrDragging(false))
+        {
+            c->updatePendingGhost(c->screenToCanvas(c->getMouseXYRelative()));
+            break;
+        }
+}
+
+void PatchCanvas::cancelPendingDrop()
+{
+    if (pendingDrop.kind == PendingDrop::Kind::None)
+        return;
+
+    pendingDrop = {};
+    pendingHost = nullptr;
+
+    for (auto* c : liveCanvases)
+        if (c != nullptr)
+        {
+            c->setMouseCursor(juce::MouseCursor::NormalCursor);
+            c->repaint();
+        }
+}
+
+void PatchCanvas::updatePendingGhost(juce::Point<int> canvasPos)
+{
+    if (!pendingDrop.active())
+        return;
+
+    auto* previousHost = pendingHost;
+    pendingHost = this;
+    pendingGrid = { juce::jlimit(0, 39,  canvasPos.x / gridX),
+                    juce::jlimit(0, 127, canvasPos.y / gridY) };
+
+    if (previousHost != nullptr && previousHost != this)
+        previousHost->repaint();
+    repaint();
+}
+
+void PatchCanvas::dropPendingAt(juce::Point<int> canvasPos)
+{
+    auto drop = pendingDrop;
+    const int gx = juce::jlimit(0, 39,  canvasPos.x / gridX);
+    const int gy = juce::jlimit(0, 127, canvasPos.y / gridY);
+    cancelPendingDrop();
+
+    if (drop.kind == PendingDrop::Kind::AddModule)
+    {
+        if (moduleDropCallback)
+        {
+            if (undoManager) undoManager->beginNewTransaction("Add Module");
+            moduleDropCallback(drop.addTypeIndex, mySection, gx, gy, drop.addName);
+        }
+    }
+    else if (drop.kind == PendingDrop::Kind::Paste)
+    {
+        pasteBlockAt(gx, gy);
+    }
+}
+
+void PatchCanvas::pasteBlockAt(int gx, int gy)
+{
+    if (clipboard.empty() || patch == nullptr || !snippetInsertCallback_)
+        return;
+
+    // The whole block goes into the area that was clicked, whichever areas the
+    // modules were copied from, which is what makes poly-to-common pasting a
+    // matter of aiming rather than a thing the editor refuses (issue #42).
+    if (undoManager)
+        undoManager->beginNewTransaction("Paste");
+
+    selectCreated(snippetInsertCallback_(toSnip(clipboard, clipboardCables, true),
+                                         mySection, gx, gy));
 }
 
 void PatchCanvas::showSelectionContextMenu()
@@ -7300,22 +7348,17 @@ void PatchCanvas::saveSelectionAsSnippet()
 {
     if (selection.empty() || !snippetSaveCallback_) return;
 
-    copySelectionToClipboard();
-    if (clipboard.empty()) return;
+    // Reads the selection directly rather than going through the clipboard,
+    // which saving a snippet has no business overwriting.
+    std::vector<ClipboardEntry> entries;
+    std::vector<ClipboardCable> cables;
+    collectSelection(entries, cables);
+    if (entries.empty()) return;
 
-    SnipData snip;
+    SnipData snip = toSnip(entries, cables, false);
     snip.name = "snippet";
-
-    for (auto& e : clipboard)
-    {
-        SnipEntry se;
-        se.typeIndex   = e.typeIndex;
-        se.name        = e.name;
-        se.section     = e.section;
-        se.gridPos     = e.gridPos;
-        se.paramValues = e.paramValues;
-        snip.entries.push_back(std::move(se));
-    }
+    auto snipCables = std::move(snip.cables);
+    snip.cables.clear();
 
     std::map<int, int> clipToSnip;
     std::vector<SnipEntry> filteredEntries;
@@ -7330,20 +7373,18 @@ void PatchCanvas::saveSelectionAsSnippet()
     }
     snip.entries = std::move(filteredEntries);
 
-    for (auto& cb : clipboardCables)
+    // Cables whose module was filtered out go with it; the rest follow their
+    // modules to their new places in the list.
+    for (auto& cb : snipCables)
     {
-        auto srcIt = clipToSnip.find(cb.srcModuleClipIdx);
-        auto dstIt = clipToSnip.find(cb.dstModuleClipIdx);
+        auto srcIt = clipToSnip.find(cb.srcIdx);
+        auto dstIt = clipToSnip.find(cb.dstIdx);
         if (srcIt == clipToSnip.end() || dstIt == clipToSnip.end())
             continue;
 
-        SnipCable sc;
+        SnipCable sc = cb;
         sc.srcIdx = srcIt->second;
-        sc.srcConn = cb.srcConnectorIdx;
-        sc.srcIsOutput = cb.srcIsOutput;
         sc.dstIdx = dstIt->second;
-        sc.dstConn = cb.dstConnectorIdx;
-        sc.dstIsOutput = cb.dstIsOutput;
         snip.cables.push_back(sc);
     }
 
@@ -7381,6 +7422,14 @@ PatchCanvasComponent::PatchCanvasComponent()
 
 bool PatchCanvasComponent::keyPressed(const juce::KeyPress& key)
 {
+    // Escape has to call off a pending paste from here too: the command can be
+    // given from the Edit menu, which leaves the focus off the canvases.
+    if (key == juce::KeyPress::escapeKey && PatchCanvas::isDropPending())
+    {
+        PatchCanvas::cancelPendingDrop();
+        return true;
+    }
+
     return PatchCanvas::handleOverlayKey(key, *this);
 }
 

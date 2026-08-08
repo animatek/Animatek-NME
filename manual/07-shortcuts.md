@@ -26,10 +26,10 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl+Z` | Undo |
 | `Ctrl+Shift+Z`, `Ctrl+Y` | Redo |
 | `Ctrl+A` | Select all modules in the section |
-| `Ctrl+X` / `Ctrl+C` / `Ctrl+V` | Cut / copy / paste modules |
+| `Ctrl+X` / `Ctrl+C` / `Ctrl+V` | Cut / copy / paste modules (paste drops on the next click) |
 | `Ctrl+D` | Duplicate selection with cables |
 | `Delete`, `Backspace` | Delete selection |
-| `Escape` | Clear selection |
+| `Escape` | Cancel a pending paste or add, otherwise clear selection |
 | Arrow keys | Nudge selected modules one grid cell |
 | `Ctrl+R` | Randomize parameters |
 | `Ctrl+Shift+R` | Randomize parameters (gaussian) |

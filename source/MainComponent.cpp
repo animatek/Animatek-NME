@@ -3068,6 +3068,23 @@ void MainComponent::wireSlotView(int slot) {
     importSnippetFromFile(slot, file, gridX, gridY);
   });
 
+  // Paste and Duplicate insert a block of modules the same way the snippet
+  // browser does, so they go through the same undoable action.
+  canvas.setSnippetInsertCallback(
+      [patch, ctx, undoMgr, updateLoad](SnipData snip, int section, int offsetX, int offsetY) {
+        std::vector<std::pair<int, int>> created;
+        if (!patch() || !ctx()) return created;
+
+        // perform() takes the action over and deletes it when it fails, so the
+        // bare pointer is only good to read once it has reported success.
+        auto* action = new InsertSnippetAction(*ctx(), std::move(snip),
+                                              offsetX, offsetY, section);
+        if (undoMgr().perform(action))
+          created = action->getCreatedIndices();
+        updateLoad();
+        return created;
+      });
+
   // Undo/redo keyboard shortcuts (Ctrl+Z / Ctrl+Shift+Z), scoped to this slot
   canvas.setUndoCallback([this, slot, updateLoad]() { slotUndoManagers[slot].undo(); updateLoad(); });
   canvas.setRedoCallback([this, slot, updateLoad]() { slotUndoManagers[slot].redo(); updateLoad(); });

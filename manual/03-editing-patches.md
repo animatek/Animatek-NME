@@ -9,6 +9,19 @@
   onto the canvas, into whichever sub-window you drop them on.
 - **Add Module**: right-click empty canvas for the full menu by category.
 
+Quick Add and the Add Module menu do not place the module where you asked for
+the menu: they hand it to the pointer as an outline, and the click that follows
+puts it down, exactly as the original editor does. Move to the spot you want,
+click, and it lands there; `Escape` or a right-click throws it away without
+adding anything. Because you choose the spot, you also choose the area: the
+same outline can be carried from Poly to Common, or into another slot's window.
+Dragging from the module browser is unchanged, since a drag already ends where
+you release it.
+
+Whatever sits where you drop a module moves down its column to make room, and
+anything that then gets in *its* way moves down too, so nothing is ever left
+hidden underneath.
+
 The Poly and Common areas accept different module sets, matching the hardware.
 Modules use DSP resources on the synth, and every one of these three routes
 prints the module's cost next to its name ("Audio In (2.2%)") so you can choose
@@ -20,7 +33,10 @@ with the budget in view. The header's Load meters track the patch total; see
 - Click selects; `Shift`-click and rubber-band extend the selection; `Ctrl+A`
   selects the whole section; `Escape` clears.
 - Drag to move (the grid keeps everything tidy); arrow keys nudge one cell.
-- `Ctrl+X/C/V` cut/copy/paste, `Ctrl+D` duplicates **with cables**.
+- `Ctrl+X/C/V` cut/copy/paste, `Ctrl+D` duplicates **with cables**. Paste works
+  like Add Module: the copied modules hang off the pointer as outlines and the
+  next click drops them, so one clipboard serves both areas, every slot window,
+  and any spot you can see. `Escape` cancels.
 - `Delete` removes the selection, cables included. Everything is undoable;
   each slot has its own undo history (`Ctrl+Z` / `Ctrl+Shift+Z`).
 
