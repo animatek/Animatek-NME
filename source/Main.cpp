@@ -1,6 +1,7 @@
 #include "MainComponent.h"
 #include "BinaryData.h"
 #include "ui/AppTheme.h"
+#include "ui/PatchCanvasComponent.h"
 #include "ui/ThemeRegistry.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 
@@ -82,6 +83,24 @@ public:
         void closeButtonPressed() override
         {
             JUCEApplication::getInstance()->systemRequestedQuit();
+        }
+
+        // Closing a component leaves JUCE with nothing focused, and keys then
+        // arrive at the window rather than bubbling up from a child. Quick Add
+        // is a window of its own, so that is exactly the state it leaves behind:
+        // without this, Enter could not put down the module it had just handed
+        // to the pointer, though a click could.
+        bool keyPressed(const juce::KeyPress& key) override
+        {
+            if (key == juce::KeyPress::escapeKey && PatchCanvas::isDropPending())
+            {
+                PatchCanvas::cancelPendingDrop();
+                return true;
+            }
+            if (key == juce::KeyPress::returnKey && PatchCanvas::dropPendingAtPointer())
+                return true;
+
+            return DocumentWindow::keyPressed(key);
         }
 
     private:

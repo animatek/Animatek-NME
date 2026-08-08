@@ -6404,9 +6404,22 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         if (!selection.empty()) { duplicateSelection(true); return true; }
     }
 
-    // Enter → Quick Add popup at mouse position (only one at a time)
+    // Enter → put a pending block down where the pointer is, or, with nothing
+    // pending, open the Quick Add popup there (only one at a time). Adding a
+    // module from the keyboard is meant to be quick, so the whole thing is
+    // Enter, a few letters, Enter, Enter — without ever reaching for the mouse.
     if (key == juce::KeyPress::returnKey && patch != nullptr && moduleDescs != nullptr)
     {
+        if (pendingDrop.active())
+        {
+            // With the pointer parked off every canvas there is nowhere to read
+            // a position from, so the block goes to this canvas, which is the
+            // one the keyboard is in.
+            if (!dropPendingAtPointer())
+                dropPendingAt(screenToCanvas(getMouseXYRelative()));
+            return true;
+        }
+
         openQuickAddAtMouse();
         return true;
     }
@@ -7233,14 +7246,75 @@ void PatchCanvas::armPendingDrop(PendingDrop drop)
         c->repaint();
     }
 
-    // Show the outlines straight away when the pointer is already over a
-    // canvas, rather than waiting for it to move.
-    for (auto* c : liveCanvases)
-        if (c != nullptr && c->isMouseOverOrDragging(false))
+    // Show the outlines straight away rather than waiting for the mouse to
+    // move. Asking JUCE where the pointer is beats asking the canvas whether it
+    // is under it: the command often comes from a popup or a menu, which is
+    // what holds the mouse at that moment, so the canvas would say no.
+    if (auto* target = canvasUnderPointer())
+    {
+        auto screenPos = pointerScreenPosition();
+        target->updatePendingGhost(
+            target->screenToCanvas(target->getLocalPoint(nullptr, screenPos)));
+
+        // Let the keyboard follow the outlines, so Enter drops them and Escape
+        // calls them off however the command was given. Deferred because the
+        // popup that armed this is usually still closing, and the main window
+        // is asked for the focus first: Quick Add is a window in its own right,
+        // so closing it hands the keyboard back to the window manager rather
+        // than to the canvas underneath.
+        juce::Component::SafePointer<PatchCanvas> safe(target);
+        juce::MessageManager::callAsync([safe]()
         {
-            c->updatePendingGhost(c->screenToCanvas(c->getMouseXYRelative()));
-            break;
-        }
+            if (safe == nullptr || !pendingDrop.active())
+                return;
+            if (auto* top = safe->getTopLevelComponent())
+                top->toFront(true);
+            safe->grabKeyboardFocus();
+        });
+    }
+}
+
+juce::Point<int> PatchCanvas::pointerScreenPosition()
+{
+    return juce::Desktop::getInstance().getMainMouseSource()
+               .getScreenPosition().roundToInt();
+}
+
+PatchCanvas* PatchCanvas::canvasUnderPointer()
+{
+    const auto screenPos = pointerScreenPosition();
+
+    for (auto* c : liveCanvases)
+    {
+        if (c == nullptr || !c->isShowing())
+            continue;
+
+        // A canvas is far taller than its window ever shows, so what counts is
+        // the slice of it the viewport is showing.
+        auto* viewport = c->findParentComponentOfClass<juce::Viewport>();
+        auto visible = (viewport != nullptr) ? viewport->getScreenBounds()
+                                             : c->getScreenBounds();
+        if (visible.contains(screenPos))
+            return c;
+    }
+
+    return nullptr;
+}
+
+bool PatchCanvas::dropPendingAtPointer()
+{
+    if (!pendingDrop.active())
+        return false;
+
+    // pendingHost is only set while the pointer is over it, so it is the same
+    // canvas canvasUnderPointer() would find, and cheaper to ask.
+    auto* target = (pendingHost != nullptr) ? pendingHost : canvasUnderPointer();
+    if (target == nullptr)
+        return false;
+
+    const auto screenPos = pointerScreenPosition();
+    target->dropPendingAt(target->screenToCanvas(target->getLocalPoint(nullptr, screenPos)));
+    return true;
 }
 
 void PatchCanvas::cancelPendingDrop()
@@ -7422,13 +7496,15 @@ PatchCanvasComponent::PatchCanvasComponent()
 
 bool PatchCanvasComponent::keyPressed(const juce::KeyPress& key)
 {
-    // Escape has to call off a pending paste from here too: the command can be
-    // given from the Edit menu, which leaves the focus off the canvases.
+    // Escape and Enter have to reach a pending drop from here too: the command
+    // can be given from the Edit menu, which leaves the focus off the canvases.
     if (key == juce::KeyPress::escapeKey && PatchCanvas::isDropPending())
     {
         PatchCanvas::cancelPendingDrop();
         return true;
     }
+    if (key == juce::KeyPress::returnKey && PatchCanvas::dropPendingAtPointer())
+        return true;
 
     return PatchCanvas::handleOverlayKey(key, *this);
 }

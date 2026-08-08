@@ -38,7 +38,7 @@ On macOS, `Ctrl` is `Cmd`.
 
 | Shortcut | Action |
 |----------|--------|
-| `Enter`, double-click | Quick Add module at mouse position |
+| `Enter`, double-click | Quick Add module; `Enter` again drops it at the pointer |
 | `F1` | Module help for the hovered/selected module |
 | `F5` | Toggle parameter values overlay for the whole patch (morphed ones show their range) |
 | hover | Rest the cursor on a control to read its value |

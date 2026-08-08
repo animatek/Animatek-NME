@@ -37,6 +37,11 @@
   away, no way to cross between the two areas, and no way to paste into Common at all. Dragging
   from the module browser is unchanged, since a drag already ends where you release it.
 
+  Adding a module from the keyboard stays as quick as it was: `Enter`, a few letters, `Enter` to
+  pick it, `Enter` again to drop it where the pointer already is. The mouse is only needed to put
+  the module somewhere else. The outlines also appear the moment the command is given, rather than
+  waiting for the mouse to move, which had left the `+` cursor showing with nothing attached to it.
+
 - **Whatever is in the way moves down instead of being buried** (#36). Dropping a module on top of
   another one used to leave the older module hidden underneath, with no sign it was still there.
   Now the modules below shift down their column to make room, and anything they run into shifts

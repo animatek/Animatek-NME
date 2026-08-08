@@ -18,6 +18,11 @@ same outline can be carried from Poly to Common, or into another slot's window.
 Dragging from the module browser is unchanged, since a drag already ends where
 you release it.
 
+Adding from the keyboard stays as quick as it was: `Enter`, a few letters,
+`Enter` to pick the module, `Enter` again to drop it where the pointer already
+is. You only need the mouse if you want to put the module somewhere else, and
+the outline waits for as long as you take.
+
 Whatever sits where you drop a module moves down its column to make room, and
 anything that then gets in *its* way moves down too, so nothing is ever left
 hidden underneath.

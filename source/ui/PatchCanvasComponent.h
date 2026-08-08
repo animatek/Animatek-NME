@@ -399,6 +399,11 @@ private:
     void armPendingDrop(PendingDrop drop);
     void updatePendingGhost(juce::Point<int> canvasPos);
     void dropPendingAt(juce::Point<int> canvasPos);
+    // Whichever canvas the pointer is over, in any slot window, or null. Asked
+    // rather than waiting to be told, so the outlines can be shown the moment a
+    // command arms them instead of only once the mouse moves.
+    static PatchCanvas* canvasUnderPointer();
+    static juce::Point<int> pointerScreenPosition();
     // The selected modules and the cables running between them. Copy, Duplicate
     // and Save as Snippet all want exactly this, so they read it from here.
     void collectSelection(std::vector<ClipboardEntry>& entriesOut,
@@ -478,6 +483,9 @@ public:
     // Escape has to reach it from wherever the keyboard focus happens to be.
     static bool isDropPending() { return pendingDrop.active(); }
     static void cancelPendingDrop();
+    // Puts a pending block down where the pointer is, without needing a click.
+    // Adding a module with Enter is meant to be quick, so Enter finishes it.
+    static bool dropPendingAtPointer();
 
     static void setCableOpacity (float v)  { cableOpacity   = juce::jlimit(0.0f, 1.0f, v); }
     static void setCableStyle   (int idx)  { cableStyleIdx  = idx; }

@@ -945,6 +945,17 @@ static int slotDigitFromShiftedKey(const juce::KeyPress& key)
 }
 
 bool MainComponent::keyPressed(const juce::KeyPress& key) {
+  // Modules waiting on the pointer answer Enter and Escape from here as well as
+  // from the canvas itself. Quick Add is a window of its own, so the keyboard
+  // focus does not always come back to the canvas when it closes, and Enter is
+  // the whole point of adding a module from the keyboard.
+  if (key == juce::KeyPress::escapeKey && PatchCanvas::isDropPending()) {
+    PatchCanvas::cancelPendingDrop();
+    return true;
+  }
+  if (key == juce::KeyPress::returnKey && PatchCanvas::dropPendingAtPointer())
+    return true;
+
   if (key == juce::KeyPress(',', juce::ModifierKeys::commandModifier, 0))
   {
     showEditorOptionsDialog();
