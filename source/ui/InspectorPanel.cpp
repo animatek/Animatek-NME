@@ -18,6 +18,11 @@ static const char* kGroupNames[4] = { "Macro 1", "Macro 2", "Macro 3", "Macro 4"
 static juce::PropertiesFile* inspectorSettings = nullptr;
 static bool presetsSectionCollapsed = false;
 
+// The presets that ship with the editor sit in a group of their own inside the
+// section, folded away by default: there are 29 for the Drum Synthesizer alone,
+// and a flat list buries the few you saved yourself under a wall of names.
+static bool factoryPresetsCollapsed = true;
+
 static void setPresetsCollapsed(bool collapsed)
 {
     presetsSectionCollapsed = collapsed;
@@ -26,6 +31,32 @@ static void setPresetsCollapsed(bool collapsed)
         inspectorSettings->setValue("inspectorPresetsCollapsed", collapsed);
         inspectorSettings->saveIfNeeded();
     }
+}
+
+static void setFactoryPresetsCollapsed(bool collapsed)
+{
+    factoryPresetsCollapsed = collapsed;
+    if (inspectorSettings != nullptr)
+    {
+        inspectorSettings->setValue("inspectorFactoryPresetsCollapsed", collapsed);
+        inspectorSettings->saveIfNeeded();
+    }
+}
+
+// Built-ins always sort before user presets, so a count is all the layout needs.
+static int countFactory(const std::vector<ModulePreset>& list)
+{
+    int n = 0;
+    for (const auto& p : list)
+        if (p.builtIn)
+            ++n;
+    return n;
+}
+
+// A built-in row is hidden while the Factory group is folded.
+static bool presetRowHidden(const ModulePreset& p)
+{
+    return p.builtIn && factoryPresetsCollapsed;
 }
 
 // ─── AssignmentsListComponent ────────────────────────────────────────────────
@@ -198,7 +229,8 @@ public:
 
     // ── Hit testing ──
     enum class HitType { None, MorphX, MorphAmount, KnobX, CtrlX,
-                         PresetRecall, PresetDelete, PresetSave, PresetsHeader };
+                         PresetRecall, PresetDelete, PresetSave, PresetsHeader,
+                         FactoryHeader };
     struct HitResult { HitType type = HitType::None; int rowIdx = -1; };
 
     HitResult findHit(juce::Point<int> pos) const
@@ -259,8 +291,17 @@ public:
             if (!presetsSectionCollapsed)
             {
                 const auto& list = presets();
+                if (countFactory(list) > 0)
+                {
+                    juce::Rectangle<int> factoryRect(0, y, getWidth(), rowH);
+                    if (factoryRect.contains(pos))
+                        return { HitType::FactoryHeader, -1 };
+                    y += rowH;
+                }
                 for (int i = 0; i < (int)list.size(); ++i)
                 {
+                    if (presetRowHidden(list[size_t(i)]))
+                        continue;
                     juce::Rectangle<int> rowRect(0, y, getWidth(), rowH);
                     if (rowRect.contains(pos))
                     {
@@ -352,13 +393,21 @@ public:
         if (hasPresetSection())
         {
             paintSectionTitle(g, y, "Presets", juce::Colour(0xff7fb2d4));
-            paintCollapseChevron(g, y, juce::Colour(0xff7fb2d4));
+            paintCollapseChevron(g, y, juce::Colour(0xff7fb2d4),
+                                 presetsSectionCollapsed, sectionTitleH);
             y += sectionTitleH;
             if (!presetsSectionCollapsed)
             {
                 const auto& list = presets();
+                if (countFactory(list) > 0)
+                {
+                    paintFactoryHeader(g, y, countFactory(list));
+                    y += rowH;
+                }
                 for (int i = 0; i < (int)list.size(); ++i)
                 {
+                    if (presetRowHidden(list[size_t(i)]))
+                        continue;
                     paintPresetRow(g, y, list[size_t(i)]);
                     y += rowH;
                 }
@@ -369,14 +418,15 @@ public:
 
     // Same shape as the main window's panel chevrons: pointing down while the
     // section is open, up while it is folded away.
-    void paintCollapseChevron(juce::Graphics& g, int y, juce::Colour col)
+    void paintCollapseChevron(juce::Graphics& g, int y, juce::Colour col,
+                              bool collapsed, int height)
     {
         const float cx = static_cast<float>(getWidth() - marginX - 8);
-        const float cy = static_cast<float>(y) + sectionTitleH * 0.5f;
+        const float cy = static_cast<float>(y) + height * 0.5f;
         const float s  = 3.5f;
 
         juce::Path chevron;
-        if (presetsSectionCollapsed)
+        if (collapsed)
         {
             chevron.startNewSubPath(cx - s * 1.4f, cy + s * 0.7f);
             chevron.lineTo(cx, cy - s * 0.7f);
@@ -391,6 +441,19 @@ public:
         g.setColour(col);
         g.strokePath(chevron, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved,
                                                    juce::PathStrokeType::rounded));
+    }
+
+    // Reads as a folder inside the section: same indent as the rows, its own
+    // chevron, and a count so the size of what is folded away is visible.
+    void paintFactoryHeader(juce::Graphics& g, int y, int count)
+    {
+        g.setColour(AppTheme::palette().textSecondary);
+        g.setFont(AppTheme::uiFont(fontRow));
+        g.drawText("Factory (" + juce::String(count) + ")",
+                   marginX, y, getWidth() - marginX * 2 - 16, rowH,
+                   juce::Justification::centredLeft);
+        paintCollapseChevron(g, y, AppTheme::palette().textSecondary,
+                             factoryPresetsCollapsed, rowH);
     }
 
     void paintPresetRow(juce::Graphics& g, int y, const ModulePreset& preset)
@@ -494,6 +557,13 @@ public:
         if (hr.type == HitType::PresetsHeader)
         {
             setPresetsCollapsed(!presetsSectionCollapsed);
+            if (onPresetsCollapsedChanged) onPresetsCollapsedChanged();
+            return;
+        }
+
+        if (hr.type == HitType::FactoryHeader)
+        {
+            setFactoryPresetsCollapsed(!factoryPresetsCollapsed);
             if (onPresetsCollapsedChanged) onPresetsCollapsedChanged();
             return;
         }
@@ -780,9 +850,17 @@ private:
         if (hasPresetSection())
         {
             h += sectionTitleH;
-            // Rows plus the Save row that always closes the section.
+            // Rows plus the Save row that always closes the section, plus the
+            // Factory group's own header when there is one.
             if (!presetsSectionCollapsed)
-                h += ((int)presets().size() + 1) * rowH;
+            {
+                const auto& list = presets();
+                const int factory = countFactory(list);
+                int rows = (int)list.size() - (factoryPresetsCollapsed ? factory : 0);
+                h += (rows + 1) * rowH;
+                if (factory > 0)
+                    h += rowH;
+            }
         }
         h += topPad;
         return h;
@@ -1009,7 +1087,10 @@ void InspectorPanel::setSharedSettings(juce::PropertiesFile* settings)
 {
     inspectorSettings = settings;
     if (settings != nullptr)
+    {
         presetsSectionCollapsed = settings->getBoolValue("inspectorPresetsCollapsed", false);
+        factoryPresetsCollapsed = settings->getBoolValue("inspectorFactoryPresetsCollapsed", true);
+    }
 }
 
 void InspectorPanel::setMorphFaderKnob(int knobIndex, int carrierGroup)

@@ -7597,17 +7597,43 @@ juce::PopupMenu PatchCanvas::buildDrumPresetMenu(Module& m, std::shared_ptr<int>
     if (it != drumPresetState.end())
         currentIdx = it->second;
 
+    // The presets that ship with the editor go in a folder of their own. There
+    // are 29 of them for the Drum Synthesizer alone, and a flat list buries the
+    // handful you saved yourself under a wall of names you rarely pick from.
+    juce::PopupMenu factory;
+    bool anyFactory = false;
+    bool anyUser = false;
+
     const auto& list = drumPresets();
     for (size_t i = 0; i < list.size(); ++i)
-        menu.addCustomItem(drumPresetFirstId + static_cast<int>(i),
-                           std::make_unique<DrumPresetMenuRow>(
-                               list[i].name,
-                               !list[i].builtIn,
-                               static_cast<int>(i) == currentIdx,
-                               action),
-                           nullptr, list[i].name);
+    {
+        auto row = std::make_unique<DrumPresetMenuRow>(
+            list[i].name,
+            !list[i].builtIn,
+            static_cast<int>(i) == currentIdx,
+            action);
+        const int id = drumPresetFirstId + static_cast<int>(i);
 
-    if (!list.empty())
+        if (list[i].builtIn)
+        {
+            factory.addCustomItem(id, std::move(row), nullptr, list[i].name);
+            anyFactory = true;
+        }
+        else
+        {
+            menu.addCustomItem(id, std::move(row), nullptr, list[i].name);
+            anyUser = true;
+        }
+    }
+
+    if (anyFactory)
+    {
+        if (anyUser)
+            menu.addSeparator();
+        menu.addSubMenu("Factory", factory);
+    }
+
+    if (anyFactory || anyUser)
         menu.addSeparator();
     menu.addItem(drumPresetSaveId, "Save current settings as preset...");
     return menu;

@@ -16,6 +16,11 @@
 
 ### Added
 
+- **The Drum Synthesizer's factory presets ship with the editor** (#33): all 29 of Clavia's own,
+  from Kick 1 to Perc 6. They sit in a **Factory** group, folded away by default in the Inspector
+  and behind a **Factory** submenu on the module's right-click menu, so the presets you saved
+  yourself stay where you can reach them. Factory presets cannot be renamed or deleted, and never
+  touch your own preset files.
 - **The overlay readouts are on the View menu** as well as on their function keys (#44), under
   **View > Overlays**, ticked to show which one is open. They had been on `F5` and `F7`-`F10`
   only, which is easy to miss: the request that prompted this was for a whole-patch module cost
