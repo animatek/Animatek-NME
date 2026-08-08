@@ -1067,6 +1067,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(21, "Redo " + undoManager().getRedoDescription() + "\tCtrl+Shift+Z",
                  undoManager().canRedo(), false);
     menu.addSeparator();
+    // These have always been on the keyboard and on the module's own
+    // right-click menu, but never here, which is the first place anyone looks
+    // (issue #42).
+    auto& canvas = activeCanvas();
+    const bool anySelected = canvas.hasSelection();
+    menu.addItem(24, "Cut\tCtrl+X", anySelected);
+    menu.addItem(25, "Copy\tCtrl+C", anySelected);
+    menu.addItem(26, "Paste\tCtrl+V", canvas.canPaste());
+    menu.addItem(27, "Duplicate\tCtrl+D", anySelected);
+    menu.addSeparator();
     bool hasPatch = (currentPatch() != nullptr);
     menu.addItem(22, "Randomize (Simple)\tCtrl+R", hasPatch);
     menu.addItem(23, "Randomize (Gaussian)\tCtrl+Shift+R", hasPatch);
@@ -1242,6 +1252,21 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 21:
     undoManager().redo();
+    updateDspLoadDisplay();
+    break;
+  case 24:
+    activeCanvas().cutSelection();
+    updateDspLoadDisplay();
+    break;
+  case 25:
+    activeCanvas().copySelection();
+    break;
+  case 26:
+    activeCanvas().pasteClipboard();
+    updateDspLoadDisplay();
+    break;
+  case 27:
+    activeCanvas().duplicateSelected();
     updateDspLoadDisplay();
     break;
   case 22:

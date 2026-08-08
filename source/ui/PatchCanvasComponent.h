@@ -407,6 +407,21 @@ public:
     inline static bool  mutatorModeOn  = false; // Patch Mutator open: frame excluded modules
 
 public:
+    // Edit-menu commands. The keyboard has always had these; the menu needs to
+    // ask whether they apply before offering them (issue #42).
+    bool hasSelection() const { return !selection.empty(); }
+    bool canPaste()     const { return !clipboard.empty(); }
+    void cutSelection()
+    {
+        if (selection.empty())
+            return;
+        copySelectionToClipboard();
+        deleteSelection();
+    }
+    void copySelection()      { if (!selection.empty()) copySelectionToClipboard(); }
+    void pasteClipboard()     { if (!clipboard.empty()) pasteFromClipboard(); }
+    void duplicateSelected()  { if (!selection.empty()) duplicateSelection(true); }
+
     static void setCableOpacity (float v)  { cableOpacity   = juce::jlimit(0.0f, 1.0f, v); }
     static void setCableStyle   (int idx)  { cableStyleIdx  = idx; }
     static void setAutoUpload   (bool on)  { autoUploadOn   = on;  }
@@ -568,6 +583,34 @@ public:
     {
         polyCanvas.setSnippetDropCallback(cb);
         commonCanvas.setSnippetDropCallback(std::move(cb));
+    }
+
+    // The two areas are separate canvases with a clipboard each, so every
+    // command goes to whichever one it applies to. Copying in one area and
+    // pasting into the other is a separate matter, still open on issue #42.
+    bool hasSelection() const { return polyCanvas.hasSelection() || commonCanvas.hasSelection(); }
+    bool canPaste()     const { return polyCanvas.canPaste()     || commonCanvas.canPaste(); }
+
+    void cutSelection()
+    {
+        if (polyCanvas.hasSelection())   polyCanvas.cutSelection();
+        if (commonCanvas.hasSelection()) commonCanvas.cutSelection();
+    }
+    void copySelection()
+    {
+        if (polyCanvas.hasSelection())   polyCanvas.copySelection();
+        if (commonCanvas.hasSelection()) commonCanvas.copySelection();
+    }
+    void pasteClipboard()
+    {
+        // Only the area you copied from holds anything, so this picks itself.
+        if (polyCanvas.canPaste())        polyCanvas.pasteClipboard();
+        else if (commonCanvas.canPaste()) commonCanvas.pasteClipboard();
+    }
+    void duplicateSelected()
+    {
+        if (polyCanvas.hasSelection())   polyCanvas.duplicateSelected();
+        if (commonCanvas.hasSelection()) commonCanvas.duplicateSelected();
     }
 
     /** Aggregate selected modules from both canvases */

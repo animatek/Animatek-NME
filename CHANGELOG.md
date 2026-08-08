@@ -28,11 +28,15 @@
 
 ### Fixed
 
+- **Cut, Copy, Paste and Duplicate are on the Edit menu** (#42), where anyone would look for them.
+  They have always been on the keyboard and on a module's right-click menu, and nowhere else.
+
 - **Pasted modules land beside the ones they were copied from** (#42), the way duplicating them
-  does, and back in the area they came from. `Ctrl+V` used to aim at the middle of the whole
+  does, and in the area you are working in. `Ctrl+V` used to aim at the middle of the whole
   canvas, which on any real patch is thousands of pixels from wherever you were working, so the
-  copies effectively vanished. Pasting from the right-click menu still puts them under the
-  pointer, which is the point of doing it that way.
+  copies effectively vanished; and the target area was worked out from a layout the editor has
+  not had since the slots became sub-windows, so a paste could also land in the wrong one.
+  Pasting from the right-click menu still puts them under the pointer.
 
 - **On macOS, showing and hiding a slot moves to `Cmd+Alt+1`-`Cmd+Alt+4`** (#49). macOS keeps
   `Cmd+Shift+3` and `Cmd+Shift+4` for its own screen capture and never passes them on, so two of

@@ -7196,7 +7196,7 @@ void PatchCanvas::pasteClipboard(const juce::Point<int>* mousePos)
     const int offsetX = 1, offsetY = 2;
 
     int minX = clipboard[0].gridPos.x, minY = clipboard[0].gridPos.y;
-    int pasteSection = 0, pasteGridX = 0, pasteGridY = 0;
+    int pasteGridX = 0, pasteGridY = 0;
 
     if (atPointer)
     {
@@ -7206,20 +7206,22 @@ void PatchCanvas::pasteClipboard(const juce::Point<int>* mousePos)
             minY = std::min(minY, e.gridPos.y);
         }
 
-        int separatorY = patch->getHeader().separatorPosition * gridY;
-        if (separatorY == 0) separatorY = canvasHeight / 2;
-        pasteSection = (mousePos->y < separatorY) ? 1 : 0;
         pasteGridX = mousePos->x / gridX;
-        pasteGridY = (pasteSection == 1) ? mousePos->y / gridY
-                                         : (mousePos->y - separatorY) / gridY;
+        pasteGridY = mousePos->y / gridY;
     }
 
-    // Section is tracked per module: without a pointer a selection copied from
-    // both areas comes back into both.
+    // Modules land in the area you are looking at. Each canvas shows one
+    // section, so that is simply its own. The pointer path used to work the
+    // section out from where the click fell relative to a separator, which is
+    // how it was when a single canvas stacked both areas: in the poly canvas
+    // the click is always above that imaginary line, so it happened to be
+    // right, and in the common canvas it would have been wrong.
+    const int pasteSection = (mySection >= 0) ? mySection : clipboard[0].section;
+
     std::vector<std::pair<Module*, int>> pasted;
     for (auto& entry : clipboard)
     {
-        const int section = atPointer ? pasteSection : entry.section;
+        const int section = pasteSection;
         const int gx = atPointer ? pasteGridX + (entry.gridPos.x - minX)
                                  : entry.gridPos.x + offsetX;
         const int gy = atPointer ? pasteGridY + (entry.gridPos.y - minY)
