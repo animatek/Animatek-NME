@@ -6339,12 +6339,12 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         }
     }
 
-    // Ctrl+V → paste at centre of viewport
+    // Ctrl+V → paste beside the modules it was copied from
     if (key == juce::KeyPress('v', juce::ModifierKeys::commandModifier, 0))
     {
         if (!clipboard.empty())
         {
-            pasteFromClipboard(screenToCanvas({ getWidth() / 2, getHeight() / 4 }));
+            pasteFromClipboard();
             return true;
         }
     }
@@ -7171,66 +7171,91 @@ void PatchCanvas::copySelectionToClipboard()
 
 void PatchCanvas::pasteFromClipboard(juce::Point<int> mousePos)
 {
+    pasteClipboard(&mousePos);
+}
+
+void PatchCanvas::pasteFromClipboard()
+{
+    pasteClipboard(nullptr);
+}
+
+void PatchCanvas::pasteClipboard(const juce::Point<int>* mousePos)
+{
     if (clipboard.empty() || patch == nullptr || moduleDescs == nullptr) return;
 
     if (undoManager)
         undoManager->beginNewTransaction("Paste");
 
-    // Find bounding box of clipboard to offset paste position
+    const bool atPointer = (mousePos != nullptr);
+
+    // Where the block lands. With a pointer, the top-left of the copied block
+    // goes under it. Without one, each module lands beside the one it was
+    // copied from and in the section it came from, which is what Duplicate
+    // does. Ctrl+V used to aim at the middle of the whole canvas, thousands of
+    // pixels from wherever you were looking (issue #42).
+    const int offsetX = 1, offsetY = 2;
+
     int minX = clipboard[0].gridPos.x, minY = clipboard[0].gridPos.y;
-    for (auto& e : clipboard)
+    int pasteSection = 0, pasteGridX = 0, pasteGridY = 0;
+
+    if (atPointer)
     {
-        minX = std::min(minX, e.gridPos.x);
-        minY = std::min(minY, e.gridPos.y);
+        for (auto& e : clipboard)
+        {
+            minX = std::min(minX, e.gridPos.x);
+            minY = std::min(minY, e.gridPos.y);
+        }
+
+        int separatorY = patch->getHeader().separatorPosition * gridY;
+        if (separatorY == 0) separatorY = canvasHeight / 2;
+        pasteSection = (mousePos->y < separatorY) ? 1 : 0;
+        pasteGridX = mousePos->x / gridX;
+        pasteGridY = (pasteSection == 1) ? mousePos->y / gridY
+                                         : (mousePos->y - separatorY) / gridY;
     }
 
-    // Determine target section and position from mouse
-    int separatorY = patch->getHeader().separatorPosition * gridY;
-    if (separatorY == 0) separatorY = canvasHeight / 2;
-    int pasteSection = (mousePos.y < separatorY) ? 1 : 0;
-    int pasteGridX = mousePos.x / gridX;
-    int pasteGridY = (pasteSection == 1) ? mousePos.y / gridY
-                                         : (mousePos.y - separatorY) / gridY;
-
-    std::vector<Module*> pasted;
+    // Section is tracked per module: without a pointer a selection copied from
+    // both areas comes back into both.
+    std::vector<std::pair<Module*, int>> pasted;
     for (auto& entry : clipboard)
     {
-        int dx = entry.gridPos.x - minX;
-        int dy = entry.gridPos.y - minY;
-        auto& container = patch->getContainer(pasteSection);
-        int newY = findNearestFreeY(container, nullptr, pasteGridX + dx,
-                                    pasteGridY + dy,
-                                    moduleDescs->getModuleByIndex(entry.typeIndex)
-                                        ? moduleDescs->getModuleByIndex(entry.typeIndex)->height : 1);
-        auto* newMod = patch->createModule(pasteSection, entry.typeIndex,
-                                           pasteGridX + dx, newY,
+        const int section = atPointer ? pasteSection : entry.section;
+        const int gx = atPointer ? pasteGridX + (entry.gridPos.x - minX)
+                                 : entry.gridPos.x + offsetX;
+        const int gy = atPointer ? pasteGridY + (entry.gridPos.y - minY)
+                                 : entry.gridPos.y + offsetY;
+
+        auto* desc = moduleDescs->getModuleByIndex(entry.typeIndex);
+        auto& container = patch->getContainer(section);
+        int newY = findNearestFreeY(container, nullptr, gx, gy, desc ? desc->height : 1);
+
+        auto* newMod = patch->createModule(section, entry.typeIndex, gx, newY,
                                            entry.name, *moduleDescs);
-        if (!newMod) { pasted.push_back(nullptr); continue; }
+        if (!newMod) { pasted.push_back({ nullptr, section }); continue; }
 
         auto& params = newMod->getParameters();
         for (size_t i = 0; i < entry.paramValues.size() && i < params.size(); ++i)
             params[i].setValue(entry.paramValues[i]);
-        pasted.push_back(newMod);
+        pasted.push_back({ newMod, section });
     }
 
-    // Recreate cables
-    auto& container = patch->getContainer(pasteSection);
+    // Recreate cables, in the container the pasted source module ended up in.
     for (auto& cb : clipboardCables)
     {
         if (cb.srcModuleClipIdx >= (int)pasted.size()) continue;
         if (cb.dstModuleClipIdx >= (int)pasted.size()) continue;
-        auto* s = pasted[static_cast<size_t>(cb.srcModuleClipIdx)];
-        auto* d = pasted[static_cast<size_t>(cb.dstModuleClipIdx)];
-        if (!s || !d) continue;
+        auto [s, sSection] = pasted[static_cast<size_t>(cb.srcModuleClipIdx)];
+        auto [d, dSection] = pasted[static_cast<size_t>(cb.dstModuleClipIdx)];
+        if (!s || !d || sSection != dSection) continue;
         auto* sc = s->getConnector(cb.srcConnectorIdx, cb.srcIsOutput);
         auto* dc = d->getConnector(cb.dstConnectorIdx, cb.dstIsOutput);
-        if (sc && dc) container.addConnection(sc, dc);
+        if (sc && dc) patch->getContainer(sSection).addConnection(sc, dc);
     }
 
     // Select pasted modules
     clearSelection();
-    for (auto* m : pasted)
-        if (m) selection.push_back({ m, pasteSection });
+    for (auto& [m, section] : pasted)
+        if (m) selection.push_back({ m, section });
 
     repaint();
 }

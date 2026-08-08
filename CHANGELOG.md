@@ -28,6 +28,12 @@
 
 ### Fixed
 
+- **Pasted modules land beside the ones they were copied from** (#42), the way duplicating them
+  does, and back in the area they came from. `Ctrl+V` used to aim at the middle of the whole
+  canvas, which on any real patch is thousands of pixels from wherever you were working, so the
+  copies effectively vanished. Pasting from the right-click menu still puts them under the
+  pointer, which is the point of doing it that way.
+
 - **On macOS, showing and hiding a slot moves to `Cmd+Alt+1`-`Cmd+Alt+4`** (#49). macOS keeps
   `Cmd+Shift+3` and `Cmd+Shift+4` for its own screen capture and never passes them on, so two of
   the four slots could not be toggled from the keyboard at all. Nothing changes on Windows or

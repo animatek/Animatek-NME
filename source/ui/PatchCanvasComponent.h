@@ -369,7 +369,14 @@ private:
     void deleteSelection();
     void duplicateSelection(bool withCables);
     void copySelectionToClipboard();
+    // Anchored to the pointer: the context menu knows where you clicked.
     void pasteFromClipboard(juce::Point<int> mousePos);
+    // Anchored to where the modules were copied from, the way Duplicate places
+    // its copies. Ctrl+V has no pointer to work from (issue #42).
+    void pasteFromClipboard();
+private:
+    void pasteClipboard(const juce::Point<int>* mousePos);
+public:
 
     // Legacy single-module selection (kept for compatibility during move)
     Module* selectedModule = nullptr;
