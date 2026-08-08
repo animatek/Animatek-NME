@@ -33,8 +33,10 @@
   the module played the other. Clavia's own factory presets settle it (their filter values are
   LP, BP, HP in that order), and every patch built or loaded now reads correctly.
 - **A new Drum Synthesizer comes up the way the original's does**, with its own default settings
-  rather than a middle value in every knob. Its preset box reads `none` until you recall one,
-  instead of naming the first preset in the list as though it were loaded.
+  rather than a middle value in every knob. Its preset box names the preset the module's settings
+  match, as the original editor does, and reads `none` when they match nothing: before, it named
+  the first preset in the list whatever the module was set to. Opening a patch no longer carries
+  preset names over from the patch that was in the slot before it.
 
 - **The editor no longer corrupts its own memory as it closes.** Both browser panels let their
   tree view outlive the item it was displaying, and JUCE writes to that item as the view goes

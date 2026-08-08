@@ -373,6 +373,9 @@ void PatchCanvas::setPatch(Patch* p, const ModuleDescriptions* md, const ThemeDa
     selection.clear();
     selectedModule = nullptr;
     selectedSection = -1;
+    // Keyed by container index, so leaving it would name modules in the
+    // incoming patch after whatever sat at the same index in the outgoing one.
+    drumPresetState.clear();
     clearHover();   // hoverTarget holds a Module* into the outgoing patch
     costBadgeModule = nullptr;
     cableSagOffsets.clear();
@@ -5262,9 +5265,8 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 if (upRect.contains(relPos) || dnRect.contains(relPos))
                 {
                     int key = m.getContainerIndex();
-                    int cur = -1;   // "none": either arrow steps onto the first
-                    auto it = drumPresetState.find(key);
-                    if (it != drumPresetState.end()) cur = it->second;
+                    // "none" is -1, so either arrow steps onto the first preset.
+                    int cur = resolvedDrumPreset(m);
 
                     if (upRect.contains(relPos))
                         cur = juce::jlimit(0, numP - 1, cur - 1);
@@ -7426,10 +7428,7 @@ void PatchCanvas::paintDrumSynthExtras(juce::Graphics& g, const Module& m, juce:
     // Preset name text. A module nobody has recalled a preset into reads
     // "none", as the original editor's does. Naming the first preset in the
     // list said a preset was loaded when the module was still at its defaults.
-    int presetIdx = -1;
-    auto it = drumPresetState.find(m.getContainerIndex());
-    if (it != drumPresetState.end())
-        presetIdx = it->second;
+    const int presetIdx = resolvedDrumPreset(m);
 
     juce::String presetName = "none";
     if (presetIdx >= 0 && presetIdx < static_cast<int>(drumPresets().size()))
@@ -7484,6 +7483,52 @@ const std::vector<ModulePreset>& PatchCanvas::drumPresets() const
 {
     static const std::vector<ModulePreset> none;
     return presetLibrary != nullptr ? presetLibrary->forType("DrumSynth") : none;
+}
+
+// A patch file does not record which preset a module was built from, so the
+// original editor reads the name back off the values. Do the same, or every
+// module in a loaded patch would claim to be set to nothing.
+//
+// A preset may name only the parameters it cares about, so it matches when
+// every parameter it does name agrees. An empty preset would match anything.
+static bool drumPresetMatches(const ModulePreset& preset,
+                              const std::map<juce::String, int>& values)
+{
+    if (preset.values.empty())
+        return false;
+
+    for (const auto& kv : preset.values)
+    {
+        auto it = values.find(kv.first);
+        if (it == values.end() || it->second != kv.second)
+            return false;
+    }
+    return true;
+}
+
+int PatchCanvas::resolvedDrumPreset(const Module& m)
+{
+    const int key = m.getContainerIndex();
+    auto it = drumPresetState.find(key);
+    if (it != drumPresetState.end())
+        return it->second;
+
+    int found = -1;
+    const auto values = ModulePresetLibrary::capture(m, {}).values;
+    const auto& list = drumPresets();
+    for (size_t i = 0; i < list.size(); ++i)
+    {
+        if (drumPresetMatches(list[i], values))
+        {
+            found = static_cast<int>(i);
+            break;
+        }
+    }
+
+    // Remembered either way, "matches nothing" included, so the search never
+    // runs from paint a second time.
+    drumPresetState[key] = found;
+    return found;
 }
 
 void PatchCanvas::applyDrumPreset(Module& m, int section, int presetIdx)
@@ -7594,12 +7639,7 @@ juce::PopupMenu PatchCanvas::buildDrumPresetMenu(Module& m, std::shared_ptr<int>
 {
     juce::PopupMenu menu;
 
-    // -1 until a preset is recalled, so nothing is ticked on a module that is
-    // still at its defaults.
-    int currentIdx = -1;
-    auto it = drumPresetState.find(m.getContainerIndex());
-    if (it != drumPresetState.end())
-        currentIdx = it->second;
+    const int currentIdx = resolvedDrumPreset(m);
 
     // The presets that ship with the editor go in a folder of their own. There
     // are 29 of them for the Drum Synthesizer alone, and a flat list buries the
@@ -7686,9 +7726,12 @@ void PatchCanvas::deleteDrumPreset(int index)
     const int last = static_cast<int>(drumPresets().size()) - 1;
     for (auto& kv : drumPresetState)
     {
-        if (kv.second > index)
-            --kv.second;
-        kv.second = juce::jlimit(0, juce::jmax(0, last), kv.second);
+        if (kv.second < 0)
+            continue;                      // "none" stays none
+        if (kv.second == index)
+            kv.second = -1;                // the one it named is gone
+        else if (kv.second > index)
+            kv.second = juce::jlimit(0, juce::jmax(0, last), kv.second - 1);
     }
     repaint();
 }

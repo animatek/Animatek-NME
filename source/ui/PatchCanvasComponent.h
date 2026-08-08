@@ -318,6 +318,10 @@ private:
     std::map<int, int> drumPresetState;    // containerIndex → preset index
     ModulePresetLibrary* presetLibrary = nullptr;
     const std::vector<ModulePreset>& drumPresets() const;
+    // Which preset a module's box should name: whatever was last recalled into
+    // it, or, failing that, the preset its values match. Worked out once per
+    // module and remembered.
+    int resolvedDrumPreset(const Module& m);
     void applyDrumPreset(Module& m, int section, int presetIdx);
     void showDrumPresetContextMenu(Module& m, int section);
     // The preset list is reachable both from the module's own context menu and
