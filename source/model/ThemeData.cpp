@@ -403,25 +403,32 @@ void ThemeData::parseTextDisplay(const juce::XmlElement& elem, ModuleTheme& them
 
         // Partial-ratio override: these modules use "value-64" / "fmtLFOHz" /
         // "fmtSemitones" in modules.xml but the original Nomad UI shows them
-        // as partial ratios (1:1, 2:1…) with arrow step buttons.
-        //   m10–m14,m85  slave oscillator detune coarse (p2)
-        //   m27–m30,m80  LFO slaves rate (p2)
+        // as partial ratios (1:1, 2:1...).
+        //   m10-m14,m85  slave oscillator detune coarse (p2)
+        //   m27-m30,m80  LFO slaves rate (p2)
         //   m34,m110     Random generator rate (p2)
         //   m106         OscSineBank per-osc coarse tune (p1/p4/p7/p10/p13/p16)
+        //
+        // Only some of them carry arrow steppers. The original gives the slave
+        // oscillators a "Partials" row and the sine bank a spinner; the LFO
+        // slaves and the two random generators have none, and drawing them
+        // there put the arrows through LFOSlvA's Mono button and over the
+        // bottom edge of LFOSlvC and LFOSlvE (issue #48). Every one of these
+        // has a knob on the same parameter, so nothing loses its control.
         const auto& mod = theme.componentId;
         const auto& pid = td.componentId;
 
         static const juce::StringArray oscSineBankFreqParams { "p1","p4","p7","p10","p13","p16" };
-        bool partial =
-            (mod == "m106" && oscSineBankFreqParams.contains(pid)) ||
-            (pid == "p2" && (mod == "m10" || mod == "m11" || mod == "m12" ||
-                             mod == "m13" || mod == "m14" || mod == "m85" ||
-                             mod == "m27" || mod == "m28" || mod == "m29" ||
-                             mod == "m30" || mod == "m80" ||
-                             mod == "m34" || mod == "m110"));
-        if (partial)
+        const bool sineBank    = (mod == "m106" && oscSineBankFreqParams.contains(pid));
+        const bool slaveOsc    = (pid == "p2" && (mod == "m10" || mod == "m11" || mod == "m12" ||
+                                                  mod == "m13" || mod == "m14" || mod == "m85"));
+        const bool noArrows    = (pid == "p2" && (mod == "m27" || mod == "m28" || mod == "m29" ||
+                                                  mod == "m30" || mod == "m80" ||
+                                                  mod == "m34" || mod == "m110"));
+        if (sineBank || slaveOsc || noArrows)
         {
             td.partialFormat     = true;
+            td.partialArrows     = sineBank || slaveOsc;
             td.formatterOverride = "fmtPartials";
         }
 

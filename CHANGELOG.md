@@ -28,6 +28,12 @@
 
 ### Fixed
 
+- **The slave LFOs no longer carry arrow buttons they never had** (#48). The arrows ran through
+  LFOSlvA's Mono button and over the bottom edge of LFOSlvC and LFOSlvE. The original editor puts
+  them only on the slave oscillators and the sine bank; on the LFOs and the two random generators
+  the ratio is set with the knob beside the display, which is how it has always worked here too,
+  so nothing loses a control.
+
 - **The Drum Synthesizer's filter type was labelled the wrong way round.** HP and LP were
   swapped, so picking LP sent the synth the value it reads as HP: the label said one thing and
   the module played the other. Clavia's own factory presets settle it (their filter values are

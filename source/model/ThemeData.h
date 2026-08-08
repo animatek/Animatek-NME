@@ -64,10 +64,15 @@ struct ThemeTextDisplay
     // (e.g. "value-64" on slave oscs) doesn't match the UI (partial ratio).
     juce::String formatterOverride;
 
-    // UI control flag: true when this display has partial-ratio arrow buttons
-    // (mirrors the "fmtPartials" formatter family). Gates hit-testing and
-    // extra arrow rendering beyond text formatting.
+    // Reads as a partial ratio ("1:1", "2:1") rather than through the
+    // descriptor's own formatter.
     bool partialFormat = false;
+
+    // Draws the arrow steppers under the display, and hit-tests them. Separate
+    // from partialFormat: the LFO slaves and the random generators show the
+    // ratio but have no arrows in the original, where the value is set with the
+    // knob beside the display (issue #48).
+    bool partialArrows = false;
 };
 
 struct ThemeLight

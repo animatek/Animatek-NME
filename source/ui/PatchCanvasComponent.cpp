@@ -2731,7 +2731,7 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
         }
 
         // Partial format: draw ◄ ► arrow buttons below the display box
-        if (td.partialFormat)
+        if (td.partialArrows)
         {
             float arrowY = renderY + renderH + 1.0f;
             float arrowH = 8.0f;
@@ -5282,7 +5282,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             // Test partial arrow buttons on textDisplays
             for (auto& td : theme->textDisplays)
             {
-                if (!td.partialFormat) continue;
+                if (!td.partialArrows) continue;
 
                 // Arrow row geometry (mirrors paintTextDisplays)
                 float dh      = static_cast<float>(td.height);
