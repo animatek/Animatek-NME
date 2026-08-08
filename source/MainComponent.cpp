@@ -917,6 +917,17 @@ void MainComponent::resized() {
 // the "Ctrl+8 arrives as DEL" workaround in the canvas. Letters survive it
 // because KeyPress::operator== case-folds 'S' onto 's'; digits have no such
 // luck. Cover the layouts we know and let the View menu carry the rest.
+// macOS keeps Cmd+Shift+3 and Cmd+Shift+4 for its own screen capture and never
+// passes them on, so two of the four slots could not be toggled there at all
+// (issue #49). Option is used by nothing in this editor, so the Mac gets
+// Cmd+Alt+<digit> instead. Windows and Linux keep Ctrl+Shift+<digit>, which
+// works and which people already know.
+#if JUCE_MAC
+ #define NME_SLOT_TOGGLE_CHORD "Cmd+Alt+"
+#else
+ #define NME_SLOT_TOGGLE_CHORD "Ctrl+Shift+"
+#endif
+
 static int slotDigitFromShiftedKey(const juce::KeyPress& key)
 {
   const int code = key.getKeyCode();
@@ -975,19 +986,31 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
     toggleFocusMode();
     return true;
   }
-  // Ctrl+Shift+1..4 show or hide a slot's sub-window. Ctrl+1..4 (no Shift) still
-  // means "make this slot the active one", which also opens it.
-  if (key.getModifiers().isCommandDown() && key.getModifiers().isShiftDown())
+  // Show or hide a slot's sub-window. Ctrl+1..4 (no second modifier) still means
+  // "make this slot the active one", which also opens it.
+  if (key.getModifiers().isCommandDown())
   {
-    const int slot = slotDigitFromShiftedKey(key);
+   #if JUCE_MAC
+    // Option is ignored by charactersIgnoringModifiers, so the digit arrives as
+    // itself and needs none of the X11 unshifting below.
+    const int code = key.getKeyCode();
+    const int slot = (key.getModifiers().isAltDown() && ! key.getModifiers().isShiftDown()
+                      && code >= '1' && code <= '4') ? code - '1' : -1;
+   #else
+    const int slot = key.getModifiers().isShiftDown() ? slotDigitFromShiftedKey(key) : -1;
+   #endif
     if (slot >= 0)
     {
       toggleSlotOpen(slot);
       return true;
     }
+  }
+  // Moving a slot between tiles stays on Ctrl+Shift+arrows everywhere: the
+  // arrows clash with nothing, and their keysyms are stable under Shift.
+  if (key.getModifiers().isCommandDown() && key.getModifiers().isShiftDown())
+  {
     // Which slot sits in which tile, the way Hyprland's swapwindow and rollnext
-    // reorder a layout without changing what is in it. Arrow keysyms are stable
-    // under Shift, unlike the digits above.
+    // reorder a layout without changing what is in it.
     // All four arrows move the focused slot to the neighbouring tile in that
     // direction. Rotating every slot at once is a separate command, on the View
     // menu only, so the arrows mean one thing and mean it literally.
@@ -1077,7 +1100,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
         auto letter = juce::String::charToString(static_cast<char>('A' + i));
         auto name = slotPatches[i] ? slotPatches[i]->getName() : juce::String("empty");
         slotMenu.addItem(90 + i, "Slot " + letter + " - " + name
-                                 + "\tCtrl+Shift+" + juce::String(i + 1),
+                                 + "\t" NME_SLOT_TOGGLE_CHORD + juce::String(i + 1),
                          true, patchArea.isSlotOpen(i));
     }
     slotMenu.addSeparator();
@@ -1541,7 +1564,7 @@ void MainComponent::toggleFocusMode() {
   auto& area = mainLayout->getPatchArea();
   if (area.getNumOpenSlots() < 2) {
     mainLayout->getStatusBar().showMessage(
-        "Focus mode needs a second slot open (Ctrl+Shift+1..4)", 2500);
+        "Focus mode needs a second slot open (" NME_SLOT_TOGGLE_CHORD "1..4)", 2500);
     return;
   }
   const bool on = !area.isFocusMode();
@@ -3371,7 +3394,7 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "\n"
       "SLOTS\n"
       "  Ctrl+1..4           Switch to slot A..D (opens it if closed)\n"
-      "  Ctrl+Shift+1..4     Show/hide slot A..D's sub-window\n"
+      "  " NME_SLOT_TOGGLE_CHORD "1..4     Show/hide slot A..D's sub-window\n"
       "  F11                 Focus mode: blow the focused slot up, and back\n"
       "  Maximise button     Same, on that sub-window's title bar\n"
       "  Ctrl+Shift+arrows   Move the focused slot to the neighbouring tile\n"

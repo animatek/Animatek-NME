@@ -38,7 +38,8 @@ quieras: arrastra o redimensiona una subventana y las ventanas se quedan donde
 las pongas a partir de ese momento, con **View > Slots > Tile Slots** para
 volver al mosaico.
 
-- `Ctrl+Shift+1`–`Ctrl+Shift+4` muestra u oculta la subventana de un slot, igual
+- `Ctrl+Shift+1`–`Ctrl+Shift+4` (`Cmd+Alt+1`–`Cmd+Alt+4` en macOS) muestra u oculta
+  la subventana de un slot, igual
   que el clic derecho en su fila de la barra de slots.
 - `Ctrl+1`–`Ctrl+4` cambia a un slot, abriéndolo si estaba cerrado.
 - `F11`, o el botón de maximizar de una subventana, agranda el slot con foco a

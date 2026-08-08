@@ -35,7 +35,8 @@ close them. Nothing to arrange unless you want to: drag or resize a sub-window
 and the windows stay where you put them from then on, with **View > Slots > Tile
 Slots** to re-flow.
 
-- `Ctrl+Shift+1`–`Ctrl+Shift+4` shows or hides a slot's sub-window, and so does
+- `Ctrl+Shift+1`–`Ctrl+Shift+4` (`Cmd+Alt+1`–`Cmd+Alt+4` on macOS) shows or hides a
+  slot's sub-window, and so does
   right-clicking its row in the slot bar.
 - `Ctrl+1`–`Ctrl+4` switches to a slot, opening it if it was closed.
 - `F11`, or a sub-window's maximise button, blows the focused slot up to the

@@ -61,7 +61,7 @@ En macOS, `Ctrl` es `Cmd`.
 | Atajo | Acción |
 |-------|--------|
 | `Ctrl+1`..`Ctrl+4` | Cambiar al slot A..D (abre su subventana si estaba cerrada) |
-| `Ctrl+Shift+1`..`Ctrl+Shift+4` | Mostrar u ocultar la subventana del slot A..D |
+| `Ctrl+Shift+1`..`Ctrl+Shift+4` | Mostrar u ocultar la subventana del slot A..D (**en macOS: `Cmd+Alt+1`..`Cmd+Alt+4`**, porque macOS se reserva `Cmd+Shift+3` y `Cmd+Shift+4` para sus capturas de pantalla) |
 | `F11` | Modo foco: agranda el slot con foco a toda el área, y lo devuelve |
 | Botón de maximizar | Lo mismo, en la barra de título de esa subventana |
 | `Ctrl+Shift+` flechas | Mueve el slot con foco a la casilla vecina, intercambiándolo con lo que hubiera. Arriba y abajo solo existen en el 2x2 de cuatro slots; en un borde no pasa nada |

@@ -28,6 +28,11 @@
 
 ### Fixed
 
+- **On macOS, showing and hiding a slot moves to `Cmd+Alt+1`-`Cmd+Alt+4`** (#49). macOS keeps
+  `Cmd+Shift+3` and `Cmd+Shift+4` for its own screen capture and never passes them on, so two of
+  the four slots could not be toggled from the keyboard at all. Nothing changes on Windows or
+  Linux, where `Ctrl+Shift+1`-`Ctrl+Shift+4` works and is already familiar.
+
 - **The slave LFOs no longer carry arrow buttons they never had** (#48). The arrows ran through
   LFOSlvA's Mono button and over the bottom edge of LFOSlvC and LFOSlvE. The original editor puts
   them only on the slave oscillators and the sine bank; on the LFOs and the two random generators

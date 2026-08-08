@@ -62,7 +62,7 @@ On macOS, `Ctrl` is `Cmd`.
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+1`..`Ctrl+4` | Switch to slot A..D (opens its sub-window if closed) |
-| `Ctrl+Shift+1`..`Ctrl+Shift+4` | Show/hide slot A..D's sub-window |
+| `Ctrl+Shift+1`..`Ctrl+Shift+4` | Show/hide slot A..D's sub-window (**macOS: `Cmd+Alt+1`..`Cmd+Alt+4`**, because macOS keeps `Cmd+Shift+3` and `Cmd+Shift+4` for its screen capture) |
 | `F11` | Focus mode: blow the focused slot up to the full area, and back |
 | Maximise button | The same, on that sub-window's own title bar |
 | `Ctrl+Shift+` arrows | Move the focused slot to the neighbouring tile, swapping with whatever is there. Up and down only exist in the four-slot 2x2; nothing happens at an edge |

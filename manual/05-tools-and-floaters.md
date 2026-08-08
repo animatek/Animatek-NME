@@ -56,7 +56,8 @@ report). Zero overhead when closed; works in release builds without a console.
 
 Not a floater, but the other way to get more than one thing on screen: the four
 slots are tiled sub-windows inside the main window, each with its own canvas,
-selection and undo history. `Ctrl+Shift+1`–`Ctrl+Shift+4` shows and hides them.
+selection and undo history. `Ctrl+Shift+1`–`Ctrl+Shift+4` shows and hides them
+(`Cmd+Alt+1`–`Cmd+Alt+4` on macOS).
 See [Working with the Synth](04-working-with-the-synth.md#the-four-slots-on-screen).
 
 ## The MCP bridge

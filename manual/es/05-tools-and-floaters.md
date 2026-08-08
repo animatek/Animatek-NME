@@ -60,7 +60,8 @@ está cerrado; funciona en builds de release sin consola.
 No es un flotante, pero es la otra manera de tener más de una cosa en pantalla:
 los cuatro slots son subventanas en mosaico dentro de la ventana principal, cada
 una con su canvas, su selección y su historial de deshacer.
-`Ctrl+Shift+1`–`Ctrl+Shift+4` las muestra y las oculta. Mira
+`Ctrl+Shift+1`–`Ctrl+Shift+4` las muestra y las oculta (`Cmd+Alt+1`–`Cmd+Alt+4`
+en macOS). Mira
 [Trabajar con el sintetizador](04-working-with-the-synth.md#los-cuatro-slots-en-pantalla).
 
 ## El puente MCP
