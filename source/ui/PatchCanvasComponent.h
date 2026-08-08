@@ -19,6 +19,13 @@ class PatchCanvas : public juce::Component,
                      private juce::Timer
 {
 public:
+    // Hint boxes over the controls, as the original editor's function keys give:
+    // F5 every parameter's value, F7 the morph group of the assigned ones. The
+    // mode is editor-wide, so both areas and every window agree. Public because
+    // the View menu offers the same modes: two people have now asked for the
+    // cost readout without finding the F-key (issue #44).
+    enum class OverlayMode { Off, MorphGroups, Values, Knobs, MidiCtrls, ModuleCosts };
+
     // Callback types
     using ParameterChangeCallback = std::function<void(int section, int moduleId, int parameterId, int value)>;
     // Fired on mouseUp after a parameter drag — carries old+new for undo
@@ -377,10 +384,6 @@ private:
     float zoomLevel = 1.0f;
     ColorScheme activeScheme_ = kDarkTheme;
     ThemeId activeThemeId_ = ThemeId::Dark;
-    // Hint boxes over the controls, as the original editor's function keys give:
-    // F5 every parameter's value, F7 the morph group of the assigned ones. The
-    // mode is editor-wide, so both areas and every window agree.
-    enum class OverlayMode { Off, MorphGroups, Values, Knobs, MidiCtrls, ModuleCosts };
     inline static OverlayMode overlayMode = OverlayMode::Off;
     // Every canvas alive right now. The overlay mode is editor-wide, so a key
     // that changes it has to repaint all of them, not only the one it reached.
@@ -400,6 +403,25 @@ public:
     static void setAutoUpload   (bool on)  { autoUploadOn   = on;  }
     static void setMutatorMode  (bool on)  { mutatorModeOn  = on;  }
     static float getCableOpacity()         { return cableOpacity; }
+
+    // The overlay mode belongs to the editor, not to one canvas, so setting it
+    // has to redraw every canvas on screen. Same rule the F-keys follow.
+    static OverlayMode getOverlayMode()    { return overlayMode; }
+    static void setOverlayMode (OverlayMode mode)
+    {
+        if (overlayMode == mode)
+            return;
+        overlayMode = mode;
+        for (auto* c : liveCanvases)
+            if (c != nullptr)
+                c->repaint();
+    }
+    // Selecting the mode that is already on turns it off, so a menu item and its
+    // F-key behave the same way.
+    static void toggleOverlayMode (OverlayMode mode)
+    {
+        setOverlayMode (overlayMode == mode ? OverlayMode::Off : mode);
+    }
 
 private:
     static constexpr float zoomMin = 0.75f;

@@ -210,36 +210,21 @@ PatchCanvas::PatchCanvas()
 
 bool PatchCanvas::handleOverlayKey(const juce::KeyPress& key, juce::Component& repaintTarget)
 {
-    // The mode is editor-wide, so every canvas on screen has to redraw, not just
-    // the one the key happened to reach. With a slot window open, toggling F5
-    // from the main window used to leave the other window showing the previous
-    // state until something else dirtied it.
-    auto repaintAll = [&repaintTarget]()
-    {
-        repaintTarget.repaint();
-        for (auto* c : liveCanvases)
-            if (c != nullptr)
-                c->repaint();
-    };
-
-    if (key == juce::KeyPress::F5Key)
-    {
-        overlayMode = (overlayMode == OverlayMode::Values)
-            ? OverlayMode::Off
-            : OverlayMode::Values;
-        repaintAll();
-        return true;
-    }
-
-    // F7, F8 and F9 read out the three kinds of assignment, as the original
+    // F5, F7, F8 and F9 read out the parameter values and the three kinds of
+    // assignment, as the original
     // editor's function keys do. Each toggles: pressing the same key again
-    // closes the readout rather than needing the key held down.
-    auto toggle = [&repaintAll](OverlayMode mode)
+    // closes the readout rather than needing the key held down. The View >
+    // Overlays menu drives the same toggles, so both go through one place.
+    auto toggle = [&repaintTarget](OverlayMode mode)
     {
-        overlayMode = (overlayMode == mode) ? OverlayMode::Off : mode;
-        repaintAll();
+        toggleOverlayMode(mode);
+        // The canvases repaint themselves; the component the key arrived at is
+        // the scroll container around one of them and is not on that list.
+        repaintTarget.repaint();
         return true;
     };
+
+    if (key == juce::KeyPress::F5Key) return toggle(OverlayMode::Values);
 
     if (key == juce::KeyPress::F7Key) return toggle(OverlayMode::MorphGroups);
     if (key == juce::KeyPress::F8Key) return toggle(OverlayMode::Knobs);

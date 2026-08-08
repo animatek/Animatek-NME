@@ -1094,6 +1094,21 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
                      patchArea.isFocusMode());
     menu.addSubMenu("Slots", slotMenu);
 
+    // The readouts had lived on the function keys alone, and people asking for
+    // the module cost readout without finding F10 is how issue #44 was raised.
+    // One is on at a time, so they tick like radio buttons.
+    using Overlay = PatchCanvas::OverlayMode;
+    const auto overlay = PatchCanvas::getOverlayMode();
+    juce::PopupMenu overlayMenu;
+    overlayMenu.addItem(110, "Parameter Values\tF5", true, overlay == Overlay::Values);
+    overlayMenu.addItem(111, "Morph Groups\tF7", true, overlay == Overlay::MorphGroups);
+    overlayMenu.addItem(112, "Knob Assignments\tF8", true, overlay == Overlay::Knobs);
+    overlayMenu.addItem(113, "MIDI CC Assignments\tF9", true, overlay == Overlay::MidiCtrls);
+    overlayMenu.addItem(114, "Module DSP Cost\tF10", true, overlay == Overlay::ModuleCosts);
+    overlayMenu.addSeparator();
+    overlayMenu.addItem(115, "None", overlay != Overlay::Off);
+    menu.addSubMenu("Overlays", overlayMenu);
+
     menu.addSeparator();
     menu.addItem(67, "Inspector Panel\tCtrl+I", true, mainLayout->isLeftPanelVisible());
     menu.addItem(68, "Patch Browser\tCtrl+Shift+I", true, mainLayout->isRightPanelVisible());
@@ -1301,6 +1316,26 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 66:  // Wireframe Modules
     toggleWireframe();
+    break;
+  // Overlays: same toggles as F5 and F7-F10, so picking the mode that is
+  // already showing turns it off again.
+  case 110:
+    PatchCanvas::toggleOverlayMode(PatchCanvas::OverlayMode::Values);
+    break;
+  case 111:
+    PatchCanvas::toggleOverlayMode(PatchCanvas::OverlayMode::MorphGroups);
+    break;
+  case 112:
+    PatchCanvas::toggleOverlayMode(PatchCanvas::OverlayMode::Knobs);
+    break;
+  case 113:
+    PatchCanvas::toggleOverlayMode(PatchCanvas::OverlayMode::MidiCtrls);
+    break;
+  case 114:
+    PatchCanvas::toggleOverlayMode(PatchCanvas::OverlayMode::ModuleCosts);
+    break;
+  case 115:
+    PatchCanvas::setOverlayMode(PatchCanvas::OverlayMode::Off);
     break;
   case 67:  // Inspector Panel
     toggleLeftPanel();

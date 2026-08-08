@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- **The overlay readouts are on the View menu** as well as on their function keys (#44), under
+  **View > Overlays**, ticked to show which one is open. They had been on `F5` and `F7`-`F10`
+  only, which is easy to miss: the request that prompted this was for a whole-patch module cost
+  readout, which `F10` had been giving since 0.13.0.
+
 ### Fixed
 
 - **Accented and typographic characters no longer come out as garbage** (#43). The slot chooser

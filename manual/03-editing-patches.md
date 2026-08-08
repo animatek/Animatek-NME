@@ -64,6 +64,9 @@ a readout open while you work rather than holding a key down.
 | `F9` | MIDI CC assignments |
 | `F10` | Each module's DSP cost |
 
+The same five are on **View > Overlays**, ticked so you can see which one is
+open, with **None** to close it.
+
 ## Module presets
 
 Select any module and the Inspector grows a **Presets** section under its

@@ -73,6 +73,9 @@ tecla pulsada.
 | `F9` | Asignaciones de MIDI CC |
 | `F10` | El coste de DSP de cada módulo |
 
+Las cinco están también en **View > Overlays**, marcadas para que veas cuál está
+abierta, con **None** para cerrarla.
+
 ## Presets de módulo
 
 Selecciona cualquier módulo y el Inspector añade una sección **Presets** bajo sus
