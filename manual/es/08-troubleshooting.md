@@ -52,3 +52,26 @@ siempre empareja cada note-on con su note-off.
 
 Las variaciones viven en el archivo auxiliar `.var` junto al `.pch`. Si moviste
 o renombraste el archivo de patch, mueve o renombra su `.var` con él.
+
+## Un atajo de teclado no hace nada
+
+Si un atajo no responde y los de al lado sí, hay algo fuera del editor que se
+queda con esa combinación antes. Un programa que registra un atajo para todo el
+sistema lo recibe antes que cualquier aplicación, y al editor no le llega nada.
+
+La pista es que el fallo sea selectivo: `Ctrl+Shift+I` y `Ctrl+Shift+R` no hacen
+nada mientras `Ctrl+Shift+Z` y `Ctrl+Shift+1`-`4` van bien, y `Ctrl+I` y `Ctrl+R`
+a secas también. Ni un teclado averiado ni un fallo del editor elegirían de esa
+manera.
+
+En Windows el sospechoso habitual es **AMD Software: Adrenalin Edition**, que se
+reserva varias combinaciones con `Ctrl+Shift` de fábrica. Desactiva en su propia
+configuración las que quieras recuperar y el editor volverá a recibirlas. El
+propio Windows también usa `Ctrl+Shift` para cambiar de distribución de teclado
+cuando hay más de un idioma instalado, en **Configuración > Hora e idioma >
+Escritura > Configuración avanzada del teclado > Teclas de acceso rápido del
+idioma de entrada**. Los grabadores de pantalla, las superposiciones de juego y
+los paneles de las tarjetas gráficas merecen la misma revisión.
+
+Todo lo que tiene atajo está también en un menú, así que nada queda fuera de tu
+alcance mientras lo localizas.

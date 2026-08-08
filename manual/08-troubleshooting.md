@@ -51,6 +51,29 @@ with its note-ons.
 Variations live in the `.var` sidecar next to the `.pch`. If you moved or
 renamed the patch file, move/rename its `.var` along with it.
 
+## A keyboard shortcut does nothing
+
+If one shortcut is dead while its neighbours work, something outside the editor
+is taking that key combination first. A program that registers a shortcut
+system-wide gets it before any application does, and the editor never hears the
+key at all.
+
+The giveaway is that the failure is specific: `Ctrl+Shift+I` and `Ctrl+Shift+R`
+do nothing while `Ctrl+Shift+Z` and `Ctrl+Shift+1`-`4` are fine, and the plain
+`Ctrl+I` and `Ctrl+R` are fine too. A keyboard fault or a fault in the editor
+would not pick and choose like that.
+
+On Windows the usual culprit is **AMD Software: Adrenalin Edition**, which
+claims several `Ctrl+Shift` combinations by default. Turn the ones you want back
+off in its own settings and the editor gets them again. Windows itself also
+takes `Ctrl+Shift` for switching keyboard layout when more than one input
+language is installed, under **Settings > Time & language > Typing > Advanced
+keyboard settings > Input language hot keys**. Screen recorders, overlays and
+graphics-driver panels are worth checking for the same reason.
+
+Everything on a shortcut is also on a menu, so nothing is out of reach while you
+track it down.
+
 ## Watching what actually happens
 
 Open the **SysEx Monitor** (`Ctrl+9`) to see the raw MIDI conversation. When
