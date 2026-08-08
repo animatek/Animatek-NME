@@ -2,6 +2,14 @@
 #include "AppTheme.h"
 #include <iostream>
 
+PatchBrowserPanel::~PatchBrowserPanel()
+{
+    // See the header: the tree outlives its root item, and ~TreeView writes to
+    // the root it is still holding. Hand it a null root first.
+    if (treeView != nullptr)
+        treeView->setRootItem(nullptr);
+}
+
 PatchBrowserPanel::PatchBrowserPanel()
 {
     // Status label for loading state

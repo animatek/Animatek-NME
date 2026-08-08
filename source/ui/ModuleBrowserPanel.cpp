@@ -54,6 +54,13 @@ juce::var ModuleBrowserPanel::ModuleItem::getDragSourceDescription()
 
 // --- ModuleBrowserPanel ---
 
+ModuleBrowserPanel::~ModuleBrowserPanel()
+{
+    // See the header: the tree outlives its root item, and ~TreeView writes to
+    // the root it is still holding. Hand it a null root first.
+    treeView.setRootItem(nullptr);
+}
+
 ModuleBrowserPanel::ModuleBrowserPanel()
 {
     filterField.setTextToShowWhenEmpty("Filter modules...", juce::Colour(0xff666666));

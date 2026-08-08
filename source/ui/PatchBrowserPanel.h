@@ -9,6 +9,14 @@ class PatchBrowserPanel : public juce::Component
 public:
     PatchBrowserPanel();
 
+    // Members are destroyed in reverse declaration order, so rootItem goes
+    // before treeView, and ~TreeView writes to whatever root it still points
+    // at: "if (rootItem != nullptr) rootItem->setOwnerView (nullptr);". With
+    // the item already gone that is a write into freed memory, which left the
+    // heap corrupt and aborted the app on every exit. Let go of the root while
+    // both are still alive.
+    ~PatchBrowserPanel() override;
+
     void paint(juce::Graphics& g) override;
     void resized() override;
     void applyTheme();

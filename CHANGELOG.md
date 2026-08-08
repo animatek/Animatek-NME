@@ -23,6 +23,12 @@
 
 ### Fixed
 
+- **The editor no longer corrupts its own memory as it closes.** Both browser panels let their
+  tree view outlive the item it was displaying, and JUCE writes to that item as the view goes
+  away, so every session ended by writing into memory that had just been freed. It aborted on
+  exit, which was invisible unless you had started the editor from a terminal, but a stray write
+  like that can land anywhere, so it was worth chasing down.
+
 - **The morph knobs follow the knob-control setting** (#47). They had always read vertical
   movement and nothing else, whatever the editor was set to, because the header bar carried its
   own copy of the knob-dragging code. There is one copy now, shared with the module knobs.

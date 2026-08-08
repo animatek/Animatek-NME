@@ -16,6 +16,7 @@ build-release/
 build-win/
 build-win-release/
 build-appimage/
+build-asan/
 cmake-build-*/
 Builds/
 dist/
