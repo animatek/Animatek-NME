@@ -32,6 +32,12 @@ struct UndoContext
     std::unique_ptr<PatchSynchronizer>& syncPtr;  // may be null
     const ModuleDescriptions& descs;
     std::function<void()> repaint;         // repaint canvas + inspector refresh
+    // Same redraw for an edit that changes a value and nothing else. A parameter
+    // is not a module: the DSP figures and the morph/knob assignment list are
+    // exactly as they were, and rebuilding them on every click is part of why
+    // buttons felt heavier than knobs (issue #37) — a knob pays that cost once
+    // per drag, a button paid it on every press.
+    std::function<void()> repaintValues;
     std::function<void()> syncToSynth;    // full patch upload (may be null if not connected)
     // Live parameter edits write through into the active patch variation (may be null).
     // Deliberately NOT fired by bulk actions (recall/randomize) so undoing a
@@ -543,7 +549,7 @@ public:
         param->setValue(newValue_);
         ctx_.connMgr.sendParameter(ctx_.slot, section_, moduleId_, paramId_, newValue_);
         if (ctx_.onParamEdited) ctx_.onParamEdited(section_, moduleId_, paramId_, newValue_);
-        ctx_.repaint();
+        redraw();
         return true;
     }
 
@@ -557,7 +563,7 @@ public:
         param->setValue(oldValue_);
         ctx_.connMgr.sendParameter(ctx_.slot, section_, moduleId_, paramId_, oldValue_);
         if (ctx_.onParamEdited) ctx_.onParamEdited(section_, moduleId_, paramId_, oldValue_);
-        ctx_.repaint();
+        redraw();
         return true;
     }
 
@@ -579,6 +585,14 @@ public:
     int getSizeInUnits() override { return 1; }
 
 private:
+    // Values-only redraw where the context offers one, so a single click does
+    // not drag a morph-list rebuild and a DSP recount behind it (issue #37).
+    void redraw() const
+    {
+        if (ctx_.repaintValues) ctx_.repaintValues();
+        else if (ctx_.repaint)  ctx_.repaint();
+    }
+
     UndoContext& ctx_;
     int section_, moduleId_, paramId_;
     int oldValue_, newValue_;

@@ -3539,6 +3539,18 @@ void MainComponent::rebuildUndoContext(int slot)
                     knobFloaterWindow->refresh();
             }
         },
+        // Values-only redraw. A parameter edit adds and removes nothing, so the
+        // DSP figures and the morph/knob assignment list still read true; those
+        // two walk the whole patch, and paying for them on every button press is
+        // what made buttons feel heavier than knobs (issue #37).
+        [this, slot]() {
+            canvasFor(slot).repaintCanvas();
+            if (slot == activeSlot) {
+                mainLayout->getInspector().repaint();
+                if (knobFloaterWindow)
+                    knobFloaterWindow->refresh();
+            }
+        },
         [this, slot, syncGen = std::make_shared<int>(0)]() {
             if (!connectionManager.isConnected() || !slotPatches[slot]) return;
             int gen = ++(*syncGen);

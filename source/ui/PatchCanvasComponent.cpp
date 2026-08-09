@@ -5167,11 +5167,14 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         int oldButtonValue = dragState.parameter->getValue();
                         dragState.parameter->setValue(newValue);
 
-                        if (parameterChangeCallback)
-                            parameterChangeCallback(dragState.section, m.getContainerIndex(), pd->index, newValue);
-                        // Button clicks complete immediately — fire drag complete for undo
+                        // Button clicks complete immediately — fire drag complete
+                        // for undo. The undoable action sends the value itself, so
+                        // going through parameterChangeCallback as well put two
+                        // identical messages on the wire for every press (issue #37).
                         if (paramDragCompleteCallback)
                             paramDragCompleteCallback(dragState.section, m.getContainerIndex(), pd->index, oldButtonValue, newValue);
+                        else if (parameterChangeCallback)
+                            parameterChangeCallback(dragState.section, m.getContainerIndex(), pd->index, newValue);
 
                         repaint();
                         return;
