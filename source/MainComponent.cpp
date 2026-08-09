@@ -2985,6 +2985,14 @@ void MainComponent::wireSlotView(int slot) {
     undoMgr().beginNewTransaction("Parameter Change");
     undoMgr().perform(new ParameterChangeAction(*ctx(), section, moduleId, parameterId, oldValue, newValue));
   });
+  // Display-only parameters (frequency units, sequencer zoom): stored in the
+  // patch, never put on the wire.
+  canvas.setCustomParameterChangeCallback([ctx, undoMgr]
+      (int section, int moduleId, int parameterId, int oldValue, int newValue) {
+    if (!ctx()) return;
+    undoMgr().beginNewTransaction("Display Change");
+    undoMgr().perform(new CustomParameterChangeAction(*ctx(), section, moduleId, parameterId, oldValue, newValue));
+  });
   canvas.setModuleDropCallback([this, patch, ctx, undoMgr, updateLoad]
       (int typeId, int section, int gridX, int gridY, const juce::String& name) {
     if (!patch() || !ctx()) return;

@@ -1060,9 +1060,39 @@ void PatchCanvas::paintHoverBadge(juce::Graphics& g)
     if (hoverTarget.componentId.isEmpty())
         return;
 
-    if (auto* param = findParameter(*hoverTarget.module, hoverTarget.componentId))
-        paintOverlayBadge(g, hoverTarget.controlBounds, hoverTarget.moduleBounds,
-                          *hoverTarget.module, *param, getParameterValueText(*param));
+    auto* param = findParameter(*hoverTarget.module, hoverTarget.componentId);
+    if (param == nullptr)
+        return;
+
+    juce::String text = getParameterValueText(*param);
+
+    // On a display that rotates its units, the readout answers what the value
+    // is in the units the box is NOT showing, which is what the original puts
+    // in its tooltip (issue #30).
+    if (const auto* unitsParam = freqUnitsParamFor(*hoverTarget.module, hoverTarget.componentId))
+    {
+        const auto& m = *hoverTarget.module;
+        juce::String baseFormatter = param->getDescriptor()->formatter;
+        if (const auto* theme = themeData != nullptr
+                ? themeData->getModuleTheme(m.getDescriptor()->componentId) : nullptr)
+            for (const auto& td : theme->textDisplays)
+                if (td.componentId == hoverTarget.componentId && td.formatterOverride.isNotEmpty())
+                    baseFormatter = td.formatterOverride;
+
+        const auto units = freqUnitsFor(m, hoverTarget.componentId, baseFormatter);
+        if (units.size() > 1)
+        {
+            const int shown = juce::jlimit(0, units.size() - 1, unitsParam->getValue());
+            juce::StringArray others;
+            for (int i = 0; i < units.size(); ++i)
+                if (i != shown)
+                    others.add(formatInFreqUnit(m, *param, units.getReference(i)));
+            text = others.joinIntoString("  ");
+        }
+    }
+
+    paintOverlayBadge(g, hoverTarget.controlBounds, hoverTarget.moduleBounds,
+                      *hoverTarget.module, *param, text);
 }
 
 // The module-level twin of paintOverlayBadge: same box, but anchored to the
@@ -1176,6 +1206,155 @@ juce::String PatchCanvas::getOverlayText(const Module& m, const Parameter& param
 // where the morph takes it, which is what the original editor shows
 // ("46Hz-2.30kHz"). Shared by the F5 readout and the hover hint box so the two
 // can never word the same parameter differently.
+// ── Frequency display units (issue #30) ─────────────────────────────────────
+//
+// modules.xml gives 24 modules a "freq display units" custom parameter, and the
+// original editor rotates through its settings when the frequency box is
+// clicked: an absolute frequency reads as Hz or as a note, and a slave's detune
+// reads as a partial ratio, as semitones, or as the frequency it lands on. The
+// setting belongs to the display only — it never reaches the synth, and the
+// value it is applied to does not change.
+namespace
+{
+    const juce::String kFreqUnitsParamName { "freq display units" };
+    // Sentinel: a slave oscillator's absolute frequency, which exists only
+    // relative to whatever master drives it.
+    const juce::String kSlaveHzFormatter { "@slaveHz" };
+
+    // The units apply to the module's own frequency, which in every one of
+    // these modules is its first ordinary parameter.
+    bool isFrequencyDisplay(const Module& m, const juce::String& displayComponentId)
+    {
+        for (const auto& p : m.getParameters())
+        {
+            const auto* pd = p.getDescriptor();
+            if (pd == nullptr || pd->componentId != displayComponentId)
+                continue;
+            return pd->paramClass == "parameter" && pd->index == 0;
+        }
+        return false;
+    }
+
+    // The master driving a slave oscillator, found through its master-slave
+    // input, or nullptr when nothing is patched into it.
+    const Module* findMasterFor(ModuleContainer& container, const Module& slave)
+    {
+        Connector* masterIn = nullptr;
+        auto* mutableSlave = container.getModuleByIndex(slave.getContainerIndex());
+        if (mutableSlave == nullptr)
+            return nullptr;
+
+        for (auto& c : mutableSlave->getConnectors())
+        {
+            const auto* cd = c.getDescriptor();
+            if (cd != nullptr && !cd->isOutput && cd->signalType == SignalType::MasterSlave)
+            {
+                masterIn = &c;
+                break;
+            }
+        }
+        if (masterIn == nullptr)
+            return nullptr;
+
+        auto* driver = container.findNetOutput(masterIn);
+        if (driver == nullptr)
+            return nullptr;
+
+        for (const auto& modulePtr : container.getModules())
+            for (const auto& c : modulePtr->getConnectors())
+                if (&c == driver)
+                    return modulePtr.get();
+        return nullptr;
+    }
+}
+
+const Parameter* PatchCanvas::freqUnitsParamFor(const Module& m, const juce::String& displayComponentId) const
+{
+    if (displayComponentId.isEmpty() || !isFrequencyDisplay(m, displayComponentId))
+        return nullptr;
+
+    for (const auto& p : m.getParameters())
+    {
+        const auto* pd = p.getDescriptor();
+        if (pd != nullptr && pd->paramClass == "custom" && pd->name == kFreqUnitsParamName)
+            return &p;
+    }
+    return nullptr;
+}
+
+Parameter* PatchCanvas::freqUnitsParamFor(Module& m, const juce::String& displayComponentId)
+{
+    return const_cast<Parameter*>(
+        static_cast<const PatchCanvas*>(this)->freqUnitsParamFor(static_cast<const Module&>(m),
+                                                                 displayComponentId));
+}
+
+juce::Array<PatchCanvas::FreqUnit> PatchCanvas::freqUnitsFor(const Module& m,
+                                                            const juce::String& displayComponentId,
+                                                            const juce::String& baseFormatter) const
+{
+    juce::Array<FreqUnit> units;
+
+    const auto* unitsParam = freqUnitsParamFor(m, displayComponentId);
+    if (unitsParam == nullptr || unitsParam->getDescriptor() == nullptr)
+        return units;
+
+    // A ratio display belongs to a slave, whose value is an interval; anything
+    // else shows an absolute pitch. The first entry is always what the display
+    // reads today, so a patch that never touched the setting looks unchanged.
+    if (baseFormatter == "fmtPartials")
+    {
+        units.add({ "fmtPartials",  "Ratio" });
+        units.add({ "fmtSemitones", "Semitones" });
+        units.add({ kSlaveHzFormatter, "Frequency" });
+    }
+    else
+    {
+        units.add({ baseFormatter, "Frequency" });
+        units.add({ "fmtNote",     "Semitones" });
+    }
+
+    // maxValue is what modules.xml allows the stored setting to reach: 1 for the
+    // two-unit displays, 2 for the slave oscillators.
+    const int allowed = juce::jlimit(1, units.size(), unitsParam->getDescriptor()->maxValue + 1);
+    units.removeRange(allowed, units.size() - allowed);
+    return units;
+}
+
+juce::String PatchCanvas::formatInFreqUnit(const Module& m, const Parameter& valueParam,
+                                           const FreqUnit& unit) const
+{
+    if (unit.formatter != kSlaveHzFormatter)
+        return ValueFormatters::format(unit.formatter, valueParam.getValue());
+
+    // A slave's frequency is its master's, shifted by the detune it carries.
+    // fmtOscHz is exponential with twelve steps to the octave, and the detune is
+    // centred on 64, so the two add before formatting.
+    if (patch == nullptr)
+        return "--";
+
+    auto& container = (mySection == 1) ? patch->getPolyVoiceArea() : patch->getCommonArea();
+    const auto* master = findMasterFor(container, m);
+    if (master == nullptr)
+        return "--";   // nothing driving it: it has no frequency of its own
+
+    const Parameter* masterPitch = nullptr;
+    for (const auto& p : master->getParameters())
+    {
+        const auto* pd = p.getDescriptor();
+        if (pd != nullptr && pd->paramClass == "parameter" && pd->index == 0)
+        {
+            masterPitch = &p;
+            break;
+        }
+    }
+    if (masterPitch == nullptr)
+        return "--";
+
+    return ValueFormatters::format("fmtOscHz",
+                                   masterPitch->getValue() + valueParam.getValue() - 64);
+}
+
 juce::String PatchCanvas::getParameterValueText(const Parameter& param) const
 {
     auto* pd = param.getDescriptor();
@@ -2751,7 +2930,20 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
             const juce::String& fmtName = td.formatterOverride.isNotEmpty()
                 ? td.formatterOverride
                 : param->getDescriptor()->formatter;
-            displayStr = ValueFormatters::format(fmtName, val);
+
+            // Displays with a units setting read the same value through whichever
+            // unit the patch has stored for them (issue #30).
+            const auto units = freqUnitsFor(m, td.componentId, fmtName);
+            if (!units.isEmpty())
+            {
+                const auto* unitsParam = freqUnitsParamFor(m, td.componentId);
+                const int chosen = juce::jlimit(0, units.size() - 1, unitsParam->getValue());
+                displayStr = formatInFreqUnit(m, *param, units.getReference(chosen));
+            }
+            else
+            {
+                displayStr = ValueFormatters::format(fmtName, val);
+            }
 
             // White reads on the dark display fill; with no fill (wireframe) use
             // the module text colour so it stays legible on any canvas.
@@ -5026,15 +5218,22 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         {
                             if (auto* zoomParam = findParameter(m, "p1"))
                             {
+                                // NoteSeqB's zoom is a class="custom" parameter:
+                                // display-only, and index 0 like the module's own
+                                // "note 1", so sending it as a parameter change
+                                // retuned the first step of the sequence.
                                 auto* pd = zoomParam->getDescriptor();
                                 int oldVal = zoomParam->getValue();
                                 int delta = (tb.callMethod == "zoomIn") ? 1 : -1;
                                 int newVal = juce::jlimit(pd->minValue, pd->maxValue, oldVal + delta);
-                                zoomParam->setValue(newVal);
-                                if (parameterChangeCallback)
-                                    parameterChangeCallback(area.section, m.getContainerIndex(), pd->index, newVal);
-                                if (paramDragCompleteCallback && newVal != oldVal)
-                                    paramDragCompleteCallback(area.section, m.getContainerIndex(), pd->index, oldVal, newVal);
+                                if (newVal != oldVal)
+                                {
+                                    if (customParameterChangeCallback)
+                                        customParameterChangeCallback(area.section, m.getContainerIndex(),
+                                                                      pd->index, oldVal, newVal);
+                                    else
+                                        zoomParam->setValue(newVal);
+                                }
                                 repaint();
                             }
                         }
@@ -5390,6 +5589,52 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                     return;
                 }
                 return; // already at limit — consume click anyway
+            }
+
+            // Clicking a frequency display rotates the units it reads in, the
+            // way the original does (issue #30). The setting is display-only:
+            // it is stored in the patch and never sent to the synth, so it goes
+            // through its own undoable action rather than a parameter change.
+            for (auto& td : theme->textDisplays)
+            {
+                // Left button only: a right-click on a module belongs to its
+                // context menu wherever it lands.
+                if (!e.mods.isLeftButtonDown())
+                    break;
+
+                float dh      = static_cast<float>(td.height);
+                float renderH = juce::jmin(dh, 13.0f);
+                float renderY = td.y + (dh - renderH) * 0.5f;
+                juce::Rectangle<float> boxRect(static_cast<float>(td.x), renderY,
+                                               static_cast<float>(td.width), renderH);
+                if (!boxRect.contains(relPos.toFloat()))
+                    continue;
+
+                auto* unitsParam = freqUnitsParamFor(m, td.componentId);
+                if (unitsParam == nullptr || unitsParam->getDescriptor() == nullptr)
+                    continue;
+
+                const juce::String baseFormatter = td.formatterOverride.isNotEmpty()
+                    ? td.formatterOverride
+                    : (findParameter(m, td.componentId) != nullptr
+                           ? findParameter(m, td.componentId)->getDescriptor()->formatter
+                           : juce::String());
+                const auto units = freqUnitsFor(m, td.componentId, baseFormatter);
+                if (units.isEmpty())
+                    continue;
+
+                const int oldUnit = juce::jlimit(0, units.size() - 1, unitsParam->getValue());
+                const int newUnit = (oldUnit + 1) % units.size();
+
+                if (customParameterChangeCallback)
+                    customParameterChangeCallback(area.section, m.getContainerIndex(),
+                                                  unitsParam->getDescriptor()->index,
+                                                  oldUnit, newUnit);
+                else
+                    unitsParam->setValue(newUnit);
+
+                repaint();
+                return;
             }
 
             // Module body fallback

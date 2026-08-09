@@ -58,6 +58,14 @@ con la siguiente subida completa.
 - Clic derecho en un parámetro para asignarlo a un **grupo de morph**, a un
   **knob de hardware** o a un **controlador MIDI**, y para **bloquearlo** frente
   a la randomización.
+- **Haz clic en una pantalla de frecuencia** de un oscilador, un LFO esclavo o
+  un filtro y cambia las unidades en que lee, como en el editor original. Una
+  frecuencia absoluta alterna entre hercios y la nota en la que cae; la de un
+  oscilador esclavo recorre la relación de parciales, el intervalo en semitonos
+  y la frecuencia a la que lo lleva realmente su maestro. Al pasar el ratón se
+  muestran las unidades que la caja *no* está enseñando, así que un
+  suboscilador se puede poner en `-12(Oct)` y comprobarlo en hercios sin tocar
+  nada. La elección es de cada módulo y se guarda con el patch.
 
 ## Leer un patch: las teclas de superposición
 

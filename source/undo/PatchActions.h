@@ -599,6 +599,57 @@ private:
 };
 
 // ============================================================================
+// CustomParameterChangeAction — a UI-only parameter, never sent to the synth
+// ============================================================================
+//
+// modules.xml marks a handful of parameters class="custom" role="ui": the
+// frequency display units, the note sequencer's zoom and scroll position. They
+// are stored in the patch, in its CustomDump sections, but they mean nothing to
+// the synth and must never be sent to it — their index counts from zero
+// alongside the real parameters, so a ParameterChange carrying one would land
+// on a completely different control (the sequencer's first note, an
+// oscillator's coarse tune).
+class CustomParameterChangeAction : public juce::UndoableAction
+{
+public:
+    CustomParameterChangeAction(UndoContext& ctx, int section, int moduleId,
+                                int paramId, int oldValue, int newValue)
+        : ctx_(ctx), section_(section), moduleId_(moduleId),
+          paramId_(paramId), oldValue_(oldValue), newValue_(newValue) {}
+
+    bool perform() override { return apply(newValue_); }
+    bool undo() override    { return apply(oldValue_); }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    bool apply(int value)
+    {
+        auto& container = ctx_.patch.getContainer(section_);
+        auto* mod = container.getModuleByIndex(moduleId_);
+        if (!mod) return false;
+
+        // Custom parameters share the index space with the ordinary ones, so
+        // they have to be matched on class as well as index.
+        for (auto& p : mod->getParameters())
+        {
+            const auto* pd = p.getDescriptor();
+            if (pd == nullptr || pd->paramClass != "custom" || pd->index != paramId_)
+                continue;
+            p.setValue(value);
+            if (ctx_.repaintValues) ctx_.repaintValues();
+            else if (ctx_.repaint)  ctx_.repaint();
+            return true;
+        }
+        return false;
+    }
+
+    UndoContext& ctx_;
+    int section_, moduleId_, paramId_;
+    int oldValue_, newValue_;
+};
+
+// ============================================================================
 // MorphAssignAction
 // ============================================================================
 class MorphAssignAction : public juce::UndoableAction

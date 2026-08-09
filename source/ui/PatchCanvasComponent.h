@@ -30,6 +30,10 @@ public:
     using ParameterChangeCallback = std::function<void(int section, int moduleId, int parameterId, int value)>;
     // Fired on mouseUp after a parameter drag — carries old+new for undo
     using ParameterDragCompleteCallback = std::function<void(int section, int moduleId, int parameterId, int oldValue, int newValue)>;
+    // A UI-only ("custom" class) parameter changed: display units, sequencer
+    // zoom. These live in the patch but never on the wire — their index collides
+    // with a real parameter's, so sending one would edit the wrong thing.
+    using CustomParameterChangeCallback = std::function<void(int section, int moduleId, int parameterId, int oldValue, int newValue)>;
     using ModuleDropCallback = std::function<void(int typeId, int section, int gridX, int gridY, const juce::String& name)>;
     using DeleteModuleCallback = std::function<void(int section, Module* module)>;
     using RenameModuleCallback = std::function<void(int section, Module* module, const juce::String& oldName, const juce::String& newName)>;
@@ -108,6 +112,7 @@ public:
     // Callbacks
     void setParameterChangeCallback(ParameterChangeCallback cb) { parameterChangeCallback = std::move(cb); }
     void setParameterDragCompleteCallback(ParameterDragCompleteCallback cb) { paramDragCompleteCallback = std::move(cb); }
+    void setCustomParameterChangeCallback(CustomParameterChangeCallback cb) { customParameterChangeCallback = std::move(cb); }
     void setModuleDropCallback(ModuleDropCallback cb) { moduleDropCallback = std::move(cb); }
     void setDeleteModuleCallback(DeleteModuleCallback cb) { deleteModuleCallback = std::move(cb); }
     void setRenameModuleCallback(RenameModuleCallback cb) { renameModuleCallback = std::move(cb); }
@@ -232,6 +237,26 @@ private:
     // Non-const overload returns mutable Parameter* (used in mouseDown drag setup)
     Parameter* findParameter(Module& m, const juce::String& componentId);
     const Parameter* findParameter(const Module& m, const juce::String& componentId) const;
+
+    // ── Frequency display units (issue #30) ──────────────────────────────────
+    // The original rotates the units of an oscillator's, slave LFO's or
+    // filter's frequency box when it is clicked. The choice is stored in the
+    // patch, as the module's "freq display units" custom parameter — a UI-only
+    // parameter that is never sent to the synth.
+    struct FreqUnit
+    {
+        juce::String formatter;  // ValueFormatters name, or "@slaveHz"
+        juce::String name;       // shown in the hover readout
+    };
+    /** The units parameter this display cycles, or nullptr if it has none. */
+    const Parameter* freqUnitsParamFor(const Module& m, const juce::String& displayComponentId) const;
+    Parameter*       freqUnitsParamFor(Module& m, const juce::String& displayComponentId);
+    /** Units in cycling order, for a display known to have a units parameter. */
+    juce::Array<FreqUnit> freqUnitsFor(const Module& m, const juce::String& displayComponentId,
+                                       const juce::String& baseFormatter) const;
+    /** The display's text in one particular unit. */
+    juce::String formatInFreqUnit(const Module& m, const Parameter& valueParam,
+                                  const FreqUnit& unit) const;
     // Find theme connector by component-id (e.g. "c1")
     const ThemeConnector* findThemeConnector(const ModuleTheme& theme, const juce::String& componentId) const;
 
@@ -279,6 +304,7 @@ private:
     DragState dragState;
     ParameterChangeCallback parameterChangeCallback;
     ParameterDragCompleteCallback paramDragCompleteCallback;
+    CustomParameterChangeCallback customParameterChangeCallback;
     ModuleDropCallback moduleDropCallback;
     DeleteModuleCallback deleteModuleCallback;
     RenameModuleCallback renameModuleCallback;
@@ -576,6 +602,12 @@ public:
     {
         polyCanvas.setParameterDragCompleteCallback(cb);
         commonCanvas.setParameterDragCompleteCallback(std::move(cb));
+    }
+
+    void setCustomParameterChangeCallback(PatchCanvas::CustomParameterChangeCallback cb)
+    {
+        polyCanvas.setCustomParameterChangeCallback(cb);
+        commonCanvas.setCustomParameterChangeCallback(std::move(cb));
     }
 
     void setModuleDropCallback(PatchCanvas::ModuleDropCallback cb)

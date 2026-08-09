@@ -71,6 +71,14 @@ the next full upload.
   and the readout follows live.
 - Right-click a parameter to assign it to a **morph group**, a **hardware
   knob**, or a **MIDI controller**, and to **lock** it against randomization.
+- **Click a frequency display** on an oscillator, a slave LFO or a filter and it
+  changes the units it reads in, the way the original editor does. An absolute
+  frequency alternates between hertz and the note it lands on; a slave
+  oscillator's box goes round the partial ratio, the interval in semitones, and
+  the frequency its master actually puts it at. Hovering shows the units the box
+  is *not* displaying, so a suboscillator can be set to `-12(Oct)` and checked in
+  hertz without changing anything. The choice belongs to the module and is saved
+  with the patch.
 
 ## Reading a patch: the overlay keys
 
