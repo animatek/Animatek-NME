@@ -1,6 +1,6 @@
 # Animatek NME Status
 
-Current version: **0.14.0** (released 2026-08-08)
+Current version: **0.15.0** (released 2026-08-09)
 
 The project was renamed from **Nomad2026** to **Animatek NME — Nord Modular Editor G1** in 0.6.0.
 
@@ -14,6 +14,7 @@ This file tracks the current project state at a practical level. Detailed versio
 - `.pch` file load/save is implemented with compatibility fixes for original editors.
 - Four slot workflow is implemented for A/B/C/D with separate patch state, undo managers, synchronizers, and active hardware slot switching. The slots are sub-windows inside the main window's work area, any number of them on screen at once, and they tile themselves: one fills the area, two split it, three go in thirds, four go 2x2. `F11` or a sub-window's maximise button blows the focused one up and back. Edits are addressed to the right slot on the synth regardless of which one has front-panel focus, and which slots were open comes back on restart.
 - Patch canvas editing is functional: add, delete, move, multi-select, copy/paste, duplicate, cable create/delete, QuickAdd, and context menus.
+- A module bar under the header offers the palette as the original does: category tabs with the modules of the chosen category as named chips, dragged or clicked onto a patch area. Optional via View, and the chosen tab persists. The chips stand in for pictograms until the artwork is our own (issue #52).
 - Parameter edits, morph assignments/ranges, hardware knob assignments, and MIDI CC assignments sync to the synth.
 - Patch Settings and Synth Settings dialogs are implemented and synced.
 - Synth patch browser is implemented with search, hide-empty, refresh, load, copy, move, delete, and store flows.
@@ -44,6 +45,10 @@ This file tracks the current project state at a practical level. Detailed versio
 
 ## Recent Milestones
 
+- **0.15.0**: the module icon bar, frequency displays that change units on a click, and the
+  three transfer faults behind Nocticore's reports: oversized upload packets, an aborted
+  upload leaving the synth deaf to all MIDI, and a bank load the editor never picked up.
+  Carries 0.14.0's work too, which was prepared but never published.
 - **0.10.0**: "Nord Classic" theme and canvas grain, opt-in MCP bridge, theme-aware chrome
   and unified dialog controls, Inspector knob-assignment map, and slot-scoped parameter
   delivery so one slot's transfer no longer blocks another's edits.

@@ -1,6 +1,58 @@
 # Changelog
 
+## 0.15.0 — 2026-08-09
+
+### Added
+
+- **The module bar is back** (#17), the way the original editor presents its palette: a row of
+  category tabs (In/Out, Osc, LFO, Env, Filter, Mixer, Audio, Ctrl, Logic, Seq) with the modules
+  of the chosen category underneath, each in a thin outlined chip carrying its name. Drag a chip
+  onto the patch area, or click it and drop it where you like, the same gesture Add Module has
+  used since 0.14.0. The bar sits under the header, remembers which tab it was left on, and can
+  be turned off from **View > Module Icon Bar** for anyone who prefers the text browser or Quick
+  Add. Pictograms are what the original shows and what this will show too, but only once the
+  artwork is ours and follows the theme (#52).
+
+- **The frequency displays rotate their units when clicked** (#30), as the original does. An
+  oscillator's or filter's box alternates between the frequency and the note it lands on; a slave
+  oscillator's box goes round ratio, semitones and the frequency its master puts it at. Hovering
+  reads out the units the box is *not* showing, so `-12` and the octave below are both one glance
+  away. The choice is per module and is stored in the patch, in the same place the original keeps
+  it, and never reaches the synth.
+
+### Fixed
+
+- **A patch with around a hundred modules can be uploaded again** (#39). The upload sent each of
+  the sixteen sections as one packet, which the synth refuses once a section grows past about a
+  kilobyte: it answered with a checksum error and the transfer died partway through, so patches
+  such as `SY-1 RndBlips1` could be downloaded but never sent back. The patch now goes out as one
+  continuous stream cut into packets of 166 bytes, which is what the original protocol library
+  does and what the synth was built to receive.
+
+- **An upload that fails no longer leaves the synth deaf** (#40). The synth waits in bulk-receive
+  state until a packet arrives marked as the last one, and an upload that simply stopped — a
+  rejected section, a timeout, unplugging mid-transfer — never sent one. From then on it answered
+  nothing at all: no ACKs, no reply to the handshake, not even its idle stream, so it looked dead
+  and appeared to need a power cycle. Every path out of an upload now closes the transfer.
+
+- **Loading a patch from the synth's own bank refreshes the editor** (#41). A synth busy writing a
+  large patch into a slot never answered the request that follows its own notification, and the
+  editor gave up silently and sat on the previous patch. It now asks again, and a notification
+  that arrives while another transfer owns the wire is held rather than dropped.
+
+- **Buttons answer as readily as knobs** (#37). Every press of `KBT`, a mute, or a waveform
+  selector put the same message on the wire twice and rebuilt the morph list and recounted the DSP
+  cost, which walk the whole patch — work a knob does once per drag and a button was doing on
+  every click. A parameter edit adds and removes nothing, so none of that can have changed.
+
+- **Zooming the Note Sequencer's piano roll no longer retunes its first step.** The zoom is a
+  display-only parameter, but it was being sent to the synth as an ordinary one, and its index is
+  the same as `note 1`'s.
+
 ## 0.14.0 — 2026-08-08
+
+*Never published: 0.14.0 was prepared but no binary went out, so everything below reaches
+people for the first time in 0.15.0.*
 
 ### Changed
 
