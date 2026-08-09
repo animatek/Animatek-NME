@@ -257,6 +257,33 @@ To retrieve the full patch currently loaded in a slot:
 
 **Important**: Each PatchPacket response is independently 7-bit encoded — you cannot concatenate raw bytes across packets. Decode each packet separately. The first PatchPacket (Header request) contains both Header (type=33) and PatchName2 (type=39).
 
+### Uploading a Patch (Editor -> Synth)
+
+The reverse direction is **not** the download run backwards. The whole patch goes up as **one
+continuous byte stream**, not as one packet per section:
+
+- The 16 sections are laid end to end (each is byte-aligned, so they concatenate cleanly) and the
+  result is cut into packets of **at most 166 decoded bytes**. Each packet is 7-bit encoded on its
+  own, which puts a full one at 197 bytes of SysEx.
+- `cc` = `0x1c | first | 2*last`, where **first marks only the very first packet of the transfer**
+  and **last only the very final one** — not each section. A section may straddle a packet
+  boundary, and a small packet may finish several sections.
+- The `pid` field carries `command=1` in its top bit and, below it, **how many sections end inside
+  that packet** (0 for a middle chunk of a long section). This is what `libnmprotocol`'s
+  `PatchMessage(BitStream, PositionList)` does; `jnmprotocol2` sends a cumulative section index
+  instead, and the synth accepts both, so it does not appear to be load-bearing.
+- Each packet is ACKed before the next goes out.
+
+**The 166-byte limit is real**: the synth answers an oversized packet with `sc=0x7e code=4`
+(checksum error) even though the checksum is correct, and the transfer dies. Sending each section
+as its own packet works only until a section grows past roughly a kilobyte, which a ~99-module
+patch's NameDump does (issue #39).
+
+**An aborted upload must be closed.** The synth stays in bulk-receive state until it sees a packet
+flagged `last`, and while it is parked there it answers *nothing*: no ACKs, no reply to IAm, not
+even the idle Lights/VoiceCount stream. It looks like dead hardware. Sending one terminating
+packet (`cc` with the last bit, empty payload) releases it — no power cycle needed (issue #40).
+
 ### Section Binary Formats (from PDL2 spec)
 
 **ParameterDump** — all parameter values for one voice area:

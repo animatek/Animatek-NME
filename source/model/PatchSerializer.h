@@ -39,10 +39,13 @@ public:
      *   [14] NameDump poly (type 90, section=1)
      *   [15] NameDump common (type 90, section=0)
      *
-     * Each section is 7-bit MIDI encoded (via BitStreamWriter::toMidiBytes()).
+     * Sections come back as plain 8-bit bytes, NOT 7-bit MIDI encoded: the
+     * upload sends them as one continuous stream chopped into fixed-size
+     * packets, and each packet carries its own 7-bit encoding, so the encoding
+     * can only happen once the packet boundaries are known (issue #39).
      *
      * @param patch The patch to serialize
-     * @return Vector of 16 sections (7-bit MIDI encoded binary data)
+     * @return Vector of 16 sections (raw 8-bit binary data)
      */
     std::vector<std::vector<uint8_t>> serializeForUpload(const Patch& patch);
 
@@ -54,7 +57,7 @@ public:
      * for StorePatch and Delete operations. For full upload, use serializeForUpload().
      *
      * @param patch The patch to serialize
-     * @return Vector of 13 sections (7-bit MIDI encoded binary data)
+     * @return Vector of 13 sections (raw 8-bit binary data)
      */
     std::vector<std::vector<uint8_t>> serialize(const Patch& patch);
 

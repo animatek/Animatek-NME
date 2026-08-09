@@ -276,12 +276,30 @@ private:
     bool suppressNextAutoFetch = false;    // Set after upload completes; clears on next NewPatchInSlot
     bool suppressNewPatchInSlot_ = false;  // Set during upload-in-progress
     int pendingSyncEchoes_ = 0;            // Count of expected NewPatchInSlot echoes from sync edits
-    // Sequential upload state: send one section at a time, wait for ACK between each
-    std::vector<std::vector<uint8_t>> uploadSections;  // serialized PDL2 sections
-    std::vector<uint8_t> buildUploadSysEx(int sectionIndex, int numSections, int slot);
-    void sendNextUploadSection();
+    // Sequential upload state: one packet at a time, waiting for an ACK between each.
+    //
+    // The patch goes out as ONE continuous byte stream chopped into packets of at
+    // most kUploadPacketBytes bytes, exactly as the original libnmprotocol does:
+    // `first` marks only the very first packet of the transfer, `last` only the
+    // final one, and the pid field carries how many sections end inside that
+    // packet. Giving each section a packet of its own worked until a section grew
+    // past ~1 KB — the synth answers those with a checksum error and the upload
+    // dies (issue #39), which is reachable with any patch of ~99 modules.
+    struct UploadPacket
+    {
+        std::vector<uint8_t> data;   // raw 8-bit bytes, at most kUploadPacketBytes
+        int sectionsEnded = 0;       // sections completed inside this packet
+        std::string label;           // section descriptions, for the log line
+    };
+    static constexpr int kUploadPacketBytes = 166;
+    std::vector<UploadPacket> uploadPackets;
+    std::vector<uint8_t> buildUploadSysEx(int packetIndex, int slot);
+    void sendNextUploadPacket();
+    // An upload that just stops leaves the synth parked in bulk-receive state,
+    // deaf to all MIDI until something closes the transfer (issue #40).
+    void closeUploadTransfer(const char* reason);
     int uploadSlot = 0;
-    int uploadSectionIndex = 0;
+    int uploadPacketIndex = 0;
     int uploadAckGeneration = 0;
     static constexpr int uploadAckTimeoutMs = 5000;
     static constexpr int uploadInterSectionDelayMs = 40;

@@ -99,6 +99,50 @@ std::string describePdlSection(const std::vector<uint8_t>& section)
     return out.str();
 }
 
+// Same description, read from a section that has not been 7-bit encoded yet —
+// what the upload path works with, since it encodes per packet rather than per
+// section.
+std::string describeRawSection(const std::vector<uint8_t>& section)
+{
+    auto bitsAt = [&section](size_t bitPos, int width) -> int
+    {
+        int value = 0;
+        for (int i = 0; i < width; ++i)
+        {
+            size_t p = bitPos + static_cast<size_t>(i);
+            size_t byteIndex = p / 8;
+            if (byteIndex >= section.size())
+                return -1;
+            int bit = (section[byteIndex] >> (7 - static_cast<int>(p % 8))) & 1;
+            value = (value << 1) | bit;
+        }
+        return value;
+    };
+
+    if (section.empty())
+        return "type=-1 (Unknown)";
+
+    const int type = section[0];
+    std::ostringstream out;
+    out << "type=" << type << " (" << pdlSectionName(type) << ")";
+
+    if (type == 77)
+    {
+        const int pdlSection  = bitsAt(8, 1);
+        const int moduleCount = bitsAt(9, 7);
+        if (pdlSection >= 0 && moduleCount >= 0)
+        {
+            out << " pdlSection=" << pdlSection << " modules=" << moduleCount;
+            const int moduleIndex = bitsAt(16, 7);
+            const int moduleType  = bitsAt(23, 7);
+            if (moduleCount > 0 && moduleIndex >= 0 && moduleType >= 0)
+                out << " firstModule=" << moduleIndex << " firstType=" << moduleType;
+        }
+    }
+
+    return out.str();
+}
+
 // Identify which GetPatch request a completed PatchPacket entry answers, so a
 // stalled fetch can re-request exactly the missing sections. Entries are
 // 7-bit encoded and start at the PDL2 type field; area-scoped dumps carry a
@@ -196,6 +240,18 @@ void ConnectionManager::disconnect()
     patchListInterruptedByFetch = false;
     slotPrefetchQueue.clear();
     backgroundPrefetchSlot = -1;
+
+    // An upload still in flight has to be closed before the port goes, or the
+    // synth stays parked waiting for the rest of a transfer that will never
+    // arrive and answers no MIDI at all afterwards (issue #40).
+    if (waitingForUploadAck)
+    {
+        ++uploadAckGeneration;
+        closeUploadTransfer("disconnect");
+        waitingForUploadAck = false;
+        uploadPackets.clear();
+        uploadPacketIndex = 0;
+    }
 
     if (midiDevice)
     {
@@ -504,16 +560,42 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
     });
 }
 
-std::vector<uint8_t> ConnectionManager::buildUploadSysEx(int sectionIndex, int numSections, int slot)
+// Pack raw 8-bit bytes into 7-bit MIDI data bytes, MSB first, the trailing
+// partial group left-justified — the same encoding BitStreamWriter::toMidiBytes()
+// produces, applied per packet rather than per section.
+static std::vector<uint8_t> pack7Bit(const uint8_t* raw, size_t count)
 {
-    bool isFirst = (sectionIndex == 0);
-    bool isLast  = (sectionIndex == numSections - 1);
+    std::vector<uint8_t> out;
+    out.reserve((count * 8 + 6) / 7);
+
+    uint32_t buffer = 0;
+    int held = 0;
+    for (size_t i = 0; i < count; ++i)
+    {
+        buffer = (buffer << 8) | raw[i];
+        held += 8;
+        while (held >= 7)
+        {
+            held -= 7;
+            out.push_back(static_cast<uint8_t>((buffer >> held) & 0x7F));
+        }
+    }
+    if (held > 0)
+        out.push_back(static_cast<uint8_t>((buffer << (7 - held)) & 0x7F));
+
+    return out;
+}
+
+std::vector<uint8_t> ConnectionManager::buildUploadSysEx(int packetIndex, int slot)
+{
+    const auto& packet = uploadPackets[static_cast<size_t>(packetIndex)];
+    bool isFirst = (packetIndex == 0);
+    bool isLast  = (packetIndex == static_cast<int>(uploadPackets.size()) - 1);
     int  cc      = 0x1c | (isFirst ? 1 : 0) | (isLast ? 2 : 0);
-    int  sectionsEnded = sectionIndex + 1;
 
     // payload[0]: 0:1 command:1 pid:6
-    //   MSB=0, command=1 (bulk upload), pid=sectionsEnded
-    uint8_t cmdPidByte = static_cast<uint8_t>(0x40 | (sectionsEnded & 0x3F));
+    //   MSB=0, command=1 (bulk upload), pid=sections ended in this packet
+    uint8_t cmdPidByte = static_cast<uint8_t>(0x40 | (packet.sectionsEnded & 0x3F));
 
     std::vector<uint8_t> msg;
     msg.push_back(0xF0);
@@ -521,8 +603,8 @@ std::vector<uint8_t> ConnectionManager::buildUploadSysEx(int sectionIndex, int n
     msg.push_back(static_cast<uint8_t>(((cc & 0x1F) << 2) | (slot & 0x03)));
     msg.push_back(0x06);
     msg.push_back(cmdPidByte);
-    msg.insert(msg.end(), uploadSections[static_cast<size_t>(sectionIndex)].begin(),
-                          uploadSections[static_cast<size_t>(sectionIndex)].end());
+    auto encoded = pack7Bit(packet.data.data(), packet.data.size());
+    msg.insert(msg.end(), encoded.begin(), encoded.end());
     // Checksum: sum of all bytes (F0 through last payload byte) % 128
     uint32_t sum = 0;
     for (auto b : msg)
@@ -532,13 +614,41 @@ std::vector<uint8_t> ConnectionManager::buildUploadSysEx(int sectionIndex, int n
     return msg;
 }
 
-void ConnectionManager::sendNextUploadSection()
+// The synth stays in bulk-receive state until it sees a packet flagged `last`.
+// An upload that simply stops — rejected section, ACK timeout, disconnect —
+// leaves it there, and from then on it answers nothing at all: no ACKs, no
+// reply to IAm, not even its idle Lights/VoiceCount stream, so the editor's
+// handshake fails on every restart and the synth looks dead (issue #40).
+// One empty terminating packet gets it out, no power cycle needed.
+void ConnectionManager::closeUploadTransfer(const char* reason)
 {
-    int total = static_cast<int>(uploadSections.size());
-    if (uploadSectionIndex >= total)
+    std::cout << "[UPLOAD] Closing transfer (" << reason
+              << ") so the synth leaves bulk-receive state" << std::endl;
+
+    const int cc = 0x1c | 2;  // last, not first
+
+    std::vector<uint8_t> msg;
+    msg.push_back(0xF0);
+    msg.push_back(0x33);
+    msg.push_back(static_cast<uint8_t>(((cc & 0x1F) << 2) | (uploadSlot & 0x03)));
+    msg.push_back(0x06);
+    msg.push_back(0x40);  // command=1 (bulk upload), no section ends here
+    uint32_t sum = 0;
+    for (auto b : msg)
+        sum += b;
+    msg.push_back(static_cast<uint8_t>(sum % 128));
+    msg.push_back(0xF7);
+
+    sendRawSysEx(msg);
+}
+
+void ConnectionManager::sendNextUploadPacket()
+{
+    int total = static_cast<int>(uploadPackets.size());
+    if (uploadPacketIndex >= total)
     {
-        // All sections sent and ACKed — done
-        std::cout << "[UPLOAD] All " << total << " sections sent and ACKed." << std::endl;
+        // All packets sent and ACKed — done
+        std::cout << "[UPLOAD] All " << total << " packets sent and ACKed." << std::endl;
         waitingForUploadAck = false;
         // Notify the bank transfer (if one is running) or MainComponent
         if (bankUploadResultCallback)
@@ -573,37 +683,39 @@ void ConnectionManager::sendNextUploadSection()
         return;
     }
 
-    auto msg = buildUploadSysEx(uploadSectionIndex, total, uploadSlot);
-    const int sentSection = uploadSectionIndex;
+    auto msg = buildUploadSysEx(uploadPacketIndex, uploadSlot);
+    const int sentPacket = uploadPacketIndex;
     const int ackGeneration = ++uploadAckGeneration;
 
     // Log full SysEx for debugging
-    std::cout << "[UPLOAD]   section " << uploadSectionIndex
+    std::cout << "[UPLOAD]   packet " << uploadPacketIndex
               << "/" << total << " size=" << msg.size()
-              << " " << describePdlSection(uploadSections[static_cast<size_t>(uploadSectionIndex)])
+              << " raw=" << uploadPackets[static_cast<size_t>(uploadPacketIndex)].data.size()
+              << " " << uploadPackets[static_cast<size_t>(uploadPacketIndex)].label
               << " hex:";
     for (size_t k = 0; k < msg.size(); ++k)
         std::cout << " " << std::hex << std::setw(2) << std::setfill('0') << (int)msg[k];
     std::cout << std::dec << std::endl;
 
     sendRawSysEx(msg);
-    // waitingForUploadAck stays true — onAckReceived will call sendNextUploadSection
+    // waitingForUploadAck stays true — onAckReceived will call sendNextUploadPacket
     auto aliveFlag = alive;
-    juce::Timer::callAfterDelay(uploadAckTimeoutMs, [this, sentSection, ackGeneration, aliveFlag]() {
+    juce::Timer::callAfterDelay(uploadAckTimeoutMs, [this, sentPacket, ackGeneration, aliveFlag]() {
         if (!*aliveFlag) return;
         if (waitingForUploadAck && uploadAckGeneration == ackGeneration)
         {
-            std::cout << "[UPLOAD] ACK timeout at section " << sentSection
-                      << "/" << uploadSections.size()
-                      << " " << (uploadSections.size() > static_cast<size_t>(sentSection)
-                          ? describePdlSection(uploadSections[static_cast<size_t>(sentSection)])
-                          : "type=-1 (Unknown)")
+            std::cout << "[UPLOAD] ACK timeout at packet " << sentPacket
+                      << "/" << uploadPackets.size()
+                      << " " << (uploadPackets.size() > static_cast<size_t>(sentPacket)
+                          ? uploadPackets[static_cast<size_t>(sentPacket)].label
+                          : "(unknown)")
                       << ", aborting upload" << std::endl;
             waitingForUploadAck = false;
             invalidateParamQueue("upload timeout", uploadSlot);
-            uploadSections.clear();
-            uploadSectionIndex = 0;
-            setStatus(State::Connected, "Upload timeout at section " + juce::String(sentSection));
+            closeUploadTransfer("ACK timeout");
+            uploadPackets.clear();
+            uploadPacketIndex = 0;
+            setStatus(State::Connected, "Upload timeout at packet " + juce::String(sentPacket));
 
             if (bankUploadResultCallback)
             {
@@ -645,19 +757,48 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
         ++ackedQueueGeneration;
     }
 
-    // Serialize the patch into individual PDL2 sections in the Java upload order.
+    // Serialize the patch into individual PDL2 sections in the Java upload order,
+    // then lay them end to end and chop the result into packets the synth accepts.
     PatchSerializer serializer;
-    uploadSections = serializer.serializeForUpload(patch);
+    auto sections = serializer.serializeForUpload(patch);
+
+    uploadPackets.clear();
+    UploadPacket current;
+    current.data.reserve(kUploadPacketBytes);
+    for (const auto& section : sections)
+    {
+        const std::string description = describeRawSection(section);
+        for (size_t i = 0; i < section.size(); ++i)
+        {
+            if (static_cast<int>(current.data.size()) == kUploadPacketBytes)
+            {
+                uploadPackets.push_back(std::move(current));
+                current = UploadPacket();
+                current.data.reserve(kUploadPacketBytes);
+            }
+            current.data.push_back(section[i]);
+        }
+        // The section ends inside whichever packet took its last byte.
+        current.sectionsEnded++;
+        current.label += (current.label.empty() ? "" : ", ") + description;
+    }
+    if (!current.data.empty())
+        uploadPackets.push_back(std::move(current));
+
     uploadSlot = slot;
-    uploadSectionIndex = 0;
+    uploadPacketIndex = 0;
     ++uploadAckGeneration;
 
     std::cout << "[UPLOAD] Uploading patch \"" << patch.getName().toStdString()
-              << "\" to slot " << slot << " (" << uploadSections.size() << " sections)" << std::endl;
+              << "\" to slot " << slot << " (" << sections.size() << " sections in "
+              << uploadPackets.size() << " packets)" << std::endl;
 
-    // Send sections one at a time, waiting for ACK between each (like Java protocol)
+    if (uploadPackets.empty())
+        return;
+
+    // Send packets one at a time, waiting for ACK between each (like Java protocol)
     waitingForUploadAck = true;
-    sendNextUploadSection();
+    sendNextUploadPacket();
 }
 
 void ConnectionManager::requestSynthSettings()
@@ -989,15 +1130,15 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
         slotPatchIds[static_cast<size_t>(uploadSlot & 0x03)] = msg.pid1;
         if (uploadSlot == currentSlot)
             currentPatchId = msg.pid1;
-        ++uploadAckGeneration;  // invalidate timeout for the section just ACKed
-        uploadSectionIndex++;
-        std::cout << "[UPLOAD] ACK for section " << (uploadSectionIndex - 1)
+        ++uploadAckGeneration;  // invalidate timeout for the packet just ACKed
+        uploadPacketIndex++;
+        std::cout << "[UPLOAD] ACK for packet " << (uploadPacketIndex - 1)
                   << ", patchId=" << msg.pid1 << std::endl;
         auto aliveFlag = alive;
         juce::Timer::callAfterDelay(uploadInterSectionDelayMs, [this, aliveFlag]() {
             if (!*aliveFlag) return;
             if (waitingForUploadAck)
-                sendNextUploadSection();  // sends next or completes if all done
+                sendNextUploadPacket();  // sends next or completes if all done
         });
         return;
     }
@@ -1615,8 +1756,9 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
             ++uploadAckGeneration;
             waitingForUploadAck = false;
             invalidateParamQueue("upload rejected", uploadSlot);
-            uploadSections.clear();
-            uploadSectionIndex = 0;
+            closeUploadTransfer("rejected by synth");
+            uploadPackets.clear();
+            uploadPacketIndex = 0;
             setStatus(State::Connected,
                       "Upload rejected by synth (code " + juce::String(errorCode)
                           + ": " + juce::String(synthErrorName(errorCode)) + ")");
