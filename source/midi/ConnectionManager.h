@@ -198,6 +198,8 @@ private:
     void storeLoadedSlotToBank(int slot, int section, int position, std::function<void()> afterStoreQueued = {});
     void startEnabledSlotPrefetch();   // Queue every enabled-but-unfocused slot after connect
     void continueSlotPrefetchQueue();  // Fetch the next queued slot once the wire is free
+    void sendPatchRequest(int slot);   // One RequestPatch attempt, under the retry budget
+    void serviceDeferredAutoFetch();   // Run a fetch the wire was too busy to take
 
     std::shared_ptr<std::atomic<bool>> alive { std::make_shared<std::atomic<bool>>(true) };
     NmProtocol protocol;
@@ -362,6 +364,14 @@ private:
     // is considered stalled (synth dropped a packet).  2 s > worst observed gap.
     static constexpr int sectionStaleMs = 2000;
     int patchTimeoutGeneration = 0;  // Incremented on each new request to invalidate old timeouts
+    // A synth busy writing a large patch into a slot never answers the
+    // RequestPatch that follows its own NewPatchInSlot, and the editor was left
+    // showing the previous patch (issue #41). Ask again a few times before
+    // giving up, and keep hold of notifications that arrive while another
+    // transfer owns the wire.
+    static constexpr int maxPatchRequestAttempts = 3;
+    int patchRequestAttemptsLeft = 0;
+    std::array<bool, 4> autoFetchPending {};
 
     // Slot detection: synth sends SlotActivated after handshake
     bool slotDetected = false;

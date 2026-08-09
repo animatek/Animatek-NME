@@ -302,8 +302,20 @@ void ConnectionManager::onParameterChanged(const ParameterChangeMessage& msg)
 
 void ConnectionManager::requestPatch(int slot)
 {
+    // A request the user or a slot switch asked for starts with a full retry
+    // budget; retryPatchRequest() re-enters below it.
+    patchRequestAttemptsLeft = maxPatchRequestAttempts;
+    sendPatchRequest(slot);
+}
+
+void ConnectionManager::sendPatchRequest(int slot)
+{
     if (!isConnected())
         return;
+
+    --patchRequestAttemptsLeft;
+    if (slot >= 0 && slot < 4)
+        autoFetchPending[static_cast<size_t>(slot)] = false;
 
     // Unconditional (not gated behind DBG/JUCE_DEBUG) so it always marks a
     // fetch boundary in the console — makes it easy to isolate one patch
@@ -369,16 +381,36 @@ void ConnectionManager::requestPatch(int slot)
     // panel, for example). Without this, waitingForPatchAck stays true forever
     // and every future NewPatchInSlot auto-fetch is skipped — the editor goes
     // deaf and looks disconnected even though MIDI is fine.
+    //
+    // Resetting the flag alone was not enough: a synth still writing a large
+    // patch into a slot drops the request, and the editor then sat on the
+    // previous patch with nothing to prompt it to ask again — which is exactly
+    // what a bank load of a big patch looked like (issue #41). Ask again
+    // instead, a few times, spaced far enough apart for the synth to finish.
     const int gen = patchTimeoutGeneration;
     auto aliveFlag = alive;
     juce::Timer::callAfterDelay(3000, [this, gen, slot, aliveFlag]() {
         if (!*aliveFlag) return;
-        if (gen == patchTimeoutGeneration && waitingForPatchAck && !collectingSections)
+        if (gen != patchTimeoutGeneration || !waitingForPatchAck || collectingSections)
+            return;
+
+        waitingForPatchAck = false;
+
+        if (patchRequestAttemptsLeft > 0)
         {
             std::cout << "[PATCH] No ACK for patch request (slot " << slot
-                      << ") after 3s - resetting fetch state" << std::endl;
-            waitingForPatchAck = false;
+                      << ") after 3s - retrying (" << patchRequestAttemptsLeft
+                      << " attempts left)" << std::endl;
+            sendPatchRequest(slot);
+            return;
         }
+
+        std::cout << "[PATCH] No ACK for patch request (slot " << slot
+                  << ") after " << maxPatchRequestAttempts
+                  << " attempts - giving up" << std::endl;
+        setStatus(State::Connected,
+                  "Synth did not answer the patch request for slot "
+                      + juce::String::charToString(static_cast<juce::juce_wchar>('A' + (slot & 0x03))));
     });
 
     DBG("Requesting patch from slot " + juce::String(slot));
@@ -674,6 +706,7 @@ void ConnectionManager::sendNextUploadPacket()
             if (backgroundPrefetchSlot == (uploadSlot & 0x03))
                 backgroundPrefetchSlot = -1;
             continueSlotPrefetchQueue();
+            serviceDeferredAutoFetch();
         }
         // Suppress the next auto-fetch triggered by NewPatchInSlot (sc=0x38).
         // currentPatch is already authoritative — it IS the patch we just uploaded.
@@ -1584,6 +1617,30 @@ void ConnectionManager::finalizePatch()
 
     patchSections.clear();
     sectionsReceived = 0;
+
+    serviceDeferredAutoFetch();
+}
+
+// Fetch a patch whose NewPatchInSlot notification arrived while the wire was
+// already busy. Nothing else would ever ask for it: the notification is not
+// repeated, and the editor stays on the slot, so no slot switch comes along to
+// notice the model is stale (issue #41).
+void ConnectionManager::serviceDeferredAutoFetch()
+{
+    if (!isConnected() || waitingForPatchAck || collectingSections || waitingForUploadAck)
+        return;
+
+    for (int slot = 0; slot < 4; ++slot)
+    {
+        if (!autoFetchPending[static_cast<size_t>(slot)])
+            continue;
+
+        autoFetchPending[static_cast<size_t>(slot)] = false;
+        std::cout << "[PATCH] Running deferred fetch for slot "
+                  << static_cast<char>('A' + slot) << std::endl;
+        requestPatch(slot);
+        return;  // one fetch at a time; the next runs when this one finishes
+    }
 }
 
 void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
@@ -1734,6 +1791,17 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         else if (waitingForUploadAck)
         {
             std::cout << "[UPLOAD] Ignoring NewPatchInSlot during upload" << std::endl;
+        }
+        else if (isConnected() && msg.newPatchSlot >= 0)
+        {
+            // The wire was busy with another fetch. Dropping the notification
+            // here left the editor showing the previous patch with nothing to
+            // make it ask again (issue #41), so remember it and fetch as soon
+            // as the current transfer finishes.
+            autoFetchPending[static_cast<size_t>(msg.newPatchSlot & 0x03)] = true;
+            std::cout << "[PATCH] NewPatchInSlot for slot "
+                      << static_cast<char>('A' + (msg.newPatchSlot & 0x03))
+                      << " arrived mid-transfer - fetch deferred" << std::endl;
         }
     }
 
