@@ -16,6 +16,8 @@ struct EditorOptions
     bool        autoUpload     = true;
     bool        wireframe      = false; // outline-only module rendering (theme-independent)
     bool        animateTiling  = true;  // slide slot sub-windows to their new tiles
+    bool        moduleIconBar  = true;  // the module icon bar under the header (issue #17)
+    juce::String moduleIconBarCategory { "In/Out" };  // tab it was left on
     bool        mcpBridgeEnabled = false; // embedded MCP control socket (source/mcp/), if built in; opt-in so no localhost port opens unless asked
     float       cableOpacity   = 0.80f;
     int         sendRateIndex  = 1;   // index into sendRates() — synth param throughput

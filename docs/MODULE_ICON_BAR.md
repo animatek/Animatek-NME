@@ -1,9 +1,8 @@
 # Module Icon Bar — design notes
 
-Proposed feature, requested by Nocticore on 2026-07-23. Not yet implemented. This document
-exists so the research done up front is not lost; the task itself is tracked as
-[issue #17](https://github.com/animatek/Animatek-NME/issues/17) and in
-[ROADMAP.md](ROADMAP.md).
+Requested by Nocticore on 2026-07-23, **shipped 2026-08-09** as `source/ui/ModuleIconBar.{h,cpp}`
+(issue #17). This document keeps the research that went into it, and records what was decided
+where the notes below left a question open.
 
 ## What is being asked for
 
@@ -86,10 +85,31 @@ So the new component only has to render icons and emit the *same* drag descripti
    against Deep Dark and Nord Classic before shipping. Wireframe mode (`Ctrl+W`) should
    leave the bar alone.
 
-## Open questions
+## What was decided
 
-- Original look (single scrolling row) vs. a more practical category-segmented bar.
-- Whether to also use the icons in `ModuleBrowserPanel`'s tree rows and in Quick Add
-  results — likely a cheap win once the image cache exists, and it makes the icons
-  learnable for users who did not come from the original editor.
-- Whether the 16x16 or 32x32 set (or a user-selectable size) is the default.
+- **Category-segmented**, which is also what the original does: Javier's screenshot of
+  Clavia's bar (`Implementaciones/Barra de modulos orden.png`) shows a row of category
+  tabs — In/Out, Osc, LFO, Env, Filter, Mixer, Audio, Ctrl, Logic, Seq — with the icons
+  of the chosen category underneath. The tab order is hard-coded to match; any category
+  `modules.xml` grows beyond that list is appended.
+- **No pictograms yet.** The bar shipped with a thin outlined chip per module carrying its
+  name. Nomad's icon set was tried first and rejected: they are coloured discs, one hue per
+  category, which sit badly against the chrome, stay green whatever the theme is, and cannot
+  follow Wireframe. Shipping someone else's artwork to fill the gap was worse than shipping
+  no artwork. Our own flat theme-aware icons are issue #52, and the chip is what the bar
+  shows until they exist.
+- **32x32** when the icons do arrive, so the pictogram can be recognised at a glance, which
+  is the whole point of the bar. The strip sits in a viewport either way, so a narrow window
+  scrolls rather than clipping (the Oscillator tab alone holds sixteen).
+- For the record: **Nomad ships the same icon set as nmedit**, byte for byte, inside
+  `nomad-0-3_2/plugins/net.sf.nmedit.nordmodular/classes.jar` under
+  `data/module-descriptions/img/icons/`. If they are ever wanted, the licence is compatible
+  and the attribution belongs to Stefan Keel.
+
+## Still open
+
+- A click on a chip hands the module to the pointer (the 0.14.0 ghost-drop gesture) and a
+  drag works too. Whether people reach for one or the other is worth watching.
+- The chips carry the module's full name, which makes a category wider than the window and
+  leaves the row scrolling. Pictograms will fix that by being small; until then, watch
+  whether the short name would serve better.

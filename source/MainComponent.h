@@ -118,6 +118,7 @@ private:
     void toggleWireframe();
     void toggleLeftPanel();   // Ctrl+I: inspector column (issue #38)
     void toggleRightPanel();  // Ctrl+Shift+I: patch browser
+    void toggleModuleIconBar();  // View menu: the module palette strip (issue #17)
     void togglePresetBrowser();
     void showPresetBrowser();
     void toggleKnobFloater();

@@ -25,6 +25,14 @@ From top to bottom:
   panel; **right-click shows or hides that slot's sub-window** (see
   [Working with the Synth](04-working-with-the-synth.md#the-four-slots-on-screen)).
   A slot showing a **LOCAL** badge holds a patch the synth doesn't have.
+- **Module bar** (under the header, full width): the module palette as the
+  original editor presents it. The tabs pick a category (In/Out, Osc, LFO, Env,
+  Filter, Mixer, Audio, Ctrl, Logic, Seq) and the modules of that category appear
+  underneath, each in a thin outlined chip carrying its name. **Drag a chip**
+  onto a patch area, or **click it** and the module follows the pointer until you
+  click where you want it, which also chooses the area and the slot. The bar
+  remembers the tab you left it on, and **View > Module Icon Bar** turns it off
+  if you would rather have the pixels.
 - **Work area**: the four slots live here as **sub-windows**, tiled inside the
   main window. Each holds a **patch canvas**, split into the **Poly area**
   (one instance per voice) and the **Common area** (one instance per patch,

@@ -85,6 +85,7 @@ set(NME_SHARED_SOURCES
     source/ui/MainLayout.cpp
     source/ui/AppTheme.cpp
     source/ui/ModuleBrowserPanel.cpp
+    source/ui/ModuleIconBar.cpp
     source/ui/PatchCanvasComponent.cpp
     source/ui/ColorScheme.cpp
     source/ui/ThemeRegistry.cpp

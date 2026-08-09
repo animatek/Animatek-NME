@@ -173,6 +173,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   });
 
   mainLayout->getPatchArea().setAnimated(editorOptions.animateTiling);
+  mainLayout->setModuleIconBarVisible(editorOptions.moduleIconBar);
+  mainLayout->getModuleIconBar().setSelectedCategory(editorOptions.moduleIconBarCategory);
+  mainLayout->getModuleIconBar().onCategoryChanged = [this](const juce::String& category) {
+    editorOptions.moduleIconBarCategory = category;
+    editorOptions.save(appProperties.getUserSettings());
+  };
 
   initModulePresetLibrary();
 
@@ -1155,6 +1161,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addSubMenu("Overlays", overlayMenu);
 
     menu.addSeparator();
+    menu.addItem(69, "Module Icon Bar", true, mainLayout->isModuleIconBarVisible());
     menu.addItem(67, "Inspector Panel\tCtrl+I", true, mainLayout->isLeftPanelVisible());
     menu.addItem(68, "Patch Browser\tCtrl+Shift+I", true, mainLayout->isRightPanelVisible());
     menu.addSeparator();
@@ -1402,6 +1409,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 68:  // Patch Browser
     toggleRightPanel();
+    break;
+  case 69:  // Module Icon Bar
+    toggleModuleIconBar();
     break;
   case 80:  // Knob Floater
     toggleKnobFloater();
@@ -2313,6 +2323,21 @@ void MainComponent::toggleLeftPanel() {
   // is the only place the shortcut is visible without opening a menu.
   mainLayout->getStatusBar().showMessage(
       show ? "Inspector panel shown" : "Inspector panel hidden (Ctrl+I to show)",
+      2500);
+}
+
+// The icon bar is how long-time users of the original reach for a module, but
+// it is screen furniture to anyone working from Quick Add, so it comes off the
+// View menu and the choice is remembered (issue #17).
+void MainComponent::toggleModuleIconBar() {
+  if (!mainLayout) return;
+  const bool show = !mainLayout->isModuleIconBarVisible();
+  mainLayout->setModuleIconBarVisible(show);
+  editorOptions.moduleIconBar = show;
+  editorOptions.save(appProperties.getUserSettings());
+  menuItemsChanged();
+  mainLayout->getStatusBar().showMessage(
+      show ? "Module icon bar shown" : "Module icon bar hidden (View menu to show)",
       2500);
 }
 

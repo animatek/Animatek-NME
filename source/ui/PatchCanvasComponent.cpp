@@ -7476,6 +7476,18 @@ void PatchCanvas::beginAddModuleGhost(int typeIndex, const juce::String& name)
     armPendingDrop(std::move(drop));
 }
 
+void PatchCanvas::beginAddModuleDrop(int typeIndex, const juce::String& name)
+{
+    // Any live canvas will do: the ghost is editor-wide from here on, and every
+    // canvas shares the same module descriptions.
+    for (auto* c : liveCanvases)
+        if (c != nullptr)
+        {
+            c->beginAddModuleGhost(typeIndex, name);
+            return;
+        }
+}
+
 void PatchCanvas::armPendingDrop(PendingDrop drop)
 {
     if (!drop.active())

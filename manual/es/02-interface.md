@@ -26,6 +26,14 @@ De arriba abajo:
   la subventana de ese slot** (mira
   [Trabajar con el sintetizador](04-working-with-the-synth.md#los-cuatro-slots-en-pantalla)).
   Un slot con la insignia **LOCAL** tiene un patch que el sintetizador no conoce.
+- **Barra de módulos** (bajo la cabecera, a todo lo ancho): la paleta de módulos
+  tal como la presenta el editor original. Las pestañas eligen categoría (In/Out,
+  Osc, LFO, Env, Filter, Mixer, Audio, Ctrl, Logic, Seq) y debajo aparecen los
+  módulos de esa categoría, cada uno en una cajita fina con su nombre.
+  **Arrastra una cajita** al área de patch, o **haz clic** y el módulo sigue al
+  puntero hasta que pulses donde lo quieras, lo que elige también el área y el
+  slot. La barra recuerda la pestaña en la que la dejaste, y
+  **View > Module Icon Bar** la quita si prefieres esos píxeles para otra cosa.
 - **Área de trabajo**: los cuatro slots viven aquí como **subventanas**,
   distribuidas en mosaico dentro de la ventana principal. Cada una contiene un
   **canvas de patch**, dividido en **área Poly** (una instancia por voz) y **área

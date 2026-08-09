@@ -61,6 +61,8 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.autoUpload     = props->getBoolValue  ("autoUpload",     true);
     o.wireframe      = props->getBoolValue  ("wireframe",      false);
     o.animateTiling  = props->getBoolValue  ("animateTiling",  true);
+    o.moduleIconBar  = props->getBoolValue  ("moduleIconBar",  true);
+    o.moduleIconBarCategory = props->getValue ("moduleIconBarCategory", "In/Out");
     o.mcpBridgeEnabled = props->getBoolValue("mcpBridgeEnabled", false);
     o.cableOpacity   = static_cast<float>   (props->getDoubleValue("cableOpacity", 0.80));
     o.sendRateIndex  = juce::jlimit (0, static_cast<int> (sendRates().size()) - 1,
@@ -80,6 +82,8 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("autoUpload",      autoUpload);
     props->setValue ("wireframe",       wireframe);
     props->setValue ("animateTiling",   animateTiling);
+    props->setValue ("moduleIconBar",   moduleIconBar);
+    props->setValue ("moduleIconBarCategory", moduleIconBarCategory);
     props->setValue ("mcpBridgeEnabled", mcpBridgeEnabled);
     props->setValue ("cableOpacity",    static_cast<double>(cableOpacity));
     props->setValue ("sendRateIndex",   sendRateIndex);

@@ -303,7 +303,7 @@ void PanelToggleStrip::mouseExit(const juce::MouseEvent&)
 // MainLayout implementation
 // ============================================================
 
-MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
+MainLayout::MainLayout(ModuleDescriptions& moduleDescs)
 {
     slotBar.onSlotChanged = [this](int idx) {
         if (onSlotChanged)
@@ -344,6 +344,8 @@ MainLayout::MainLayout(ModuleDescriptions& /*moduleDescs*/)
     addAndMakeVisible(rightToggleStrip);
     addAndMakeVisible(leftColumn);
     addAndMakeVisible(headerBar);
+    moduleIconBar.setModuleDescriptions(&moduleDescs);
+    addAndMakeVisible(moduleIconBar);
     addAndMakeVisible(patchArea);
     addAndMakeVisible(rightBrowserTabs);
     addAndMakeVisible(statusBar);
@@ -372,6 +374,8 @@ void MainLayout::applyTheme()
     storeButton.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().buttonActive);
     storeButton.setColour(juce::TextButton::textColourOffId, AppTheme::palette().textSecondary);
 
+    moduleIconBar.applyTheme();
+
     rightBrowserTabs.setTabBackgroundColour(0, AppTheme::palette().backgroundPanel);
     rightBrowserTabs.setTabBackgroundColour(1, AppTheme::palette().backgroundPanel);
 
@@ -398,6 +402,8 @@ void MainLayout::resized()
 
     statusBar.setBounds(area.removeFromBottom(statusBarHeight));
     headerBar.setBounds(area.removeFromTop(headerBarHeight));
+    if (moduleIconBarVisible)
+        moduleIconBar.setBounds(area.removeFromTop(ModuleIconBar::preferredHeight));
 
     // The chevron strips sit outside the stretchable layout, at both edges, so
     // they keep their place whether or not the panel behind them is showing.
@@ -421,6 +427,16 @@ void MainLayout::resized()
     libraryButton.setBounds(toolRow.removeFromLeft(thirdW).reduced(2));
     storeButton.setBounds(toolRow.reduced(2));
     inspectorPanel.setBounds(leftArea);
+}
+
+void MainLayout::setModuleIconBarVisible(bool visible)
+{
+    if (moduleIconBarVisible == visible)
+        return;
+
+    moduleIconBarVisible = visible;
+    moduleIconBar.setVisible(visible);
+    resized();
 }
 
 void MainLayout::showDiskPresetBrowser()

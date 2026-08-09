@@ -512,6 +512,9 @@ public:
     // Puts a pending block down where the pointer is, without needing a click.
     // Adding a module with Enter is meant to be quick, so Enter finishes it.
     static bool dropPendingAtPointer();
+    // Hands a module to the pointer from outside any canvas — what a click on
+    // the module icon bar does (issue #17). Same gesture as Add Module.
+    static void beginAddModuleDrop(int typeIndex, const juce::String& name);
 
     static void setCableOpacity (float v)  { cableOpacity   = juce::jlimit(0.0f, 1.0f, v); }
     static void setCableStyle   (int idx)  { cableStyleIdx  = idx; }

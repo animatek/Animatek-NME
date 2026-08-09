@@ -9,6 +9,7 @@
 #include "StatusBar.h"
 #include "PatchHeaderBar.h"
 #include "PresetBrowserWindow.h"
+#include "ModuleIconBar.h"
 #include "../model/ModuleDescriptions.h"
 
 // Custom slot selector panel — shows 4 slot buttons with patch names.
@@ -106,6 +107,12 @@ public:
         patchArea.forEachCanvas([&cs, id](int, PatchCanvasComponent& c) { c.setTheme(cs, id); });
     }
     InspectorPanel&       getInspector()   { return inspectorPanel; }
+    ModuleIconBar&        getModuleIconBar() { return moduleIconBar; }
+
+    // The icon bar is optional: some people work from the text browser or Quick
+    // Add and would rather have the pixels (issue #17).
+    void setModuleIconBarVisible(bool visible);
+    bool isModuleIconBarVisible() const { return moduleIconBarVisible; }
     PatchBrowserPanel&    getPatchBrowser() { return patchBrowserPanel; }
     DiskPresetBrowserPanel& getDiskPresetBrowser() { return diskPresetBrowserPanel; }
     StatusBar&            getStatusBar()   { return statusBar; }
@@ -147,6 +154,7 @@ private:
     PanelToggleStrip  leftToggleStrip { true };
     PanelToggleStrip  rightToggleStrip { false };
 
+    ModuleIconBar     moduleIconBar;      // full width, under the header bar
     SlotMdiArea       patchArea;          // centre — the slots as sub-windows
     PatchBrowserPanel patchBrowserPanel;  // right tab — synth patch browser
     DiskPresetBrowserPanel diskPresetBrowserPanel; // right tab — disk presets/snippets
@@ -159,6 +167,7 @@ private:
     juce::StretchableLayoutResizerBar resizerBar1 { &layoutManager, 1, true };
     juce::StretchableLayoutResizerBar resizerBar2 { &layoutManager, 3, true };
 
+    bool moduleIconBarVisible = true;
     bool leftPanelVisible  = true;
     bool rightPanelVisible = true;
     int  savedLeftWidth    = 210;   // preferred sizes below, restored on re-show
