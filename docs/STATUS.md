@@ -1,6 +1,6 @@
 # Animatek NME Status
 
-Current version: **0.15.0** (released 2026-08-09)
+Current version: **0.15.1** (released 2026-08-10)
 
 The project was renamed from **Nomad2026** to **Animatek NME — Nord Modular Editor G1** in 0.6.0.
 
@@ -45,6 +45,9 @@ This file tracks the current project state at a practical level. Detailed versio
 
 ## Recent Milestones
 
+- **0.15.1**: hotfix for the crash on deleting a highlighted module (#61), a use-after-free on
+  the Inspector's selected module that only showed on macOS; the same fault behind undoing an
+  Add Module or a paste is fixed with it.
 - **0.15.0**: the module icon bar, frequency displays that change units on a click, and the
   three transfer faults behind Nocticore's reports: oversized upload packets, an aborted
   upload leaving the synth deaf to all MIDI, and a bank load the editor never picked up.
