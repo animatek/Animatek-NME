@@ -142,6 +142,14 @@ void ModuleContainer::removeModule(Module* module)
         modules.end());
 }
 
+bool ModuleContainer::contains(const Module* module) const
+{
+    if (module == nullptr) return false;
+    for (auto& m : modules)
+        if (m.get() == module) return true;
+    return false;
+}
+
 bool ModuleContainer::canAdd(const ModuleDescriptor& desc) const
 {
     if (desc.limit <= 0)

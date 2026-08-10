@@ -549,6 +549,11 @@ static const juce::Image& canvasGrainTexture()
 
 void PatchCanvas::paint(juce::Graphics& g)
 {
+    // Last line of defence: whatever destroyed a module we still point at (a
+    // delete, an undone add or paste) may not have gone through this canvas at
+    // all, and everything below dereferences those pointers (issue #61).
+    forgetDeletedModules();
+
     g.fillAll(activeScheme_.gridBackground);
 
     if (activeScheme_.canvasTexture)
@@ -5764,10 +5769,13 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                         {
                             if (undoManager)
                                 undoManager->beginNewTransaction("Delete Module");
+                            // Deselect first: the delete repaints the inspector
+                            // mid-flight, and it must not still be pointing at
+                            // the module about to be freed (issue #61).
+                            if (isSelected(modPtr))
+                                clearSelection();
                             if (deleteModuleCallback)
                                 deleteModuleCallback(sec, modPtr);
-                            if (selectedModule == modPtr)
-                                clearSelection();
                             repaint();
                         }
                         else if (result == 6)
@@ -7242,6 +7250,40 @@ bool PatchCanvas::isSelected(const Module* m) const
     return false;
 }
 
+void PatchCanvas::forgetDeletedModules()
+{
+    if (patch == nullptr) return;
+
+    // Hover and the cost badge don't record which section they came from, so
+    // ask both.
+    auto stillAlive = [this](const Module* m, int section)
+    {
+        if (m == nullptr) return false;
+        if (section >= 0) return patch->getContainer(section).contains(m);
+        return patch->getCommonArea().contains(m) || patch->getPolyVoiceArea().contains(m);
+    };
+
+    selection.erase(std::remove_if(selection.begin(), selection.end(),
+        [&](const SelectedModule& s) { return !stillAlive(s.module, s.section); }),
+        selection.end());
+
+    multiMoveState.erase(std::remove_if(multiMoveState.begin(), multiMoveState.end(),
+        [&](const ModuleMoveState& s) { return !stillAlive(s.module, s.section); }),
+        multiMoveState.end());
+
+    if (!stillAlive(selectedModule, selectedSection))
+    {
+        selectedModule = nullptr;
+        selectedSection = -1;
+    }
+    if (!stillAlive(hoverTarget.module, -1))
+        clearHover();
+    if (!stillAlive(costBadgeModule, -1))
+        costBadgeModule = nullptr;
+    if (dragState.module != nullptr && !stillAlive(dragState.module, dragState.section))
+        dragState = DragState();
+}
+
 void PatchCanvas::clearSelection()
 {
     selection.clear();
@@ -7285,7 +7327,14 @@ void PatchCanvas::deleteSelection()
     if (undoManager)
         undoManager->beginNewTransaction("Delete Selection");
 
-    for (auto& sel : selection)
+    // Let go of the selection *before* anything is destroyed. Deleting repaints
+    // the inspector while it still points at the module being deleted, which on
+    // macOS crashed outright (issue #61); clearing first also tells the
+    // inspector to drop it through the usual callback.
+    const auto doomed = selection;
+    clearSelection();
+
+    for (auto& sel : doomed)
     {
         if (deleteModuleCallback)
             deleteModuleCallback(sel.section, sel.module);
@@ -7295,7 +7344,6 @@ void PatchCanvas::deleteSelection()
             container.removeModule(sel.module);
         }
     }
-    clearSelection();
     repaint();
 }
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Deleting a selected module no longer crashes the editor on macOS** (#61). The Inspector holds
+  a plain pointer to whatever module is selected, and deleting one redrew the Inspector *after*
+  the patch had already destroyed it, so the panel read freed memory. On Linux and Windows that
+  memory still happened to be readable and nothing showed; macOS segfaulted on the spot. The
+  selection is now dropped before anything is deleted, and the Inspector and the canvas both
+  check with the patch that a module is still there before touching it, which also covers undoing
+  an Add Module or a paste while the new modules are selected.
+
 ## 0.15.0 — 2026-08-09
 
 ### Added

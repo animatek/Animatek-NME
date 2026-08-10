@@ -95,6 +95,11 @@ public:
 
     void setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td = nullptr);
     void clearModuleSelection() { clearSelection(); repaint(); }
+    /** Drops every Module* this canvas holds whose module the patch no longer
+     *  owns. A delete, or an undone add or paste, destroys modules from under
+     *  the selection, the hover badge and the cost badge; painting from any of
+     *  those afterwards reads freed memory (issue #61). */
+    void forgetDeletedModules();
     // The most recently selected module in this section, or nullptr.
     Module* getSelectedModule() const { return selectedModule; }
     int     getSelectedSection() const { return selectedSection; }
@@ -584,8 +589,9 @@ public:
     // both sections somehow hold a selection, matching the order the two
     // canvases report through moduleSelectedCallback.
     struct Selection { Module* module = nullptr; int section = -1; };
-    Selection getPrimarySelection() const
+    Selection getPrimarySelection()
     {
+        forgetDeletedModules();
         if (auto* m = polyCanvas.getSelectedModule())
             return { m, polyCanvas.getSelectedSection() };
         if (auto* m = commonCanvas.getSelectedModule())
@@ -723,8 +729,9 @@ public:
     }
 
     /** Aggregate selected modules from both canvases */
-    std::vector<std::pair<Module*, int>> getSelectedModules() const
+    std::vector<std::pair<Module*, int>> getSelectedModules()
     {
+        forgetDeletedModules();
         auto sel = polyCanvas.getSelectedModules();
         auto common = commonCanvas.getSelectedModules();
         sel.insert(sel.end(), common.begin(), common.end());
@@ -783,6 +790,14 @@ public:
     {
         polyCanvas.repaint();
         commonCanvas.repaint();
+    }
+
+    /** Both sections drop their pointers to modules the patch no longer owns
+     *  (issue #61). */
+    void forgetDeletedModules()
+    {
+        polyCanvas.forgetDeletedModules();
+        commonCanvas.forgetDeletedModules();
     }
 
     void setLightMeterData(const int lights[128], const int meters[128])

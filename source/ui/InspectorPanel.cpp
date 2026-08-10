@@ -154,11 +154,24 @@ public:
         rebuild();
     }
 
+    // The module we point at may have been deleted (or an add undone) since the
+    // last rebuild: the patch owns it, we only hold the pointer. Deleting fires
+    // the repaint that lands here while the object is already gone, so ask the
+    // patch first and fall back to the patch-wide view (issue #61).
+    bool moduleIsStale() const
+    {
+        return module != nullptr && patch != nullptr && singleSection >= 0
+            && !patch->getContainer(singleSection).contains(module);
+    }
+
     void rebuild()
     {
         morphRows.clear();
         knobRows.clear();
         ctrlRows.clear();
+
+        if (moduleIsStale())
+            module = nullptr;
 
         if (module != nullptr)
         {
@@ -1072,6 +1085,18 @@ void InspectorPanel::clearModule()
 
 void InspectorPanel::refreshMorphList()
 {
+    // Deleting the selected module (or undoing its add) repaints through here
+    // with our Module* already dangling — the patch destroyed it. Drop it and
+    // fall back to the patch-wide view rather than read freed memory: on macOS
+    // that was a hard crash, on Linux it silently read stale bytes (issue #61).
+    if (currentModule != nullptr && currentPatch != nullptr && currentSection >= 0
+        && !currentPatch->getContainer(currentSection).contains(currentModule))
+    {
+        assignmentsList->module = nullptr;
+        clearModule();
+        return;
+    }
+
     assignmentsList->rebuild();
     resized();
     repaint();

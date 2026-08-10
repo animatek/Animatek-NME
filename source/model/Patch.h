@@ -150,6 +150,12 @@ public:
     Module* getModuleByIndex(int containerIndex);
     const Module* getModuleByIndex(int containerIndex) const;
 
+    /** True while this container still owns `module`. The UI keeps raw Module*
+     *  pointers (selection, inspector, hover) and a delete or an undone add
+     *  destroys the object under them, so anything holding one must ask this
+     *  before dereferencing it (issue #61). */
+    bool contains(const Module* module) const;
+
     const std::vector<std::unique_ptr<Module>>& getModules() const { return modules; }
     const std::vector<Connection>& getConnections() const { return connections; }
 
