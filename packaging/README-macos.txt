@@ -14,8 +14,17 @@ block the first launch. This is expected. To run it:
 
        xattr -cr /Applications/AnimatekNME.app
 
-  3. Launch the app. If macOS still complains, right-click (Ctrl+click) the
-     app > Open > Open. You only need to do this once.
+  3. Launch the app. If macOS still complains:
+
+       macOS 14 Sonoma and older: right-click (Ctrl+click) the app >
+       Open > Open.
+
+       macOS 15 Sequoia and newer: the right-click trick no longer works.
+       Double-click the app once, let it be blocked, then go to System
+       Settings > Privacy & Security, scroll to the bottom and click
+       "Open Anyway" next to the AnimatekNME message.
+
+     You only need to do this once.
 
 If you ever see "AnimatekNME.app is damaged and can't be opened", that is
 Gatekeeper quarantine, not real damage - step 2 above fixes it.
