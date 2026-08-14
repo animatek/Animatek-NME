@@ -47,6 +47,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `F9` | Toggle MIDI CC assignments overlay |
 | `F10` | Toggle module DSP cost overlay |
 | double-click | Double-click a module to read its DSP cost |
+| `+` / `-` | Step the knob or slider the pointer is over, one value at a time. Hold to repeat; the whole run is one undo step |
 | `Z` | Zoom to selection (or reset when nothing selected) |
 | `Shift+Z` | Reset zoom to 100% |
 | `Ctrl++` / `Ctrl+-` | Zoom in / out |

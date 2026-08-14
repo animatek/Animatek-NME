@@ -1589,6 +1589,67 @@ void PatchCanvas::spinnerStep(int delta)
     repaint();
 }
 
+// A run of `+` or `-` presses on one control is one gesture. The value it
+// started from is kept so the whole run undoes in a single step, exactly as a
+// held nudge arrow does; moving to another control closes the run first.
+void PatchCanvas::beginKeyStep()
+{
+    if (spinnerTarget.module == nullptr)
+        return;
+    if (keyStepModule == spinnerTarget.module && keyStepComponentId == spinnerTarget.componentId)
+        return;   // already stepping this one
+
+    endKeyStep();
+
+    if (const auto* param = findParameter(*spinnerTarget.module, spinnerTarget.componentId))
+    {
+        keyStepModule      = spinnerTarget.module;
+        keyStepComponentId = spinnerTarget.componentId;
+        keyStepStartValue  = param->getValue();
+    }
+}
+
+void PatchCanvas::endKeyStep()
+{
+    if (keyStepModule == nullptr)
+        return;
+
+    auto* module = keyStepModule;
+    const auto componentId = keyStepComponentId;
+    const int startValue = keyStepStartValue;
+    keyStepModule = nullptr;
+    keyStepComponentId.clear();
+
+    // The module may have been deleted while the key was held, so the patch is
+    // asked whether it still has it rather than the pointer being trusted
+    // (issue #61).
+    if (patch == nullptr || !patch->getContainer(mySection).contains(module))
+        return;
+
+    if (paramDragCompleteCallback)
+        if (auto* param = findParameter(*module, componentId))
+            if (auto* pd = param->getDescriptor())
+                if (param->getValue() != startValue)
+                    paramDragCompleteCallback(mySection, module->getContainerIndex(),
+                                              pd->index, startValue, param->getValue());
+}
+
+bool PatchCanvas::keyStateChanged(bool isKeyDown)
+{
+    // Nothing to close while a step key is still held: the key repeating is one
+    // gesture, not one per repeat.
+    if (!isKeyDown
+        && !juce::KeyPress::isKeyCurrentlyDown('+')
+        && !juce::KeyPress::isKeyCurrentlyDown('=')
+        && !juce::KeyPress::isKeyCurrentlyDown('-')
+        && !juce::KeyPress::isKeyCurrentlyDown(juce::KeyPress::numberPadAdd)
+        && !juce::KeyPress::isKeyCurrentlyDown(juce::KeyPress::numberPadSubtract))
+    {
+        endKeyStep();
+    }
+    return false;   // this is a notification, not a key we are claiming
+}
+
 void PatchCanvas::spinnerRelease()
 {
     if (!spinner.mouseUp())
@@ -7600,6 +7661,27 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         if (key.getKeyCode() == '-' || key.getKeyCode() == juce::KeyPress::numberPadSubtract)
         {
             setZoomLevel(zoomLevel - zoomStep);
+            return true;
+        }
+    }
+
+    // + / - → step the control the pointer is over (issue #66). The same target
+    // the nudge arrows are pointing at, so what steps is whatever has the arrows
+    // under it, and a run of presses closes into one undo step on key up.
+    // Shift is allowed through: on most layouts `+` is Shift and `=`.
+    if (!key.getModifiers().isCommandDown() && !key.getModifiers().isAltDown())
+    {
+        const int code = key.getKeyCode();
+        int delta = 0;
+        if (code == '+' || code == '=' || code == juce::KeyPress::numberPadAdd)
+            delta = 1;
+        else if (code == '-' || code == '_' || code == juce::KeyPress::numberPadSubtract)
+            delta = -1;
+
+        if (delta != 0 && spinnerTarget.module != nullptr)
+        {
+            beginKeyStep();
+            spinnerStep(delta);
             return true;
         }
     }

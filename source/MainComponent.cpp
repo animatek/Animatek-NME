@@ -3738,6 +3738,7 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  F9                  MIDI CC assignments overlay\n"
       "  F10                 Module DSP cost overlay\n"
       "  Double-click module Module DSP cost\n"
+      "  + / -               Step the control under the pointer\n"
       "  Z                   Zoom to selection / reset\n"
       "  Shift+Z             Reset zoom to 100%\n"
       "  Ctrl++ / Ctrl+-     Zoom in / out\n"

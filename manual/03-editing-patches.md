@@ -107,6 +107,10 @@ with the patch when you share it.
   value reads out while you step it, and the whole press undoes in one go,
   however many steps it took. The four morph dials in the header bar have the
   same arrows, drawn inside the dial because their caption sits right below it.
+- **`+` and `-` do the same from the keyboard.** With the pointer resting on a
+  knob or a slider, `+` steps it up and `-` steps it down, which is often easier
+  than reaching for the arrows on a touchpad. Hold either and it repeats, and
+  the whole run undoes in one step.
 - **The Inspector lists them all.** Selecting a module fills a **Parameters**
   section at the top of the Inspector with every knob, slider and switch it has,
   each with the figure it currently reads in its own units. Drag a value up or

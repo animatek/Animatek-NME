@@ -278,6 +278,18 @@ private:
     bool spinnerMouseDown(juce::Point<int> canvasPos);
     void spinnerStep(int delta);
     void spinnerRelease();
+
+    // ── Stepping from the keyboard (issue #66) ───────────────────────────────
+    // `+` and `-` step whatever the pointer is over, which is the same control
+    // the nudge arrows are showing under, so both gestures share a target and a
+    // step. Held down, the key repeats and the whole run is one undo step,
+    // closed when the key comes back up.
+    Module*      keyStepModule = nullptr;
+    juce::String keyStepComponentId;
+    int          keyStepStartValue = 0;
+    void beginKeyStep();
+    void endKeyStep();
+    bool keyStateChanged(bool isKeyDown) override;
     // Module whose DSP cost was asked for by double-clicking it, as the original
     // editor answers. Cleared by the next click.
     const Module* costBadgeModule = nullptr;

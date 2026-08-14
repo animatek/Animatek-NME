@@ -18,6 +18,13 @@
   goes out to the synth as it happens and undoes in one step, and the list follows the module
   rather than the other way round, so a knob turned on the canvas reads true here as it moves.
 
+- **`+` and `-` step the control the pointer is over** (#66). The nudge arrows that pop under a
+  hovered knob are easy to reach with a mouse and awkward with a touchpad, and the original
+  editor took these two keys for the same job. They step whatever has the arrows under it, so
+  the note on a NoteDetect can be walked to exactly the one you want without touching the
+  pointer. Held down the key repeats, and the whole run is a single undo step, the same way a
+  held arrow is.
+
 - **The Inspector's sections fold away, and stay folded.** Parameters, Morphs, Knobs and MIDI CC
   each grew the chevron the Presets section already had, so a module with thirty parameters and
   no assignments doesn't push its presets off the bottom of the column. The choice is a display
