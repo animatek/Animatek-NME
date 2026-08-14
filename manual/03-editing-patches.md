@@ -107,6 +107,19 @@ with the patch when you share it.
   value reads out while you step it, and the whole press undoes in one go,
   however many steps it took. The four morph dials in the header bar have the
   same arrows, drawn inside the dial because their caption sits right below it.
+- **The Inspector lists them all.** Selecting a module fills a **Parameters**
+  section at the top of the Inspector with every knob, slider and switch it has,
+  each with the figure it currently reads in its own units. Drag a value up or
+  down to change it, or **double-click it and type**: the editor accepts the
+  reading as it is written, so `440Hz`, `C#3` or `-12(Oct)` all land where you
+  expect, and a plain number picks the nearest step the parameter can actually
+  hold. `Enter` keeps what you typed, `Esc` throws it away. Whatever the module
+  wears as a **button** is a button here too, carrying the same lettering its
+  face does: click it and a two-state switch flips, lighting up while it is on,
+  and a selector like the DrumSynth's LP/BP/HP walks round its options. The
+  list follows the
+  module rather than the other way round, so a knob turned on the canvas reads
+  true here as it moves, and every edit undoes in one step.
 - Right-click a parameter to assign it to a **morph group**, a **hardware
   knob**, or a **MIDI controller**, and to **lock** it against randomization.
 - **Click a frequency display** on an oscillator, a slave LFO or a filter and it

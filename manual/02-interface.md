@@ -11,9 +11,12 @@ From top to bottom:
   counter with up/down arrows, the **Load** meters, the four **morph group
   knobs**, and the **snapshot/variation buttons** (8 per slot).
 - **Inspector** (left column): everything about the selected module that isn't
-  on its face: its name (editable, and undoable), its section, its
+  on its face: its name (editable, and undoable), its section, every one of its
+  **parameters** as a name and a value you can drag or type into, its
   **assignments** (morph groups, hardware knobs and MIDI CCs), its **DSP cost**,
-  and its **presets**. Beside the Assignments heading sits a **hardware knob
+  and its **presets**. Each of those sections folds away from the chevron in its
+  own title, and stays folded next time you run the editor. Beside the
+  Assignments heading sits a **hardware knob
   map**: a four-panel, 18-LED diagram mirroring the physical knob layout, with
   assigned knobs lit bright green and free knobs in the hardware's dark
   unlit-lens colour. With nothing selected it lists the assignments of the whole

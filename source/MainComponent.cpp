@@ -239,6 +239,27 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         *undoContext(), section, module->getContainerIndex(), oldName, newName));
   };
 
+  // Parameters edited in the inspector's own list. Same two-step shape as the
+  // canvas and the knob floater: every move goes on the wire, and the gesture
+  // is recorded once so it undoes in one step. The list is repainted, never
+  // rebuilt, or a live drag would lose the row it is holding.
+  mainLayout->getInspector().onParameterChanged =
+      [this](int section, Module* module, int paramIndex, int value) {
+    if (!module) return;
+    connectionManager.sendParameter(activeSlot, section, module->getContainerIndex(),
+                                    paramIndex, value);
+    canvasFor(activeSlot).repaintCanvas();
+    if (knobFloaterWindow && knobFloaterWindow->isVisible())
+      knobFloaterWindow->refresh();
+  };
+  mainLayout->getInspector().onParameterEditComplete =
+      [this](int section, Module* module, int paramIndex, int oldValue, int newValue) {
+    if (!module || !undoContext()) return;
+    undoManager().beginNewTransaction("Parameter Change");
+    undoManager().perform(new ParameterChangeAction(
+        *undoContext(), section, module->getContainerIndex(), paramIndex, oldValue, newValue));
+  };
+
   // Wire inspector morph group remove
   mainLayout->getInspector().onMorphGroupChanged = [this](int section, Module* module,
                                                            int paramIndex, int morphGroup) {
@@ -3187,8 +3208,13 @@ void MainComponent::wireSlotView(int slot) {
   // Canvas -> synth (live parameter changes)
   canvas.setParameterChangeCallback([this, slot](int section, int moduleId, int parameterId, int value) {
     connectionManager.sendParameter(slot, section, moduleId, parameterId, value);
-    if (slot == activeSlot && knobFloaterWindow && knobFloaterWindow->isVisible())
-      knobFloaterWindow->refresh();
+    if (slot == activeSlot) {
+      // The inspector lists the selected module's values, so a knob turned on
+      // the canvas has to read true there as it moves.
+      mainLayout->getInspector().repaintValues();
+      if (knobFloaterWindow && knobFloaterWindow->isVisible())
+        knobFloaterWindow->refresh();
+    }
   });
 
   // Canvas -> undo (structural edits). Parameter drags fire once on mouseUp
@@ -4702,6 +4728,9 @@ juce::File MainComponent::presetsFolder() const
 void MainComponent::wirePresetCallbacks(InspectorPanel& inspector, int slot)
 {
   inspector.setPresetLibrary(&modulePresets);
+  // The module faces, so the Parameters list draws a module's buttons as
+  // buttons rather than as the bare numbers behind them.
+  inspector.setThemeData(&themeData);
 
   inspector.onPresetRecall = [this, slot](int section, Module* module, int index) {
     recallModulePreset(slot < 0 ? activeSlot : slot, section, module, index);

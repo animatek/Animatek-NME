@@ -6,6 +6,7 @@
 
 // Forward declaration
 class AssignmentsListComponent;
+class ThemeData;
 
 class InspectorPanel : public juce::Component,
                        public juce::TextEditor::Listener
@@ -41,8 +42,24 @@ public:
     void setMorphFaderKnob(int knobIndex, int carrierGroup);
     std::function<void()> onMorphFaderKnobRemove;
 
+    // A parameter edited in the inspector's own Parameters list: live while the
+    // value moves, then once for the whole gesture so it undoes in one step.
+    // Same pair the canvas and the knob floater use.
+    std::function<void(int section, Module*, int paramIndex, int value)> onParameterChanged;
+    std::function<void(int section, Module*, int paramIndex, int oldValue, int newValue)> onParameterEditComplete;
+
     // Called by canvas when a morph assignment changes (so inspector can refresh)
     void refreshMorphList();
+
+    /** Redraws the values without rebuilding the list, for a knob turned
+        somewhere else. A rebuild here would drop the row a drag is holding. */
+    void repaintValues();
+
+    /** The module face descriptions, so the Parameters list can tell which of a
+        module's parameters are buttons on its front and draw them as buttons
+        here too, with the same labels the module wears. Without this they all
+        fall back to plain numbers, which is what a switch reads worst as. */
+    void setThemeData(const ThemeData* themeData);
 
     // Module presets. The panel only displays and reports clicks; the owner
     // holds the library and performs the recall, save and delete, then calls

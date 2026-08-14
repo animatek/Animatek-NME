@@ -1,6 +1,8 @@
 #include "InspectorPanel.h"
 #include "AppTheme.h"
 #include "protocol/KnobAssignmentMessage.h"
+#include "../format/ValueFormatters.h"
+#include "../model/ThemeData.h"
 #include <cmath>
 
 // ─── Morph group colours (same as canvas) ────────────────────────────────────
@@ -12,35 +14,69 @@ static const juce::Colour kMorphColors[4] = {
 };
 static const char* kGroupNames[4] = { "Macro 1", "Macro 2", "Macro 3", "Macro 4" };
 
-// Whether the Presets section is folded away. Shared by every inspector and
-// remembered between runs, matching how the main window's own panel toggles
-// behave: a display preference, not per-window state.
+// Which sections are folded away. Shared by every inspector and remembered
+// between runs, matching how the main window's own panel toggles behave: a
+// display preference, not per-window state.
 static juce::PropertiesFile* inspectorSettings = nullptr;
 static bool presetsSectionCollapsed = false;
+static bool paramsSectionCollapsed  = false;
+static bool morphsSectionCollapsed  = false;
+static bool knobsSectionCollapsed   = false;
+static bool ctrlsSectionCollapsed   = false;
 
 // The presets that ship with the editor sit in a group of their own inside the
 // section, folded away by default: there are 29 for the Drum Synthesizer alone,
 // and a flat list buries the few you saved yourself under a wall of names.
 static bool factoryPresetsCollapsed = true;
 
-static void setPresetsCollapsed(bool collapsed)
+static void setCollapsed(bool& flag, const char* key, bool collapsed)
 {
-    presetsSectionCollapsed = collapsed;
+    flag = collapsed;
     if (inspectorSettings != nullptr)
     {
-        inspectorSettings->setValue("inspectorPresetsCollapsed", collapsed);
+        inspectorSettings->setValue(key, collapsed);
         inspectorSettings->saveIfNeeded();
     }
 }
 
-static void setFactoryPresetsCollapsed(bool collapsed)
+// The value a typed string asks for, or -1 when it asks for nothing we can
+// place. Values are shown in the parameter's own units, so that is what gets
+// typed back: the range is at most 128 steps, so the honest way to read "440Hz"
+// or "C#3" is to format every step and look for it. An exact match wins; short
+// of that the number at the front of what was typed picks the nearest step,
+// which is what makes "440" land on 440Hz and "9.5" on the 9.45s next to it.
+static int valueFromText(const ParameterDescriptor& pd, const juce::String& typed)
 {
-    factoryPresetsCollapsed = collapsed;
-    if (inspectorSettings != nullptr)
+    const auto wanted = typed.trim();
+    if (wanted.isEmpty())
+        return -1;
+
+    for (int v = pd.minValue; v <= pd.maxValue; ++v)
+        if (ValueFormatters::format(pd.formatter, v).trim().equalsIgnoreCase(wanted))
+            return v;
+
+    // getDoubleValue stops at the first character that cannot belong to a
+    // number, so "9.45s" reads as 9.45 and "C#3" as 0 — hence the digit test,
+    // which keeps a mistyped note name from being read as "the lowest value".
+    if (!wanted.containsAnyOf("0123456789"))
+        return -1;
+
+    const double target = wanted.getDoubleValue();
+    int best = -1;
+    double bestDistance = 0.0;
+    for (int v = pd.minValue; v <= pd.maxValue; ++v)
     {
-        inspectorSettings->setValue("inspectorFactoryPresetsCollapsed", collapsed);
-        inspectorSettings->saveIfNeeded();
+        const auto text = ValueFormatters::format(pd.formatter, v).trim();
+        if (!text.containsAnyOf("0123456789"))
+            continue;
+        const double distance = std::abs(text.getDoubleValue() - target);
+        if (best < 0 || distance < bestDistance)
+        {
+            best = v;
+            bestDistance = distance;
+        }
     }
+    return best;
 }
 
 // Built-ins always sort before user presets, so a count is all the layout needs.
@@ -77,6 +113,26 @@ public:
         juce::String  moduleName;
     };
 
+    // ── Parameter row ──
+    // Every knob, slider and button the selected module has, as a name and the
+    // figure it currently reads. The Parameter is held rather than a copy of its
+    // value: a knob turned on the canvas has to show here without anyone having
+    // to tell the list about it.
+    struct ParamRow
+    {
+        Parameter*   param = nullptr;
+        juce::String name;
+
+        // A parameter the module wears as a button rather than a knob. Those
+        // read as a state, not a figure, so the row shows a button carrying the
+        // state's own name and clicking it steps to the next one, exactly as
+        // clicking the button on the module's face does. `labels` comes from the
+        // module face and is indexed by raw value, empty on the plain on/off
+        // switches that carry no lettering.
+        bool                      isSwitch = false;
+        std::vector<juce::String> labels;
+    };
+
     // ── Knob/CC row ──
     struct HwRow
     {
@@ -102,8 +158,21 @@ public:
     std::function<void(int)> onPresetRename;
     std::function<void()>    onPresetSave;
     std::function<void()>    onPresetsCollapsedChanged;
+    // Parameter edits: live while the value moves, then once for the whole
+    // gesture so it undoes in one step.
+    std::function<void(Module*, int section, int paramIndex, int value)> onParamValue;
+    std::function<void(Module*, int section, int paramIndex, int oldValue, int newValue)> onParamValueComplete;
 
-    AssignmentsListComponent() { setInterceptsMouseClicks(true, false); }
+    AssignmentsListComponent()
+    {
+        setInterceptsMouseClicks(true, false);
+
+        addChildComponent(valueEditor);
+        valueEditor.setBorder(juce::BorderSize<int>(1));
+        valueEditor.onReturnKey = [this] { finishValueEdit(true); };
+        valueEditor.onEscapeKey = [this] { finishValueEdit(false); };
+        valueEditor.onFocusLost = [this] { finishValueEdit(true); };
+    }
 
     // The module type whose presets belong on screen, empty when nothing single
     // is selected. Kept as its own accessor so paint, hit testing and height all
@@ -166,15 +235,22 @@ public:
 
     void rebuild()
     {
+        // A rebuild throws away the rows the editor is anchored to, so whatever
+        // was being typed is committed first rather than left hanging over a row
+        // that no longer means the same thing.
+        finishValueEdit(true);
+
         morphRows.clear();
         knobRows.clear();
         ctrlRows.clear();
+        paramRows.clear();
 
         if (moduleIsStale())
             module = nullptr;
 
         if (module != nullptr)
         {
+            buildParamsFromModule(module);
             buildMorphsFromModule(module, singleSection);
             buildHwFromModule(module, singleSection);
         }
@@ -213,9 +289,8 @@ public:
             return a.paramIndex < b.paramIndex;
         });
 
-        // Compute required height
-        int h = computeHeight();
-        setSize(getWidth() > 0 ? getWidth() : 200, juce::jmax(h, 10));
+        buildLayout();
+        setSize(getWidth() > 0 ? getWidth() : 200, juce::jmax(layoutHeight, 10));
         repaint();
     }
 
@@ -228,6 +303,9 @@ public:
     static constexpr int rowH         = 26;
     static constexpr int xBtnW        = 20;
     static constexpr int amountW      = 56;
+    // Wider than the morph amount: it holds a formatted reading, not a number,
+    // and "1.00kHz" or "-12(Oct)" has to fit.
+    static constexpr int valueW       = 70;
     static constexpr int marginX      = 6;
     static constexpr int sectionGap   = 8;
 
@@ -240,95 +318,177 @@ public:
     static constexpr float fontTitle    = 12.0f;  // section titles
     static constexpr float fontSmall    = 11.0f;  // x glyphs, amounts
 
-    // ── Hit testing ──
-    enum class HitType { None, MorphX, MorphAmount, KnobX, CtrlX,
-                         PresetRecall, PresetDelete, PresetSave, PresetsHeader,
-                         FactoryHeader };
-    struct HitResult { HitType type = HitType::None; int rowIdx = -1; };
-
-    HitResult findHit(juce::Point<int> pos) const
+    // ── Layout ──
+    // Every row the list can show, worked out once. Painting, hit testing and
+    // the overall height all read this rather than each walking the sections
+    // and counting pixels for themselves, which is how a fourth section and a
+    // fold on each of them would otherwise get three chances to disagree. It is
+    // also what lets the value editor be dropped exactly over the cell it edits.
+    enum class RowKind
     {
+        ParamsTitle, ParamRow,
+        MorphsTitle, MorphGroupHeader, MorphRow,
+        KnobsTitle, KnobRow,
+        CtrlsTitle, CtrlRow,
+        PresetsTitle, FactoryHeader, PresetRow, PresetSave
+    };
+    struct LayoutRow { RowKind kind; int index; juce::Rectangle<int> bounds; };
+
+    void buildLayout()
+    {
+        layout.clear();
+        const int w = juce::jmax(getWidth(), 1);
         int y = topPad;
+
+        auto add = [&](RowKind kind, int index, int h)
+        {
+            layout.push_back({ kind, index, { 0, y, w, h } });
+            y += h;
+        };
+
+        if (!paramRows.empty())
+        {
+            add(RowKind::ParamsTitle, -1, sectionTitleH);
+            if (!paramsSectionCollapsed)
+                for (int i = 0; i < (int)paramRows.size(); ++i)
+                    add(RowKind::ParamRow, i, rowH);
+            y += sectionGap;
+        }
+
         if (!morphRows.empty())
         {
-            y += sectionTitleH;
-            int prevGroup = -1;
-            for (int i = 0; i < (int)morphRows.size(); ++i)
+            add(RowKind::MorphsTitle, -1, sectionTitleH);
+            if (!morphsSectionCollapsed)
             {
-                if (morphRows[size_t(i)].group != prevGroup)
-                { y += groupHeaderH; prevGroup = morphRows[size_t(i)].group; }
-                juce::Rectangle<int> rowRect(0, y, getWidth(), rowH);
-                if (rowRect.contains(pos))
+                int prevGroup = -1;
+                for (int i = 0; i < (int)morphRows.size(); ++i)
                 {
-                    bool xBtn = (pos.x >= marginX && pos.x < marginX + xBtnW);
-                    int amX = getWidth() - marginX - amountW;
-                    if (xBtn) return { HitType::MorphX, i };
-                    if (pos.x >= amX) return { HitType::MorphAmount, i };
-                    return {};
+                    if (morphRows[size_t(i)].group != prevGroup)
+                    {
+                        prevGroup = morphRows[size_t(i)].group;
+                        add(RowKind::MorphGroupHeader, i, groupHeaderH);
+                    }
+                    add(RowKind::MorphRow, i, rowH);
                 }
-                y += rowH;
             }
             y += sectionGap;
         }
+
         if (!knobRows.empty())
         {
-            y += sectionTitleH;
-            for (int i = 0; i < (int)knobRows.size(); ++i)
-            {
-                juce::Rectangle<int> rowRect(0, y, getWidth(), rowH);
-                if (rowRect.contains(pos) && pos.x >= marginX && pos.x < marginX + xBtnW)
-                    return { HitType::KnobX, i };
-                y += rowH;
-            }
+            add(RowKind::KnobsTitle, -1, sectionTitleH);
+            if (!knobsSectionCollapsed)
+                for (int i = 0; i < (int)knobRows.size(); ++i)
+                    add(RowKind::KnobRow, i, rowH);
             y += sectionGap;
         }
+
         if (!ctrlRows.empty())
         {
-            y += sectionTitleH;
-            for (int i = 0; i < (int)ctrlRows.size(); ++i)
-            {
-                juce::Rectangle<int> rowRect(0, y, getWidth(), rowH);
-                if (rowRect.contains(pos) && pos.x >= marginX && pos.x < marginX + xBtnW)
-                    return { HitType::CtrlX, i };
-                y += rowH;
-            }
+            add(RowKind::CtrlsTitle, -1, sectionTitleH);
+            if (!ctrlsSectionCollapsed)
+                for (int i = 0; i < (int)ctrlRows.size(); ++i)
+                    add(RowKind::CtrlRow, i, rowH);
             y += sectionGap;
         }
+
         if (hasPresetSection())
         {
-            juce::Rectangle<int> headerRect(0, y, getWidth(), sectionTitleH);
-            if (headerRect.contains(pos))
-                return { HitType::PresetsHeader, -1 };
-            y += sectionTitleH;
-
+            add(RowKind::PresetsTitle, -1, sectionTitleH);
             if (!presetsSectionCollapsed)
             {
                 const auto& list = presets();
                 if (countFactory(list) > 0)
-                {
-                    juce::Rectangle<int> factoryRect(0, y, getWidth(), rowH);
-                    if (factoryRect.contains(pos))
-                        return { HitType::FactoryHeader, -1 };
-                    y += rowH;
-                }
+                    add(RowKind::FactoryHeader, -1, rowH);
                 for (int i = 0; i < (int)list.size(); ++i)
+                    if (!presetRowHidden(list[size_t(i)]))
+                        add(RowKind::PresetRow, i, rowH);
+                add(RowKind::PresetSave, -1, rowH);
+            }
+        }
+
+        layoutHeight = y + topPad;
+    }
+
+    // Where one particular row ended up, empty when it is not on screen.
+    juce::Rectangle<int> boundsOf(RowKind kind, int index) const
+    {
+        for (const auto& row : layout)
+            if (row.kind == kind && row.index == index)
+                return row.bounds;
+        return {};
+    }
+
+    // The boxed number at the right end of a parameter row: what a drag turns
+    // and what a double-click opens for typing.
+    juce::Rectangle<int> valueCellFor(juce::Rectangle<int> rowBounds) const
+    {
+        return { rowBounds.getRight() - marginX - valueW, rowBounds.getY() + 3,
+                 valueW, rowBounds.getHeight() - 6 };
+    }
+
+    // ── Hit testing ──
+    enum class HitType { None, MorphX, MorphAmount, KnobX, CtrlX,
+                         PresetRecall, PresetDelete, PresetSave, PresetsHeader,
+                         FactoryHeader, ParamValue,
+                         ParamsHeader, MorphsHeader, KnobsHeader, CtrlsHeader };
+    struct HitResult { HitType type = HitType::None; int rowIdx = -1; };
+
+    HitResult findHit(juce::Point<int> pos) const
+    {
+        for (const auto& row : layout)
+        {
+            if (!row.bounds.contains(pos))
+                continue;
+
+            switch (row.kind)
+            {
+                case RowKind::ParamsTitle:  return { HitType::ParamsHeader,  -1 };
+                case RowKind::MorphsTitle:  return { HitType::MorphsHeader,  -1 };
+                case RowKind::KnobsTitle:   return { HitType::KnobsHeader,   -1 };
+                case RowKind::CtrlsTitle:   return { HitType::CtrlsHeader,   -1 };
+                case RowKind::PresetsTitle: return { HitType::PresetsHeader, -1 };
+                case RowKind::FactoryHeader:return { HitType::FactoryHeader, -1 };
+
+                case RowKind::ParamRow:
+                    return { HitType::ParamValue, row.index };
+
+                case RowKind::MorphRow:
                 {
-                    if (presetRowHidden(list[size_t(i)]))
-                        continue;
-                    juce::Rectangle<int> rowRect(0, y, getWidth(), rowH);
-                    if (rowRect.contains(pos))
-                    {
-                        // The x sits at the right end, mirroring the module's own
-                        // preset menu; built-ins have none, so a click there recalls.
-                        const bool onX = !list[size_t(i)].builtIn
-                                       && pos.x >= getWidth() - marginX - xBtnW;
-                        return { onX ? HitType::PresetDelete : HitType::PresetRecall, i };
-                    }
-                    y += rowH;
+                    if (pos.x >= marginX && pos.x < marginX + xBtnW)
+                        return { HitType::MorphX, row.index };
+                    if (pos.x >= getWidth() - marginX - amountW)
+                        return { HitType::MorphAmount, row.index };
+                    return {};
                 }
-                juce::Rectangle<int> saveRect(0, y, getWidth(), rowH);
-                if (saveRect.contains(pos))
+
+                case RowKind::KnobRow:
+                    if (pos.x >= marginX && pos.x < marginX + xBtnW)
+                        return { HitType::KnobX, row.index };
+                    return {};
+
+                case RowKind::CtrlRow:
+                    if (pos.x >= marginX && pos.x < marginX + xBtnW)
+                        return { HitType::CtrlX, row.index };
+                    return {};
+
+                case RowKind::PresetRow:
+                {
+                    const auto& list = presets();
+                    if (row.index < 0 || row.index >= (int)list.size())
+                        return {};
+                    // The x sits at the right end, mirroring the module's own
+                    // preset menu; built-ins have none, so a click there recalls.
+                    const bool onX = !list[size_t(row.index)].builtIn
+                                   && pos.x >= getWidth() - marginX - xBtnW;
+                    return { onX ? HitType::PresetDelete : HitType::PresetRecall, row.index };
+                }
+
+                case RowKind::PresetSave:
                     return { HitType::PresetSave, -1 };
+
+                case RowKind::MorphGroupHeader:
+                    return {};
             }
         }
         return {};
@@ -338,9 +498,18 @@ public:
     void paint(juce::Graphics& g) override
     {
         g.fillAll(AppTheme::palette().backgroundPanel);
+
+        // Every row holds a Parameter* the patch owns. Deleting the module (or
+        // undoing its add) repaints through here before anyone rebuilds, and
+        // reading those is reading freed memory: a hard crash on macOS and
+        // silently wrong bytes on Linux (issue #61). Draw nothing until the
+        // rebuild that is on its way replaces them.
+        if (moduleIsStale())
+            return;
+
         bool isGlobal = (patch != nullptr && module == nullptr);
-        bool hasAny = !morphRows.empty() || !knobRows.empty() || !ctrlRows.empty()
-                    || hasPresetSection();
+        bool hasAny = !paramRows.empty() || !morphRows.empty() || !knobRows.empty()
+                    || !ctrlRows.empty() || hasPresetSection();
 
         if (!hasAny)
         {
@@ -351,80 +520,69 @@ public:
             return;
         }
 
-        int y = topPad;
+        const juce::Colour sectionInk(0xff9CA3AA);
+        const juce::Colour ctrlInk(0xffccaa66);
+        const juce::Colour presetInk(0xff7fb2d4);
 
-        // ── Morph section ──
-        if (!morphRows.empty())
+        for (const auto& row : layout)
         {
-            paintSectionTitle(g, y, "Morphs", juce::Colour(0xff9CA3AA));
-            y += sectionTitleH;
-            int prevGroup = -1;
-            int w = getWidth();
-
-            for (int i = 0; i < (int)morphRows.size(); ++i)
+            const int y = row.bounds.getY();
+            switch (row.kind)
             {
-                const auto& r = morphRows[size_t(i)];
-                if (r.group != prevGroup)
+                case RowKind::ParamsTitle:
+                    paintSectionTitle(g, y, "Parameters", sectionInk);
+                    paintCollapseChevron(g, y, sectionInk, paramsSectionCollapsed, sectionTitleH);
+                    break;
+                case RowKind::ParamRow:
+                    paintParamRow(g, row.bounds, row.index);
+                    break;
+
+                case RowKind::MorphsTitle:
+                    paintSectionTitle(g, y, "Morphs", sectionInk);
+                    paintCollapseChevron(g, y, sectionInk, morphsSectionCollapsed, sectionTitleH);
+                    break;
+                case RowKind::MorphGroupHeader:
+                    paintGroupHeader(g, y, morphRows[size_t(row.index)].group);
+                    break;
+                case RowKind::MorphRow:
+                    paintMorphRow(g, y, row.index, morphRows[size_t(row.index)], isGlobal);
+                    break;
+
+                case RowKind::KnobsTitle:
+                    paintSectionTitle(g, y, "Knobs", sectionInk);
+                    paintCollapseChevron(g, y, sectionInk, knobsSectionCollapsed, sectionTitleH);
+                    break;
+                case RowKind::KnobRow:
+                    paintHwRow(g, y, row.index, knobRows[size_t(row.index)], isGlobal,
+                               juce::Colour(0xff8D969F));
+                    break;
+
+                case RowKind::CtrlsTitle:
+                    paintSectionTitle(g, y, "MIDI CC", ctrlInk);
+                    paintCollapseChevron(g, y, ctrlInk, ctrlsSectionCollapsed, sectionTitleH);
+                    break;
+                case RowKind::CtrlRow:
+                    paintHwRow(g, y, row.index, ctrlRows[size_t(row.index)], isGlobal,
+                               juce::Colour(0xffaa8844));
+                    break;
+
+                case RowKind::PresetsTitle:
+                    paintSectionTitle(g, y, "Presets", presetInk);
+                    paintCollapseChevron(g, y, presetInk, presetsSectionCollapsed, sectionTitleH);
+                    break;
+                case RowKind::FactoryHeader:
+                    paintFactoryHeader(g, y, countFactory(presets()));
+                    break;
+                case RowKind::PresetRow:
                 {
-                    prevGroup = r.group;
-                    paintGroupHeader(g, y, r.group);
-                    y += groupHeaderH;
+                    const auto& list = presets();
+                    if (row.index >= 0 && row.index < (int)list.size())
+                        paintPresetRow(g, y, list[size_t(row.index)]);
+                    break;
                 }
-                paintMorphRow(g, y, i, r, isGlobal);
-                y += rowH;
-            }
-            y += sectionGap;
-        }
-
-        // ── Knob section ──
-        if (!knobRows.empty())
-        {
-            paintSectionTitle(g, y, "Knobs", juce::Colour(0xff9CA3AA));
-            y += sectionTitleH;
-            for (int i = 0; i < (int)knobRows.size(); ++i)
-            {
-                paintHwRow(g, y, i, knobRows[size_t(i)], isGlobal, juce::Colour(0xff8D969F));
-                y += rowH;
-            }
-            y += sectionGap;
-        }
-
-        // ── MIDI CC section ──
-        if (!ctrlRows.empty())
-        {
-            paintSectionTitle(g, y, "MIDI CC", juce::Colour(0xffccaa66));
-            y += sectionTitleH;
-            for (int i = 0; i < (int)ctrlRows.size(); ++i)
-            {
-                paintHwRow(g, y, i, ctrlRows[size_t(i)], isGlobal, juce::Colour(0xffaa8844));
-                y += rowH;
-            }
-            y += sectionGap;
-        }
-
-        // ── Presets section ──
-        if (hasPresetSection())
-        {
-            paintSectionTitle(g, y, "Presets", juce::Colour(0xff7fb2d4));
-            paintCollapseChevron(g, y, juce::Colour(0xff7fb2d4),
-                                 presetsSectionCollapsed, sectionTitleH);
-            y += sectionTitleH;
-            if (!presetsSectionCollapsed)
-            {
-                const auto& list = presets();
-                if (countFactory(list) > 0)
-                {
-                    paintFactoryHeader(g, y, countFactory(list));
-                    y += rowH;
-                }
-                for (int i = 0; i < (int)list.size(); ++i)
-                {
-                    if (presetRowHidden(list[size_t(i)]))
-                        continue;
-                    paintPresetRow(g, y, list[size_t(i)]);
-                    y += rowH;
-                }
-                paintPresetSaveRow(g, y);
+                case RowKind::PresetSave:
+                    paintPresetSaveRow(g, y);
+                    break;
             }
         }
     }
@@ -486,6 +644,127 @@ public:
         }
     }
 
+    // A parameter and what it currently reads, in its own units. The number is
+    // a cell rather than plain text because it is a control: drag it to walk the
+    // value, double-click it to type one in.
+    void paintParamRow(juce::Graphics& g, juce::Rectangle<int> bounds, int i)
+    {
+        if (i < 0 || i >= (int)paramRows.size())
+            return;
+        const auto& r = paramRows[size_t(i)];
+        const auto& theme = AppTheme::palette();
+
+        g.setColour(i % 2 == 0 ? theme.backgroundPanel : theme.backgroundSecondary);
+        g.fillRect(bounds);
+
+        const auto cell = valueCellFor(bounds);
+
+        g.setColour(theme.textPrimary);
+        g.setFont(AppTheme::uiFont(fontRow));
+        g.drawText(r.name, marginX, bounds.getY(),
+                   cell.getX() - marginX - 4, bounds.getHeight(),
+                   juce::Justification::centredLeft, true);
+
+        // While one is being typed into, the editor is sitting on top of it.
+        if (editingRow == i)
+            return;
+
+        if (r.isSwitch)
+        {
+            paintSwitchCell(g, cell, r);
+            return;
+        }
+
+        g.setColour(theme.inputBackground);
+        g.fillRoundedRectangle(cell.toFloat(), 3.0f);
+        g.setColour(theme.borderColor.withAlpha(dragRow == i ? 1.0f : 0.55f));
+        g.drawRoundedRectangle(cell.toFloat(), 3.0f, 1.0f);
+        g.setColour(theme.textPrimary);
+        g.setFont(AppTheme::uiFont(fontRowSmall));
+        g.drawText(valueTextOf(r), cell, juce::Justification::centred, false);
+    }
+
+    juce::String valueTextOf(const ParamRow& r) const
+    {
+        if (r.param == nullptr)
+            return {};
+        const auto* pd = r.param->getDescriptor();
+        return pd == nullptr ? juce::String(r.param->getValue())
+                             : ValueFormatters::format(pd->formatter, r.param->getValue());
+    }
+
+    // A parameter the module wears as a button, drawn as one: lit while it is on
+    // (anything above its lowest state), carrying the name of the state it is in.
+    void paintSwitchCell(juce::Graphics& g, juce::Rectangle<int> cell, const ParamRow& r)
+    {
+        const auto& theme = AppTheme::palette();
+        const auto* pd    = r.param->getDescriptor();
+        const int   value = r.param->getValue();
+        // Only a two-state switch lights up. A selector carries a different
+        // legend for each of its states (LP, BP, HP), so lighting it from the
+        // second one on would read as "HP is more on than LP".
+        const bool  twoState = pd != nullptr && pd->maxValue - pd->minValue == 1;
+        const bool  isOn     = twoState && value > pd->minValue;
+
+        g.setColour(isOn ? theme.buttonActive : theme.buttonBackground);
+        g.fillRoundedRectangle(cell.toFloat(), 3.0f);
+        g.setColour(theme.borderColor);
+        g.drawRoundedRectangle(cell.toFloat(), 3.0f, 1.0f);
+
+        // The lit fill is whatever the theme uses for a pressed button, so the
+        // lettering has to be picked off the fill rather than from the palette:
+        // one of the themes lights it in a colour that dark text belongs on.
+        g.setColour(isOn ? theme.buttonActive.contrasting(0.8f)
+                         : (twoState ? theme.textSecondary : theme.textPrimary));
+        g.setFont(AppTheme::uiFont(fontRowSmall));
+        g.drawText(switchTextOf(r), cell.reduced(3, 0), juce::Justification::centred, false);
+    }
+
+    // What the button says in the state it is in: the module's own lettering
+    // first, then whatever the parameter formats to, and On/Off as the last
+    // resort for the plain switches that have neither.
+    juce::String switchTextOf(const ParamRow& r) const
+    {
+        const int value = r.param->getValue();
+        if (value >= 0 && value < (int)r.labels.size() && r.labels[size_t(value)].isNotEmpty())
+            return r.labels[size_t(value)];
+
+        const auto formatted = valueTextOf(r);
+        if (formatted != juce::String(value))
+            return formatted;
+
+        const auto* pd = r.param->getDescriptor();
+        if (pd != nullptr && pd->maxValue - pd->minValue == 1)
+            return value > pd->minValue ? "On" : "Off";
+        return formatted;
+    }
+
+    // Stepping a switch on to its next state, wrapping at the end, the way
+    // clicking the button on the module's face does. Recorded as a whole
+    // gesture at once: there is no drag to wait for.
+    void toggleSwitch(int rowIdx)
+    {
+        if (rowIdx < 0 || rowIdx >= (int)paramRows.size())
+            return;
+        const auto& r = paramRows[size_t(rowIdx)];
+        if (r.param == nullptr) return;
+        const auto* pd = r.param->getDescriptor();
+        if (pd == nullptr) return;
+
+        const int oldValue = r.param->getValue();
+        int newValue = oldValue + 1;
+        if (newValue > pd->maxValue)
+            newValue = pd->minValue;
+        if (newValue == oldValue)
+            return;
+
+        r.param->setValue(newValue);
+        if (onParamValue)         onParamValue(module, singleSection, pd->index, newValue);
+        if (onParamValueComplete) onParamValueComplete(module, singleSection, pd->index,
+                                                       oldValue, newValue);
+        repaint();
+    }
+
     void paintPresetSaveRow(juce::Graphics& g, int y)
     {
         const auto& theme = AppTheme::palette();
@@ -497,11 +776,58 @@ public:
         g.drawText("+ Save current settings", row, juce::Justification::centred);
     }
 
-    // ── Mouse handling (morph rows only for now) ──
+    // ── Mouse handling ──
     void mouseDown(const juce::MouseEvent& e) override
     {
+        if (moduleIsStale())
+            return;   // see paint(): the rows point at a module the patch no longer has
+
         auto hr = findHit(e.getPosition());
+
+        // Clicking anywhere else puts away whatever was being typed, keeping it.
+        if (editingRow >= 0 && !(hr.type == HitType::ParamValue && hr.rowIdx == editingRow))
+            finishValueEdit(true);
+
         if (hr.type == HitType::None) return;
+
+        if (hr.type == HitType::ParamValue)
+        {
+            if (e.mods.isRightButtonDown()) return;
+
+            // A switch has nothing to type or to drag: every click steps it on,
+            // so a two-state one flips and a selector walks round its options.
+            if (paramRows[size_t(hr.rowIdx)].isSwitch)
+            {
+                toggleSwitch(hr.rowIdx);
+                return;
+            }
+
+            // Double-click types an exact figure in. A knob has 128 steps and no
+            // way to say "440Hz"; this is the way to say it.
+            if (e.getNumberOfClicks() >= 2)
+            {
+                beginValueEdit(hr.rowIdx);
+                return;
+            }
+
+            auto* p = paramRows[size_t(hr.rowIdx)].param;
+            if (p == nullptr) return;
+            dragKind     = DragKind::ParamValue;
+            dragRow      = hr.rowIdx;
+            dragStartY   = e.getPosition().y;
+            dragStartVal = p->getValue();
+            repaint();
+            return;
+        }
+
+        if (hr.type == HitType::ParamsHeader)
+        { toggleSection(paramsSectionCollapsed, "inspectorParamsCollapsed"); return; }
+        if (hr.type == HitType::MorphsHeader)
+        { toggleSection(morphsSectionCollapsed, "inspectorMorphsCollapsed"); return; }
+        if (hr.type == HitType::KnobsHeader)
+        { toggleSection(knobsSectionCollapsed, "inspectorKnobsCollapsed"); return; }
+        if (hr.type == HitType::CtrlsHeader)
+        { toggleSection(ctrlsSectionCollapsed, "inspectorCtrlsCollapsed"); return; }
 
         // Right-clicking a preset row offers renaming, which has nowhere else to
         // go: the row already recalls on its left and deletes on its right.
@@ -537,7 +863,8 @@ public:
 
         if (hr.type == HitType::MorphAmount)
         {
-            dragRowIdx   = hr.rowIdx;
+            dragKind     = DragKind::MorphAmount;
+            dragRow      = hr.rowIdx;
             dragStartY   = e.getPosition().y;
             dragStartVal = morphRows[size_t(hr.rowIdx)].param
                          ? morphRows[size_t(hr.rowIdx)].param->getMorphRange() : 0;
@@ -569,15 +896,13 @@ public:
 
         if (hr.type == HitType::PresetsHeader)
         {
-            setPresetsCollapsed(!presetsSectionCollapsed);
-            if (onPresetsCollapsedChanged) onPresetsCollapsedChanged();
+            toggleSection(presetsSectionCollapsed, "inspectorPresetsCollapsed");
             return;
         }
 
         if (hr.type == HitType::FactoryHeader)
         {
-            setFactoryPresetsCollapsed(!factoryPresetsCollapsed);
-            if (onPresetsCollapsedChanged) onPresetsCollapsedChanged();
+            toggleSection(factoryPresetsCollapsed, "inspectorFactoryPresetsCollapsed");
             return;
         }
 
@@ -602,19 +927,124 @@ public:
 
     void mouseDrag(const juce::MouseEvent& e) override
     {
-        if (dragRowIdx < 0 || dragRowIdx >= (int)morphRows.size()) return;
-        auto& r = morphRows[size_t(dragRowIdx)];
-        if (r.param == nullptr) return;
-        int dy  = dragStartY - e.getPosition().y;
-        int val = juce::jlimit(-127, 127, dragStartVal + dy);
-        r.param->setMorphRange(val);
-        int span = std::abs(val);
-        int dir  = (val >= 0) ? 0 : 1;
-        if (onRangeChange) onRangeChange(r.module, r.section, r.paramIndex, span, dir);
+        const int dy = dragStartY - e.getPosition().y;   // up is more
+
+        if (dragKind == DragKind::MorphAmount)
+        {
+            if (dragRow < 0 || dragRow >= (int)morphRows.size()) return;
+            auto& r = morphRows[size_t(dragRow)];
+            if (r.param == nullptr) return;
+            int val = juce::jlimit(-127, 127, dragStartVal + dy);
+            r.param->setMorphRange(val);
+            int span = std::abs(val);
+            int dir  = (val >= 0) ? 0 : 1;
+            if (onRangeChange) onRangeChange(r.module, r.section, r.paramIndex, span, dir);
+            repaint();
+            return;
+        }
+
+        if (dragKind == DragKind::ParamValue)
+        {
+            if (dragRow < 0 || dragRow >= (int)paramRows.size()) return;
+            const auto& r = paramRows[size_t(dragRow)];
+            if (r.param == nullptr) return;
+            const auto* pd = r.param->getDescriptor();
+            if (pd == nullptr) return;
+
+            const int val = juce::jlimit(pd->minValue, pd->maxValue, dragStartVal + dy);
+            if (val == r.param->getValue()) return;
+            r.param->setValue(val);
+            if (onParamValue) onParamValue(module, singleSection, pd->index, val);
+            repaint();
+        }
+    }
+
+    void mouseUp(const juce::MouseEvent&) override
+    {
+        // One undo step for the whole drag, from where it started to where it
+        // was let go, the same way the canvas records a knob.
+        if (dragKind == DragKind::ParamValue && dragRow >= 0 && dragRow < (int)paramRows.size())
+        {
+            const auto& r = paramRows[size_t(dragRow)];
+            if (r.param != nullptr && r.param->getValue() != dragStartVal)
+                if (const auto* pd = r.param->getDescriptor())
+                    if (onParamValueComplete)
+                        onParamValueComplete(module, singleSection, pd->index,
+                                             dragStartVal, r.param->getValue());
+        }
+
+        dragKind = DragKind::None;
+        dragRow  = -1;
         repaint();
     }
 
-    void mouseUp(const juce::MouseEvent&) override { dragRowIdx = -1; }
+    // ── Typing a value in ──
+    void beginValueEdit(int rowIdx)
+    {
+        if (rowIdx < 0 || rowIdx >= (int)paramRows.size())
+            return;
+        const auto& r = paramRows[size_t(rowIdx)];
+        if (r.param == nullptr || r.param->getDescriptor() == nullptr)
+            return;
+        if (r.isSwitch)
+            return;   // a switch is clicked, never typed into
+
+        const auto cell = valueCellFor(boundsOf(RowKind::ParamRow, rowIdx));
+        if (cell.isEmpty())
+            return;
+
+        editingRow = rowIdx;
+        const auto& theme = AppTheme::palette();
+        valueEditor.setColour(juce::TextEditor::backgroundColourId, theme.inputBackground);
+        valueEditor.setColour(juce::TextEditor::textColourId, theme.textPrimary);
+        valueEditor.setColour(juce::TextEditor::outlineColourId, theme.buttonActive);
+        valueEditor.setColour(juce::TextEditor::focusedOutlineColourId, theme.buttonActive);
+        valueEditor.setFont(AppTheme::uiFont(fontRowSmall));
+        valueEditor.setJustification(juce::Justification::centred);
+        valueEditor.setBounds(cell);
+        valueEditor.setText(valueTextOf(r), false);
+        valueEditor.setVisible(true);
+        valueEditor.selectAll();
+        valueEditor.grabKeyboardFocus();
+        repaint();
+    }
+
+    void finishValueEdit(bool commit)
+    {
+        if (editingRow < 0)
+            return;
+
+        // Cleared first: hiding the editor takes the focus away, which calls
+        // straight back in here, and the second pass must find nothing to do.
+        const int row = editingRow;
+        const auto typed = valueEditor.getText();
+        editingRow = -1;
+        valueEditor.setVisible(false);
+
+        if (commit)
+            applyTypedValue(row, typed);
+        repaint();
+    }
+
+    void applyTypedValue(int rowIdx, const juce::String& typed)
+    {
+        if (rowIdx < 0 || rowIdx >= (int)paramRows.size())
+            return;
+        const auto& r = paramRows[size_t(rowIdx)];
+        if (r.param == nullptr) return;
+        const auto* pd = r.param->getDescriptor();
+        if (pd == nullptr) return;
+
+        const int newValue = valueFromText(*pd, typed);
+        const int oldValue = r.param->getValue();
+        if (newValue < 0 || newValue == oldValue)
+            return;
+
+        r.param->setValue(newValue);
+        if (onParamValue)         onParamValue(module, singleSection, pd->index, newValue);
+        if (onParamValueComplete) onParamValueComplete(module, singleSection, pd->index,
+                                                       oldValue, newValue);
+    }
 
 private:
     // ── Paint helpers ──
@@ -738,7 +1168,58 @@ private:
         }
     }
 
+    // Folding a section changes how tall the list is, so the panel relays out
+    // and the choice is remembered between runs.
+    void toggleSection(bool& flag, const char* key)
+    {
+        setCollapsed(flag, key, !flag);
+        if (onPresetsCollapsedChanged) onPresetsCollapsedChanged();
+    }
+
     // ── Build helpers ──
+    // Only the parameters that are really the module's own: "morph" entries are
+    // the morph pseudo-parameters and "custom" ones are display state this
+    // editor invented, and neither is a knob anybody turns here.
+    void buildParamsFromModule(Module* m)
+    {
+        // The module's own face, when the panel has been given the theme: it is
+        // what says which parameters are buttons rather than knobs.
+        const ModuleTheme* face = nullptr;
+        if (themeData != nullptr && m->getDescriptor() != nullptr)
+            face = themeData->getModuleTheme(m->getDescriptor()->componentId);
+
+        for (auto& p : m->getParameters())
+        {
+            const auto* pd = p.getDescriptor();
+            if (pd == nullptr || pd->paramClass != "parameter")
+                continue;
+            if (pd->maxValue <= pd->minValue)
+                continue;
+
+            ParamRow row;
+            row.param = &p;
+            row.name  = pd->name.isNotEmpty() ? pd->name
+                                              : "param " + juce::String(pd->index);
+
+            if (face != nullptr)
+                for (const auto& tb : face->buttons)
+                {
+                    if (tb.componentId != pd->componentId)
+                        continue;
+                    // Increment pairs are the up/down arrows beside a display and
+                    // call buttons run a method rather than hold a value, so
+                    // neither is a state this row could show or step.
+                    if (tb.isIncrement || tb.isCall)
+                        break;
+                    row.isSwitch = true;
+                    row.labels   = tb.labels;
+                    break;
+                }
+
+            paramRows.push_back(std::move(row));
+        }
+    }
+
     void buildMorphsFromModule(Module* m, int sec)
     {
         for (auto& p : m->getParameters())
@@ -838,47 +1319,6 @@ private:
         }
     }
 
-    int computeHeight()
-    {
-        int h = topPad;
-        if (!morphRows.empty())
-        {
-            h += sectionTitleH;
-            int prevGroup = -1;
-            for (auto& r : morphRows)
-            {
-                if (r.group != prevGroup) { h += groupHeaderH; prevGroup = r.group; }
-                h += rowH;
-            }
-            h += sectionGap;
-        }
-        if (!knobRows.empty())
-        {
-            h += sectionTitleH + (int)knobRows.size() * rowH + sectionGap;
-        }
-        if (!ctrlRows.empty())
-        {
-            h += sectionTitleH + (int)ctrlRows.size() * rowH + sectionGap;
-        }
-        if (hasPresetSection())
-        {
-            h += sectionTitleH;
-            // Rows plus the Save row that always closes the section, plus the
-            // Factory group's own header when there is one.
-            if (!presetsSectionCollapsed)
-            {
-                const auto& list = presets();
-                const int factory = countFactory(list);
-                int rows = (int)list.size() - (factoryPresetsCollapsed ? factory : 0);
-                h += (rows + 1) * rowH;
-                if (factory > 0)
-                    h += rowH;
-            }
-        }
-        h += topPad;
-        return h;
-    }
-
     // ── State ──
 public:
     Module*                module        = nullptr;
@@ -887,6 +1327,9 @@ public:
     // read straight from the library rather than copied, so a save or a delete
     // made anywhere else is on screen at the next rebuild.
     const ModulePresetLibrary* presetLibrary = nullptr;
+    // The module faces, for telling a button apart from a knob. Null until the
+    // owner hands them over, and every parameter reads as a number then.
+    const ThemeData*           themeData     = nullptr;
 private:
     int                    singleSection = -1;
     int                    morphFaderKnob = -1;         // physical knob driving the A/B fader
@@ -894,9 +1337,22 @@ private:
     std::vector<MorphRow>  morphRows;
     std::vector<HwRow>     knobRows;
     std::vector<HwRow>     ctrlRows;
-    int dragRowIdx   = -1;
+    std::vector<ParamRow>  paramRows;
+
+    std::vector<LayoutRow> layout;
+    int layoutHeight = 0;
+
+    enum class DragKind { None, MorphAmount, ParamValue };
+    DragKind dragKind = DragKind::None;
+    int dragRow      = -1;
     int dragStartY   = 0;
     int dragStartVal = 0;
+
+    // One editor, kept for the life of the list and moved onto whichever value
+    // is being typed into. A per-edit editor would have to be destroyed from
+    // inside its own focus-lost callback, which is a trap this sidesteps.
+    juce::TextEditor valueEditor;
+    int editingRow = -1;
 };
 
 // ─── InspectorPanel ──────────────────────────────────────────────────────────
@@ -955,6 +1411,17 @@ InspectorPanel::InspectorPanel()
     assignmentsList->onMorphFaderKnobRemove = [this]()
     {
         if (onMorphFaderKnobRemove) onMorphFaderKnobRemove();
+    };
+
+    assignmentsList->onParamValue = [this](Module* mod, int section, int paramIndex, int value)
+    {
+        if (onParameterChanged && mod) onParameterChanged(section, mod, paramIndex, value);
+    };
+    assignmentsList->onParamValueComplete = [this](Module* mod, int section, int paramIndex,
+                                                   int oldValue, int newValue)
+    {
+        if (onParameterEditComplete && mod)
+            onParameterEditComplete(section, mod, paramIndex, oldValue, newValue);
     };
 
     assignmentsList->onPresetRecall = [this](int index)
@@ -1102,6 +1569,18 @@ void InspectorPanel::refreshMorphList()
     repaint();
 }
 
+void InspectorPanel::repaintValues()
+{
+    if (assignmentsList)
+        assignmentsList->repaint();
+}
+
+void InspectorPanel::setThemeData(const ThemeData* themeData)
+{
+    assignmentsList->themeData = themeData;
+    refreshMorphList();
+}
+
 void InspectorPanel::setPresetLibrary(const ModulePresetLibrary* library)
 {
     assignmentsList->presetLibrary = library;
@@ -1115,6 +1594,10 @@ void InspectorPanel::setSharedSettings(juce::PropertiesFile* settings)
     {
         presetsSectionCollapsed = settings->getBoolValue("inspectorPresetsCollapsed", false);
         factoryPresetsCollapsed = settings->getBoolValue("inspectorFactoryPresetsCollapsed", true);
+        paramsSectionCollapsed  = settings->getBoolValue("inspectorParamsCollapsed", false);
+        morphsSectionCollapsed  = settings->getBoolValue("inspectorMorphsCollapsed", false);
+        knobsSectionCollapsed   = settings->getBoolValue("inspectorKnobsCollapsed", false);
+        ctrlsSectionCollapsed   = settings->getBoolValue("inspectorCtrlsCollapsed", false);
     }
 }
 

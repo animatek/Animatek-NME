@@ -4,6 +4,26 @@
 
 ### Added
 
+- **Every parameter of the selected module, listed in the Inspector, and editable there.** A
+  module's face is knobs, and a knob is a few pixels holding 128 steps: fine for sweeping,
+  useless for saying what a value actually is. Selecting a module now fills a **Parameters**
+  section at the top of the Inspector with every control it has, each as its name and the figure
+  it reads in its own units. Drag a value to walk it, or **double-click it and type one in**.
+  Typing accepts the reading as it is written, so `440Hz`, `C#3` and `-12(Oct)` all land where
+  you mean them to: the editor formats every step the parameter can hold and looks for the one
+  you asked for, and a bare number picks the nearest step to it, so `9.5` finds the 9.45s next
+  door rather than being refused. Whatever the module wears as a **button** is a button here
+  too, carrying the same lettering its face does: a two-state switch flips and lights up while
+  it is on, and a selector like the DrumSynth's LP/BP/HP walks round its options. Every edit
+  goes out to the synth as it happens and undoes in one step, and the list follows the module
+  rather than the other way round, so a knob turned on the canvas reads true here as it moves.
+
+- **The Inspector's sections fold away, and stay folded.** Parameters, Morphs, Knobs and MIDI CC
+  each grew the chevron the Presets section already had, so a module with thirty parameters and
+  no assignments doesn't push its presets off the bottom of the column. The choice is a display
+  preference like the panel toggles: it is shared by every Inspector on screen and remembered
+  between runs.
+
 - **Nudge arrows under the knob you are pointing at.** A knob packs its whole range into a few
   pixels, so landing on an exact frequency or MIDI note by dragging one is guesswork. Hovering a
   knob or a slider now pops the same two little buttons the original editor shows: the left one
