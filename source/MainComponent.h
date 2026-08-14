@@ -2,11 +2,14 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_data_structures/juce_data_structures.h>
+#include <utility>
+#include <vector>
 #include "model/ModuleDescriptions.h"
 #include "model/ModulePresets.h"
 #include "model/ThemeData.h"
 #include "model/Patch.h"
 #include "model/PatchVariations.h"
+#include "model/PatchExtras.h"
 #include "model/PchFileIO.h"
 #include "model/SnipFileIO.h"
 #include "model/SynthSettings.h"
@@ -91,6 +94,20 @@ private:
     void newPatch();
     void openPatch();
     void storePatchToBank();
+    // One click on the header's store button: put the patch back where it came
+    // from, no dialog. Falls back to storePatchToBank() when the editor does not
+    // know a location (a new patch, or one opened from a file).
+    void quickStoreToBank();
+    // Tell the synth to write a slot's patch into a bank location, remember it
+    // as that slot's home, and say so in the status bar.
+    void sendStoreToBank(int slot, int section, int position);
+    // Work out where a synth-fetched patch lives by looking its name up in the
+    // bank list, for the case the synth never told us (a patch already sitting
+    // in a slot when the editor connected). Only fills in a location that is
+    // still unknown, and only when the name is unique across the banks.
+    void inferSlotBankLocation(int slot);
+    // Refresh the header's store button from the active slot's known location.
+    void updateStoreLocationDisplay();
     // Fetch a bank patch into a named slot (browser double-click and its
     // right-click "Load to Slot A..D").
     void loadBankPatchIntoSlot(int section, int position, int slot);
@@ -165,6 +182,7 @@ private:
     void randomizeSlotParameters(int slot, PatchCanvasComponent& canvas, bool gaussian);  // issue #22
     void saveSlotPatch(int slot);     // Ctrl+S: save this slot, not "the" slot (issue #22)
     void saveSlotPatchAs(int slot);   // Ctrl+Shift+S, same
+    juce::File suggestedSaveFileForSlot(int slot, const juce::File& folder) const;
     void initializeModule(int slot, int section, Module* module);
     void handleSnapshotClick(int index, bool isShiftClick);
     void saveSnapshot(int index);
@@ -217,6 +235,13 @@ private:
     // once the patch is uploaded to, or fetched from, the synth. Drives the
     // "LOCAL" badge in the slot bar (issue #21).
     bool slotIsLocal[numSlots] = {};
+    // This slot's patch was fetched from the synth (as opposed to built here or
+    // opened from a file), so looking its name up in the bank list to find where
+    // it lives is a fair guess rather than an invention.
+    bool slotPatchFromSynth[numSlots] = {};
+    // Bank positions whose name matches this slot's patch, when there is more
+    // than one: not an answer, but the shortlist the store dialog opens on.
+    std::vector<std::pair<int, int>> slotBankCandidates[numSlots];
     void setSlotLocal(int slot, bool local);
 
     int activeSlot = 0;  // Which slot is currently displayed in the UI
@@ -279,6 +304,34 @@ private:
 
     // Parameter variations (8 per patch slot, persisted in a .var sidecar)
     PatchVariations variations[numSlots];
+
+    // --- The extras library ---------------------------------------------------
+    // Comments, patch notes, variations and Mutator exclusions have nowhere to
+    // live on the synth, so a patch read back from it used to arrive stripped of
+    // all of them. They are kept here as well, one entry per patch, found again
+    // by the id a .pch carries or, for a patch off the wire, by its fingerprint.
+    PatchExtrasStore patchExtras;
+    juce::String slotExtrasId[numSlots];
+    bool extrasDirty[numSlots] = {};
+    std::unique_ptr<juce::Timer> extrasFlushTimer;
+
+    /** Looks the slot's patch up in the library and applies whatever it finds.
+        Used for patches arriving from the synth, which carry nothing. */
+    void attachExtrasFromLibrary(int slot);
+    /** Binds the slot to an entry and writes the patch's current extras into it,
+        the file being the authority. Used when a patch is opened from disk. */
+    void bindExtrasFromPatch(int slot);
+    /** Notes that this slot's extras have changed; the flush timer writes them.
+        Deliberately not a write per edit: variations are written through on
+        every knob turn. */
+    void markExtrasDirty(int slot) { if (slot >= 0 && slot < numSlots) extrasDirty[slot] = true; }
+    void flushExtras(int slot);
+    void flushAllExtras();
+    /** A cheap summary of everything the library would store for this slot. The
+        flush timer watches it, which is what catches the edits that never pass
+        through a callback: an undo, a redo, or anything the MCP bridge did. */
+    juce::int64 extrasRevision(int slot) const;
+    juce::int64 lastExtrasRevision[numSlots] = {};
 
     // Interpolation state
     struct InterpolationState {

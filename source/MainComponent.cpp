@@ -293,12 +293,27 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   };
 
   // Wire patch list updates to patch browser panel
+  // The synth answers a bank load with the location it loaded, whether the load
+  // came from here or from the front panel. Arrives on the MIDI thread.
+  connectionManager.setBankLocationCallback([this](int slot) {
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::MessageManager::callAsync([safeThis, slot]() {
+      if (!safeThis) return;
+      if (slot == safeThis->activeSlot)
+        safeThis->updateStoreLocationDisplay();
+    });
+  });
+
   connectionManager.setPatchListCallback([this](const std::vector<std::string>& names) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::MessageManager::callAsync([safeThis, names]() {
       if (!safeThis) return;
       safeThis->mainLayout->getPatchBrowser().setPatchList(names);
       safeThis->mainLayout->getPatchBrowser().setLoadingState(false);
+      // The list is usually the last thing to arrive, so this is where slots
+      // filled at connection time finally learn where their patch lives.
+      for (int s = 0; s < numSlots; ++s)
+        safeThis->inferSlotBankLocation(s);
     });
   });
 
@@ -390,6 +405,25 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             if (safeThis->patchNotesFloaterWindow)
               safeThis->patchNotesFloaterWindow->setPatch(nullptr);
           }
+          // Whatever the outgoing patch had that was not written yet goes to the
+          // library before it is destroyed.
+          safeThis->flushExtras(targetSlot);
+
+          // Comments and patch notes live in the editor and the .pch, never on
+          // the wire, so a patch coming back from the synth arrives without
+          // them. Carry them over when it is plainly the same patch being
+          // re-read (same name): otherwise the synth loaded something else and
+          // the old notes would belong to a patch that is no longer here. The
+          // library below is what covers every other case, but this one is more
+          // current than anything on disk, so it goes first.
+          if (safeThis->slotPatches[targetSlot] != nullptr && p != nullptr
+              && safeThis->slotPatches[targetSlot]->getName() == p->getName()) {
+            p->extrasId = safeThis->slotPatches[targetSlot]->extrasId;
+            p->adoptComments(safeThis->slotPatches[targetSlot]->getComments());
+            if (p->patchNotes.isEmpty())
+              p->patchNotes = safeThis->slotPatches[targetSlot]->patchNotes;
+          }
+
           safeThis->slotPatches[targetSlot] = std::move(p);
           if (safeThis->slotPatches[targetSlot]) {
             if (safeThis->connectionManager.isConnected()) {
@@ -426,12 +460,22 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
               int lp = safeThis->connectionManager.getLastLoadedPosition();
               if (ls >= 0 && lp >= 0)
                   safeThis->mainLayout->getPatchBrowser().setLoadedPatch(ls, lp);
+              safeThis->updateStoreLocationDisplay();
             }
 
             // Update slot bar with patch name. This patch came from the synth,
             // so the slot is in sync — clear any stale LOCAL badge (issue #21).
             safeThis->mainLayout->getSlotBar().setSlotName(targetSlot, safeThis->slotPatches[targetSlot]->getName());
             safeThis->setSlotLocal(targetSlot, false);
+
+            // Then work out where it lives. This has to come after the LOCAL
+            // badge is cleared: a slot still marked local is not looked up.
+            safeThis->slotPatchFromSynth[targetSlot] = true;
+            safeThis->inferSlotBankLocation(targetSlot);
+
+            // And give it back its comments, notes, variations and Mutator
+            // exclusions, which could not travel over the wire.
+            safeThis->attachExtrasFromLibrary(targetSlot);
 
             const char* slotLetters[] = {"A", "B", "C", "D"};
             std::cout << "[SYNC] Patch loaded into slot " << slotLetters[targetSlot]
@@ -583,40 +627,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         mainLayout->getPatchArea().getView(activeSlot).setPatchTitle(newName);
       });
 
-  // Wire quick save button
-  mainLayout->getHeaderBar().setQuickSaveCallback(
-      [this]() {
-        std::cout << "[MAIN] Quick save triggered" << std::endl;
-        // Get current location from header bar
-        auto& headerBar = mainLayout->getHeaderBar();
-        int section = headerBar.currentSection;
-        int position = headerBar.currentPosition;
-
-        if (section < 0 || position < 0)
-        {
-          juce::AlertWindow::showMessageBoxAsync(
-              juce::MessageBoxIconType::WarningIcon,
-              "Quick Save",
-              "No save location set. Load a patch from the browser first.");
-          return;
-        }
-
-        // Save patch to synth at the tracked location
-        int displayLocation = (section + 1) * 100 + position + 1;
-        int slot = connectionManager.getCurrentSlot();
-
-        // Show "Saving..." message
-        mainLayout->getStatusBar().showMessage("Quick saving to location " + juce::String(displayLocation) + "...", 0);
-
-        StorePatchMessage msg(slot, section, position);
-        auto sysex = msg.toSysEx(slot);
-        connectionManager.sendRawSysEx(sysex);
-
-        std::cout << "[MAIN] Quick saved to location " << displayLocation << std::endl;
-
-        // Show success message (auto-hide after 3 seconds)
-        mainLayout->getStatusBar().showMessage("Quick saved to location " + juce::String(displayLocation), 3000);
-      });
+  // Wire the header's store button (one click, no dialog)
+  mainLayout->getHeaderBar().setQuickSaveCallback([this]() { quickStoreToBank(); });
 
   // Wire cable visibility toggles to repaint the canvas
   mainLayout->getHeaderBar().setCableVisibilityCallback(
@@ -832,6 +844,18 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // After setSize, so the work area has real bounds to lay sub-windows out in.
   restoreMdiLayout();
 
+  // The extras library: comments, notes, variations and Mutator exclusions for
+  // every patch this editor has seen, so a patch coming back from the synth can
+  // be recognised and given them back.
+  patchExtras.setFolder(appConfigFolder().getChildFile("extras"));
+  struct ExtrasTimer : public juce::Timer {
+    MainComponent& mc;
+    explicit ExtrasTimer(MainComponent& m) : mc(m) {}
+    void timerCallback() override { mc.flushAllExtras(); }
+  };
+  extrasFlushTimer = std::make_unique<ExtrasTimer>(*this);
+  extrasFlushTimer->startTimer(3000);
+
   // Auto-connect after UI is set up (with delay to let ALSA enumerate devices)
   {
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -862,6 +886,13 @@ MainComponent::~MainComponent() {
   mcpBridgeServer.reset();
 #endif
 
+  // Last chance to write out comments and variations: the timer that normally
+  // does it is about to stop, and the patches are about to be destroyed.
+  if (extrasFlushTimer)
+    extrasFlushTimer->stopTimer();
+  flushAllExtras();
+  extrasFlushTimer.reset();
+
   // Stop interpolation timer before anything else
   if (interpolationTimer)
     interpolationTimer->stopTimer();
@@ -880,6 +911,7 @@ MainComponent::~MainComponent() {
   connectionManager.setUploadCompleteCallback(nullptr);
   connectionManager.setLightMeterCallback(nullptr);
   connectionManager.setPatchListCallback(nullptr);
+  connectionManager.setBankLocationCallback(nullptr);
   connectionManager.setPatchLoadProgressCallback(nullptr);
   connectionManager.setPatchLoadIncompleteCallback(nullptr);
 
@@ -1573,6 +1605,9 @@ void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen)
     }
   }
 
+  // The store button belongs to the patch on screen, so it follows the slot.
+  updateStoreLocationDisplay();
+
   std::cout << "[SLOT] Switched to slot " << slot << std::endl;
 }
 
@@ -1658,6 +1693,10 @@ bool MainComponent::replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
   if (slot == activeSlot)
     stopInterpolation("MCP patch replacement");
 
+  // The patch about to be replaced may hold comments or variations that the
+  // flush timer has not written yet.
+  flushExtras(slot);
+
   // Every synchronizer and editor surface stores pointers into its Patch.
   // Detach them before replacing the owning unique_ptr.
   slotSynchronizers[slot].reset();
@@ -1670,6 +1709,10 @@ bool MainComponent::replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
   }
   slotPatches[slot] = std::move(patch);
   slotPatchFiles[slot] = sourceFile;
+  // Whatever bank location this slot held belongs to the patch just replaced.
+  connectionManager.clearSlotBankLocation(slot);
+  slotBankCandidates[slot].clear();
+  slotPatchFromSynth[slot] = false;
 
   // Re-point this slot's canvas immediately, before anything else can lay it
   // out or paint it: the Patch it was showing has just been destroyed by the
@@ -1689,6 +1732,27 @@ bool MainComponent::replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
     }
   }
 
+  if (sourceFile.existsAsFile()) {
+    // A file opened from disk is the authority on its own extras: it carries its
+    // comments and notes, and its .var sidecar its variations. Binding tells the
+    // library that this is the same patch, so the extras are found again when
+    // the synth hands it back with none of them. A file with nothing of its own
+    // falls back to the library, which is how a patch saved before any of this
+    // existed picks its extras up.
+    if (slotPatches[slot]->extrasId.isEmpty() && slotPatches[slot]->getComments().empty()
+        && !variations[slot].anyFilled())
+      attachExtrasFromLibrary(slot);
+    else
+      bindExtrasFromPatch(slot);
+  } else {
+    // A patch created here and now gets an entry of its own and is never
+    // matched against anything: every brand new patch looks exactly like every
+    // other brand new patch, and inheriting a stranger's comments because of
+    // that would be the one way this whole mechanism could embarrass itself.
+    slotPatches[slot]->extrasId = PatchExtrasStore::newId();
+    bindExtrasFromPatch(slot);
+  }
+
   slotUndoManagers[slot].clearUndoHistory();
   if (connectionManager.isConnected()) {
     // Upload messages carry their destination slot in the SysEx envelope, so
@@ -1705,8 +1769,7 @@ bool MainComponent::replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
   if (slot == activeSlot) {
     mainLayout->getHeaderBar().setPatch(slotPatches[slot].get());
     mainLayout->getInspector().setPatch(slotPatches[slot].get());
-    if (sourceFile == juce::File())
-      mainLayout->getHeaderBar().clearCurrentLocation();
+    updateStoreLocationDisplay();
     if (knobFloaterWindow)
       knobFloaterWindow->setPatch(slotPatches[slot].get());
     if (patchNotesFloaterWindow)
@@ -1771,9 +1834,15 @@ void MainComponent::newPatch() {
   if (patchNotesFloaterWindow)
     patchNotesFloaterWindow->setPatch(nullptr);
 
+  // Anything the outgoing patch had goes to the library first; the new one gets
+  // an entry of its own rather than being matched against other empty patches.
+  flushExtras(activeSlot);
+
   currentPatch() = std::make_unique<Patch>();
+  currentPatch()->extrasId = PatchExtrasStore::newId();
   currentPatchFile() = juce::File();
   clearSnapshots(activeSlot);
+  bindExtrasFromPatch(activeSlot);
   canvasFor(activeSlot).setPatch(currentPatch().get(), &moduleDescs, &themeData);
   mainLayout->getPatchArea().getView(activeSlot).setPatchTitle(currentPatch()->getName());
   mainLayout->getHeaderBar().setPatch(currentPatch().get());
@@ -1782,7 +1851,8 @@ void MainComponent::newPatch() {
     knobFloaterWindow->setPatch(currentPatch().get());
   if (patchNotesFloaterWindow)
     patchNotesFloaterWindow->setPatch(currentPatch().get());
-  mainLayout->getHeaderBar().clearCurrentLocation();
+  connectionManager.clearSlotBankLocation(activeSlot);
+  updateStoreLocationDisplay();
   mainLayout->getSlotBar().setSlotName(activeSlot, currentPatch()->getName());
   mainLayout->getStatusBar().setConnectionStatus("New Patch", false);
   updateDspLoadDisplay();
@@ -1829,12 +1899,32 @@ void MainComponent::saveSlotPatch(int slot) {
   }
 }
 
+// What the Save dialog should open with typed in. A patch that has a file of
+// its own suggests that file; every other one suggests its own patch name, so
+// a patch pulled off the synth arrives at the dialog already called what the
+// synth calls it instead of leaving the name field blank.
+juce::File MainComponent::suggestedSaveFileForSlot(int slot, const juce::File& folder) const {
+  if (slotPatchFiles[slot].existsAsFile()) return slotPatchFiles[slot];
+
+  auto dir = folder.isDirectory()
+                 ? folder
+                 : juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+
+  auto name = juce::File::createLegalFileName(slotPatches[slot]->getName().trim());
+  if (name.isEmpty()) return dir;
+
+  // Appended, not withFileExtension(): a patch name is free to hold a dot and
+  // "Bass.2" must not be saved as "Bass.pch".
+  if (!name.endsWithIgnoreCase(".pch")) name << ".pch";
+  return dir.getChildFile(name);
+}
+
 void MainComponent::saveSlotPatchAs(int slot) {
   if (slot < 0 || slot >= numSlots || slotPatches[slot] == nullptr) return;
 
   auto startFolder = editorOptions.getPatchesFolder();
   auto chooser = std::make_shared<juce::FileChooser>(
-      "Save Patch As", startFolder.exists() ? startFolder : juce::File(), "*.pch");
+      "Save Patch As", suggestedSaveFileForSlot(slot, startFolder), "*.pch");
 
   chooser->launchAsync(
       juce::FileBrowserComponent::saveMode |
@@ -1959,6 +2049,13 @@ void MainComponent::loadPatchFromFile(const juce::File &file, int targetSlot, bo
 // Show the slot chooser (issue #21), then load into the chosen destination.
 // Used by every user-initiated open (File > Open and both preset browsers).
 void MainComponent::openPatchFileWithChooser(const juce::File &file) {
+  // Turned off in the editor options: every open goes to the slot on screen,
+  // uploaded like any other, with no question asked (issue #59).
+  if (!editorOptions.askSlotOnOpen) {
+    loadPatchFromFile(file, activeSlot, /*localOnly=*/false);
+    return;
+  }
+
   std::array<juce::String, 4> names;
   for (int i = 0; i < numSlots; ++i)
     names[static_cast<size_t>(i)] =
@@ -2005,7 +2102,7 @@ void MainComponent::loadBankPatchIntoSlot(int section, int position, int slot) {
             << std::endl;
 
   connectionManager.loadPatchFromBank(section, position, slot);
-  mainLayout->getHeaderBar().setCurrentLocation(section, position);
+  updateStoreLocationDisplay();
   mainLayout->getPatchBrowser().setLoadedPatch(section, position);
 }
 
@@ -2032,26 +2129,122 @@ void MainComponent::storePatchToBank() {
     return;
   }
 
-  int slot = connectionManager.getCurrentSlot();
+  int slot = activeSlot;
   juce::Component::SafePointer<MainComponent> safeThis(this);
+
+  // Open on the patch's own location, so storing it back where it came from is
+  // just OK instead of hunting through nine banks of 99 every time.
+  int initialSection = connectionManager.getSlotBankSection(slot);
+  int initialPosition = connectionManager.getSlotBankPosition(slot);
+  // No certain location, but positions with this patch's name: open on the
+  // first of them, which beats bank 1 position 1 by a mile.
+  if (initialSection < 0 && !slotBankCandidates[slot].empty()) {
+    initialSection = slotBankCandidates[slot].front().first;
+    initialPosition = slotBankCandidates[slot].front().second;
+  }
 
   PatchLocationDialog::show(this, "Store Patch to Bank",
     connectionManager.getPatchList(), true, slot,
     [safeThis](const PatchLocationDialog::Result& result) {
       if (safeThis == nullptr || !result.confirmed) return;
+      safeThis->sendStoreToBank(result.slot, result.section, result.position);
+    },
+    initialSection, initialPosition);
+}
 
-      int location = (result.section + 1) * 100 + result.position + 1;
-      safeThis->mainLayout->getStatusBar().showMessage(
-          "Storing to bank location " + juce::String(location) + "...", 0);
+void MainComponent::quickStoreToBank() {
+  if (!connectionManager.isConnected() || currentPatch() == nullptr)
+    return;
 
-      StorePatchMessage msg(result.slot, result.section, result.position);
-      safeThis->connectionManager.sendRawSysEx(msg.toSysEx(result.slot));
+  const int section = connectionManager.getSlotBankSection(activeSlot);
+  const int position = connectionManager.getSlotBankPosition(activeSlot);
 
-      const char* slotNames[] = {"A", "B", "C", "D"};
-      safeThis->mainLayout->getStatusBar().showMessage(
-          "Stored slot " + juce::String(slotNames[result.slot])
-          + " to bank location " + juce::String(location), 3000);
-    });
+  // Nothing certain to overwrite: a new patch, one opened from a file, or one
+  // the synth loaded from its front panel without saying from where. Ask.
+  if (section < 0 || position < 0) {
+    const auto& candidates = slotBankCandidates[activeSlot];
+    if (!candidates.empty()) {
+      juce::StringArray places;
+      for (const auto& c : candidates)
+        places.add(juce::String((c.first + 1) * 100 + c.second + 1));
+      mainLayout->getStatusBar().showMessage(
+          "\"" + currentPatch()->getName() + "\" is in " + juce::String(places.size())
+          + " bank positions (" + places.joinIntoString(", ") + ") - pick one", 6000);
+    }
+    storePatchToBank();
+    return;
+  }
+
+  sendStoreToBank(activeSlot, section, position);
+}
+
+void MainComponent::sendStoreToBank(int slot, int section, int position) {
+  if (slot < 0 || slot >= numSlots || section < 0 || position < 0)
+    return;
+
+  const int location = (section + 1) * 100 + position + 1;
+  StorePatchMessage msg(slot, section, position);
+  connectionManager.sendRawSysEx(msg.toSysEx(slot));
+
+  // The patch now lives here, which is what the next store offers by default,
+  // and the shortlist of same-named positions stops mattering.
+  connectionManager.setSlotBankLocation(slot, section, position);
+  slotBankCandidates[slot].clear();
+  if (slot == activeSlot)
+    updateStoreLocationDisplay();
+  mainLayout->getPatchBrowser().setLoadedPatch(section, position);
+
+  const char* slotNames[] = {"A", "B", "C", "D"};
+  mainLayout->getStatusBar().showMessage(
+      "Stored slot " + juce::String(slotNames[slot])
+      + " to bank location " + juce::String(location), 3000);
+  std::cout << "[STORE] Slot " << slotNames[slot] << " -> bank location "
+            << location << std::endl;
+}
+
+void MainComponent::inferSlotBankLocation(int slot) {
+  if (slot < 0 || slot >= numSlots || slotPatches[slot] == nullptr)
+    return;
+  if (!slotPatchFromSynth[slot] || slotIsLocal[slot])
+    return;
+  if (connectionManager.getSlotBankSection(slot) >= 0)
+    return;  // the synth already told us, and it is the better answer
+
+  const auto name = slotPatches[slot]->getName();
+  const char* slotLetters[] = {"A", "B", "C", "D"};
+  auto matches = connectionManager.findPatchLocations(name);
+  slotBankCandidates[slot] = matches;
+
+  if (matches.size() != 1) {
+    std::cout << "[STORE] Slot " << slotLetters[slot] << " patch \""
+              << name.toStdString() << "\": "
+              << (connectionManager.isPatchListLoaded()
+                      ? (matches.empty()
+                             ? std::string("no bank position carries that name")
+                             : "the name is in " + std::to_string(matches.size())
+                                   + " bank positions, asking rather than guessing")
+                      : std::string("bank list not loaded yet"))
+              << std::endl;
+    if (slot == activeSlot)
+      updateStoreLocationDisplay();
+    return;
+  }
+
+  connectionManager.setSlotBankLocation(slot, matches[0].first, matches[0].second);
+  slotBankCandidates[slot].clear();
+  std::cout << "[STORE] Slot " << slotLetters[slot] << " patch \""
+            << name.toStdString() << "\" matched bank location "
+            << ((matches[0].first + 1) * 100 + matches[0].second + 1) << std::endl;
+  if (slot == activeSlot)
+    updateStoreLocationDisplay();
+}
+
+void MainComponent::updateStoreLocationDisplay() {
+  auto& headerBar = mainLayout->getHeaderBar();
+  headerBar.setStoreEnabled(connectionManager.isConnected());
+  headerBar.setCurrentLocation(connectionManager.getSlotBankSection(activeSlot),
+                               connectionManager.getSlotBankPosition(activeSlot));
+  headerBar.setStoreUncertain(!slotBankCandidates[activeSlot].empty());
 }
 
 bool MainComponent::storeSlotPatchToBank(int slot, int bankSection, int position,
@@ -2080,11 +2273,7 @@ bool MainComponent::storeSlotPatchToBank(int slot, int bankSection, int position
       [safeThis, slot, bankSection, position]() {
         if (!safeThis) return;
         safeThis->connectionManager.setUploadCompleteCallback(nullptr);
-        StorePatchMessage msg(slot, bankSection, position);
-        safeThis->connectionManager.sendRawSysEx(msg.toSysEx(slot));
-        int location = (bankSection + 1) * 100 + position + 1;
-        safeThis->mainLayout->getStatusBar().showMessage(
-            "Stored to bank location " + juce::String(location) + " (MCP)", 3000);
+        safeThis->sendStoreToBank(slot, bankSection, position);
       });
   connectionManager.uploadPatch(slot, *slotPatches[slot]);
   return true;
@@ -3043,6 +3232,56 @@ void MainComponent::wireSlotView(int slot) {
     undoMgr().perform(new RenameModuleAction(
         *ctx(), section, module->getContainerIndex(), oldName, newName));
   });
+  // Editor text notes. They exist only here, so none of these talk to the synth;
+  // what they do instead is mark the slot's extras for writing to the library,
+  // which is what lets the notes come back when the patch is read off the wire.
+  canvas.setCommentAddCallback([this, slot, patch, ctx, undoMgr](int section, int gridX, int gridY) {
+    if (!patch() || !ctx()) return;
+    undoMgr().beginNewTransaction("Add Comment");
+    undoMgr().perform(new AddCommentAction(*ctx(), section, gridX, gridY,
+                                           PatchCanvas::commentDefaultHeight, juce::String(),
+                                           PatchCanvas::commentDefaultWidth));
+    markExtrasDirty(slot);
+  });
+  // Moving and deleting open no transaction of their own: a note can be moved
+  // or deleted as part of a selection that also holds modules, and the canvas
+  // opens one transaction for the whole gesture before calling either.
+  canvas.setCommentMoveCallback([this, slot, patch, ctx, undoMgr]
+      (int commentId, juce::Point<int> oldPos, juce::Point<int> newPos) {
+    if (!patch() || !ctx()) return;
+    undoMgr().perform(new MoveCommentAction(*ctx(), commentId, oldPos, newPos));
+    markExtrasDirty(slot);
+  });
+  canvas.setCommentTextCallback([this, slot, patch, ctx, undoMgr]
+      (int commentId, const juce::String& oldText, const juce::String& newText) {
+    if (!patch() || !ctx()) return;
+    undoMgr().beginNewTransaction("Edit Comment");
+    undoMgr().perform(new EditCommentTextAction(*ctx(), commentId, oldText, newText));
+    markExtrasDirty(slot);
+  });
+  // Pasting and duplicating create notes inside the transaction the paste has
+  // already opened, so the whole block is one Ctrl+Z. That is the only thing
+  // that sets this apart from the Add callback above.
+  canvas.setCommentCreateCallback([this, slot, patch, ctx, undoMgr]
+      (int section, int gridX, int gridY, int width, int height, const juce::String& text) {
+    if (!patch() || !ctx()) return;
+    undoMgr().perform(new AddCommentAction(*ctx(), section, gridX, gridY,
+                                           height, text, width));
+    markExtrasDirty(slot);
+  });
+  canvas.setCommentDeleteCallback([this, slot, patch, ctx, undoMgr](int commentId) {
+    if (!patch() || !ctx()) return;
+    undoMgr().perform(new DeleteCommentAction(*ctx(), commentId));
+    markExtrasDirty(slot);
+  });
+  canvas.setCommentResizeCallback([this, slot, patch, ctx, undoMgr]
+      (int commentId, juce::Rectangle<int> oldRect, juce::Rectangle<int> newRect) {
+    if (!patch() || !ctx()) return;
+    undoMgr().beginNewTransaction("Resize Comment");
+    undoMgr().perform(new ResizeCommentAction(*ctx(), commentId, oldRect, newRect));
+    markExtrasDirty(slot);
+  });
+
   canvas.setMorphAssignCallback([patch, ctx, undoMgr]
       (int section, int moduleId, int paramId, int morphGroup) {
     if (!patch() || !ctx()) return;
@@ -3190,6 +3429,7 @@ void MainComponent::onConnectionStatusChanged(
   }
   mainLayout->getStatusBar().setConnectionStatus(status.message, connected);
   menuItemsChanged(); // rebuild native macOS menu bar to update enabled states
+  updateStoreLocationDisplay();  // storing needs a synth to store into
 
   if (connected) {
     // Save settings on successful connection
@@ -3627,6 +3867,154 @@ void MainComponent::clearSnapshots(int slot) {
     // Mutator snapshots reference module indices of the previous patch
     if (mutatorWindow)
         mutatorWindow->getPanel().clearAll();
+}
+
+// ─── The extras library ──────────────────────────────────────────────────────
+//
+// The G1 stores modules, cables, values and names. Comments, patch notes, the
+// eight variations and the Mutator's exclusions are the editor's own, and a
+// patch read back from the synth arrives without a trace of them. They are kept
+// in a small library beside the settings so the editor can put them back.
+
+void MainComponent::attachExtrasFromLibrary(int slot) {
+  if (slot < 0 || slot >= numSlots || !slotPatches[slot]) return;
+
+  auto& patch = *slotPatches[slot];
+  const auto fingerprint = patchFingerprint(patch);
+
+  // The id the patch already carries wins: it is exact, where a fingerprint is
+  // only a very good guess. A patch off the wire has no id, so it takes the
+  // fingerprint route.
+  auto* found = patchExtras.findById(patch.extrasId);
+  if (found == nullptr)
+    found = patchExtras.findByFingerprint(fingerprint);
+
+  if (found == nullptr) {
+    // Nothing known about this patch. Bind it to a fresh entry anyway, so that
+    // the first comment written on it has somewhere to go.
+    slotExtrasId[slot] = patch.extrasId.isNotEmpty() ? patch.extrasId
+                                                     : PatchExtrasStore::newId();
+    patch.extrasId = slotExtrasId[slot];
+    auto& entry = patchExtras.obtain(slotExtrasId[slot]);
+    entry.name = patch.getName();
+    entry.rememberFingerprint(fingerprint);
+    return;
+  }
+
+  patch.extrasId = found->id;
+  slotExtrasId[slot] = found->id;
+  found->rememberFingerprint(fingerprint);
+  found->name = patch.getName();
+  found->lastUsed = juce::Time::currentTimeMillis();
+
+  // Not over the top of notes the patch already has: those came from the copy
+  // that was in this slot a moment ago, which is more current than the library.
+  if (patch.getComments().empty())
+    patch.adoptComments(found->comments);
+  if (patch.patchNotes.trim().isEmpty())
+    patch.patchNotes = found->notes;
+
+  variations[slot] = found->variations;
+  for (auto& [section, moduleIndex] : variations[slot].mutationExcluded)
+    if (auto* module = patch.getContainer(section).getModuleByIndex(moduleIndex))
+      module->setExcludedFromMutation(true);
+
+  if (slot == activeSlot) {
+    refreshSnapshotUi();
+    if (patchNotesFloaterWindow)
+      patchNotesFloaterWindow->setPatch(&patch);
+  }
+  canvasFor(slot).repaint();
+
+  markExtrasDirty(slot);
+}
+
+void MainComponent::bindExtrasFromPatch(int slot) {
+  if (slot < 0 || slot >= numSlots || !slotPatches[slot]) return;
+
+  auto& patch = *slotPatches[slot];
+
+  // A patch opened from a file is the authority on its own extras: the file is
+  // what the user just chose to open, comments deleted in it stay deleted. All
+  // this does is make sure the library agrees with it from now on.
+  if (patch.extrasId.isEmpty())
+    patch.extrasId = PatchExtrasStore::newId();
+
+  slotExtrasId[slot] = patch.extrasId;
+  markExtrasDirty(slot);
+  flushExtras(slot);
+}
+
+juce::int64 MainComponent::extrasRevision(int slot) const {
+  if (slot < 0 || slot >= numSlots || !slotPatches[slot]) return 0;
+
+  const auto& patch = *slotPatches[slot];
+
+  // The fingerprint is part of it: renaming a patch or adding a module changes
+  // nothing about its extras but changes how it will be recognised next time, so
+  // the entry has to be rewritten to remember the new fingerprint too. Without
+  // this, editing a patch and re-reading it from the synth would lose the link.
+  juce::String summary;
+  summary << "fp:" << patchFingerprint(patch) << "\n";
+  for (const auto& c : patch.getComments())
+    summary << c.section << ";" << c.x << ";" << c.y << ";" << c.gridWidth() << ";"
+            << c.gridHeight() << ";" << c.text << "\n";
+  summary << "notes:" << patch.patchNotes << "\n";
+
+  const auto& vars = variations[slot];
+  summary << "active:" << vars.activeIndex << "\n";
+  for (int i = 0; i < PatchVariations::kNumSlots; ++i) {
+    const auto& s = vars.slots[i];
+    summary << "v" << i << ":" << (s.filled ? 1 : 0) << ":"
+            << static_cast<int>(s.entries.size());
+    // Values as well, so capturing a variation or letting the live write-through
+    // change one is noticed. Summed rather than listed: this runs on a timer.
+    juce::int64 sum = 0;
+    for (const auto& e : s.entries)
+      sum += static_cast<juce::int64>(e.value) * (e.paramId + 1);
+    summary << ":" << juce::String(sum) << "\n";
+  }
+  for (int section = 0; section <= 1; ++section)
+    for (const auto& modulePtr : patch.getContainer(section).getModules())
+      if (modulePtr != nullptr && modulePtr->isExcludedFromMutation())
+        summary << "x" << section << ":" << modulePtr->getContainerIndex() << "\n";
+
+  return summary.hashCode64();
+}
+
+void MainComponent::flushExtras(int slot) {
+  if (slot < 0 || slot >= numSlots) return;
+  extrasDirty[slot] = false;
+  lastExtrasRevision[slot] = extrasRevision(slot);
+
+  if (!slotPatches[slot] || slotExtrasId[slot].isEmpty()) return;
+
+  auto& patch = *slotPatches[slot];
+
+  // Mutation exclusions live on the modules while a patch is open; collect
+  // them back before writing, the way saving the .var sidecar does.
+  variations[slot].mutationExcluded.clear();
+  for (int section = 0; section <= 1; ++section)
+    for (const auto& modulePtr : patch.getContainer(section).getModules())
+      if (modulePtr != nullptr && modulePtr->isExcludedFromMutation())
+        variations[slot].mutationExcluded.emplace_back(section,
+                                                       modulePtr->getContainerIndex());
+
+  auto& entry = patchExtras.obtain(slotExtrasId[slot]);
+  entry.name = patch.getName();
+  entry.lastUsed = juce::Time::currentTimeMillis();
+  entry.rememberFingerprint(patchFingerprint(patch));
+  entry.comments = patch.getComments();
+  entry.notes = patch.patchNotes;
+  entry.variations = variations[slot];
+
+  patchExtras.write(entry);
+}
+
+void MainComponent::flushAllExtras() {
+  for (int slot = 0; slot < numSlots; ++slot)
+    if (extrasDirty[slot] || extrasRevision(slot) != lastExtrasRevision[slot])
+      flushExtras(slot);
 }
 
 void MainComponent::refreshSnapshotUi() {

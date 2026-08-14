@@ -65,7 +65,8 @@ public:
         auto& container = ctx_.patch.getContainer(section_);
         if (auto* desc = ctx_.descs.getModuleByIndex(typeId_))
             if (container.canAdd(*desc))
-                pushed_ = makeRoomForModule(container, section_, gridX_, gridY_, desc->height);
+                pushed_ = makeRoomForModule(container, section_, gridX_, gridY_, desc->height,
+                                            {}, &ctx_.patch.getComments());
 
         auto* mod = ctx_.patch.createModule(section_, typeId_, gridX_, gridY_, name_, ctx_.descs);
         if (!mod)
@@ -366,9 +367,10 @@ private:
 };
 
 // ============================================================================
-// RenameModuleAction — change a module's title (undoable). The name lives in
-// the .pch / editor; it reaches the synth on the next full patch upload via the
-// NameDump section, so no per-module message is sent here.
+// RenameModuleAction — change a module's title (undoable). The name is pushed
+// to the synth right away with SetModuleTitle: relying on the NameDump section
+// of a full upload was not enough, because Store to Bank saves what the synth
+// already holds, so renames never made it into the stored patch.
 // ============================================================================
 class RenameModuleAction : public juce::UndoableAction
 {
@@ -389,6 +391,7 @@ private:
         auto* mod = ctx_.patch.getContainer(section_).getModuleByIndex(moduleIndex_);
         if (!mod) return false;
         mod->setTitle(name);
+        ctx_.connMgr.sendModuleTitle(ctx_.slot, section_, moduleIndex_, name);
         ctx_.repaint();
         return true;
     }
@@ -396,6 +399,224 @@ private:
     UndoContext& ctx_;
     int section_, moduleIndex_;
     juce::String oldName_, newName_;
+};
+
+// ============================================================================
+// Comment actions - the editor's own text notes on the canvas. They never touch
+// the synth (it has no such module), so none of these send anything: they only
+// move text around the patch model and ask for a repaint.
+// ============================================================================
+class AddCommentAction : public juce::UndoableAction
+{
+public:
+    AddCommentAction(UndoContext& ctx, int section, int gridX, int gridY,
+                     int height, const juce::String& text, int width = 1)
+        : ctx_(ctx), section_(section), gridX_(gridX), gridY_(gridY),
+          width_(juce::jmax(1, width)), height_(height), text_(text) {}
+
+    bool perform() override
+    {
+        // Same courtesy a module gets: whatever is under it moves down, in each
+        // of the columns the note covers.
+        pushed_.clear();
+        for (int col = 0; col < width_; ++col)
+        {
+            auto made = makeRoomForModule(ctx_.patch.getContainer(section_), section_,
+                                          gridX_ + col, gridY_, height_, {},
+                                          &ctx_.patch.getComments(), commentId_);
+            pushed_.insert(pushed_.end(), made.begin(), made.end());
+        }
+
+        PatchComment c;
+        c.section = section_;
+        c.x = gridX_;
+        c.y = gridY_;
+        c.width = width_;
+        c.height = height_;
+        c.text = text_;
+        // Re-adding after an undo keeps the original id, so a redo of anything
+        // that referred to this note still finds it.
+        if (commentId_ > 0)
+        {
+            c.id = commentId_;
+            ctx_.patch.restoreComment(c);
+        }
+        else
+        {
+            commentId_ = ctx_.patch.addComment(c);
+        }
+        ctx_.repaint();
+        return true;
+    }
+
+    bool undo() override
+    {
+        ctx_.patch.removeCommentById(commentId_);
+        restorePushedModules(ctx_.patch, pushed_);
+        ctx_.repaint();
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+    int getCommentId() const { return commentId_; }
+
+private:
+    UndoContext& ctx_;
+    int section_, gridX_, gridY_, width_, height_;
+    juce::String text_;
+    int commentId_ = 0;
+    std::vector<PushedModule> pushed_;
+};
+
+class DeleteCommentAction : public juce::UndoableAction
+{
+public:
+    DeleteCommentAction(UndoContext& ctx, int commentId) : ctx_(ctx)
+    {
+        if (auto* c = ctx_.patch.getCommentById(commentId))
+            stashed_ = *c;
+    }
+
+    bool perform() override
+    {
+        if (stashed_.id == 0) return false;
+        ctx_.patch.removeCommentById(stashed_.id);
+        ctx_.repaint();
+        return true;
+    }
+
+    bool undo() override
+    {
+        if (stashed_.id == 0) return false;
+        ctx_.patch.restoreComment(stashed_);
+        ctx_.repaint();
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    UndoContext& ctx_;
+    PatchComment stashed_;
+};
+
+class MoveCommentAction : public juce::UndoableAction
+{
+public:
+    MoveCommentAction(UndoContext& ctx, int commentId,
+                      juce::Point<int> oldPos, juce::Point<int> newPos)
+        : ctx_(ctx), commentId_(commentId), oldPos_(oldPos), newPos_(newPos) {}
+
+    bool perform() override { return apply(newPos_); }
+    bool undo()    override { return apply(oldPos_); }
+    int getSizeInUnits() override { return 1; }
+
+private:
+    bool apply(juce::Point<int> pos)
+    {
+        auto* c = ctx_.patch.getCommentById(commentId_);
+        if (!c) return false;
+        c->x = pos.x;
+        c->y = pos.y;
+        ctx_.repaint();
+        return true;
+    }
+
+    UndoContext& ctx_;
+    int commentId_;
+    juce::Point<int> oldPos_, newPos_;
+};
+
+class EditCommentTextAction : public juce::UndoableAction
+{
+public:
+    EditCommentTextAction(UndoContext& ctx, int commentId,
+                          const juce::String& oldText, const juce::String& newText)
+        : ctx_(ctx), commentId_(commentId), oldText_(oldText), newText_(newText) {}
+
+    bool perform() override { return apply(newText_); }
+    bool undo()    override { return apply(oldText_); }
+    int getSizeInUnits() override { return 1; }
+
+private:
+    bool apply(const juce::String& text)
+    {
+        auto* c = ctx_.patch.getCommentById(commentId_);
+        if (!c) return false;
+        c->text = text;
+        ctx_.repaint();
+        return true;
+    }
+
+    UndoContext& ctx_;
+    int commentId_;
+    juce::String oldText_, newText_;
+};
+
+// Dragging a corner can move the note's left edge as well as its size, so the
+// whole rectangle travels together and the gesture undoes in one step. The
+// rectangle is in grid units: (column, row, columns, rows).
+class ResizeCommentAction : public juce::UndoableAction
+{
+public:
+    ResizeCommentAction(UndoContext& ctx, int commentId,
+                        juce::Rectangle<int> oldRect, juce::Rectangle<int> newRect)
+        : ctx_(ctx), commentId_(commentId), oldRect_(oldRect), newRect_(newRect) {}
+
+    bool perform() override
+    {
+        if (!apply(newRect_))
+            return false;
+
+        // A note that just grew makes room the way a dropped module does.
+        pushed_.clear();
+        for (int col = 0; col < newRect_.getWidth(); ++col)
+        {
+            auto made = makeRoomForModule(ctx_.patch.getContainer(sectionOf()), sectionOf(),
+                                          newRect_.getX() + col, newRect_.getY(),
+                                          newRect_.getHeight(), {},
+                                          &ctx_.patch.getComments(), commentId_);
+            pushed_.insert(pushed_.end(), made.begin(), made.end());
+        }
+        ctx_.repaint();
+        return true;
+    }
+
+    bool undo() override
+    {
+        if (!apply(oldRect_))
+            return false;
+        restorePushedModules(ctx_.patch, pushed_);
+        pushed_.clear();
+        ctx_.repaint();
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    int sectionOf() const
+    {
+        auto* c = ctx_.patch.getCommentById(commentId_);
+        return c != nullptr ? c->section : 1;
+    }
+
+    bool apply(juce::Rectangle<int> r)
+    {
+        auto* c = ctx_.patch.getCommentById(commentId_);
+        if (!c) return false;
+        c->x      = juce::jlimit(0, 39, r.getX());
+        c->y      = juce::jmax(0, r.getY());
+        c->width  = juce::jlimit(1, 40 - c->x, r.getWidth());
+        c->height = juce::jlimit(1, 64, r.getHeight());
+        ctx_.repaint();
+        return true;
+    }
+
+    UndoContext& ctx_;
+    int commentId_;
+    juce::Rectangle<int> oldRect_, newRect_;
+    std::vector<PushedModule> pushed_;
 };
 
 // ============================================================================
@@ -1037,7 +1258,8 @@ public:
             }
 
             auto roomMade = makeRoomForModule(container, section, tx, ty, desc->height,
-                                              ownIndices[section == 1 ? 1 : 0]);
+                                              ownIndices[section == 1 ? 1 : 0],
+                                              &ctx_.patch.getComments());
             pushed_.insert(pushed_.end(), roomMade.begin(), roomMade.end());
 
             module->setContainerIndex(newIndex);

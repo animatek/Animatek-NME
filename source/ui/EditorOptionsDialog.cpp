@@ -59,6 +59,7 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     // what people reach for first.
     o.knobControl    = static_cast<KnobControl> (props->getIntValue  ("knobControl",     2));
     o.autoUpload     = props->getBoolValue  ("autoUpload",     true);
+    o.askSlotOnOpen  = props->getBoolValue  ("askSlotOnOpen",  true);
     o.wireframe      = props->getBoolValue  ("wireframe",      false);
     o.animateTiling  = props->getBoolValue  ("animateTiling",  true);
     o.moduleIconBar  = props->getBoolValue  ("moduleIconBar",  true);
@@ -80,6 +81,7 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("cableStyle",      static_cast<int> (cableStyle));
     props->setValue ("knobControl",     static_cast<int> (knobControl));
     props->setValue ("autoUpload",      autoUpload);
+    props->setValue ("askSlotOnOpen",   askSlotOnOpen);
     props->setValue ("wireframe",       wireframe);
     props->setValue ("animateTiling",   animateTiling);
     props->setValue ("moduleIconBar",   moduleIconBar);
@@ -180,13 +182,16 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     styleToggle (autoUploadToggle);
     styleToggle (wireframeToggle);
     styleToggle (animateTilingToggle);
+    styleToggle (askSlotToggle);
     autoUploadToggle.setToggleState (options.autoUpload,     juce::dontSendNotification);
+    askSlotToggle   .setToggleState (options.askSlotOnOpen,  juce::dontSendNotification);
     wireframeToggle .setToggleState (options.wireframe,      juce::dontSendNotification);
     animateTilingToggle.setToggleState (options.animateTiling, juce::dontSendNotification);
     addAndMakeVisible (behaviourLabel);
     addAndMakeVisible (autoUploadToggle);
     addAndMakeVisible (wireframeToggle);
     addAndMakeVisible (animateTilingToggle);
+    addAndMakeVisible (askSlotToggle);
 
     // Send speed selector — synth parameter throughput (Mutator/Random)
     styleLabel (sendRateLabel);
@@ -367,6 +372,8 @@ int EditorOptionsDialog::layoutComponents (bool apply)
     place (wireframeToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH;
     place (animateTilingToggle, pad + 8, y, w - pad * 2 - 8, rowH);
+    y += rowH;
+    place (askSlotToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH + 4;
     place (sendRateLabel,    pad + 8,  y, 80, rowH);
     place (sendRateSelector, pad + 92, y, w - pad * 2 - 100, rowH);
@@ -458,6 +465,7 @@ void EditorOptionsDialog::apply()
     options.autoUpload     = autoUploadToggle.getToggleState();
     options.wireframe      = wireframeToggle  .getToggleState();
     options.animateTiling  = animateTilingToggle.getToggleState();
+    options.askSlotOnOpen  = askSlotToggle.getToggleState();
     options.sendRateIndex  = sendRateSelector.getSelectedId() - 1;
     options.mcpBridgeEnabled = mcpBridgeToggle.getToggleState();
 

@@ -35,8 +35,9 @@ namespace
     constexpr int sepGap = 14;
     constexpr int patchLblW = 48;
     constexpr int patchNameW = 150;
-    constexpr int saveBtnW = 28;  // Quick save button width
-    constexpr int patchSecW = patchLblW + patchNameW + saveBtnW + 8;  // +8 for spacing
+    // Store-to-bank button: diskette + the bank location the patch lives at
+    constexpr int storeBtnW = 60;
+    constexpr int patchSecW = patchLblW + patchNameW + storeBtnW + 12;
     constexpr int voicesLblW = 54;
     constexpr int voicesValW = 32;
     constexpr int arrowBtnW = 16;
@@ -81,49 +82,8 @@ PatchHeaderBar::PatchHeaderBar()
     addAndMakeVisible(patchNameEditor.get());
     patchNameEditor->setVisible(false);  // Hidden by default
 
-    // Quick save button removed — now in left column toolbar
-}
-
-void PatchHeaderBar::createDisketteIcon()
-{
-    // Create SVG diskette icon path
-    juce::Path diskettePath;
-
-    // Diskette outline (simplified classic floppy disk shape)
-    diskettePath.addRoundedRectangle(2, 0, 20, 24, 1.0f);  // Main body
-    diskettePath.addRectangle(2, 0, 20, 6);  // Top label area
-    diskettePath.addRectangle(6, 8, 12, 10);  // Center metal shutter
-    diskettePath.addRectangle(16, 2, 4, 2);  // Write protect notch
-
-    // Normal state
-    auto normalImage = std::make_unique<juce::DrawablePath>();
-    normalImage->setPath(diskettePath);
-    normalImage->setFill(juce::Colours::white.withAlpha(0.9f));
-    normalImage->setStrokeFill(AppTheme::palette().borderColor);
-    normalImage->setStrokeThickness(1.0f);
-
-    // Disabled state (grayed out)
-    auto disabledImage = std::make_unique<juce::DrawablePath>();
-    disabledImage->setPath(diskettePath);
-    disabledImage->setFill(juce::Colour(0xff555555));
-    disabledImage->setStrokeFill(juce::Colour(0xff333333));
-    disabledImage->setStrokeThickness(1.0f);
-
-    quickSaveButton->setImages(normalImage.get(), nullptr, nullptr, disabledImage.get());
-}
-
-void PatchHeaderBar::setCurrentLocation(int section, int position)
-{
-    currentSection = section;
-    currentPosition = position;
-
-    (void)section; (void)position;
-}
-
-void PatchHeaderBar::clearCurrentLocation()
-{
-    currentSection = -1;
-    currentPosition = -1;
+    // The store-to-bank button next to the name is painted in paint(), not a
+    // child component: the whole header bar is custom-drawn.
 }
 
 void PatchHeaderBar::setPatch(Patch* p)
@@ -132,6 +92,65 @@ void PatchHeaderBar::setPatch(Patch* p)
     if (patchNameEditor->isVisible())
         patchNameEditor->setVisible(false);
     repaint();
+}
+
+void PatchHeaderBar::mouseMove(const juce::MouseEvent& e)
+{
+    const auto p = e.getPosition().toFloat();
+
+    // Being on a button is not the same as being on the dial it belongs to, so
+    // the buttons get asked first or they vanish as you reach for them.
+    if (!morphSpinner.contains(p))
+    {
+        const int idx = patch != nullptr ? getMorphKnobAt(e.getPosition()) : -1;
+        morphSpinnerIndex = idx;
+        morphSpinner.showFor(idx < 0 ? juce::String() : "morph" + juce::String(idx),
+                             idx < 0 ? juce::Rectangle<float>() : getMorphKnobBounds(idx),
+                             ValueSpinner::Placement::Inside);
+    }
+    morphSpinner.updateHover(p);
+
+    const bool over = isStoreButtonAt(e.getPosition());
+    if (over == storeHover)
+        return;
+    storeHover = over;
+    repaint(getStoreButtonBounds().expanded(2.0f).toNearestInt());
+}
+
+void PatchHeaderBar::mouseExit(const juce::MouseEvent&)
+{
+    if (!morphSpinner.isHeld())
+    {
+        morphSpinner.hide();
+        morphSpinnerIndex = -1;
+    }
+
+    if (!storeHover)
+        return;
+    storeHover = false;
+    repaint(getStoreButtonBounds().expanded(2.0f).toNearestInt());
+}
+
+// One step of a morph macro. There is no undo behind the morph values, and
+// nothing else to close afterwards, so a step is the whole story.
+void PatchHeaderBar::morphSpinnerStep(int delta)
+{
+    if (patch == nullptr || morphSpinnerIndex < 0 || morphSpinnerIndex >= 4)
+        return;
+
+    auto& value = patch->morphValues[static_cast<size_t>(morphSpinnerIndex)];
+    const int newValue = juce::jlimit(0, 127, value + delta);
+    if (newValue == value)
+    {
+        morphSpinner.stopRepeat();   // at the end of the range there is no more
+        return;
+    }
+
+    value = newValue;
+    repaint();
+
+    if (morphChangeCallback)
+        morphChangeCallback(morphSpinnerIndex, newValue);
 }
 
 void PatchHeaderBar::resized()
@@ -146,14 +165,53 @@ void PatchHeaderBar::resized()
     // Position patch name editor
     if (patchNameEditor)
         patchNameEditor->setBounds(getPatchNameBounds());
-
-    // (quick save button removed — now in left column toolbar)
 }
 
 juce::Rectangle<int> PatchHeaderBar::getPatchNameBounds() const
 {
     int x = patchSecX_ + patchLblW;
     return juce::Rectangle<int>(x, 6, patchNameW, getHeight() - 12);
+}
+
+juce::Rectangle<float> PatchHeaderBar::getStoreButtonBounds() const
+{
+    auto name = getPatchNameBounds();
+    return juce::Rectangle<float>(static_cast<float>(name.getRight() + 6),
+                                  static_cast<float>(name.getY()),
+                                  static_cast<float>(storeBtnW),
+                                  static_cast<float>(name.getHeight()));
+}
+
+bool PatchHeaderBar::isStoreButtonAt(juce::Point<int> pos) const
+{
+    return getStoreButtonBounds().contains(pos.toFloat());
+}
+
+void PatchHeaderBar::setCurrentLocation(int section, int position)
+{
+    if (currentSection == section && currentPosition == position)
+        return;
+    currentSection = section;
+    currentPosition = position;
+    repaint();
+}
+
+void PatchHeaderBar::clearCurrentLocation() { setCurrentLocation(-1, -1); }
+
+void PatchHeaderBar::setStoreEnabled(bool enabled)
+{
+    if (storeEnabled == enabled)
+        return;
+    storeEnabled = enabled;
+    repaint();
+}
+
+void PatchHeaderBar::setStoreUncertain(bool uncertain)
+{
+    if (storeUncertain == uncertain)
+        return;
+    storeUncertain = uncertain;
+    repaint();
 }
 
 // --- Layout helpers ---
@@ -446,6 +504,40 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         g.drawText(patchName, nameRect.reduced(6, 0), juce::Justification::centredLeft, true);
     }
 
+    // --- Store to bank button (diskette + the location the patch lives at) ---
+    {
+        auto sb = getStoreButtonBounds();
+        const bool known = currentSection >= 0 && currentPosition >= 0;
+        const bool live = storeEnabled && patch != nullptr;
+
+        g.setColour(live && storeHover ? AppTheme::palette().buttonActive
+                                       : AppTheme::palette().inputBackground);
+        g.fillRoundedRectangle(sb, 3.0f);
+        g.setColour(live ? AppTheme::palette().borderColor
+                         : AppTheme::palette().borderColor.withAlpha(0.4f));
+        g.drawRoundedRectangle(sb.reduced(0.5f), 3.0f, 1.0f);
+
+        // Diskette: body, shutter, label
+        const float ds = 11.0f;
+        const float dx = sb.getX() + 6.0f;
+        const float dy = sb.getCentreY() - ds * 0.5f;
+        auto ink = live ? AppTheme::palette().textPrimary : AppTheme::palette().textMuted;
+        g.setColour(ink);
+        g.drawRoundedRectangle(dx, dy, ds, ds, 1.5f, 1.0f);
+        g.fillRect(dx + 3.0f, dy + 1.0f, ds - 6.0f, ds * 0.35f);          // shutter
+        g.fillRect(dx + 2.0f, dy + ds * 0.58f, ds - 4.0f, ds * 0.32f);    // label
+
+        g.setColour(live ? (known ? AppTheme::palette().textPrimary
+                                  : AppTheme::palette().textMuted)
+                         : AppTheme::palette().textMuted);
+        g.setFont(AppTheme::uiFont(10.0f).withStyle("Bold"));
+        juce::String loc = known
+            ? juce::String(currentSection + 1) + ":" + juce::String(currentPosition + 1).paddedLeft('0', 2)
+            : juce::String(storeUncertain ? "?" : "--");
+        g.drawText(loc, sb.withTrimmedLeft(ds + 9.0f).withTrimmedRight(3.0f).toNearestInt(),
+                   juce::Justification::centredLeft, false);
+    }
+
     // --- Voices ---
     x = voicesSecX_;
     g.setColour(AppTheme::palette().textSecondary);
@@ -680,6 +772,11 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         g.setFont(AppTheme::uiFont(11.0f));
         g.drawText(synthName, nameRect.reduced(4, 0), juce::Justification::centredLeft, true);
     }
+
+    // Last, so the arrows sit on top of the dial they belong to.
+    morphSpinner.paint(g, { AppTheme::palette().inputBackground,
+                            AppTheme::palette().borderColor,
+                            AppTheme::macroLabelInk() });
 }
 
 // --- Mouse interaction ---
@@ -687,6 +784,20 @@ void PatchHeaderBar::paint(juce::Graphics& g)
 void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
 {
     auto pos = e.getPosition();
+
+    // Store to bank — one click puts the patch back where it came from
+    if (isStoreButtonAt(pos) && storeEnabled && patch != nullptr)
+    {
+        if (quickSaveCallback)
+            quickSaveCallback();
+        return;
+    }
+
+    // The nudge arrows on the dial the pointer is resting on take the click
+    // before the dial itself does — they are drawn on top of it.
+    if (!e.mods.isPopupMenu() && patch != nullptr && morphSpinnerIndex >= 0
+        && morphSpinner.mouseDown(pos.toFloat(), [this](int delta) { morphSpinnerStep(delta); }))
+        return;
 
     // Morph knob — right-click for knob/CC assignment, left-click for drag
     int morphIdx = getMorphKnobAt(pos);
@@ -1091,6 +1202,14 @@ void PatchHeaderBar::mouseUp(const juce::MouseEvent& e)
 {
     // Give the pointer back before anything else can return early.
     KnobDrag::end(e, *this);
+
+    // Letting go of a nudge arrow stops the repeat. The pointer may have
+    // wandered off the button while it was held, so look again now it is free.
+    if (morphSpinner.mouseUp())
+    {
+        morphSpinner.updateHover(e.getPosition().toFloat());
+        return;
+    }
 
     if (morphDragging)
     {

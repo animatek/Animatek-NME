@@ -72,6 +72,7 @@ set(NME_SHARED_SOURCES
     source/model/PatchParser.cpp
     source/model/PatchSerializer.cpp
     source/model/PatchVariations.cpp
+    source/model/PatchExtras.cpp
     source/model/Mutator.cpp
     source/model/MutationCategories.cpp
     source/model/PchFileIO.cpp
@@ -93,6 +94,7 @@ set(NME_SHARED_SOURCES
     source/ui/StatusBar.cpp
     source/ui/PatchHeaderBar.cpp
     source/ui/KnobDrag.cpp
+    source/ui/ValueSpinner.cpp
     source/ui/PatchLocationDialog.cpp
     source/ui/AboutDialog.cpp
     source/ui/SlotSelectDialog.cpp
@@ -131,6 +133,7 @@ set(NME_SHARED_SOURCES
     source/protocol/StorePatchMessage.cpp
     source/protocol/DeletePatchMessage.cpp
     source/protocol/SetPatchTitleMessage.cpp
+    source/protocol/SetModuleTitleMessage.cpp
     source/protocol/SendControllerSnapshotMessage.cpp
     source/protocol/MorphAssignmentMessage.cpp
     source/protocol/MorphKeyboardAssignmentMessage.cpp

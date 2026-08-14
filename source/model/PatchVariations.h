@@ -40,3 +40,8 @@ public:
 
 bool saveVarFile(const PatchVariations& vars, const juce::File& file);
 bool loadVarFile(PatchVariations& vars, const juce::File& file);
+
+// The same text the .var file holds, so the extras store can keep variations
+// without a second serialiser. `varFromText` reads what `varToText` wrote.
+juce::String varToText(const PatchVariations& vars);
+bool varFromText(PatchVariations& vars, const juce::StringArray& lines);

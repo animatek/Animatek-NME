@@ -31,6 +31,7 @@ private:
     void parseKnobMapDump(const juce::StringArray& lines, Patch& patch);
     void parseCtrlMapDump(const juce::StringArray& lines, Patch& patch);
     void parseCustomDump(const juce::StringArray& lines, Patch& patch);
+    void parseComments(const juce::StringArray& lines, Patch& patch);
     void parseNameDump(const juce::StringArray& lines, Patch& patch);
     std::unique_ptr<Patch> readLegacyFile(const juce::StringArray& lines, const juce::File& file);
     static void normalizeLegacyModulePositions(ModuleContainer& container);
@@ -50,6 +51,7 @@ private:
     void writeCustomDump(juce::String& out, const ModuleContainer& container, int voiceAreaId);
     void writeNameDump(juce::String& out, const ModuleContainer& container, int voiceAreaId);
     void writeNotes(juce::String& out, const Patch& patch);
+    void writeComments(juce::String& out, const Patch& patch);
 
     static juce::StringArray tokenize(const juce::String& line);
     static juce::String getLegacyValue(const juce::StringArray& lines, const juce::String& key);

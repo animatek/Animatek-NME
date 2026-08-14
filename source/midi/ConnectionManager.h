@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <utility>
+#include <vector>
 
 class Patch;
 
@@ -55,6 +57,9 @@ public:
     // with hundreds of simultaneous messages and drop the connection.
     void queueParameter(int slot, int section, int moduleId, int parameterId, int value);
     void sendPatchTitle(int slot, const juce::String& title);  // Change patch name (not saved to flash)
+    // Change a module's name on the synth (not saved to flash). Without this the
+    // rename would only exist in the editor until a full patch upload.
+    void sendModuleTitle(int slot, int section, int moduleIndex, const juce::String& title);
     void sendControllerSnapshot();  // Ask synth to emit current values of assigned MIDI CCs (read-only)
     // Play notes on the current slot via the editor protocol (Note, cc=0x17 sc=0x56).
     // The editor talks to the synth's PC port, which ignores regular MIDI notes.
@@ -90,6 +95,35 @@ public:
     // Bank location of the last loaded patch (-1 = unknown, e.g. synth-side change)
     int getLastLoadedSection() const { return lastLoadedSection; }
     int getLastLoadedPosition() const { return lastLoadedPosition; }
+
+    // Where each slot's patch lives in the synth's banks: set by a bank load and
+    // by a store, cleared when the synth puts something else in the slot behind
+    // our back. -1 = unknown (a new patch, or one opened from a file). This is
+    // per slot on purpose — one editor holds four patches from four locations.
+    int getSlotBankSection(int slot) const
+    {
+        return (slot >= 0 && slot < 4) ? slotBankSection[static_cast<size_t>(slot)] : -1;
+    }
+    int getSlotBankPosition(int slot) const
+    {
+        return (slot >= 0 && slot < 4) ? slotBankPosition[static_cast<size_t>(slot)] : -1;
+    }
+    void setSlotBankLocation(int slot, int section, int position)
+    {
+        if (slot < 0 || slot >= 4) return;
+        slotBankSection[static_cast<size_t>(slot)] = section;
+        slotBankPosition[static_cast<size_t>(slot)] = position;
+    }
+    void clearSlotBankLocation(int slot) { setSlotBankLocation(slot, -1, -1); }
+
+    // Fired when the synth tells us where a slot's patch came from (MIDI thread).
+    using BankLocationCallback = std::function<void(int slot)>;
+    void setBankLocationCallback(BankLocationCallback cb) { bankLocationCallback = std::move(cb); }
+
+    // Every bank position carrying this name, as (section, position) pairs. One
+    // hit is an answer; several are candidates the user has to choose between,
+    // because the G1 never says where a front-panel load came from.
+    std::vector<std::pair<int, int>> findPatchLocations(const juce::String& name) const;
 
     // Device enumeration (delegates to MidiDeviceManager)
     static juce::Array<juce::MidiDeviceInfo> getAvailableInputDevices();
@@ -323,6 +357,9 @@ private:
     int pendingBankLoadGeneration = 0;
     int lastLoadedSection = -1;   // Bank section of last loadPatchFromBank (-1=unknown)
     int lastLoadedPosition = -1;  // Bank position of last loadPatchFromBank (-1=unknown)
+    int slotBankSection[4] = { -1, -1, -1, -1 };   // Per-slot bank origin (-1=unknown)
+    int slotBankPosition[4] = { -1, -1, -1, -1 };
+    BankLocationCallback bankLocationCallback;
     bool suppressNextLocationClear = false;  // Set by loadPatchFromBank, cleared on NewPatchInSlot
     int currentPatchId = 0;  // Pid of the focused slot's patch (used in parameter changes)
     // Pid per slot: patch generations advance independently per slot, and a

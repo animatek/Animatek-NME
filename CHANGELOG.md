@@ -1,5 +1,85 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Nudge arrows under the knob you are pointing at.** A knob packs its whole range into a few
+  pixels, so landing on an exact frequency or MIDI note by dragging one is guesswork. Hovering a
+  knob or a slider now pops the same two little buttons the original editor shows: the left one
+  steps the value down by one, the right one up by one, and holding either repeats. The value
+  reads out while you step it, without the pause a plain hover waits through, and the whole
+  press is a single undo step however many times it repeated. The four morph dials in the header
+  bar have them too, sitting inside the dial rather than under it because the caption is directly
+  below, so a macro can be set to an exact figure instead of swept to roughly the right place.
+
+- **A patch loaded from the synth gets its comments, notes, variations and Mutator exclusions
+  back.** None of that fits on the wire, so a patch read off the front panel used to arrive
+  stripped of everything the editor knows about it, and only the `.pch` on disk had it. The
+  editor now keeps its own copy of every patch's extras, one small file per patch in `extras/`
+  beside the settings, and puts them back the moment it recognises the patch. Recognition goes
+  by the id patches saved here carry in a new `[NME]` section of the `.pch`, and, for a patch
+  coming off the wire, by a fingerprint of its name, modules and cables. The fingerprint
+  deliberately leaves the parameter values out, so turning a knob never costs a patch its notes,
+  and the previous fingerprints are remembered as the patch grows so the link survives editing.
+  Nothing about this is on screen and there is nothing to set up: load PercDetect from the synth
+  and your notes are on it. Opening a `.pch` from disk still lets the file win, and a patch you
+  create is always given an entry of its own rather than being matched against other new patches,
+  which all look exactly alike.
+
+- **Comments on the patch: a text note you can drop into any empty space.** The module bar has
+  a new **ANME** tab at the end, holding what this editor adds to a patch that Clavia never
+  shipped, and a **Comment** chip is the first thing in it: click or drag it onto the canvas the
+  way you place a module, or right-click the canvas and pick **Add Comment**. A two-row note
+  lands where you put it, ready to write in: double-click it to type, drag it around, pull either
+  bottom corner to make it as wide and as tall as you want, right-click for exact sizes or to
+  delete it, `Delete` while it is selected does the same, and `Z` zooms to it. It copies, cuts,
+  pastes and duplicates on the keys the modules use, `Ctrl+C`/`Ctrl+X`/`Ctrl+V`/`Ctrl+D`, and a
+  pasted note hangs off the pointer as an outline until you click where it goes, so it can be
+  copied into the other voice area or into another slot's window. Every one of those is undoable. It is painted as a module panel, in the same colour the modules around it wear
+  under whichever theme you are using, and its text is centred and bold and grows with the panel,
+  so a note you made big is a heading you can read across the patch. It holds its rectangle of the grid the way a module does, so dropping a module makes
+  room for it and it makes room for modules. The synth never hears about it: the G1 has no such
+  module, and nothing about a comment ever goes on the wire. Notes are saved inside the `.pch`,
+  in a `[Comments]` section of the same kind as the `[Notes]` the patch already carries, so they
+  travel with the patch when you share it and editors that don't know the section skip it.
+
+- **A store button next to the patch name**, showing the bank location the patch on screen came
+  from as `bank:position`. One click writes the patch straight back there, no dialog and no
+  hunting: exactly what the front panel's STORE does, without leaving the editor. Each slot
+  carries its own location, so with four sub-windows open the button always speaks for the slot
+  you are looking at, and a patch with nowhere to go yet (just created, or opened from a file)
+  shows `--` and falls back to the dialog. Loading from the browser or storing gives the editor
+  the location outright. It has to work the rest out on its own, because the G1 never says where
+  a patch came from: a front-panel load only reports which slot changed, and the patches already
+  in the slots at connection time are announced by nobody. There the patch name is looked up in
+  the bank list, and a single match settles it. Several positions with the same name leave the
+  button showing `?`: a click then opens the dialog on the first match with the full list of
+  matches in the status bar, and picking one settles that slot for good.
+
+- **The Store Patch to Bank dialog opens on the patch's own location** instead of bank 1
+  position 1 every time. Putting a patch back where it came from is now a single OK, and storing
+  it somewhere else makes that new place its location from then on.
+
+- **Save Patch As opens with the filename already typed in.** The name field used to come up
+  empty, so every save meant typing the patch's name out again, and a patch read off the synth
+  is normally saved under the name the synth gives it. The dialog now suggests the file the
+  patch was last saved to, or, for a patch that has none yet, the patch's own name with `.pch`
+  on the end.
+
+- **Opening a patch can stop asking which slot** (#59). Editor Options gains **Ask which slot
+  when opening a patch**; turn it off and every open goes straight into the slot on screen and
+  uploads, which is what anyone working in a single slot wants.
+
+### Fixed
+
+- **Renaming a module now reaches the synth.** The new name went into the editor's patch and
+  waited there for a full patch upload, which meant that storing the patch to a bank right after
+  the rename saved the module's old name: Store to Bank keeps whatever the synth already holds.
+  Renames are now sent as they happen with the protocol's SetModuleTitle message, the same way
+  the patch name has always been sent, so the synth is in step and the stored patch carries the
+  names you gave. Undo and redo of a rename update the synth too.
+
 ## 0.15.1 — 2026-08-10
 
 ### Fixed

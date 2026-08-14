@@ -12,10 +12,46 @@ NME loads in the originals and vice versa.
   them when you only want current patches. Saving rewrites them in 3.0 format.
 - **Patch notes** are stored in a `[Notes]` section, a Nomad/nmedit extension
   that original editors ignore harmlessly.
+- **Comments** (the text notes on the canvas) are stored the same way, in a
+  `[Comments]` section: one line per note with its area, grid position, size and
+  text. The size is the row count on its own, or `rows x columns` once the note
+  is more than one column wide. They travel with the patch when you share it, and
+  an editor that does not know the section skips it.
 
 Opening a patch asks which slot it should go to, or whether to load it **Local**
 (editor only, nothing sent to the synth). See
 [Working with the Synth](04-working-with-the-synth.md#opening-a-patch-choosing-where-it-goes).
+
+## The extras library
+
+The G1 stores modules, cables, values and names. Comments, patch notes, the
+eight variations and the Mutator's exclusions are the editor's own, and there is
+no room for any of them on the synth: a patch loaded from the front panel used to
+arrive stripped of all of it.
+
+The editor therefore keeps its own copy of the extras of every patch it has seen,
+one small file per patch, in `extras/` beside the settings. You never have to
+think about it. Load PercDetect from the synth and its comments, notes,
+variations and exclusions come back on their own.
+
+A patch is recognised by two routes:
+
+- **By its id.** Patches saved by this editor carry one in an `[NME]` section of
+  the `.pch`, so opening the file says outright which extras are its own. The id
+  travels inside the file, so a patch you send to somebody else keeps its
+  identity on their machine too.
+- **By its fingerprint**, which is what a patch coming off the wire has to be
+  recognised by. The fingerprint covers the patch name, its modules and its
+  cables, and deliberately not the parameter values, so turning a knob never
+  costs a patch its notes. As the patch grows the fingerprint changes, and the
+  editor keeps the previous ones so the link survives editing.
+
+The one thing it cannot tell apart is two brand new patches, which look exactly
+alike. A patch you create is therefore always given an entry of its own and is
+never matched against anything.
+
+Opening a `.pch` from disk lets the file win: the comments in it are the
+comments you get, and the library is brought into line with it afterwards.
 
 ## `.var` variations sidecar
 

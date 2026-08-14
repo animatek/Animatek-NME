@@ -55,11 +55,15 @@ private:
         void mouseUp(const juce::MouseEvent& e) override;
 
         void setModules(std::vector<const ModuleDescriptor*> mods);
+        /** The ANME tab: what this editor adds to the patch that Clavia never
+            shipped. Nothing here has a module descriptor. */
+        void setEditorExtras();
 
     private:
         struct Chip
         {
-            const ModuleDescriptor* descriptor = nullptr;
+            const ModuleDescriptor* descriptor = nullptr;  // null for the ANME chips
+            juce::String label;
             juce::Rectangle<int> bounds;
         };
 

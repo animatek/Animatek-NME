@@ -174,6 +174,28 @@ private:
     ModuleRemovedCallback onModuleRemoved;
 };
 
+// A text note pinned to the patch grid: editor-only, because the G1 has no such
+// module and never hears about it. It takes up its rectangle of the grid the way
+// a module does, so modules make room for it and it makes room for them.
+// Persisted in the .pch's [Comments] section, an extension in the same spirit as
+// [Notes] - editors that don't know it skip it.
+struct PatchComment
+{
+    int id = 0;         // stable while the patch is open; undo refers to it
+    int section = 1;    // 1 = poly voice area, 0 = common
+    int x = 0;          // grid column
+    int y = 0;          // grid row
+    int width = 1;      // grid columns (a module is always exactly one)
+    int height = 2;     // grid rows (2 is the size the module bar drops)
+    juce::String text;
+
+    int gridWidth()  const { return juce::jmax(1, width); }
+    int gridHeight() const { return juce::jmax(1, height); }
+    /** True when the note covers column `gx`, which is how the placement code
+        asks whether it is in the way. */
+    bool coversColumn(int gx) const { return gx >= x && gx < x + gridWidth(); }
+};
+
 struct PatchHeader
 {
     int keyRangeMin = 0;
@@ -243,6 +265,12 @@ public:
     const juce::String& getName() const { return name; }
     void setName(const juce::String& n) { name = n; }
 
+    // Which entry in the editor's extras library this patch belongs to. Written
+    // into the .pch's [NME] section, so a file says outright which comments,
+    // notes and variations are its own, and empty for a patch that came off the
+    // wire (the synth has nowhere to keep it) until the editor works it out.
+    juce::String extrasId;
+
     PatchHeader& getHeader() { return header; }
     const PatchHeader& getHeader() const { return header; }
 
@@ -288,9 +316,65 @@ public:
     // Free-text patch notes ([Notes] section, not MIDI NoteSlots)
     juce::String patchNotes;
 
+    // --- Editor-only text notes on the canvas ---
+    const std::vector<PatchComment>& getComments() const { return comments; }
+    std::vector<PatchComment>& getComments() { return comments; }
+
+    PatchComment* getCommentById(int id)
+    {
+        for (auto& c : comments)
+            if (c.id == id)
+                return &c;
+        return nullptr;
+    }
+
+    /** Adds a comment and gives it an id. Returns the id, which is what undo
+        and the canvas hold on to: the vector reallocates, pointers do not
+        survive, ids do. */
+    int addComment(PatchComment comment)
+    {
+        comment.id = ++lastCommentId;
+        comments.push_back(std::move(comment));
+        return comments.back().id;
+    }
+
+    /** Re-inserts a comment keeping its id (undo of a delete). */
+    void restoreComment(const PatchComment& comment)
+    {
+        comments.push_back(comment);
+        lastCommentId = juce::jmax(lastCommentId, comment.id);
+    }
+
+    /** Takes over another patch's notes wholesale, keeping their ids valid: the
+        id counter has to follow, or the next new note would reuse an id that is
+        already on the canvas. */
+    void adoptComments(std::vector<PatchComment> incoming)
+    {
+        comments = std::move(incoming);
+        for (const auto& c : comments)
+            lastCommentId = juce::jmax(lastCommentId, c.id);
+
+        // Notes arriving without an id get one now. Ids only mean anything while
+        // a patch is open, so nothing outside the editor stores them, and the
+        // extras library does not either: a note left holding id 0 would answer
+        // to every lookup for "no note at all" and could not be deleted.
+        for (auto& c : comments)
+            if (c.id <= 0)
+                c.id = ++lastCommentId;
+    }
+
+    bool removeCommentById(int id)
+    {
+        for (auto it = comments.begin(); it != comments.end(); ++it)
+            if (it->id == id) { comments.erase(it); return true; }
+        return false;
+    }
+
 private:
     juce::String name { "Init Patch" };
     PatchHeader header;
     ModuleContainer polyVoiceArea;
     ModuleContainer commonArea;
+    std::vector<PatchComment> comments;
+    int lastCommentId = 0;
 };

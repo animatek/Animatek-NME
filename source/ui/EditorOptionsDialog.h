@@ -14,6 +14,10 @@ struct EditorOptions
     CableStyle  cableStyle     = CableStyle::CurvedThick;
     KnobControl knobControl    = KnobControl::Vertical;
     bool        autoUpload     = true;
+    // Opening a .pch asks which slot to put it in (issue #21). Turning this off
+    // sends every open straight to the slot on screen, which is what people who
+    // always work in one slot asked for (issue #59).
+    bool        askSlotOnOpen  = true;
     bool        wireframe      = false; // outline-only module rendering (theme-independent)
     bool        animateTiling  = true;  // slide slot sub-windows to their new tiles
     bool        moduleIconBar  = true;  // the module icon bar under the header (issue #17)
@@ -107,6 +111,7 @@ private:
     // Behaviour
     juce::Label    behaviourLabel    { {}, "BEHAVIOUR" };
     juce::ToggleButton autoUploadToggle   { "Auto Upload  (send parameter changes to synth immediately)" };
+    juce::ToggleButton askSlotToggle      { "Ask which slot when opening a patch  (off: open into the current slot)" };
     juce::ToggleButton wireframeToggle    { "Wireframe modules  (outline only, works with any theme)" };
     juce::ToggleButton animateTilingToggle { "Animate Slot Tiling  (slide sub-windows into place)" };
     juce::Label    sendRateLabel     { {}, "Send speed" };

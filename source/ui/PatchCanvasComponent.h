@@ -9,6 +9,7 @@
 #include "QuickAddPopup.h"
 #include "../help/ModuleHelpPopup.h"
 #include "ColorScheme.h"
+#include "ValueSpinner.h"
 #include <set>
 #include <vector>
 #include <map>
@@ -65,6 +66,26 @@ public:
     using SnippetInsertCallback = std::function<std::vector<std::pair<int, int>>(
         SnipData, int section, int offsetX, int offsetY)>;
 
+    // --- Editor text notes (comments) ---
+    // Add one at a grid position; fires with the section and grid cell clicked.
+    using CommentAddCallback = std::function<void(int section, int gridX, int gridY)>;
+    using CommentMoveCallback = std::function<void(int commentId, juce::Point<int> oldPos,
+                                                   juce::Point<int> newPos)>;
+    using CommentTextCallback = std::function<void(int commentId, const juce::String& oldText,
+                                                   const juce::String& newText)>;
+    using CommentDeleteCallback = std::function<void(int commentId)>;
+    // Creates a note with a size and a text already decided, inside whatever
+    // undo transaction is open rather than starting one: that is what pasting
+    // and duplicating need, so the whole block undoes in a single step.
+    using CommentCreateCallback = std::function<void(int section, int gridX, int gridY,
+                                                     int width, int height,
+                                                     const juce::String& text)>;
+    // Rectangles in grid units: (column, row, columns, rows). A corner drag can
+    // move the left edge as well as the size, so the whole rectangle travels.
+    using CommentResizeCallback = std::function<void(int commentId,
+                                                     juce::Rectangle<int> oldRect,
+                                                     juce::Rectangle<int> newRect)>;
+
     PatchCanvas();
     ~PatchCanvas();
 
@@ -101,6 +122,13 @@ public:
      *  those afterwards reads freed memory (issue #61). */
     void forgetDeletedModules();
     // The most recently selected module in this section, or nullptr.
+    void setCommentAddCallback(CommentAddCallback cb) { commentAddCallback = std::move(cb); }
+    void setCommentMoveCallback(CommentMoveCallback cb) { commentMoveCallback = std::move(cb); }
+    void setCommentTextCallback(CommentTextCallback cb) { commentTextCallback = std::move(cb); }
+    void setCommentDeleteCallback(CommentDeleteCallback cb) { commentDeleteCallback = std::move(cb); }
+    void setCommentCreateCallback(CommentCreateCallback cb) { commentCreateCallback = std::move(cb); }
+    void setCommentResizeCallback(CommentResizeCallback cb) { commentResizeCallback = std::move(cb); }
+
     Module* getSelectedModule() const { return selectedModule; }
     int     getSelectedSection() const { return selectedSection; }
     void setLightMeterData(const int lights[128], const int meters[128]);
@@ -225,6 +253,31 @@ private:
     HoverTarget hoverTarget;
     bool hoverBadgeVisible = false;
     static constexpr int hoverDelayMs = 400;
+
+    // ── Nudge arrows ─────────────────────────────────────────────────────────
+    // Hovering a knob or a slider pops the two little buttons the original
+    // editor puts under it (see ValueSpinner). All this end keeps is which
+    // control they belong to; the buttons themselves are the shared widget, so
+    // the morph dials in the header bar behave exactly the same way.
+    struct SpinnerTarget
+    {
+        Module* module = nullptr;
+        juce::String componentId;
+        juce::Rectangle<float> control;        // canvas coordinates
+        juce::Rectangle<int>   moduleBounds;
+    };
+    ValueSpinner spinner { *this };
+    SpinnerTarget spinnerTarget;
+    int spinnerValueBeforePress = 0;   // so a whole press is one undo step
+
+    bool findSpinnerAt(juce::Point<int> canvasPos, SpinnerTarget& out);
+    void updateSpinner(juce::Point<int> canvasPos);
+    void clearSpinner();
+    /** True when the click landed on an arrow and has been dealt with, in which
+        case nothing underneath it should see the click. */
+    bool spinnerMouseDown(juce::Point<int> canvasPos);
+    void spinnerStep(int delta);
+    void spinnerRelease();
     // Module whose DSP cost was asked for by double-clicking it, as the original
     // editor answers. Cleared by the next click.
     const Module* costBadgeModule = nullptr;
@@ -289,10 +342,48 @@ private:
     };
     std::vector<ModuleLightRange> computeModuleLightRanges() const;
 
+    // --- Editor text notes ---
+    juce::Rectangle<int> getCommentBounds(const PatchComment& c) const;
+    PatchComment* getCommentAt(juce::Point<int> canvasPos);
+    void paintComments(juce::Graphics& g);
+    void showCommentEditor(int commentId);       // modal text editor for one note
+    void showCommentContextMenu(int commentId);
+    /** The note's text, laid out to fill its panel: bold, centred, and as big as
+        fits. Shared by the note itself and by the outline that precedes it. */
+    void drawCommentText(juce::Graphics& g, const juce::String& text,
+                         juce::Rectangle<int> bounds, juce::Colour colour) const;
+    // Which corner grip the pointer is over, so a drag there resizes the note
+    // instead of moving it. Both bottom corners pull: the right one takes the
+    // right edge with it, the left one the left edge.
+    enum class CommentGrip { None, BottomLeft, BottomRight };
+    CommentGrip commentGripAt(const PatchComment& c, juce::Point<int> canvasPos) const;
+    static constexpr int commentGripSize = 14;   // canvas pixels, square
+    // Text notes are selected alongside modules, not instead of them: the rubber
+    // band catches both, and a selection holding some of each moves, copies and
+    // deletes as one. They are kept in their own list because a note is not a
+    // Module and has no business pretending to be one in the patch model, where
+    // everything else ends up on the wire.
+    std::vector<int> selectedCommentIds;
+    bool isCommentSelected(int id) const;
+    void selectComment(int id, bool addToSelection);
+    void clearCommentSelection() { selectedCommentIds.clear(); }
+    /** The one selected note, or nullptr when none or several are: editing text
+        and reading a size are single-note affairs. */
+    PatchComment* soleSelectedComment();
+    int dragCommentId = -1;
+    juce::Point<int> dragCommentStartPos;  // grid position when the drag began
+    int dragCommentOffsetX = 0, dragCommentOffsetY = 0;
+    // Resize drag: the rectangle the note had when the grip was grabbed, and
+    // which grip is being pulled.
+    juce::Rectangle<int> dragCommentStartRect;
+    CommentGrip dragCommentGrip = CommentGrip::None;
+    CommentGrip hoverCommentGrip = CommentGrip::None;
+    int hoverCommentId = -1;
+
     // Dragging state
     struct DragState
     {
-        enum Type { None, Knob, Slider, Button, NoteSeqEditor, NoteSeqScrollbar, ModuleMove, MultiModuleMove, CableCreate, RubberBand, MorphRange, CanvasPan } type = None;
+        enum Type { None, Knob, Slider, Button, NoteSeqEditor, NoteSeqScrollbar, ModuleMove, MultiModuleMove, CableCreate, RubberBand, MorphRange, CanvasPan, CommentMove, CommentResize } type = None;
         Module* module = nullptr;
         Parameter* parameter = nullptr;
         Connector* sourceConnector = nullptr;  // CableCreate: source connector
@@ -320,6 +411,12 @@ private:
     KnobAssignCallback knobAssignCallback;
     MidiCtrlAssignCallback midiCtrlAssignCallback;
     InitModuleCallback initModuleCallback;
+    CommentAddCallback commentAddCallback;
+    CommentMoveCallback commentMoveCallback;
+    CommentTextCallback commentTextCallback;
+    CommentDeleteCallback commentDeleteCallback;
+    CommentCreateCallback commentCreateCallback;
+    CommentResizeCallback commentResizeCallback;
     SnippetSaveCallback snippetSaveCallback_;
     SnippetDropCallback snippetDropCallback_;
     SnippetInsertCallback snippetInsertCallback_;
@@ -337,7 +434,8 @@ private:
     int dropPreviewGridX = 0;
     int dropPreviewGridY = 0;
 
-    void paintGhostOutline(juce::Graphics& g, int typeIndex, int gx, int gy) const;
+    void paintGhostOutline(juce::Graphics& g, int typeIndex, int gx, int gy,
+                           int gw = 1, int gh = 1) const;
 
     // Cable creation preview
     juce::Point<int> cablePreviewEnd;
@@ -349,6 +447,10 @@ private:
     // For multi-move: store initial positions of all selected modules
     struct ModuleMoveState { Module* module = nullptr; int section = 0; juce::Point<int> startGridPos; };
     std::vector<ModuleMoveState> multiMoveState;
+    // Notes travel with the modules in a multi-move, so they need the same
+    // record of where they started.
+    struct CommentMoveState { int id = -1; juce::Point<int> startGridPos; };
+    std::vector<CommentMoveState> commentMoveState;
 
     // Rubber-band selection rect (pixel coords, during drag)
     juce::Rectangle<int> rubberBandRect;
@@ -401,8 +503,22 @@ private:
     // slot and pasting into another, and both were impossible while every
     // canvas kept its own (issue #42). Nothing in here points at a patch, so it
     // stays valid however the patches come and go.
+    // Text notes ride in the same clipboard as the modules, in grid coordinates
+    // like theirs, so a block copied with a note keeps the note where it sat
+    // relative to the modules it belongs to.
+    struct ClipboardComment
+    {
+        int section = 0;
+        juce::Point<int> gridPos;
+        int width = 1, height = 2;
+        juce::String text;
+    };
     inline static std::vector<ClipboardEntry> clipboard;
     inline static std::vector<ClipboardCable> clipboardCables;
+    inline static std::vector<ClipboardComment> clipboardComments;
+    /** The top-left grid cell of whatever is on the clipboard, modules and notes
+        together, which is what a paste is positioned from. */
+    static juce::Point<int> clipboardOrigin();
 
     // What a click is about to drop. Paste and Add Module do not place anything
     // themselves: they hang outlines off the pointer, and you click where you
@@ -410,10 +526,15 @@ private:
     // gesture choose the area as well as the spot (issues #42 and #36).
     struct PendingDrop
     {
-        enum class Kind { None, Paste, AddModule };
+        enum class Kind { None, Paste, AddModule, AddComment };
         Kind kind = Kind::None;
-        // Ghost outlines, in grid units relative to the block's top-left.
-        struct Ghost { int typeIndex = 0; int dx = 0; int dy = 0; };
+        // Ghost outlines, in grid units relative to the block's top-left. A
+        // typeIndex of commentGhost means the outline is a text note, which has
+        // no descriptor to take its size from.
+        static constexpr int commentGhost = -1;
+        // w and h are in grid units and are read only for comment ghosts; a
+        // module's size comes from its descriptor.
+        struct Ghost { int typeIndex = 0; int dx = 0; int dy = 0; int w = 1; int h = 1; };
         std::vector<Ghost> ghosts;
         juce::String addName;      // AddModule: title for the new module
         int addTypeIndex = 0;
@@ -439,12 +560,14 @@ private:
     // and Save as Snippet all want exactly this, so they read it from here.
     void collectSelection(std::vector<ClipboardEntry>& entriesOut,
                           std::vector<ClipboardCable>& cablesOut) const;
-    // `normaliseToOrigin` moves the block's top-left to (0, 0), which is what
-    // pasting at a chosen spot needs; leaving it alone keeps the positions the
-    // modules were copied from, which is what Duplicate wants.
+    // `origin` is subtracted from every position, which is how pasting at a
+    // chosen spot moves the block's top-left to (0, 0). Passing (0, 0) keeps the
+    // positions the modules were copied from, which is what Duplicate wants. The
+    // origin is given rather than worked out here because a block can hold text
+    // notes too, and they have their say in where its top-left is.
     static SnipData toSnip(const std::vector<ClipboardEntry>& entries,
                            const std::vector<ClipboardCable>& cables,
-                           bool normaliseToOrigin);
+                           juce::Point<int> origin);
     void selectCreated(const std::vector<std::pair<int, int>>& created);
 
     // Parameter context menu (right-click on knob/slider/button)
@@ -455,6 +578,8 @@ private:
     void clearSelection();
     void selectModule(Module* m, int section, bool addToSelection = false);
     void updateRubberBandSelection(juce::Rectangle<int> rect);
+    /** Starts dragging everything that is selected, modules and notes alike. */
+    void beginMultiMove(juce::Point<int> pos);
     void showSelectionContextMenu();
     void deleteSelection();
     void duplicateSelection(bool withCables);
@@ -463,6 +588,7 @@ private:
     // pointer and the click that follows puts them down (issue #42).
     void beginPasteGhost();
     void beginAddModuleGhost(int typeIndex, const juce::String& name);
+    void beginAddCommentGhost();
     // Puts the clipboard down with its top-left at this grid position.
     void pasteBlockAt(int gx, int gy);
 
@@ -475,7 +601,13 @@ private:
     ConnectorHit findConnectorAt(juce::Point<int> pos);
     Connector* findConnectorByComponentId(Module& m, const juce::String& componentId);
 
-    // Module overlap prevention
+    // Module overlap prevention. The area form is the general one: a text note
+    // can be several columns wide, so "is this spot free" is a rectangle
+    // question, and both modules and notes can be in the way of either.
+    bool isAreaFree(int gx, int gw, int gy, int gh,
+                    const Module* excludeModule, int excludeCommentId) const;
+    int findNearestFreeYForArea(int gx, int gw, int targetY, int gh,
+                                const Module* excludeModule, int excludeCommentId) const;
     bool isPositionFree(const ModuleContainer& container, const Module* exclude, int gx, int gy, int height) const;
     int findNearestFreeY(const ModuleContainer& container, const Module* exclude, int gx, int targetY, int height) const;
 
@@ -497,18 +629,20 @@ private:
 public:
     // Edit-menu commands. The keyboard has always had these; the menu needs to
     // ask whether they apply before offering them (issue #42).
-    bool hasSelection() const { return !selection.empty(); }
-    bool canPaste()     const { return !clipboard.empty(); }
+    // A selected text note counts as a selection everywhere the edit commands
+    // are concerned: it can be cut, copied, duplicated and deleted like a module.
+    bool hasSelection() const { return !selection.empty() || !selectedCommentIds.empty(); }
+    bool canPaste()     const { return !clipboard.empty() || !clipboardComments.empty(); }
     void cutSelection()
     {
-        if (selection.empty())
+        if (!hasSelection())
             return;
         copySelectionToClipboard();
         deleteSelection();
     }
-    void copySelection()      { if (!selection.empty()) copySelectionToClipboard(); }
-    void pasteClipboard()     { if (!clipboard.empty()) beginPasteGhost(); }
-    void duplicateSelected()  { if (!selection.empty()) duplicateSelection(true); }
+    void copySelection()      { if (hasSelection()) copySelectionToClipboard(); }
+    void pasteClipboard()     { if (canPaste()) beginPasteGhost(); }
+    void duplicateSelected()  { if (hasSelection()) duplicateSelection(true); }
 
     // A pending paste or add belongs to the editor, not to one canvas, so
     // Escape has to reach it from wherever the keyboard focus happens to be.
@@ -520,6 +654,13 @@ public:
     // Hands a module to the pointer from outside any canvas — what a click on
     // the module icon bar does (issue #17). Same gesture as Add Module.
     static void beginAddModuleDrop(int typeIndex, const juce::String& name);
+    // The same gesture for the editor's own text note, which the module bar
+    // offers under ANME: it has no descriptor, so it needs its own entry point.
+    static void beginAddCommentDrop();
+    // The size a fresh note arrives at, in grid units. One column wide like a
+    // module, two rows tall, and the corner grips take it from there.
+    static constexpr int commentDefaultWidth  = 1;
+    static constexpr int commentDefaultHeight = 2;
 
     static void setCableOpacity (float v)  { cableOpacity   = juce::jlimit(0.0f, 1.0f, v); }
     static void setCableStyle   (int idx)  { cableStyleIdx  = idx; }
@@ -635,6 +776,42 @@ public:
     {
         polyCanvas.setRenameModuleCallback(cb);
         commonCanvas.setRenameModuleCallback(std::move(cb));
+    }
+
+    void setCommentAddCallback(PatchCanvas::CommentAddCallback cb)
+    {
+        polyCanvas.setCommentAddCallback(cb);
+        commonCanvas.setCommentAddCallback(std::move(cb));
+    }
+
+    void setCommentMoveCallback(PatchCanvas::CommentMoveCallback cb)
+    {
+        polyCanvas.setCommentMoveCallback(cb);
+        commonCanvas.setCommentMoveCallback(std::move(cb));
+    }
+
+    void setCommentTextCallback(PatchCanvas::CommentTextCallback cb)
+    {
+        polyCanvas.setCommentTextCallback(cb);
+        commonCanvas.setCommentTextCallback(std::move(cb));
+    }
+
+    void setCommentDeleteCallback(PatchCanvas::CommentDeleteCallback cb)
+    {
+        polyCanvas.setCommentDeleteCallback(cb);
+        commonCanvas.setCommentDeleteCallback(std::move(cb));
+    }
+
+    void setCommentResizeCallback(PatchCanvas::CommentResizeCallback cb)
+    {
+        polyCanvas.setCommentResizeCallback(cb);
+        commonCanvas.setCommentResizeCallback(std::move(cb));
+    }
+
+    void setCommentCreateCallback(PatchCanvas::CommentCreateCallback cb)
+    {
+        polyCanvas.setCommentCreateCallback(cb);
+        commonCanvas.setCommentCreateCallback(std::move(cb));
     }
 
     void setModuleMoveCallback(PatchCanvas::ModuleMoveCallback cb)

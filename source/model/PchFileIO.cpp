@@ -194,6 +194,13 @@ std::unique_ptr<Patch> PchFileIO::readFile(const juce::File& file)
             else if (sectionName == "ctrlmapdump")    parseCtrlMapDump(sectionLines, *patch);
             else if (sectionName == "customdump")     parseCustomDump(sectionLines, *patch);
             else if (sectionName == "namedump")       parseNameDump(sectionLines, *patch);
+            else if (sectionName == "comments")  parseComments(sectionLines, *patch);
+            else if (sectionName == "nme")
+            {
+                for (const auto& line : sectionLines)
+                    if (line.trim().startsWith("Id="))
+                        patch->extrasId = line.trim().fromFirstOccurrenceOf("=", false, false).trim();
+            }
             else if (sectionName == "notes")
             {
                 // Notes section: preserve all text as-is
@@ -709,6 +716,19 @@ bool PchFileIO::writeFile(const Patch& patch, const juce::File& file)
     writeNameDump(out, patch.getPolyVoiceArea(), 1);
     writeNameDump(out, patch.getCommonArea(), 0);
 
+    // Which entry in the editor's extras library this patch is, so opening the
+    // file again says outright which comments and variations belong to it, and
+    // so a patch passed to another user takes its identity with it.
+    if (patch.extrasId.isNotEmpty())
+    {
+        out += "[NME]\n";
+        out += "Id=" + patch.extrasId + "\n";
+        out += "[/NME]\n";
+    }
+
+    if (!patch.getComments().empty())
+        writeComments(out, patch);
+
     if (patch.patchNotes.isNotEmpty())
         writeNotes(out, patch);
 
@@ -968,6 +988,86 @@ void PchFileIO::writeNameDump(juce::String& out, const ModuleContainer& containe
     }
 
     out += "[/NameDump]\n";
+}
+
+// --- Comments ---
+// One line per note: section x y size text, with newlines escaped so a note
+// spanning several lines still occupies exactly one line of the file.
+//   [Comments]
+//   1 0 12 2 kick: raise Decay\nif it sounds short
+//   1 4 0 3x2 two columns wide, three rows tall
+//   [/Comments]
+//
+// The size field is the row count on its own while the note is one column wide,
+// and "rows x columns" once it is wider. That keeps the field a plain number for
+// every note written before notes could be widened, and a reader that only knows
+// the old form still gets the height right out of "3x2" (getIntValue stops at
+// the x) instead of choking on the line.
+void PchFileIO::writeComments(juce::String& out, const Patch& patch)
+{
+    out += "[Comments]\n";
+    for (const auto& c : patch.getComments())
+    {
+        auto text = c.text.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "");
+        juce::String size(c.gridHeight());
+        if (c.gridWidth() > 1)
+            size += "x" + juce::String(c.gridWidth());
+
+        out += juce::String(c.section) + " " + juce::String(c.x) + " "
+             + juce::String(c.y) + " " + size + " " + text + "\n";
+    }
+    out += "[/Comments]\n";
+}
+
+void PchFileIO::parseComments(const juce::StringArray& lines, Patch& patch)
+{
+    for (const auto& line : lines)
+    {
+        auto trimmed = line.trim();
+        if (trimmed.isEmpty())
+            continue;
+
+        // Four numbers, then the rest of the line is the text (which may itself
+        // contain spaces, so this cannot go through a plain tokenizer).
+        juce::StringArray fields;
+        auto rest = trimmed;
+        for (int i = 0; i < 4; ++i)
+        {
+            auto space = rest.indexOfChar(' ');
+            if (space < 0) { fields.clear(); break; }
+            fields.add(rest.substring(0, space));
+            rest = rest.substring(space + 1);
+        }
+        if (fields.size() != 4)
+            continue;
+
+        PatchComment c;
+        c.section = juce::jlimit(0, 1, fields[0].getIntValue());
+        c.x       = juce::jmax(0, fields[1].getIntValue());
+        c.y       = juce::jmax(0, fields[2].getIntValue());
+        c.height  = juce::jlimit(1, 128, fields[3].getIntValue());
+        // "rows x columns", or just the rows for the one-column notes every file
+        // written before notes could be widened holds.
+        c.width   = fields[3].contains("x")
+                        ? juce::jlimit(1, 40, fields[3].fromFirstOccurrenceOf("x", false, false)
+                                                       .getIntValue())
+                        : 1;
+        // Unescape in one left-to-right pass. Two replace() calls would turn the
+        // escaped backslash in "C:\\new" into a line break.
+        juce::String text;
+        for (int i = 0; i < rest.length(); ++i)
+        {
+            if (rest[i] == '\\' && i + 1 < rest.length())
+            {
+                const auto next = rest[i + 1];
+                if (next == 'n')       { text += '\n'; ++i; continue; }
+                if (next == '\\')      { text += '\\'; ++i; continue; }
+            }
+            text += rest[i];
+        }
+        c.text = text;
+        patch.addComment(c);
+    }
 }
 
 // --- Notes ---

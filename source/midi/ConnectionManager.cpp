@@ -2,6 +2,7 @@
 #include "../protocol/StorePatchMessage.h"
 #include "../protocol/DeletePatchMessage.h"
 #include "../protocol/SetPatchTitleMessage.h"
+#include "../protocol/SetModuleTitleMessage.h"
 #include "../protocol/SendControllerSnapshotMessage.h"
 #include "../model/PatchSerializer.h"
 #include "../model/Patch.h"
@@ -560,6 +561,9 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
     lastLoadedSection = section;
     lastLoadedPosition = position;
     suppressNextLocationClear = true;
+    // The slot now holds the patch that lives here, which is where Store to Bank
+    // offers to put it back.
+    setSlotBankLocation(slot, section, position);
 
     std::cout << "[LOAD] Loading patch from bank: section=" << section
               << " position=" << position << " to slot=" << slot << std::endl;
@@ -1042,6 +1046,28 @@ void ConnectionManager::sendPatchTitle(int slot, const juce::String& title)
         + " title=\"" + title + "\"");
 }
 
+void ConnectionManager::sendModuleTitle(int slot, int section, int moduleIndex,
+                                        const juce::String& title)
+{
+    if (!isConnected())
+    {
+        DBG("sendModuleTitle: NOT CONNECTED");
+        return;
+    }
+
+    const int pid = getPatchId(slot);
+    SetModuleTitleMessage msg(pid, section, moduleIndex, title);
+    // Queued like the other patch modifications (move/delete) so a rename can't
+    // overtake a structural edit that is still waiting for its ACK.
+    sendAckedSysEx(msg.toSysEx(slot));
+
+    DBG("sendModuleTitle: slot=" + juce::String(slot)
+        + " pid=" + juce::String(pid)
+        + " section=" + juce::String(section)
+        + " module=" + juce::String(moduleIndex)
+        + " title=\"" + title + "\"");
+}
+
 void ConnectionManager::sendControllerSnapshot()
 {
     if (!isConnected())
@@ -1156,6 +1182,25 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
         + " type=0x" + juce::String::toHexString(msg.type)
         + " pid2=" + juce::String(msg.pid2));
 
+    // PatchLoadResponse (ACK type 0x38): the synth says which bank location it
+    // just put into which slot — including loads started from the front panel,
+    // which is the only way the editor can learn about those.
+    //   pid2 = slot, payload = pid3, unknown, section, position, ...
+    if (msg.type == 0x38 && msg.payload.size() >= 4)
+    {
+        const int slot = msg.pid2 & 0x03;
+        const int section = msg.payload[2] & 0x7F;
+        const int position = msg.payload[3] & 0x7F;
+        if (section < 9 && position < 99)
+        {
+            setSlotBankLocation(slot, section, position);
+            std::cout << "[LOAD] Synth reports slot " << slot << " holds bank location "
+                      << ((section + 1) * 100 + position + 1) << std::endl;
+            if (bankLocationCallback)
+                bankLocationCallback(slot);
+        }
+    }
+
     if (waitingForUploadAck)
     {
         // Upload ACKs belong to uploadSlot, which may differ from the focused
@@ -1213,6 +1258,24 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
         drainAckedQueue();
     }
 
+}
+
+std::vector<std::pair<int, int>> ConnectionManager::findPatchLocations(const juce::String& name) const
+{
+    std::vector<std::pair<int, int>> found;
+    if (name.isEmpty() || !patchListLoaded)
+        return found;
+
+    const auto wanted = name.trim();
+    for (size_t i = 0; i < patchListNames.size(); ++i)
+    {
+        if (patchListNames[i].empty())
+            continue;
+        if (!juce::String(patchListNames[i]).trim().equalsIgnoreCase(wanted))
+            continue;
+        found.emplace_back(static_cast<int>(i) / 99, static_cast<int>(i) % 99);
+    }
+    return found;
 }
 
 void ConnectionManager::cancelPatchListFetch(const char* reason)
@@ -1785,6 +1848,9 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
             {
                 lastLoadedSection = -1;
                 lastLoadedPosition = -1;
+                // Something else was put in this slot from the front panel, so
+                // whatever bank location we had recorded for it is now a lie.
+                clearSlotBankLocation(msg.newPatchSlot);
             }
             requestPatch(msg.newPatchSlot);
         }

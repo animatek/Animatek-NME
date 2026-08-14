@@ -25,6 +25,12 @@ static const juce::StringArray& originalCategoryOrder()
     return order;
 }
 
+// Whatever this editor adds to a patch that the G1 knows nothing about lives
+// under its own tab, at the end, so no Clavia category ever gains a member the
+// synth would not recognise. Right now that is the text note; anything else of
+// ours belongs here too.
+static const char* anmeCategory = "ANME";
+
 static juce::Font chipFont()
 {
     return juce::Font(AppTheme::uiFont(11.0f));
@@ -101,6 +107,8 @@ void ModuleIconBar::rebuildTabs()
                 categories.add(c);
     }
 
+    categories.add(anmeCategory);
+
     for (const auto& c : categories)
         tabLabels.add(tabLabelFor(c));
 
@@ -112,14 +120,21 @@ void ModuleIconBar::rebuildTabs()
 
 void ModuleIconBar::showCategory(int tabIndex)
 {
-    if (moduleDescs == nullptr || categories.isEmpty())
+    if (categories.isEmpty())
     {
         strip.setModules({});
         return;
     }
 
     selectedTab = juce::jlimit(0, categories.size() - 1, tabIndex);
-    strip.setModules(moduleDescs->getModulesInCategory(categories[selectedTab]));
+
+    if (categories[selectedTab] == anmeCategory)
+        strip.setEditorExtras();
+    else if (moduleDescs != nullptr)
+        strip.setModules(moduleDescs->getModulesInCategory(categories[selectedTab]));
+    else
+        strip.setModules({});
+
     viewport.setViewPosition(0, 0);
     resized();
     repaint();
@@ -235,7 +250,17 @@ void ModuleIconBar::ChipStrip::setModules(std::vector<const ModuleDescriptor*> m
     chips.clear();
     chips.reserve(mods.size());
     for (const auto* d : mods)
-        chips.push_back({ d, {} });
+        chips.push_back({ d, chipLabelFor(d->fullname), {} });
+
+    hoverIndex = -1;
+    layOutChips();
+    repaint();
+}
+
+void ModuleIconBar::ChipStrip::setEditorExtras()
+{
+    chips.clear();
+    chips.push_back({ nullptr, "Comment", {} });
 
     hoverIndex = -1;
     layOutChips();
@@ -253,7 +278,7 @@ void ModuleIconBar::ChipStrip::layOutChips()
     int x = chipGap;
     for (auto& chip : chips)
     {
-        const int w = static_cast<int>(font.getStringWidthFloat(chipLabelFor(chip.descriptor->fullname)))
+        const int w = static_cast<int>(font.getStringWidthFloat(chip.label))
                     + chipPadding * 2;
         chip.bounds = { x, y, w, chipHeight };
         x += w + chipGap;
@@ -289,8 +314,7 @@ void ModuleIconBar::ChipStrip::paint(juce::Graphics& g)
         g.setColour(hovered ? pal.accentActive : pal.borderColor);
         g.drawRect(r, 1.0f);
         g.setColour(hovered ? pal.textPrimary : pal.textSecondary);
-        g.drawText(chipLabelFor(chip.descriptor->fullname), chip.bounds,
-                   juce::Justification::centred, false);
+        g.drawText(chip.label, chip.bounds, juce::Justification::centred, false);
     }
 }
 
@@ -310,8 +334,7 @@ juce::Image ModuleIconBar::ChipStrip::renderChipImage(const Chip& chip) const
     g.drawRect(r, 1.0f);
     g.setColour(pal.textPrimary);
     g.setFont(chipFont());
-    g.drawText(chipLabelFor(chip.descriptor->fullname), image.getBounds(),
-               juce::Justification::centred, false);
+    g.drawText(chip.label, image.getBounds(), juce::Justification::centred, false);
 
     return image;
 }
@@ -355,12 +378,20 @@ void ModuleIconBar::ChipStrip::mouseDrag(const juce::MouseEvent& e)
     const auto& chip = chips[static_cast<size_t>(index)];
 
     // The same payload the module tree sends, so the canvas accepts both
-    // without knowing which one the drag came from.
+    // without knowing which one the drag came from. The ANME chips have no
+    // descriptor, so they name themselves instead.
     auto description = new juce::DynamicObject();
-    description->setProperty("type", "module");
-    description->setProperty("descriptorPtr", reinterpret_cast<juce::int64>(chip.descriptor));
-    description->setProperty("typeId", chip.descriptor->index);
-    description->setProperty("name", chip.descriptor->name);
+    if (chip.descriptor == nullptr)
+    {
+        description->setProperty("type", "comment");
+    }
+    else
+    {
+        description->setProperty("type", "module");
+        description->setProperty("descriptorPtr", reinterpret_cast<juce::int64>(chip.descriptor));
+        description->setProperty("typeId", chip.descriptor->index);
+        description->setProperty("name", chip.descriptor->name);
+    }
 
     // Hold the chip where it was grabbed, so it does not jump under the pointer.
     const auto grabOffset = chip.bounds.getPosition() - e.getMouseDownPosition();
@@ -379,7 +410,12 @@ void ModuleIconBar::ChipStrip::mouseUp(const juce::MouseEvent& e)
     // A plain click hands the module to the pointer, the way Add Module does
     // since 0.14.0: the click that follows chooses the spot and the area.
     const int index = chipIndexAt(e.getPosition());
-    if (index >= 0)
-        PatchCanvas::beginAddModuleDrop(chips[static_cast<size_t>(index)].descriptor->index,
-                                        chips[static_cast<size_t>(index)].descriptor->name);
+    if (index < 0)
+        return;
+
+    const auto& chip = chips[static_cast<size_t>(index)];
+    if (chip.descriptor == nullptr)
+        PatchCanvas::beginAddCommentDrop();
+    else
+        PatchCanvas::beginAddModuleDrop(chip.descriptor->index, chip.descriptor->name);
 }

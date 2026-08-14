@@ -92,6 +92,10 @@ A slot whose editor patch is not known to match the synth (loaded Local, or
 loaded/built while disconnected) carries a **LOCAL** badge in the slot bar. The
 badge clears as soon as that patch is uploaded to, or fetched from, the synth.
 
+If you always work in one slot, the question gets in the way. Turn **Ask which
+slot when opening a patch** off in Editor Options (`Ctrl+,`) and every open goes
+straight into the slot on screen and uploads, with no dialog at all.
+
 ## The synth patch browser
 
 The right-side browser (`Ctrl+B`) lists the synth's 9 internal banks. You can:
@@ -106,6 +110,39 @@ The right-side browser (`Ctrl+B`) lists the synth's 9 internal banks. You can:
 
 Legacy Nord Modular 2.10 files are tagged **PCH2** in the disk browser and load
 transparently.
+
+## Storing a patch in the synth
+
+Next to the patch name in the header there is a store button showing the bank
+location the patch on screen came from, as `bank:position` (`1:01` for the first
+patch of bank 1, `--` when the editor does not know of one). One click writes the
+patch straight back there, no dialog: the status bar confirms it.
+
+The location follows each slot on its own, so with four sub-windows open the
+button always shows the location of the slot you are looking at. A patch you
+just created or opened from a file has no location yet, so the button shows `--`
+and a click opens the **Store Patch to Bank** dialog instead. That dialog, which
+is also what the **Store** button in the left column and **Device > Store to
+Bank** open, now starts on the patch's own location rather than at bank 1
+position 1, so putting a patch back where it came from is a single OK. Storing
+somewhere else makes that new place the patch's location from then on.
+
+The editor knows a location for certain when you loaded the patch from the
+browser or stored it yourself. For everything else it has to work it out, because
+the G1 does not say where a patch came from: loading one from the front panel
+only tells the editor *which slot* changed, never from which bank position. Same
+for the patches already sitting in the slots when the editor connects.
+
+In those cases the editor looks the patch name up in the bank list:
+
+- **one position** carries that name: that is the location, and the button shows
+  it.
+- **several positions** carry it: the button shows `?`, because storing on a
+  guess would overwrite the wrong patch. A click opens the Store Patch to Bank
+  dialog on the first of them and the status bar lists all the matches, so you
+  can pick the one you loaded. From then on that slot's location is settled and
+  one click stores again.
+- **no position** carries it: the button shows `--` and a click opens the dialog.
 
 ## Bank transfers (Device menu)
 

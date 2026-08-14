@@ -15,7 +15,8 @@
 struct PushedModule
 {
     int section = 0;
-    int containerIndex = 0;
+    int containerIndex = 0;   // -1 when this entry is a comment
+    int commentId = -1;       // >= 0 when this entry is an editor text note
     juce::Point<int> oldPos;
 };
 
@@ -25,16 +26,22 @@ inline constexpr int modulePlacementRows = 128;
 /** Clears `height` rows at column `gx`, row `gy`, pushing the modules already
     there down the column. Modules whose container index is in `ignoreIndices`
     stay put: that is how a block being pasted keeps its own shape while
-    shoving the rest of the patch out of the way. */
+    shoving the rest of the patch out of the way.
+
+    `comments` (optional) lets the editor's own text notes take part: they hold a
+    rectangle of the grid like any module, so they get pushed as well, and
+    `ignoreCommentId` keeps the note being placed from pushing itself. */
 inline std::vector<PushedModule> makeRoomForModule (ModuleContainer& container, int section,
                                                     int gx, int gy, int height,
-                                                    const std::vector<int>& ignoreIndices = {})
+                                                    const std::vector<int>& ignoreIndices = {},
+                                                    std::vector<PatchComment>* comments = nullptr,
+                                                    int ignoreCommentId = -1)
 {
     std::vector<PushedModule> pushed;
     if (height < 1)
         height = 1;
 
-    struct Occupant { Module* module; int y; int height; };
+    struct Occupant { Module* module; PatchComment* comment; int y; int height; };
     std::vector<Occupant> column;
 
     for (auto& modulePtr : container.getModules())
@@ -47,8 +54,15 @@ inline std::vector<PushedModule> makeRoomForModule (ModuleContainer& container, 
             continue;
 
         auto* desc = m->getDescriptor();
-        column.push_back ({ m, m->getPosition().y, desc != nullptr ? desc->height : 1 });
+        column.push_back ({ m, nullptr, m->getPosition().y, desc != nullptr ? desc->height : 1 });
     }
+
+    // A note can be several columns wide, so it counts as an occupant of every
+    // column it covers, not just the one it starts in.
+    if (comments != nullptr)
+        for (auto& c : *comments)
+            if (c.section == section && c.coversColumn (gx) && c.id != ignoreCommentId)
+                column.push_back ({ nullptr, &c, c.y, c.gridHeight() });
 
     std::sort (column.begin(), column.end(),
                [] (const Occupant& a, const Occupant& b) { return a.y < b.y; });
@@ -65,8 +79,18 @@ inline std::vector<PushedModule> makeRoomForModule (ModuleContainer& container, 
             break;
 
         const int newY = juce::jlimit (0, modulePlacementRows - occ.height, frontier);
-        pushed.push_back ({ section, occ.module->getContainerIndex(), occ.module->getPosition() });
-        occ.module->setPosition ({ gx, newY });
+        if (occ.module != nullptr)
+        {
+            pushed.push_back ({ section, occ.module->getContainerIndex(), -1,
+                                occ.module->getPosition() });
+            occ.module->setPosition ({ gx, newY });
+        }
+        else
+        {
+            pushed.push_back ({ section, -1, occ.comment->id,
+                                juce::Point<int> { occ.comment->x, occ.comment->y } });
+            occ.comment->y = newY;
+        }
         frontier = newY + occ.height;
     }
 
@@ -79,6 +103,16 @@ inline void restorePushedModules (Patch& patch, const std::vector<PushedModule>&
 {
     for (auto it = pushed.rbegin(); it != pushed.rend(); ++it)
     {
+        if (it->commentId >= 0)
+        {
+            if (auto* c = patch.getCommentById (it->commentId))
+            {
+                c->x = it->oldPos.x;
+                c->y = it->oldPos.y;
+            }
+            continue;
+        }
+
         auto* m = patch.getContainer (it->section).getModuleByIndex (it->containerIndex);
         if (m != nullptr)
             m->setPosition (it->oldPos);

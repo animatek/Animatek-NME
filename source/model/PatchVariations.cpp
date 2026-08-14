@@ -85,7 +85,7 @@ bool PatchVariations::anyFilled() const
 
 // ─── Sidecar file IO ─────────────────────────────────────────────────────────
 
-bool saveVarFile(const PatchVariations& vars, const juce::File& file)
+juce::String varToText(const PatchVariations& vars)
 {
     juce::String out;
     out << "[VarFile]\n";
@@ -111,16 +111,16 @@ bool saveVarFile(const PatchVariations& vars, const juce::File& file)
     }
 
     out << "[End]\n";
-    return file.replaceWithText(out);
+    return out;
 }
 
-bool loadVarFile(PatchVariations& vars, const juce::File& file)
+bool saveVarFile(const PatchVariations& vars, const juce::File& file)
 {
-    if (!file.existsAsFile()) return false;
+    return file.replaceWithText(varToText(vars));
+}
 
-    juce::StringArray lines;
-    lines.addLines(file.loadFileAsString());
-
+bool varFromText(PatchVariations& vars, const juce::StringArray& lines)
+{
     vars.clear();
 
     enum class Mode { None, Variation, Exclude };
@@ -184,4 +184,13 @@ bool loadVarFile(PatchVariations& vars, const juce::File& file)
         vars.activeIndex = -1;
 
     return valid;
+}
+
+bool loadVarFile(PatchVariations& vars, const juce::File& file)
+{
+    if (!file.existsAsFile()) return false;
+
+    juce::StringArray lines;
+    lines.addLines(file.loadFileAsString());
+    return varFromText(vars, lines);
 }

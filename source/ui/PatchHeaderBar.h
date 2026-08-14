@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../model/Patch.h"
+#include "ValueSpinner.h"
 #include <functional>
 
 class PatchHeaderBar : public juce::Component
@@ -82,13 +83,21 @@ public:
     void setMorphLearnArmed(bool armed) { morphLearnArmed = armed; repaint(); }
     void setMorphKnobAssigned(bool assigned) { morphKnobAssigned = assigned; repaint(); }
 
-    // Set the current bank/position for quick save button
+    // Bank location of the patch on screen, shown on the store button next to
+    // the patch name and used by the one-click store (-1 = unknown).
     void setCurrentLocation(int section, int position);
     void clearCurrentLocation();
+    void setStoreEnabled(bool enabled);   // false = not connected, button greyed
+    // Several bank positions carry this patch's name, so the editor has a
+    // shortlist but no answer: the button says so with a "?" and a click goes
+    // to the dialog rather than overwriting a guess.
+    void setStoreUncertain(bool uncertain);
 
     void paint(juce::Graphics& g) override;
     void resized() override;
     void mouseDown(const juce::MouseEvent& e) override;
+    void mouseMove(const juce::MouseEvent& e) override;
+    void mouseExit(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
     void mouseDoubleClick(const juce::MouseEvent& e) override;
@@ -106,6 +115,8 @@ private:
     juce::Rectangle<float> getCableToggleBounds(int i) const;
 
     juce::Rectangle<int> getPatchNameBounds() const;
+    juce::Rectangle<float> getStoreButtonBounds() const;
+    bool isStoreButtonAt(juce::Point<int> pos) const;
 
     enum class ArrowHit { None, Up, Down };
     ArrowHit getVoiceArrowAt(juce::Point<int> pos) const;
@@ -175,15 +186,23 @@ private:
     float morphFaderPos = 0.0f;
     bool morphDragging = false;
 
+    // The morph dials get the same nudge arrows as the canvas knobs, so a macro
+    // can be set to an exact figure rather than swept to roughly the right
+    // place. They sit inside the dial rather than under it: the caption is
+    // directly below, and the bottom of a -135..+135 sweep is dead space.
+    ValueSpinner morphSpinner { *this };
+    int morphSpinnerIndex = -1;
+    void morphSpinnerStep(int delta);
+
     bool snapshotFilled[8] = {};
     int activeSnapshot = -1;       // -1 = none active
     float interpolationProgress = -1.0f;  // <0 = not interpolating
     float snapshotInterpSeconds = 0.0f;   // 0 = instant recall
 
     std::unique_ptr<juce::Label> patchNameEditor;
-    std::unique_ptr<juce::DrawableButton> quickSaveButton;
-
-    void createDisketteIcon();
+    bool storeHover = false;
+    bool storeEnabled = false;
+    bool storeUncertain = false;
 
 public:
     int currentSection = -1;  // -1 = no location set (public for quick save access)

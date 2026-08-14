@@ -278,7 +278,15 @@ void PatchCanvas::resetZoom()
 
 void PatchCanvas::zoomToSelection()
 {
-    if (selection.empty())
+    // Selected text notes count as selected: Z zooms to whatever is picked out
+    // on the canvas, and a note is one of the things you can pick out.
+    std::vector<const PatchComment*> selectedComments;
+    if (patch != nullptr)
+        for (const auto& c : patch->getComments())
+            if (c.section == mySection && isCommentSelected(c.id))
+                selectedComments.push_back(&c);
+
+    if (selection.empty() && selectedComments.empty())
         return;
 
     int minX = 999999, minY = 999999, maxX = 0, maxY = 0;
@@ -292,6 +300,15 @@ void PatchCanvas::zoomToSelection()
         minY = juce::jmin(minY, py);
         maxX = juce::jmax(maxX, px + gridX);
         maxY = juce::jmax(maxY, py + ph);
+    }
+
+    for (const auto* c : selectedComments)
+    {
+        const auto r = getCommentBounds(*c);
+        minX = juce::jmin(minX, r.getX());
+        minY = juce::jmin(minY, r.getY());
+        maxX = juce::jmax(maxX, r.getRight());
+        maxY = juce::jmax(maxY, r.getBottom());
     }
 
     if (auto* vp = findParentComponentOfClass<juce::Viewport>())
@@ -382,6 +399,10 @@ void PatchCanvas::setPatch(Patch* p, const ModuleDescriptions* md, const ThemeDa
     selection.clear();
     selectedModule = nullptr;
     selectedSection = -1;
+    // Comment ids belong to the outgoing patch; the incoming one reuses them.
+    selectedCommentIds.clear();
+    commentMoveState.clear();
+    dragCommentId = -1;
     // Keyed by container index, so leaving it would name modules in the
     // incoming patch after whatever sat at the same index in the outgoing one.
     drumPresetState.clear();
@@ -422,6 +443,316 @@ juce::Rectangle<int> PatchCanvas::getModuleBounds(const Module& m, int yOffset) 
     int y = yOffset + pos.y * gridY;
     int h = m.getDescriptor()->height * gridY;
     return { x, y, gridX, h };
+}
+
+// --- Editor text notes ---------------------------------------------------
+
+juce::Rectangle<int> PatchCanvas::getCommentBounds(const PatchComment& c) const
+{
+    return { c.x * gridX, c.y * gridY, c.gridWidth() * gridX, c.gridHeight() * gridY };
+}
+
+PatchComment* PatchCanvas::getCommentAt(juce::Point<int> canvasPos)
+{
+    if (patch == nullptr)
+        return nullptr;
+
+    for (auto& c : patch->getComments())
+        if (c.section == mySection && getCommentBounds(c).contains(canvasPos))
+            return &c;
+    return nullptr;
+}
+
+PatchCanvas::CommentGrip PatchCanvas::commentGripAt(const PatchComment& c,
+                                                    juce::Point<int> canvasPos) const
+{
+    auto bounds = getCommentBounds(c);
+    const int s = commentGripSize;
+
+    if (juce::Rectangle<int>(bounds.getRight() - s, bounds.getBottom() - s, s, s)
+            .contains(canvasPos))
+        return CommentGrip::BottomRight;
+
+    if (juce::Rectangle<int>(bounds.getX(), bounds.getBottom() - s, s, s)
+            .contains(canvasPos))
+        return CommentGrip::BottomLeft;
+
+    return CommentGrip::None;
+}
+
+// The text fills the panel: bold, centred, and at whatever size the box can
+// carry, so widening a note makes its words bigger rather than just adding
+// empty paper around them.
+void PatchCanvas::drawCommentText(juce::Graphics& g, const juce::String& text,
+                                  juce::Rectangle<int> bounds, juce::Colour colour) const
+{
+    if (text.isEmpty())
+        return;
+
+    auto area = bounds.reduced(8, 6);
+    if (area.getWidth() < 8 || area.getHeight() < 8)
+        return;
+
+    // How many lines the note is written on decides how tall each one may be;
+    // the width then caps it, so a long line shrinks instead of being clipped.
+    juce::StringArray lines;
+    lines.addLines(text);
+    const int lineCount = juce::jmax(1, lines.size());
+
+    float size = static_cast<float>(area.getHeight()) / (lineCount * 1.25f);
+
+    int longest = 0;
+    for (const auto& line : lines)
+        longest = juce::jmax(longest, line.length());
+    if (longest > 0)
+    {
+        // Bold Fira Sans runs a little over half its point size per character,
+        // which is close enough to start from and is then measured properly.
+        size = juce::jmin(size, static_cast<float>(area.getWidth()) / (longest * 0.55f));
+    }
+
+    size = juce::jlimit(9.0f, 44.0f, size);
+
+    juce::Font font(juce::FontOptions("Fira Sans", size, juce::Font::bold));
+    // Measured rather than trusted: one wide word can still overrun the guess.
+    float widest = 1.0f;
+    for (const auto& line : lines)
+        widest = juce::jmax(widest, font.getStringWidthFloat(line));
+    if (widest > area.getWidth())
+    {
+        size = juce::jmax(9.0f, size * static_cast<float>(area.getWidth()) / widest);
+        font = juce::Font(juce::FontOptions("Fira Sans", size, juce::Font::bold));
+    }
+
+    g.setFont(font);
+    g.setColour(colour);
+    g.drawFittedText(text, area, juce::Justification::centred,
+                     juce::jmax(lineCount, static_cast<int>(area.getHeight() / juce::jmax(1.0f, size))),
+                     1.0f);
+}
+
+void PatchCanvas::paintComments(juce::Graphics& g)
+{
+    if (patch == nullptr)
+        return;
+
+    const bool wire = activeScheme_.wireframe;
+
+    for (const auto& c : patch->getComments())
+    {
+        if (c.section != mySection)
+            continue;
+
+        auto bounds = getCommentBounds(c);
+        const bool selected = isCommentSelected(c.id);
+
+        // Painted as a module panel, because that is what it behaves like on the
+        // grid: modules make room for it, it moves in one, and it should look
+        // the part. It takes the module colours rather than any of its own, so
+        // it sits with the patch under every theme — the palette themes set
+        // moduleBg from their own ramp, and a colour picked here would fight
+        // all of them.
+        const auto bg = activeScheme_.moduleBg.isOpaque()
+                            ? activeScheme_.moduleBg
+                            : ModuleDescriptor{}.background;  // Classic: the XML default grey
+        const auto ink = activeScheme_.moduleText;
+
+        if (!wire)
+        {
+            g.setColour(bg);
+            g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
+        }
+
+        if (wire)
+        {
+            g.setColour(ink.withAlpha(0.7f));
+            g.drawRoundedRectangle(bounds.toFloat().reduced(0.5f), 3.0f, 1.2f);
+        }
+        else
+        {
+            // The same four edge lines every module gets.
+            g.setColour(activeScheme_.moduleBorder);
+            const float x1 = static_cast<float>(bounds.getX());
+            const float y1 = static_cast<float>(bounds.getY());
+            const float x2 = static_cast<float>(bounds.getRight());
+            const float y2 = static_cast<float>(bounds.getBottom());
+            g.drawLine(x1, y1, x2, y1, 1.0f);
+            g.drawLine(x1, y2, x2, y2, 1.0f);
+            g.drawLine(x1, y1, x1, y2, 1.0f);
+            g.drawLine(x2, y1, x2, y2, 1.0f);
+        }
+
+        if (c.text.isNotEmpty())
+        {
+            drawCommentText(g, c.text, bounds, ink);
+        }
+        else
+        {
+            g.setColour(ink.withAlpha(0.45f));
+            g.setFont(juce::FontOptions("Fira Sans", 12.5f, juce::Font::italic));
+            g.drawFittedText("double-click to write", bounds.reduced(8, 6),
+                             juce::Justification::centred, 2, 1.0f);
+        }
+
+        // Corner grips, the handles that make the note bigger. Drawn only on the
+        // one being pointed at or worked on, so a patch full of notes is not a
+        // patch full of little triangles.
+        const bool showGrips = selected || c.id == hoverCommentId
+                                        || c.id == dragCommentId;
+        if (showGrips)
+        {
+            const float s = static_cast<float>(commentGripSize);
+            for (int corner = 0; corner < 2; ++corner)
+            {
+                const bool right = (corner == 1);
+                const auto grip = right ? CommentGrip::BottomRight : CommentGrip::BottomLeft;
+                const float gx = right ? bounds.getRight() - s : static_cast<float>(bounds.getX());
+                const float gy = bounds.getBottom() - s;
+
+                juce::Path tri;
+                if (right)
+                {
+                    tri.startNewSubPath(gx + s, gy);
+                    tri.lineTo(gx + s, gy + s);
+                    tri.lineTo(gx, gy + s);
+                }
+                else
+                {
+                    tri.startNewSubPath(gx, gy);
+                    tri.lineTo(gx, gy + s);
+                    tri.lineTo(gx + s, gy + s);
+                }
+                tri.closeSubPath();
+
+                const bool hot = (c.id == hoverCommentId && hoverCommentGrip == grip)
+                              || (c.id == dragCommentId && dragCommentGrip == grip);
+                g.setColour(hot ? activeScheme_.selectionRect : ink.withAlpha(0.45f));
+                g.fillPath(tri);
+            }
+        }
+
+        if (selected)
+        {
+            g.setColour(activeScheme_.selectionRect);
+            g.drawRoundedRectangle(bounds.toFloat().reduced(1.5f), 2.5f, 1.5f);
+        }
+    }
+}
+
+void PatchCanvas::showCommentEditor(int commentId)
+{
+    if (patch == nullptr)
+        return;
+    auto* c = patch->getCommentById(commentId);
+    if (c == nullptr)
+        return;
+
+    const auto oldText = c->text;
+
+    auto* dialog = new juce::AlertWindow("Comment", {}, juce::MessageBoxIconType::NoIcon);
+    auto editor = std::make_unique<juce::TextEditor>();
+    editor->setMultiLine(true, true);
+    editor->setReturnKeyStartsNewLine(true);
+    editor->setSize(360, 110);
+    editor->setText(oldText, false);
+    auto* editorPtr = editor.get();
+    dialog->addCustomComponent(editorPtr);
+    dialog->addButton("OK", 1);
+    dialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+
+    dialog->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, dialog, editorPtr, commentId, oldText,
+         keepAlive = std::shared_ptr<juce::TextEditor>(editor.release())](int r)
+        {
+            if (r == 1)
+            {
+                const auto newText = editorPtr->getText();
+                if (newText != oldText)
+                {
+                    if (commentTextCallback)
+                        commentTextCallback(commentId, oldText, newText);
+                    else if (patch != nullptr)
+                        if (auto* c2 = patch->getCommentById(commentId))
+                            c2->text = newText;
+                    repaint();
+                }
+            }
+            delete dialog;
+        }), true);
+
+    editorPtr->grabKeyboardFocus();
+}
+
+void PatchCanvas::showCommentContextMenu(int commentId)
+{
+    auto* c = (patch != nullptr) ? patch->getCommentById(commentId) : nullptr;
+    const juce::Rectangle<int> current = c != nullptr
+        ? juce::Rectangle<int>(c->x, c->y, c->gridWidth(), c->gridHeight())
+        : juce::Rectangle<int>(0, 0, commentDefaultWidth, commentDefaultHeight);
+
+    juce::PopupMenu menu;
+    menu.addItem(1, "Edit Text...");
+    menu.addSeparator();
+    menu.addItem(3, "Copy");
+    menu.addItem(4, "Duplicate");
+    menu.addSeparator();
+
+    // The corner grips are the quick way; the menu is here for exact sizes.
+    juce::PopupMenu heights;
+    for (int h = 1; h <= 12; ++h)
+        heights.addItem(100 + h, juce::String(h) + (h == 1 ? " row" : " rows"),
+                        true, h == current.getHeight());
+    menu.addSubMenu("Height", heights);
+
+    juce::PopupMenu widths;
+    for (int w = 1; w <= 6; ++w)
+        widths.addItem(200 + w, juce::String(w) + (w == 1 ? " column" : " columns"),
+                       true, w == current.getWidth());
+    menu.addSubMenu("Width", widths);
+
+    menu.addSeparator();
+    menu.addItem(2, "Delete");
+
+    menu.showMenuAsync(juce::PopupMenu::Options{}, [this, commentId, current](int result)
+    {
+        if (result == 1)
+        {
+            showCommentEditor(commentId);
+        }
+        else if (result == 2)
+        {
+            selectedCommentIds.erase(std::remove(selectedCommentIds.begin(),
+                                                 selectedCommentIds.end(), commentId),
+                                     selectedCommentIds.end());
+            if (commentDeleteCallback)
+                commentDeleteCallback(commentId);
+            repaint();
+        }
+        else if (result == 3 || result == 4)
+        {
+            // Both work off the selection, and right-clicking a note selects it.
+            if (!isCommentSelected(commentId))
+                selectComment(commentId, false);
+            if (result == 3)
+                copySelectionToClipboard();
+            else
+                duplicateSelection(false);
+        }
+        else if (result > 100 && result <= 112)
+        {
+            auto next = current.withHeight(result - 100);
+            if (next != current && commentResizeCallback)
+                commentResizeCallback(commentId, current, next);
+            repaint();
+        }
+        else if (result > 200 && result <= 206)
+        {
+            auto next = current.withWidth(juce::jlimit(1, 40 - current.getX(), result - 200));
+            if (next != current && commentResizeCallback)
+                commentResizeCallback(commentId, current, next);
+            repaint();
+        }
+    });
 }
 
 Parameter* PatchCanvas::findParameter(Module& m, const juce::String& componentId)
@@ -610,9 +941,11 @@ void PatchCanvas::paint(juce::Graphics& g)
         g.drawText("Press Enter to add modules", placeholderArea(), juce::Justification::centred, false);
     }
 
+    paintComments(g);
     paintModules(g, container, 0);
     paintCables(g, container, 0);
     paintOverlays(g, container, 0);
+    spinner.paint(g, { activeScheme_.resetBg, activeScheme_.resetBorder, activeScheme_.resetText });
     paintHoverBadge(g);
     paintDragValueBadge(g);
 
@@ -710,11 +1043,30 @@ void PatchCanvas::paint(juce::Graphics& g)
     if (pendingDrop.active() && pendingHost == this)
         for (auto& ghost : pendingDrop.ghosts)
             paintGhostOutline(g, ghost.typeIndex,
-                              pendingGrid.x + ghost.dx, pendingGrid.y + ghost.dy);
+                              pendingGrid.x + ghost.dx, pendingGrid.y + ghost.dy,
+                              ghost.w, ghost.h);
 }
 
-void PatchCanvas::paintGhostOutline(juce::Graphics& g, int typeIndex, int gx, int gy) const
+void PatchCanvas::paintGhostOutline(juce::Graphics& g, int typeIndex, int gx, int gy,
+                                    int gw, int gh) const
 {
+    // The editor's own text note has no descriptor, so it carries its size here.
+    if (typeIndex == PendingDrop::commentGhost)
+    {
+        juce::Rectangle<int> bounds(gx * gridX, gy * gridY,
+                                    juce::jmax(1, gw) * gridX,
+                                    juce::jmax(1, gh) * gridY);
+
+        g.setColour(juce::Colours::cyan.withAlpha(0.3f));
+        g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
+        g.setColour(juce::Colours::cyan.withAlpha(0.8f));
+        g.drawRoundedRectangle(bounds.toFloat(), 3.0f, 2.0f);
+        g.setColour(juce::Colours::white.withAlpha(0.8f));
+        g.setFont(juce::FontOptions(10.0f));
+        g.drawText("Comment", bounds.reduced(4, 4), juce::Justification::centred, true);
+        return;
+    }
+
     if (moduleDescs == nullptr)
         return;
 
@@ -990,8 +1342,43 @@ void PatchCanvas::mouseMove(const juce::MouseEvent& e)
     {
         updatePendingGhost(screenToCanvas(e.getPosition()));
         clearHover();
+        clearSpinner();
         return;
     }
+
+    // Text notes take the pointer before modules do, the way they take a click.
+    // Over a corner grip the cursor says so, which is the only hint that a note
+    // can be pulled bigger.
+    {
+        const auto canvasPos = screenToCanvas(e.getPosition());
+        auto* overComment = getCommentAt(canvasPos);
+        const int id = overComment != nullptr ? overComment->id : -1;
+        const auto grip = overComment != nullptr ? commentGripAt(*overComment, canvasPos)
+                                                 : CommentGrip::None;
+
+        if (id != hoverCommentId || grip != hoverCommentGrip)
+        {
+            hoverCommentId = id;
+            hoverCommentGrip = grip;
+            setMouseCursor(grip == CommentGrip::BottomRight
+                               ? juce::MouseCursor::BottomRightCornerResizeCursor
+                               : grip == CommentGrip::BottomLeft
+                                     ? juce::MouseCursor::BottomLeftCornerResizeCursor
+                                     : juce::MouseCursor::NormalCursor);
+            repaint();
+        }
+
+        if (overComment != nullptr)
+        {
+            clearHover();
+            clearSpinner();
+            return;
+        }
+    }
+
+    // The arrows answer the pointer straight away, the way the original's do —
+    // the tooltip pause below is for the value box, which is a different thing.
+    updateSpinner(screenToCanvas(e.getPosition()));
 
     HoverTarget target;
     const bool found = findControlAt(screenToCanvas(e.getPosition()), target);
@@ -1020,6 +1407,18 @@ void PatchCanvas::mouseMove(const juce::MouseEvent& e)
 void PatchCanvas::mouseExit(const juce::MouseEvent&)
 {
     clearHover();
+    clearSpinner();
+
+    if (hoverCommentId != -1 || hoverCommentGrip != CommentGrip::None)
+    {
+        hoverCommentId = -1;
+        hoverCommentGrip = CommentGrip::None;
+        // Not while a block is hanging off the pointer: that cursor is the copy
+        // one, and it belongs to the drop, not to the note we just left.
+        if (!pendingDrop.active())
+            setMouseCursor(juce::MouseCursor::NormalCursor);
+        repaint();
+    }
 
     // The block stays on the pointer when it leaves; it just stops being drawn
     // here, and the next canvas it enters picks it up.
@@ -1048,6 +1447,161 @@ void PatchCanvas::timerCallback()
         return;
     hoverBadgeVisible = true;
     repaint();
+}
+
+// ── Nudge arrows ─────────────────────────────────────────────────────────────
+
+// Same walk as findControlAt, but only over the things worth nudging: a button
+// has two states and a text display is driven by the knob beside it, so neither
+// has a step to take.
+bool PatchCanvas::findSpinnerAt(juce::Point<int> canvasPos, SpinnerTarget& out)
+{
+    out = SpinnerTarget{};
+    if (patch == nullptr || themeData == nullptr)
+        return false;
+
+    auto& container = (mySection == 1) ? patch->getPolyVoiceArea() : patch->getCommonArea();
+
+    for (auto& modulePtr : container.getModules())
+    {
+        auto& m = *modulePtr;
+        const auto bounds = getModuleBounds(m, 0);
+        if (!bounds.contains(canvasPos))
+            continue;
+
+        const auto* theme = themeData->getModuleTheme(m.getDescriptor()->componentId);
+        if (theme == nullptr)
+            return false;
+
+        const auto rel = canvasPos - bounds.getPosition();
+
+        auto take = [&](const juce::String& componentId, juce::Rectangle<int> r) -> bool
+        {
+            if (componentId.isEmpty() || !r.contains(rel))
+                return false;
+            const auto* param = findParameter(m, componentId);
+            if (param == nullptr)
+                return false;
+            const auto* pd = param->getDescriptor();
+            if (pd == nullptr || pd->maxValue <= pd->minValue)
+                return false;
+
+            out.module       = &m;
+            out.componentId  = componentId;
+            out.moduleBounds = bounds;
+            out.control      = r.translated(bounds.getX(), bounds.getY()).toFloat();
+            return true;
+        };
+
+        for (const auto& tk : theme->knobs)
+            if (take(tk.componentId, { tk.x, tk.y, tk.size, tk.size })) return true;
+        for (const auto& ts : theme->sliders)
+            if (take(ts.componentId, { ts.x, ts.y, ts.width, ts.height })) return true;
+
+        return false;   // over the module, but not over anything that steps
+    }
+    return false;
+}
+
+void PatchCanvas::updateSpinner(juce::Point<int> canvasPos)
+{
+    const auto p = canvasPos.toFloat();
+
+    // The buttons hang below the control they belong to, so the pointer being
+    // on one of them is not the same as being on the control. Ask them first or
+    // the pair vanishes the moment you reach for it.
+    if (spinner.contains(p) || spinner.isHeld())
+    {
+        spinner.updateHover(p);
+        return;
+    }
+
+    SpinnerTarget next;
+    findSpinnerAt(canvasPos, next);
+    spinnerTarget = next;
+
+    // The pointer and the id together name the control: two modules of the same
+    // type both have a "p1", and one module outlives a zoom that moves it.
+    const juce::String key = next.module == nullptr ? juce::String()
+        : juce::String::toHexString(reinterpret_cast<juce::pointer_sized_int>(next.module))
+              + "/" + next.componentId;
+
+    spinner.showFor(key, next.control, ValueSpinner::Placement::BelowEdge);
+    spinner.updateHover(p);
+}
+
+void PatchCanvas::clearSpinner()
+{
+    if (spinner.isHeld())
+        return;   // a press outlives the hover that started it
+    spinner.hide();
+    spinnerTarget = SpinnerTarget{};
+}
+
+bool PatchCanvas::spinnerMouseDown(juce::Point<int> canvasPos)
+{
+    if (spinnerTarget.module == nullptr)
+        return false;
+
+    auto* param = findParameter(*spinnerTarget.module, spinnerTarget.componentId);
+    if (param == nullptr)
+        return false;
+
+    spinnerValueBeforePress = param->getValue();
+    return spinner.mouseDown(canvasPos.toFloat(), [this](int delta) { spinnerStep(delta); });
+}
+
+void PatchCanvas::spinnerStep(int delta)
+{
+    if (spinnerTarget.module == nullptr)
+        return;
+
+    auto* param = findParameter(*spinnerTarget.module, spinnerTarget.componentId);
+    if (param == nullptr)
+        return;
+    auto* pd = param->getDescriptor();
+    if (pd == nullptr)
+        return;
+
+    const int oldValue = param->getValue();
+    const int newValue = juce::jlimit(pd->minValue, pd->maxValue, oldValue + delta);
+    if (newValue == oldValue)
+    {
+        spinner.stopRepeat();   // at the end of the range there is no more
+        return;
+    }
+
+    param->setValue(newValue);
+    if (parameterChangeCallback)
+        parameterChangeCallback(mySection, spinnerTarget.module->getContainerIndex(),
+                                pd->index, newValue);
+
+    // Read the value out while it is being stepped. Chasing an exact number is
+    // the whole point of the arrows, so the number had better be on screen,
+    // without the tooltip pause a plain hover waits through.
+    hoverTarget.module        = spinnerTarget.module;
+    hoverTarget.componentId   = spinnerTarget.componentId;
+    hoverTarget.controlBounds = spinnerTarget.control;
+    hoverTarget.moduleBounds  = spinnerTarget.moduleBounds;
+    hoverBadgeVisible = true;
+    stopTimer();
+
+    repaint();
+}
+
+void PatchCanvas::spinnerRelease()
+{
+    if (!spinner.mouseUp())
+        return;
+
+    // One undo step for the whole press, however many times it repeated, the
+    // way a knob drag records itself from where it started to where it landed.
+    if (spinnerTarget.module != nullptr && paramDragCompleteCallback)
+        if (auto* param = findParameter(*spinnerTarget.module, spinnerTarget.componentId))
+            if (auto* pd = param->getDescriptor())
+                if (param->getValue() != spinnerValueBeforePress)
+                    paramDragCompleteCallback(mySection, spinnerTarget.module->getContainerIndex(),
+                                              pd->index, spinnerValueBeforePress, param->getValue());
 }
 
 void PatchCanvas::paintHoverBadge(juce::Graphics& g)
@@ -4914,6 +5468,18 @@ void PatchCanvas::mouseDoubleClick(const juce::MouseEvent& e)
     // editor does; on one of its controls it is already a reset to default, so
     // leave that alone.
     auto pos = screenToCanvas(e.getPosition());
+
+    // Two quick nudges are two nudges, not a request for the module's DSP cost.
+    if (spinner.contains(pos.toFloat()))
+        return;
+
+    if (auto* comment = getCommentAt(pos))
+    {
+        selectComment(comment->id, false);
+        showCommentEditor(comment->id);
+        return;
+    }
+
     HoverTarget target;
     if (findControlAt(pos, target))
     {
@@ -4952,6 +5518,11 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
         return;
     }
 
+    // The nudge arrows showing under the hovered control take the click before
+    // anything beneath them sees it — they overlap the very knob they step.
+    if (!e.mods.isPopupMenu() && !e.mods.isMiddleButtonDown() && spinnerMouseDown(pos))
+        return;
+
     // Middle-click: start canvas pan (drag to scroll viewport)
     if (e.mods.isMiddleButtonDown())
     {
@@ -4959,6 +5530,65 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
         dragState.type = DragState::CanvasPan;
         dragState.startPos = e.getScreenPosition();  // absolute screen coords for pan
         setMouseCursor(juce::MouseCursor::DraggingHandCursor);
+        return;
+    }
+
+    // Editor text notes, before modules: they own their grid rectangle outright.
+    // Everything here mirrors what clicking a module does, because a note is
+    // meant to feel like one.
+    if (auto* comment = getCommentAt(pos))
+    {
+        const bool alreadySelected = isCommentSelected(comment->id);
+        const bool addToSel = e.mods.isShiftDown();
+
+        if (!alreadySelected || addToSel)
+        {
+            if (!addToSel)
+                clearSelection();       // modules and other notes let go
+            selectComment(comment->id, true);
+        }
+
+        if (e.mods.isPopupMenu())
+        {
+            showCommentContextMenu(comment->id);
+            repaint();
+            return;
+        }
+
+        auto bounds = getCommentBounds(*comment);
+        dragState = DragState();
+        dragCommentId = comment->id;
+        dragCommentStartPos = { comment->x, comment->y };
+        dragCommentStartRect = { comment->x, comment->y,
+                                 comment->gridWidth(), comment->gridHeight() };
+
+        // A grab on a bottom corner pulls the note bigger; anywhere else moves
+        // it. Resizing is always about the one note under the pointer, whatever
+        // else happens to be selected.
+        const auto grip = commentGripAt(*comment, pos);
+        if (grip != CommentGrip::None)
+        {
+            dragState.type = DragState::CommentResize;
+            dragState.startPos = pos;
+            dragCommentGrip = grip;
+            repaint();
+            return;
+        }
+
+        // With more than one thing selected the whole selection travels, the
+        // way it does when the drag starts on a module.
+        if (selection.size() + selectedCommentIds.size() > 1)
+        {
+            beginMultiMove(pos);
+            repaint();
+            return;
+        }
+
+        dragState.type = DragState::CommentMove;
+        dragState.startPos = pos;
+        dragCommentOffsetX = pos.x - bounds.getX();
+        dragCommentOffsetY = pos.y - bounds.getY();
+        repaint();
         return;
     }
 
@@ -5856,14 +6486,10 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 selectModule(&m, area.section, addToSel);
             // If already selected and no shift → keep selection, just start move
 
-            // Multi-move if more than one module selected
-            if (selection.size() > 1)
+            // Multi-move if more than one thing is selected, text notes included
+            if (selection.size() + selectedCommentIds.size() > 1)
             {
-                dragState.type = DragState::MultiModuleMove;
-                dragState.startPos = pos;
-                multiMoveState.clear();
-                for (auto& sel : selection)
-                    multiMoveState.push_back({ sel.module, sel.section, sel.module->getPosition() });
+                beginMultiMove(pos);
             }
             else
             {
@@ -6120,6 +6746,9 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
         }
 
         menu.addSeparator();
+        menu.addItem(4, "Add Comment");
+
+        menu.addSeparator();
         menu.addItem(2, "Shake Cables");
         menu.addItem(3, "Reset Cables");
 
@@ -6130,6 +6759,12 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 if (result == 1)
                 {
                     beginPasteGhost();
+                }
+                else if (result == 4)
+                {
+                    if (commentAddCallback)
+                        commentAddCallback(clickSection, clickGX, clickGY);
+                    repaint();
                 }
                 else if (result == 2)
                 {
@@ -6219,7 +6854,79 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
             int newY = findNearestFreeY(container, ms.module, newX, rawY, ms.module->getDescriptor()->height);
             ms.module->setPosition({ newX, newY });
         }
+
+        // Notes travel with them. The block keeps its shape rather than each
+        // note hunting for a free row of its own: inside a moving selection the
+        // members are as much in each other's way as anything else is, and the
+        // modules above are moved the same way.
+        for (auto& cs : commentMoveState)
+        {
+            if (auto* c = patch->getCommentById(cs.id))
+            {
+                c->x = juce::jlimit(0, 40 - c->gridWidth(), cs.startGridPos.x + dx);
+                c->y = juce::jlimit(0, 128 - c->gridHeight(), cs.startGridPos.y + dy);
+            }
+        }
         repaint();
+        return;
+    }
+
+    if (dragState.type == DragState::CommentMove)
+    {
+        if (patch != nullptr)
+        {
+            if (auto* c = patch->getCommentById(dragCommentId))
+            {
+                const int newX = juce::jlimit(0, 40 - c->gridWidth(),
+                                              (currentPos.x - dragCommentOffsetX + gridX / 2) / gridX);
+                const int rawY = juce::jlimit(0, 128 - c->gridHeight(),
+                                              (currentPos.y - dragCommentOffsetY + gridY / 2) / gridY);
+
+                // Same rule a module follows: it cannot be dropped on top of
+                // anything, so it snaps to the nearest free spot in the columns
+                // it covers.
+                const int newY = findNearestFreeYForArea(newX, c->gridWidth(), rawY,
+                                                         c->gridHeight(), nullptr, c->id);
+                if (newX != c->x || newY != c->y)
+                {
+                    c->x = newX;
+                    c->y = newY;
+                    repaint();
+                }
+            }
+        }
+        return;
+    }
+
+    if (dragState.type == DragState::CommentResize)
+    {
+        if (patch != nullptr)
+        {
+            if (auto* c = patch->getCommentById(dragCommentId))
+            {
+                // The edge being pulled follows the pointer, snapped to the grid;
+                // the opposite one stays where it was.
+                const int bottom = juce::jlimit(dragCommentStartRect.getY() + 1, 128,
+                                                (currentPos.y + gridY / 2) / gridY);
+                c->height = bottom - dragCommentStartRect.getY();
+
+                if (dragCommentGrip == CommentGrip::BottomRight)
+                {
+                    const int right = juce::jlimit(dragCommentStartRect.getX() + 1, 40,
+                                                   (currentPos.x + gridX / 2) / gridX);
+                    c->x = dragCommentStartRect.getX();
+                    c->width = right - dragCommentStartRect.getX();
+                }
+                else
+                {
+                    const int right = dragCommentStartRect.getRight();
+                    const int left = juce::jlimit(0, right - 1, (currentPos.x + gridX / 2) / gridX);
+                    c->x = left;
+                    c->width = right - left;
+                }
+                repaint();
+            }
+        }
         return;
     }
 
@@ -6400,6 +7107,16 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
     // or slider drag took it.
     KnobDrag::end(e, *this);
 
+    // Letting go of a nudge arrow stops the repeat and closes the undo step.
+    if (spinner.isHeld())
+    {
+        spinnerRelease();
+        // The pointer may have wandered off the button while it was held; now
+        // that it is free, work out what it is really over.
+        updateSpinner(screenToCanvas(e.getPosition()));
+        return;
+    }
+
     if (dragState.type == DragState::None)
         return;
 
@@ -6418,11 +7135,67 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
         return;
     }
 
+    if (dragState.type == DragState::CommentMove)
+    {
+        // The drag moved the note live; the action records the whole gesture as
+        // one undo step, from where it started to where it was let go.
+        if (patch != nullptr)
+        {
+            if (auto* c = patch->getCommentById(dragCommentId))
+            {
+                juce::Point<int> newPos { c->x, c->y };
+                if (newPos != dragCommentStartPos && commentMoveCallback)
+                {
+                    c->x = dragCommentStartPos.x;
+                    c->y = dragCommentStartPos.y;
+                    if (undoManager)
+                        undoManager->beginNewTransaction("Move Comment");
+                    commentMoveCallback(dragCommentId, dragCommentStartPos, newPos);
+                }
+            }
+        }
+        dragCommentId = -1;
+        dragState = DragState();
+        repaint();
+        return;
+    }
+
+    if (dragState.type == DragState::CommentResize)
+    {
+        // Same shape as the move above: the drag resized the note live, and the
+        // action replays the whole gesture as one undo step.
+        if (patch != nullptr)
+        {
+            if (auto* c = patch->getCommentById(dragCommentId))
+            {
+                const juce::Rectangle<int> newRect { c->x, c->y, c->gridWidth(), c->gridHeight() };
+                if (newRect != dragCommentStartRect && commentResizeCallback)
+                {
+                    c->x      = dragCommentStartRect.getX();
+                    c->y      = dragCommentStartRect.getY();
+                    c->width  = dragCommentStartRect.getWidth();
+                    c->height = dragCommentStartRect.getHeight();
+                    commentResizeCallback(dragCommentId, dragCommentStartRect, newRect);
+                }
+            }
+        }
+        dragCommentId = -1;
+        dragCommentGrip = CommentGrip::None;
+        dragState = DragState();
+        repaint();
+        return;
+    }
+
     if (dragState.type == DragState::MultiModuleMove)
     {
-        if (moduleMoveCallback && undoManager)
+        // One transaction for the whole gesture, whatever it was carrying:
+        // neither callback opens one of its own, so the modules and the notes
+        // land in the same undo step.
+        if (undoManager && (!multiMoveState.empty() || !commentMoveState.empty()))
+            undoManager->beginNewTransaction("Move Selection");
+
+        if (moduleMoveCallback)
         {
-            undoManager->beginNewTransaction("Move Modules");
             for (auto& ms : multiMoveState)
             {
                 auto newPos = ms.module->getPosition();
@@ -6431,7 +7204,26 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
                                        ms.startGridPos, newPos);
             }
         }
+
+        if (commentMoveCallback && patch != nullptr)
+        {
+            for (auto& cs : commentMoveState)
+            {
+                if (auto* c = patch->getCommentById(cs.id))
+                {
+                    const juce::Point<int> newPos { c->x, c->y };
+                    if (newPos != cs.startGridPos)
+                    {
+                        c->x = cs.startGridPos.x;
+                        c->y = cs.startGridPos.y;
+                        commentMoveCallback(cs.id, cs.startGridPos, newPos);
+                    }
+                }
+            }
+        }
+
         multiMoveState.clear();
+        commentMoveState.clear();
         dragState = DragState();
         return;
     }
@@ -6569,7 +7361,8 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
     // Delete / Backspace → delete selection
     if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey)
     {
-        if (!selection.empty())
+        // Modules and a selected text note alike: deleteSelection takes both.
+        if (hasSelection())
         {
             deleteSelection();
             return true;
@@ -6580,6 +7373,7 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
     if (key == juce::KeyPress::escapeKey)
     {
         if (!selection.empty()) { clearSelection(); repaint(); return true; }
+        if (!selectedCommentIds.empty()) { selectedCommentIds.clear(); repaint(); return true; }
     }
 
     // Ctrl+A → select all modules in this section
@@ -6626,16 +7420,16 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         }
     }
 
-    // Ctrl+C → copy
+    // Ctrl+C → copy. A selected text note copies like a module.
     if (key == juce::KeyPress('c', juce::ModifierKeys::commandModifier, 0))
     {
-        if (!selection.empty()) { copySelectionToClipboard(); return true; }
+        if (hasSelection()) { copySelectionToClipboard(); return true; }
     }
 
     // Ctrl+X → cut (copy + delete)
     if (key == juce::KeyPress('x', juce::ModifierKeys::commandModifier, 0))
     {
-        if (!selection.empty())
+        if (hasSelection())
         {
             copySelectionToClipboard();
             deleteSelection();
@@ -6647,7 +7441,7 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
     // click that follows
     if (key == juce::KeyPress('v', juce::ModifierKeys::commandModifier, 0))
     {
-        if (!clipboard.empty())
+        if (canPaste())
         {
             beginPasteGhost();
             return true;
@@ -6657,7 +7451,7 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
     // Ctrl+D → duplicate with cables
     if (key == juce::KeyPress('d', juce::ModifierKeys::commandModifier, 0))
     {
-        if (!selection.empty()) { duplicateSelection(true); return true; }
+        if (hasSelection()) { duplicateSelection(true); return true; }
     }
 
     // Enter → put a pending block down where the pointer is, or, with nothing
@@ -6820,7 +7614,7 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
     // Z → zoom-to-selection (if any) or reset to 100%
     if (key.getTextCharacter() == 'z' && !key.getModifiers().isCommandDown())
     {
-        if (!selection.empty())
+        if (hasSelection())
             zoomToSelection();
         else
             resetZoom();
@@ -6837,21 +7631,66 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
     return false;
 }
 
-bool PatchCanvas::isPositionFree(const ModuleContainer& container, const Module* exclude, int gx, int gy, int height) const
+bool PatchCanvas::isAreaFree(int gx, int gw, int gy, int gh,
+                             const Module* excludeModule, int excludeCommentId) const
 {
+    if (patch == nullptr)
+        return true;
+
+    gw = juce::jmax(1, gw);
+    gh = juce::jmax(1, gh);
+
+    const auto& container = patch->getContainer(mySection);
+
     for (auto& m : container.getModules())
     {
-        if (m.get() == exclude)
+        if (m.get() == excludeModule || m == nullptr)
             continue;
-        auto pos = m->getPosition();
-        if (pos.x != gx)
+        const auto pos = m->getPosition();
+        if (pos.x < gx || pos.x >= gx + gw)   // a module is always one column wide
             continue;
-        int mh = m->getDescriptor()->height;
-        // Y ranges overlap if gy < pos.y + mh AND pos.y < gy + height
-        if (gy < pos.y + mh && pos.y < gy + height)
+        const int mh = m->getDescriptor() != nullptr ? m->getDescriptor()->height : 1;
+        if (gy < pos.y + mh && pos.y < gy + gh)
             return false;
     }
+
+    // A text note holds its rectangle of the grid as firmly as a module does, in
+    // both directions: it gets out of the way of a module being dragged, and a
+    // module is in the way of it.
+    for (const auto& c : patch->getComments())
+    {
+        if (c.section != mySection || c.id == excludeCommentId)
+            continue;
+        if (c.x + c.gridWidth() <= gx || c.x >= gx + gw)
+            continue;
+        if (gy < c.y + c.gridHeight() && c.y < gy + gh)
+            return false;
+    }
+
     return true;
+}
+
+int PatchCanvas::findNearestFreeYForArea(int gx, int gw, int targetY, int gh,
+                                         const Module* excludeModule, int excludeCommentId) const
+{
+    if (isAreaFree(gx, gw, targetY, gh, excludeModule, excludeCommentId))
+        return targetY;
+
+    for (int offset = 1; offset < 256; ++offset)
+    {
+        const int above = targetY - offset;
+        if (above >= 0 && isAreaFree(gx, gw, above, gh, excludeModule, excludeCommentId))
+            return above;
+        const int below = targetY + offset;
+        if (isAreaFree(gx, gw, below, gh, excludeModule, excludeCommentId))
+            return below;
+    }
+    return targetY;
+}
+
+bool PatchCanvas::isPositionFree(const ModuleContainer& /*container*/, const Module* exclude, int gx, int gy, int height) const
+{
+    return isAreaFree(gx, 1, gy, height, exclude, -1);
 }
 
 int PatchCanvas::findNearestFreeY(const ModuleContainer& container, const Module* exclude, int gx, int targetY, int height) const
@@ -6948,7 +7787,7 @@ bool PatchCanvas::isInterestedInDragSource(const SourceDetails& dragSourceDetail
         return false;
 
     auto type = obj->getProperty("type").toString();
-    return type == "module" || type == "snippetFile";
+    return type == "module" || type == "snippetFile" || type == "comment";
 }
 
 void PatchCanvas::itemDragEnter(const SourceDetails& dragSourceDetails)
@@ -6960,9 +7799,15 @@ void PatchCanvas::itemDragEnter(const SourceDetails& dragSourceDetails)
     if (obj == nullptr)
         return;
 
-    if (obj->getProperty("type").toString() == "module")
+    const auto type = obj->getProperty("type").toString();
+    if (type == "module")
     {
         dropPreviewTypeId = obj->getProperty("typeId");
+        showModuleDropPreview = true;
+    }
+    else if (type == "comment")
+    {
+        dropPreviewTypeId = PendingDrop::commentGhost;
         showModuleDropPreview = true;
     }
     repaint();
@@ -6974,7 +7819,11 @@ void PatchCanvas::itemDragMove(const SourceDetails& dragSourceDetails)
         return;
 
     auto* obj = dragSourceDetails.description.getDynamicObject();
-    if (obj == nullptr || obj->getProperty("type").toString() != "module")
+    if (obj == nullptr)
+        return;
+
+    const auto type = obj->getProperty("type").toString();
+    if (type != "module" && type != "comment")
         return;
 
     if (!showModuleDropPreview)
@@ -7016,6 +7865,14 @@ void PatchCanvas::itemDropped(const SourceDetails& dragSourceDetails)
         auto file = juce::File(obj->getProperty("path").toString());
         if (snippetDropCallback_ && file.existsAsFile())
             snippetDropCallback_(file, section, dropX, dropY);
+        repaint();
+        return;
+    }
+
+    if (type == "comment")
+    {
+        if (commentAddCallback)
+            commentAddCallback(section, dropX, dropY);
         repaint();
         return;
     }
@@ -7278,6 +8135,12 @@ void PatchCanvas::forgetDeletedModules()
     }
     if (!stillAlive(hoverTarget.module, -1))
         clearHover();
+    if (spinnerTarget.module != nullptr && !stillAlive(spinnerTarget.module, mySection))
+    {
+        spinner.mouseUp();          // the press has nothing left to step
+        spinner.hide();
+        spinnerTarget = SpinnerTarget{};
+    }
     if (!stillAlive(costBadgeModule, -1))
         costBadgeModule = nullptr;
     if (dragState.module != nullptr && !stillAlive(dragState.module, dragState.section))
@@ -7287,9 +8150,49 @@ void PatchCanvas::forgetDeletedModules()
 void PatchCanvas::clearSelection()
 {
     selection.clear();
+    // Notes are part of the selection, so letting go of it lets go of them too.
+    selectedCommentIds.clear();
     selectedModule = nullptr;
     selectedSection = -1;
     if (moduleSelectedCallback) moduleSelectedCallback(nullptr, -1);
+}
+
+void PatchCanvas::beginMultiMove(juce::Point<int> pos)
+{
+    dragState = DragState();
+    dragState.type = DragState::MultiModuleMove;
+    dragState.startPos = pos;
+
+    multiMoveState.clear();
+    for (auto& sel : selection)
+        multiMoveState.push_back({ sel.module, sel.section, sel.module->getPosition() });
+
+    commentMoveState.clear();
+    if (patch != nullptr)
+        for (int id : selectedCommentIds)
+            if (auto* c = patch->getCommentById(id))
+                commentMoveState.push_back({ id, { c->x, c->y } });
+}
+
+bool PatchCanvas::isCommentSelected(int id) const
+{
+    return std::find(selectedCommentIds.begin(), selectedCommentIds.end(), id)
+           != selectedCommentIds.end();
+}
+
+void PatchCanvas::selectComment(int id, bool addToSelection)
+{
+    if (!addToSelection)
+        selectedCommentIds.clear();
+    if (!isCommentSelected(id))
+        selectedCommentIds.push_back(id);
+}
+
+PatchComment* PatchCanvas::soleSelectedComment()
+{
+    if (patch == nullptr || selectedCommentIds.size() != 1)
+        return nullptr;
+    return patch->getCommentById(selectedCommentIds.front());
 }
 
 void PatchCanvas::selectModule(Module* m, int section, bool addToSelection)
@@ -7306,6 +8209,7 @@ void PatchCanvas::selectModule(Module* m, int section, bool addToSelection)
 void PatchCanvas::updateRubberBandSelection(juce::Rectangle<int> rect)
 {
     selection.clear();
+    selectedCommentIds.clear();
     if (patch == nullptr) return;
 
     ModuleContainer& container = (mySection == 1)
@@ -7318,14 +8222,28 @@ void PatchCanvas::updateRubberBandSelection(juce::Rectangle<int> rect)
         if (rect.intersects(bounds))
             selection.push_back({ modulePtr.get(), mySection });
     }
+
+    // The band catches text notes too: dragging a box round a corner of the
+    // patch should take everything in it, labels included.
+    for (const auto& c : patch->getComments())
+        if (c.section == mySection && rect.intersects(getCommentBounds(c)))
+            selectedCommentIds.push_back(c.id);
 }
 
 void PatchCanvas::deleteSelection()
 {
-    if (selection.empty() || patch == nullptr) return;
+    if (patch == nullptr || !hasSelection()) return;
 
     if (undoManager)
         undoManager->beginNewTransaction("Delete Selection");
+
+    // Selected text notes go with the rest of the selection, which is what makes
+    // Cut work when notes are all that is selected.
+    const auto doomedComments = selectedCommentIds;
+    selectedCommentIds.clear();
+    for (int id : doomedComments)
+        if (commentDeleteCallback)
+            commentDeleteCallback(id);
 
     // Let go of the selection *before* anything is destroyed. Deleting repaints
     // the inspector while it still points at the module being deleted, which on
@@ -7349,12 +8267,11 @@ void PatchCanvas::deleteSelection()
 
 void PatchCanvas::duplicateSelection(bool withCables)
 {
-    if (selection.empty() || patch == nullptr || !snippetInsertCallback_) return;
+    if (patch == nullptr || !hasSelection()) return;
 
     std::vector<ClipboardEntry> entries;
     std::vector<ClipboardCable> cables;
     collectSelection(entries, cables);
-    if (entries.empty()) return;
     if (!withCables) cables.clear();
 
     if (undoManager)
@@ -7362,14 +8279,49 @@ void PatchCanvas::duplicateSelection(bool withCables)
 
     // Copies land one column right and two rows down of their originals, each
     // in the area the original lives in — Duplicate never moves a module across.
-    selectCreated(snippetInsertCallback_(toSnip(entries, cables, false), -1, 1, 2));
+    if (commentCreateCallback)
+        for (int id : selectedCommentIds)
+            if (auto* c = patch->getCommentById(id))
+                commentCreateCallback(c->section,
+                                      juce::jlimit(0, 39, c->x + 1), c->y + 2,
+                                      c->gridWidth(), c->gridHeight(), c->text);
+
+    if (!entries.empty() && snippetInsertCallback_)
+        selectCreated(snippetInsertCallback_(toSnip(entries, cables, { 0, 0 }), -1, 1, 2));
+    repaint();
 }
 
 void PatchCanvas::copySelectionToClipboard()
 {
-    if (selection.empty() || patch == nullptr) return;
+    if (patch == nullptr || !hasSelection()) return;
 
     collectSelection(clipboard, clipboardCables);
+
+    // Selected text notes copy with whatever modules are selected, and on their
+    // own when they are all there is.
+    clipboardComments.clear();
+    for (int id : selectedCommentIds)
+        if (auto* c = patch->getCommentById(id))
+            clipboardComments.push_back({ c->section, { c->x, c->y },
+                                          c->gridWidth(), c->gridHeight(), c->text });
+}
+
+juce::Point<int> PatchCanvas::clipboardOrigin()
+{
+    juce::Point<int> origin { 0, 0 };
+    bool first = true;
+
+    auto take = [&origin, &first](juce::Point<int> p)
+    {
+        origin = first ? p : juce::Point<int> { std::min(origin.x, p.x),
+                                                std::min(origin.y, p.y) };
+        first = false;
+    };
+
+    for (const auto& e : clipboard)         take(e.gridPos);
+    for (const auto& c : clipboardComments) take(c.gridPos);
+
+    return origin;
 }
 
 void PatchCanvas::collectSelection(std::vector<ClipboardEntry>& entriesOut,
@@ -7429,24 +8381,15 @@ void PatchCanvas::collectSelection(std::vector<ClipboardEntry>& entriesOut,
 
 SnipData PatchCanvas::toSnip(const std::vector<ClipboardEntry>& entries,
                              const std::vector<ClipboardCable>& cables,
-                             bool normaliseToOrigin)
+                             juce::Point<int> origin)
 {
     SnipData snip;
     snip.name = "clipboard";
     if (entries.empty())
         return snip;
 
-    int minX = 0, minY = 0;
-    if (normaliseToOrigin)
-    {
-        minX = entries[0].gridPos.x;
-        minY = entries[0].gridPos.y;
-        for (auto& e : entries)
-        {
-            minX = std::min(minX, e.gridPos.x);
-            minY = std::min(minY, e.gridPos.y);
-        }
-    }
+    const int minX = origin.x;
+    const int minY = origin.y;
 
     for (auto& e : entries)
     {
@@ -7492,20 +8435,22 @@ void PatchCanvas::selectCreated(const std::vector<std::pair<int, int>>& created)
 
 void PatchCanvas::beginPasteGhost()
 {
-    if (clipboard.empty() || moduleDescs == nullptr)
+    if (moduleDescs == nullptr)
+        return;
+    if (clipboard.empty() && clipboardComments.empty())
         return;
 
-    int minX = clipboard[0].gridPos.x, minY = clipboard[0].gridPos.y;
-    for (auto& e : clipboard)
-    {
-        minX = std::min(minX, e.gridPos.x);
-        minY = std::min(minY, e.gridPos.y);
-    }
+    const auto origin = clipboardOrigin();
 
     PendingDrop drop;
     drop.kind = PendingDrop::Kind::Paste;
     for (auto& e : clipboard)
-        drop.ghosts.push_back({ e.typeIndex, e.gridPos.x - minX, e.gridPos.y - minY });
+        drop.ghosts.push_back({ e.typeIndex,
+                                e.gridPos.x - origin.x, e.gridPos.y - origin.y });
+    for (auto& c : clipboardComments)
+        drop.ghosts.push_back({ PendingDrop::commentGhost,
+                                c.gridPos.x - origin.x, c.gridPos.y - origin.y,
+                                c.width, c.height });
 
     armPendingDrop(std::move(drop));
 }
@@ -7532,6 +8477,26 @@ void PatchCanvas::beginAddModuleDrop(int typeIndex, const juce::String& name)
         if (c != nullptr)
         {
             c->beginAddModuleGhost(typeIndex, name);
+            return;
+        }
+}
+
+void PatchCanvas::beginAddCommentGhost()
+{
+    PendingDrop drop;
+    drop.kind = PendingDrop::Kind::AddComment;
+    drop.ghosts.push_back({ PendingDrop::commentGhost, 0, 0,
+                            commentDefaultWidth, commentDefaultHeight });
+
+    armPendingDrop(std::move(drop));
+}
+
+void PatchCanvas::beginAddCommentDrop()
+{
+    for (auto* c : liveCanvases)
+        if (c != nullptr)
+        {
+            c->beginAddCommentGhost();
             return;
         }
 }
@@ -7671,6 +8636,11 @@ void PatchCanvas::dropPendingAt(juce::Point<int> canvasPos)
             moduleDropCallback(drop.addTypeIndex, mySection, gx, gy, drop.addName);
         }
     }
+    else if (drop.kind == PendingDrop::Kind::AddComment)
+    {
+        if (commentAddCallback)
+            commentAddCallback(mySection, gx, gy);
+    }
     else if (drop.kind == PendingDrop::Kind::Paste)
     {
         pasteBlockAt(gx, gy);
@@ -7679,7 +8649,9 @@ void PatchCanvas::dropPendingAt(juce::Point<int> canvasPos)
 
 void PatchCanvas::pasteBlockAt(int gx, int gy)
 {
-    if (clipboard.empty() || patch == nullptr || !snippetInsertCallback_)
+    if (patch == nullptr)
+        return;
+    if (clipboard.empty() && clipboardComments.empty())
         return;
 
     // The whole block goes into the area that was clicked, whichever areas the
@@ -7688,8 +8660,21 @@ void PatchCanvas::pasteBlockAt(int gx, int gy)
     if (undoManager)
         undoManager->beginNewTransaction("Paste");
 
-    selectCreated(snippetInsertCallback_(toSnip(clipboard, clipboardCables, true),
-                                         mySection, gx, gy));
+    const auto origin = clipboardOrigin();
+
+    // The notes go down first, so the modules that follow make room around them
+    // rather than the other way round, and both land inside the one transaction.
+    if (commentCreateCallback)
+        for (const auto& c : clipboardComments)
+            commentCreateCallback(mySection,
+                                  juce::jlimit(0, 39, gx + c.gridPos.x - origin.x),
+                                  juce::jmax(0, gy + c.gridPos.y - origin.y),
+                                  c.width, c.height, c.text);
+
+    if (!clipboard.empty() && snippetInsertCallback_)
+        selectCreated(snippetInsertCallback_(toSnip(clipboard, clipboardCables, origin),
+                                             mySection, gx, gy));
+    repaint();
 }
 
 void PatchCanvas::showSelectionContextMenu()
@@ -7737,7 +8722,7 @@ void PatchCanvas::saveSelectionAsSnippet()
     collectSelection(entries, cables);
     if (entries.empty()) return;
 
-    SnipData snip = toSnip(entries, cables, false);
+    SnipData snip = toSnip(entries, cables, { 0, 0 });
     snip.name = "snippet";
     auto snipCables = std::move(snip.cables);
     snip.cables.clear();

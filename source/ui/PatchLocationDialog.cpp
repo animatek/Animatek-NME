@@ -38,8 +38,11 @@ PatchLocationDialog::PatchLocationDialog(const juce::String& title,
                                          const std::vector<std::string>& patchList,
                                          bool showSlot,
                                          int  currentSlot,
-                                         Callback cb)
-    : title_ (title), patchList_ (patchList), showSlot_ (showSlot), callback (std::move (cb))
+                                         Callback cb,
+                                         int  initialSection,
+                                         int  initialPosition)
+    : title_ (title), patchList_ (patchList), showSlot_ (showSlot), callback (std::move (cb)),
+      initialPosition_ (initialPosition)
 {
     setOpaque (true);
     setWantsKeyboardFocus (true);
@@ -68,7 +71,7 @@ PatchLocationDialog::PatchLocationDialog(const juce::String& title,
     styleLabel (bankLabel);
     for (int b = 1; b <= 9; ++b)
         bankCombo.addItem ("Bank " + juce::String (b), b);
-    bankCombo.setSelectedItemIndex (0, juce::dontSendNotification);
+    bankCombo.setSelectedItemIndex (juce::jlimit (0, 8, initialSection), juce::dontSendNotification);
     bankCombo.onChange = [this]() { updatePositionItems(); };
     styleCombo (bankCombo);
     addAndMakeVisible (bankLabel);
@@ -106,7 +109,12 @@ void PatchLocationDialog::updatePositionItems()
                             ? juce::String (patchList_[idx]) : "--";
         positionCombo.addItem (juce::String (pos).paddedLeft ('0', 2) + ":  " + name, pos);
     }
-    positionCombo.setSelectedItemIndex (0, juce::dontSendNotification);
+
+    // Preselect the patch's own position the first time round; changing bank
+    // afterwards starts from the top of the new bank, as before.
+    const int wanted = initialPosition_;
+    initialPosition_ = -1;
+    positionCombo.setSelectedItemIndex (juce::jlimit (0, 98, wanted), juce::dontSendNotification);
 }
 
 void PatchLocationDialog::confirm()
@@ -191,9 +199,12 @@ void PatchLocationDialog::show(juce::Component* parent,
                                 const std::vector<std::string>& patchList,
                                 bool showSlot,
                                 int  currentSlot,
-                                Callback cb)
+                                Callback cb,
+                                int  initialSection,
+                                int  initialPosition)
 {
-    auto* dlg = new PatchLocationDialog (title, patchList, showSlot, currentSlot, std::move (cb));
+    auto* dlg = new PatchLocationDialog (title, patchList, showSlot, currentSlot, std::move (cb),
+                                         initialSection, initialPosition);
 
     if (parent != nullptr)
     {

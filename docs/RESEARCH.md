@@ -218,10 +218,22 @@ Hardware-tested dead ends (2026-06-11), do not retry:
 | 0x09 | SlotActivated | Active slot index |
 | 0x25 | KnobAssignment | Knob-to-parameter mapping |
 | 0x27 | SetPatchTitle | Null-terminated string (16 chars max) |
+| 0x33 | SetModuleTitle | section:7 module:7 + null-terminated string (16 chars max) |
 | 0x39 | Lights | 20x 2-bit LED state values |
 | 0x3a | Meters | 5 pairs of 7-bit values |
 | 0x40 | KnobChange | section/module/parameter/value |
 | 0x7e | Error | 7-bit error code |
+
+### What the synth does NOT report
+
+- **Where a patch came from.** Loading a patch from the front panel produces only
+  `NMInfo sc=0x38 NewPatchInSlot` (slot + pid), which says *which slot changed* and
+  nothing about the bank position. The `PatchLoadResponse` ACK (type 0x38: slot in
+  pid2, section/position in the payload) that `midi.pdl2` documents was never
+  observed on hardware for a front-panel load, and nmedit parses it but never uses
+  it. The editor therefore has to infer a location by matching the patch name
+  against the bank list, and cannot when the name is not unique (verified on a real
+  G1, 2026-08-12).
 
 ### Protocol Behavior
 - Request/response pattern with **3-second timeout**

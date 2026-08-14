@@ -49,8 +49,39 @@ with the budget in view. The header's Load meters track the patch total; see
 
 Give a module your own name from its right-click menu, or from the **Name**
 field at the top of the Inspector. Renaming is a normal, undoable edit
-(`Ctrl+Z` takes it back). The name lives in the patch and reaches the synth with
-the next full upload.
+(`Ctrl+Z` takes it back). The name reaches the synth as you type it, so storing
+the patch to a bank right afterwards keeps the names you gave.
+
+## Comments
+
+A comment is a text note that lives on the canvas: what a module does, which knob
+to reach for, what you were trying.
+
+Place one the way you place a module. The module bar's last tab, **ANME**, holds
+what this editor adds to a patch that the G1 knows nothing about; click or drag
+its **Comment** chip onto the canvas. Right-clicking an empty part of the canvas
+and choosing **Add Comment** does the same thing where you clicked.
+
+- **Write**: double-click the note. The text is centred and bold, and it grows
+  with the note, so a big note reads as a heading across the patch.
+- **Move**: drag it.
+- **Resize**: pull either bottom corner, sideways for more columns and downwards
+  for more rows. The right-click menu has the exact sizes if you prefer them.
+- **Zoom to it**: `Z`, with the note selected.
+- **Copy, cut, paste, duplicate**: `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, `Ctrl+D`, the
+  same keys the modules use, with **Copy** and **Duplicate** in the note's
+  right-click menu too. A pasted note follows the pointer as an outline until
+  you click where it goes, and it can land in either voice area.
+- **Delete**: `Delete`, or the right-click menu.
+
+All of those are undoable.
+
+A comment is painted as a module panel, in the same colour the modules around it
+wear under whichever theme you are using, and it holds its rectangle of the grid
+like a module: dropping a module on top of one pushes it down the column, and
+vice versa. It is an editor thing only: the G1 has no such module and nothing about a
+comment is ever sent to it. The text is saved inside the `.pch`, so it travels
+with the patch when you share it.
 
 ## Cables
 
@@ -69,6 +100,13 @@ the next full upload.
 - Knobs, sliders, buttons and selectors edit live and sync to the synth.
 - **Hover** any control to read its value in the parameter's own units; drag it
   and the readout follows live.
+- **Nudge arrows.** Hovering a knob or a slider pops two small buttons under it,
+  the way the original editor does: the left one takes the value down one step,
+  the right one up one, and holding either repeats. This is how you land on an
+  exact frequency or MIDI note instead of hunting for it with the mouse. The
+  value reads out while you step it, and the whole press undoes in one go,
+  however many steps it took. The four morph dials in the header bar have the
+  same arrows, drawn inside the dial because their caption sits right below it.
 - Right-click a parameter to assign it to a **morph group**, a **hardware
   knob**, or a **MIDI controller**, and to **lock** it against randomization.
 - **Click a frequency display** on an oscillator, a slave LFO or a filter and it

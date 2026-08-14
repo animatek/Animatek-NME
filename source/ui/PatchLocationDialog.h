@@ -19,11 +19,16 @@ public:
 
     using Callback = std::function<void(const Result&)>;
 
+    // initialSection/initialPosition preselect a bank location (-1 = bank 1,
+    // position 1), so Store to Bank opens on the patch's own place instead of
+    // making you find it again every time.
     PatchLocationDialog(const juce::String& title,
                         const std::vector<std::string>& patchList,
                         bool showSlot,
                         int  currentSlot,
-                        Callback cb);
+                        Callback cb,
+                        int  initialSection = -1,
+                        int  initialPosition = -1);
 
     void paint   (juce::Graphics& g) override;
     void resized () override;
@@ -36,7 +41,9 @@ public:
                      const std::vector<std::string>& patchList,
                      bool showSlot,
                      int  currentSlot,
-                     Callback cb);
+                     Callback cb,
+                     int  initialSection = -1,
+                     int  initialPosition = -1);
 
 private:
     void updatePositionItems();
@@ -48,6 +55,7 @@ private:
     const std::vector<std::string>& patchList_;
     bool showSlot_;
     Callback callback;
+    int initialPosition_ = -1;  // consumed by the first updatePositionItems()
     juce::ComponentDragger dragger;
     FlatCloseButton closeButton;
 
