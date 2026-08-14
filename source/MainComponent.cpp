@@ -590,6 +590,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   mainLayout->getHeaderBar().setMorphChangeCallback(
       [this](int morphIndex, int value) {
         connectionManager.sendParameter(activeSlot, 2, 1, morphIndex, value);
+        // A knob assigned to this morph group has a cell in the floater showing
+        // the value it drives, so dragging the dial has to move it there too
+        // (issue #64). The header bar has already written the patch.
+        refreshKnobFloater();
       });
 
   // Wire the front-panel Voices arrows to the synth. The G1 keeps the voice
@@ -4102,6 +4106,7 @@ void MainComponent::applySnapshot(const ParamSnapshot& snap, const juce::String&
             for (int m = 0; m < 4; ++m)
                 connectionManager.queueParameter(activeSlot, 2, 1, m, snap.morphValues[static_cast<size_t>(m)]);
         mainLayout->getHeaderBar().repaint();
+        refreshKnobFloater();
     }
 }
 
@@ -4219,6 +4224,7 @@ void MainComponent::applyMorphPosition(float t) {
 
     canvasFor(activeSlot).repaintCanvas();
     mainLayout->getHeaderBar().repaint();
+    refreshKnobFloater();
 }
 
 void MainComponent::armMorphKnobLearn() {
@@ -4257,6 +4263,11 @@ void MainComponent::resetMorphAB() {
         mainLayout->getHeaderBar().setMorphFaderPos(0.0f);
         refreshMorphUi();
     }
+}
+
+void MainComponent::refreshKnobFloater() {
+    if (knobFloaterWindow && knobFloaterWindow->isVisible())
+        knobFloaterWindow->refresh();
 }
 
 void MainComponent::refreshMorphUi() {

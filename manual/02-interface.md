@@ -20,7 +20,8 @@ From top to bottom:
   map**: a four-panel, 18-LED diagram mirroring the physical knob layout, with
   assigned knobs lit bright green and free knobs in the hardware's dark
   unlit-lens colour. With nothing selected it lists the assignments of the whole
-  patch. `Ctrl+I` folds the whole column away.
+  patch, including the knobs assigned to the four morph groups, which belong to
+  the patch rather than to any module. `Ctrl+I` folds the whole column away.
 - **Slot bar** (below the Inspector): the four hardware slots A–D with
   hardware-style LEDs: a *blinking* LED is the selected slot, *steady* LEDs are
   enabled slots. Plain click selects a slot; `Ctrl+click` enables/disables a

@@ -91,7 +91,19 @@
   when opening a patch**; turn it off and every open goes straight into the slot on screen and
   uploads, which is what anyone working in a single slot wants.
 
+- **Knobs assigned to the morph groups are listed in the Inspector** (#63). The Knob Floater has
+  always shown them, but the Inspector's patch-wide view (click empty canvas, nothing selected)
+  listed only the knobs assigned to module parameters, so the four that drive Macro 1 to Macro 4
+  were invisible there. They now sit in the same Knobs section as the rest, named by the group
+  they drive, and their **x** deassigns them like any other.
+
 ### Fixed
+
+- **The Knob Floater follows the morph dials** (#64). A knob assigned to a morph group has a cell
+  in the floater like any other, and it redrew when a module parameter moved but not when a morph
+  did: dragging a morph dial in the header bar, stepping it with its arrows, recalling a
+  variation or sweeping the Morph A/B fader all left that cell reading whatever it last showed.
+  Every one of those now redraws it. A morph moved on the synth itself already did.
 
 - **Renaming a module now reaches the synth.** The new name went into the editor's patch and
   waited there for a full patch upload, which meant that storing the patch to a bank right after

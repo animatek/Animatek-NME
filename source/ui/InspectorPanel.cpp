@@ -1291,6 +1291,22 @@ private:
             if (!KnobAssignmentMessage::isValidKnob(k)) continue;
             const auto& ka = patch->knobAssignments[static_cast<size_t>(k)];
             if (!ka.assigned) continue;
+
+            // A knob driving one of the four morph groups. There is no module
+            // to look up: section 2 is the patch's own morph pseudo-section,
+            // module 1, param 0-3, which is why these never used to appear here
+            // at all while the Knob Floater showed them (issue #63). The Morph
+            // A/B fader's carrier lives on the same section and gets a row of
+            // its own further down, so it is left out here.
+            if (ka.section == 2)
+            {
+                if (ka.param >= 0 && ka.param < 4 && k != morphFaderKnob)
+                    knobRows.push_back({ KnobAssignmentMessage::getKnobName(k),
+                                         kGroupNames[ka.param], "Morph",
+                                         ka.section, ka.module, ka.param });
+                continue;
+            }
+
             auto& container = patch->getContainer(ka.section);
             auto* mod = container.getModuleByIndex(ka.module);
             if (mod == nullptr) continue;

@@ -207,6 +207,11 @@ private:
     void clearMorphKnobAssignment();
     void resetMorphAB();
     void refreshMorphUi();
+    /** Redraws the Knob Floater's cells from the patch, if it is on screen. The
+        floater shows knobs assigned to the morph groups as well as to module
+        parameters, so anything that moves a morph value has to say so here or
+        those cells sit at whatever they last read (issue #64). */
+    void refreshKnobFloater();
     void handleConnectionRequest(const juce::String& inputId, const juce::String& outputId);
     void handleDisconnectionRequest();
     void onConnectionStatusChanged(const ConnectionManager::Status& status);
