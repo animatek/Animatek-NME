@@ -154,11 +154,19 @@ Refactors that lower the cost of touching the code, paired with the open
 feature issues that live in the same files (do the split when the feature
 work drags you in there anyway).
 
-- [ ] Split PatchCanvasComponent.cpp (9,276 lines) into several .cpp files
-      of the same class: painting, mouse/drag, clipboard/ghost, comments,
-      DrumSynth presets. Near-zero risk.
-- [ ] Replace the ~40 duplicated forwarding setters in PatchCanvasComponent
-      (header lines ~757-976) with a CanvasCallbacks struct injected once.
+- [x] PatchCanvasComponent.cpp split into six files of the same class
+      (2026-08-16): Painting 4.1k, Mouse 3.1k, Component 0.9k,
+      Clipboard 0.6k, Presets 0.4k, Comments 0.4k. Proven to be a pure
+      move: sort every non-blank line of the old file and of the six new
+      ones, diff, and the only differences are each file's header comment
+      and its includes. Each file then kept only the includes it uses.
+      Next natural seam if it needs cutting again: the icon vocabulary
+      and the custom displays, which dominate Painting.
+- [x] The 27 duplicated forwarding setters collapsed onto one template
+      (2026-08-16), 107 lines gone. Not a CanvasCallbacks struct as the
+      plan guessed: that would have changed the API every caller uses, for
+      no more benefit. The real prize was the copy-paste hazard, since each
+      copy passed the callback to one canvas and moved it into the other.
 - [ ] #67 Cable re-routing: Ctrl/Cmd+drag an existing cable end to move it,
       as the original editor does. Touches canvas mouse code; do alongside
       the mouse/drag split.
