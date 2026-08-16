@@ -25,6 +25,16 @@
 
 ### Fixed
 
+- **Pressing A, B, C or D on the synth now brings that slot up on screen.** It looked like the
+  buttons did nothing: the editor was adopting the slot and moving its own slot bar, but it only
+  ever opened onto a sub-window that already happened to be open, so with the others closed
+  there was nothing to see and no way to tell whether the press had landed. Opening a slot from
+  the editor first made the panel buttons appear to start working, which is what made it look
+  intermittent rather than broken. A slot button on the front panel is the user asking for that
+  slot from the other end of the cable, and the editor follows it now the way it follows its own
+  slot bar. It still will not do so in the middle of a gesture, where a slot press would cut a
+  cable drag in half.
+
 - **A module can no longer be buried under another at the bottom of the canvas** (#54).
   Dropping, pasting or growing something into a column with no room left used to clamp the
   push at row 128 and leave two things on the same rows; every placement now checks the whole

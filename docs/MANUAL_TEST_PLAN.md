@@ -107,19 +107,26 @@ the only thing to look for here.
 
 1. Connect and load a patch from a bank.
 2. Play. LEDs and meters animate; nothing freezes lit or smears.
-3. Switch slots. The slot you left goes dark rather than staying frozen.
-4. **Speed.** Open your heaviest patch (or `all.pch`). Scroll it, drag a module
+3. Switch slots from the editor's slot bar. The slot you left goes dark rather
+   than staying frozen.
+4. Close every slot sub-window but one, then press **B, C and D on the synth's
+   front panel**. Each one opens its window and takes focus.
+   (This is the one that caught a real bug: the editor used to follow the panel
+   only into a window that was already open, so the buttons looked dead.)
+5. Start dragging a cable and, mid-drag, press another slot on the panel. It
+   must **not** cut the drag.
+6. **Speed.** Open your heaviest patch (or `all.pch`). Scroll it, drag a module
    about, zoom in and out, with the meters running. Then do exactly the same in
    0.15.1 (path above) with the same patch. The new one should feel smoother,
    and the gap should be widest on a patch with many modules and the meters
    moving.
-5. Turn a knob on the synth: the editor follows.
-6. Turn a knob in the editor: the synth follows.
-7. `F3` (module DSP cost), `F5` (values), `F7`, `F8`, `F9`. Each overlay reads
+7. Turn a knob on the synth: the editor follows.
+8. Turn a knob in the editor: the synth follows.
+9. `F3` (module DSP cost), `F5` (values), `F7`, `F8`, `F9`. Each overlay reads
    out and turns off when pressed again. `F10` still works as the old alias for
    `F3`.
-8. `F4` blows the focused slot up to the full area; `F4` again puts it back.
-   `F11` still does the same.
+10. `F4` blows the focused slot up to the full area; `F4` again puts it back.
+    `F11` still does the same.
 
 ---
 
