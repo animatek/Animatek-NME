@@ -89,7 +89,14 @@ set(NME_SHARED_SOURCES
     source/ui/AppTheme.cpp
     source/ui/ModuleBrowserPanel.cpp
     source/ui/ModuleIconBar.cpp
+    # PatchCanvas, split by what each part does. One class, six files: it had
+    # grown past nine thousand lines in one.
     source/ui/PatchCanvasComponent.cpp
+    source/ui/PatchCanvasPainting.cpp
+    source/ui/PatchCanvasMouse.cpp
+    source/ui/PatchCanvasComments.cpp
+    source/ui/PatchCanvasClipboard.cpp
+    source/ui/PatchCanvasPresets.cpp
     source/ui/ColorScheme.cpp
     source/ui/ThemeRegistry.cpp
     source/ui/InspectorPanel.cpp
