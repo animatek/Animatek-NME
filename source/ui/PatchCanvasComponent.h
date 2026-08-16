@@ -782,137 +782,83 @@ public:
 
     // --- Callbacks forwarded to both section canvases ---
 
-    void setParameterChangeCallback(PatchCanvas::ParameterChangeCallback cb)
+    /** Hands one callback to both section canvases. Written out by hand, each
+        of these was six lines that passed the callback to the first canvas and
+        moved it into the second: get that order the wrong way round in a
+        copy-paste and the second canvas silently gets an empty callback. Here
+        the order is written once. */
+    template <typename Setter, typename Callback>
+    void toBothCanvases(Setter setter, Callback cb)
     {
-        polyCanvas.setParameterChangeCallback(cb);
-        commonCanvas.setParameterChangeCallback(std::move(cb));
+        (polyCanvas.*setter)(cb);
+        (commonCanvas.*setter)(std::move(cb));
     }
+
+    void setParameterChangeCallback(PatchCanvas::ParameterChangeCallback cb)
+    { toBothCanvases(&PatchCanvas::setParameterChangeCallback, std::move(cb)); }
 
     void setParameterDragCompleteCallback(PatchCanvas::ParameterDragCompleteCallback cb)
-    {
-        polyCanvas.setParameterDragCompleteCallback(cb);
-        commonCanvas.setParameterDragCompleteCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setParameterDragCompleteCallback, std::move(cb)); }
 
     void setCustomParameterChangeCallback(PatchCanvas::CustomParameterChangeCallback cb)
-    {
-        polyCanvas.setCustomParameterChangeCallback(cb);
-        commonCanvas.setCustomParameterChangeCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setCustomParameterChangeCallback, std::move(cb)); }
 
     void setModuleDropCallback(PatchCanvas::ModuleDropCallback cb)
-    {
-        polyCanvas.setModuleDropCallback(cb);
-        commonCanvas.setModuleDropCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setModuleDropCallback, std::move(cb)); }
 
     void setDeleteModuleCallback(PatchCanvas::DeleteModuleCallback cb)
-    {
-        polyCanvas.setDeleteModuleCallback(cb);
-        commonCanvas.setDeleteModuleCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setDeleteModuleCallback, std::move(cb)); }
 
     void setRenameModuleCallback(PatchCanvas::RenameModuleCallback cb)
-    {
-        polyCanvas.setRenameModuleCallback(cb);
-        commonCanvas.setRenameModuleCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setRenameModuleCallback, std::move(cb)); }
 
     void setCommentAddCallback(PatchCanvas::CommentAddCallback cb)
-    {
-        polyCanvas.setCommentAddCallback(cb);
-        commonCanvas.setCommentAddCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setCommentAddCallback, std::move(cb)); }
 
     void setCommentMoveCallback(PatchCanvas::CommentMoveCallback cb)
-    {
-        polyCanvas.setCommentMoveCallback(cb);
-        commonCanvas.setCommentMoveCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setCommentMoveCallback, std::move(cb)); }
 
     void setCommentTextCallback(PatchCanvas::CommentTextCallback cb)
-    {
-        polyCanvas.setCommentTextCallback(cb);
-        commonCanvas.setCommentTextCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setCommentTextCallback, std::move(cb)); }
 
     void setCommentDeleteCallback(PatchCanvas::CommentDeleteCallback cb)
-    {
-        polyCanvas.setCommentDeleteCallback(cb);
-        commonCanvas.setCommentDeleteCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setCommentDeleteCallback, std::move(cb)); }
 
     void setCommentResizeCallback(PatchCanvas::CommentResizeCallback cb)
-    {
-        polyCanvas.setCommentResizeCallback(cb);
-        commonCanvas.setCommentResizeCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setCommentResizeCallback, std::move(cb)); }
 
     void setCommentCreateCallback(PatchCanvas::CommentCreateCallback cb)
-    {
-        polyCanvas.setCommentCreateCallback(cb);
-        commonCanvas.setCommentCreateCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setCommentCreateCallback, std::move(cb)); }
 
     void setModuleMoveCallback(PatchCanvas::ModuleMoveCallback cb)
-    {
-        polyCanvas.setModuleMoveCallback(cb);
-        commonCanvas.setModuleMoveCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setModuleMoveCallback, std::move(cb)); }
 
     void setModuleSelectedCallback(PatchCanvas::ModuleSelectedCallback cb)
-    {
-        polyCanvas.setModuleSelectedCallback(cb);
-        commonCanvas.setModuleSelectedCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setModuleSelectedCallback, std::move(cb)); }
 
     void setMorphAssignCallback(PatchCanvas::MorphAssignCallback cb)
-    {
-        polyCanvas.setMorphAssignCallback(cb);
-        commonCanvas.setMorphAssignCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setMorphAssignCallback, std::move(cb)); }
 
     void setMorphRangeChangeCallback(PatchCanvas::MorphRangeChangeCallback cb)
-    {
-        polyCanvas.setMorphRangeChangeCallback(cb);
-        commonCanvas.setMorphRangeChangeCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setMorphRangeChangeCallback, std::move(cb)); }
 
     void setKnobAssignCallback(PatchCanvas::KnobAssignCallback cb)
-    {
-        polyCanvas.setKnobAssignCallback(cb);
-        commonCanvas.setKnobAssignCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setKnobAssignCallback, std::move(cb)); }
 
     void setMidiCtrlAssignCallback(PatchCanvas::MidiCtrlAssignCallback cb)
-    {
-        polyCanvas.setMidiCtrlAssignCallback(cb);
-        commonCanvas.setMidiCtrlAssignCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setMidiCtrlAssignCallback, std::move(cb)); }
 
     void setInitModuleCallback(PatchCanvas::InitModuleCallback cb)
-    {
-        polyCanvas.setInitModuleCallback(cb);
-        commonCanvas.setInitModuleCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setInitModuleCallback, std::move(cb)); }
 
     void setSnippetSaveCallback(PatchCanvas::SnippetSaveCallback cb)
-    {
-        polyCanvas.setSnippetSaveCallback(cb);
-        commonCanvas.setSnippetSaveCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setSnippetSaveCallback, std::move(cb)); }
 
     void setSnippetDropCallback(PatchCanvas::SnippetDropCallback cb)
-    {
-        polyCanvas.setSnippetDropCallback(cb);
-        commonCanvas.setSnippetDropCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setSnippetDropCallback, std::move(cb)); }
 
     void setSnippetInsertCallback(PatchCanvas::SnippetInsertCallback cb)
-    {
-        polyCanvas.setSnippetInsertCallback(cb);
-        commonCanvas.setSnippetInsertCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setSnippetInsertCallback, std::move(cb)); }
 
     // The two areas are separate canvases, so every command goes to whichever
     // one it applies to. The clipboard itself is shared, and paste hands the
@@ -956,34 +902,19 @@ public:
     }
 
     void setCableCreatedCallback(PatchCanvas::CableCallback cb)
-    {
-        polyCanvas.setCableCreatedCallback(cb);
-        commonCanvas.setCableCreatedCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setCableCreatedCallback, std::move(cb)); }
 
     void setCableDeletedCallback(PatchCanvas::CableCallback cb)
-    {
-        polyCanvas.setCableDeletedCallback(cb);
-        commonCanvas.setCableDeletedCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setCableDeletedCallback, std::move(cb)); }
 
     void setUndoCallback(std::function<void()> cb)
-    {
-        polyCanvas.setUndoCallback(cb);
-        commonCanvas.setUndoCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setUndoCallback, std::move(cb)); }
 
     void setRedoCallback(std::function<void()> cb)
-    {
-        polyCanvas.setRedoCallback(cb);
-        commonCanvas.setRedoCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setRedoCallback, std::move(cb)); }
 
     void setFileCommandCallback(PatchCanvas::FileCommandCallback cb)
-    {
-        polyCanvas.setFileCommandCallback(cb);
-        commonCanvas.setFileCommandCallback(std::move(cb));
-    }
+    { toBothCanvases(&PatchCanvas::setFileCommandCallback, std::move(cb)); }
 
     void setUndoManager(juce::UndoManager* um)
     {
