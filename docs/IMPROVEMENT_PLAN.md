@@ -108,6 +108,16 @@ Deliberately NOT in this phase: caching each module as an image and
 compositing. That is a big, risky refactor; only consider it if profiling
 after the wins above still shows paint as the bottleneck.
 
+**Still wants a pair of eyes on screen.** Narrowing a repaint is the kind of
+change a test cannot catch: if a rectangle is too small, stale pixels are left
+behind, and only looking at it finds that. The three to check are the nudge
+arrows under a hovered knob (they should appear, light up under the pointer
+and disappear cleanly, leaving nothing behind), the corner grips of a text
+note on hover, and the LED/meter animation with the synth connected. The code
+was read against each one (the spinner paints strictly inside its two button
+rectangles, the grips strictly inside the note's bounds), so the expectation
+is that they are clean.
+
 ## Phase 3: Kill the raw-Module* bug class (issue #61's family)
 
 The UI holds raw `Module*` in selection, hover, spinner, drag state,
