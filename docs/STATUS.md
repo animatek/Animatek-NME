@@ -1,6 +1,6 @@
 # Animatek NME Status
 
-Current version: **0.15.1** (released 2026-08-10)
+Current version: **0.16.0** (released 2026-08-16)
 
 The project was renamed from **Nomad2026** to **Animatek NME — Nord Modular Editor G1** in 0.6.0.
 
@@ -45,6 +45,14 @@ This file tracks the current project state at a practical level. Detailed versio
 
 ## Recent Milestones
 
+- **0.16.0**: the release that went inwards. Big patches draw far faster (the canvas was
+  recomputing where every module keeps its LEDs twice per module per repaint), modules are no
+  longer held by pointer so the family of crashes behind #61 cannot come back, and the project
+  gained a unit test suite and CI that builds and runs it, plus the sanitizers, on every push.
+  Nine issues closed (#53 #54 #55 #56 #57 #58 #65 #66 #68) and five more faults found by a
+  manual test pass written for the occasion (docs/MANUAL_TEST_PLAN.md), including front-panel
+  slot buttons that appeared to do nothing. The Inspector lists and edits every parameter of
+  the selected module.
 - **0.15.1**: hotfix for the crash on deleting a highlighted module (#61), a use-after-free on
   the Inspector's selected module that only showed on macOS; the same fault behind undoing an
   Add Module or a paste is fixed with it.

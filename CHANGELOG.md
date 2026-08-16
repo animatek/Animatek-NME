@@ -2,68 +2,7 @@
 
 ## Unreleased
 
-### Changed
-
-- **The editor no longer keeps hold of modules it has deleted.** Selecting a module, hovering
-  one, pointing at a knob or reading a DSP cost all left the editor holding the module itself
-  in memory, and deleting it, or undoing the add that made it, left those pointing at nothing.
-  That was the crash macOS users saw and Linux users never did (#61), and it was kept at bay by
-  sweeping every one of them before each redraw. Modules are now identified by where they live
-  in the patch rather than by where they sit in memory, so the question cannot be got wrong, and
-  the sweep is gone. It also behaves better than it did: deleting a selected module and undoing
-  it gets the selection back, where before the selection was simply dropped.
-
-- **Big patches draw far faster.** Every time the canvas painted a module it worked out, from
-  scratch and twice over, where every module in the patch keeps its LEDs and meters: a sorted
-  table rebuilt once per module, per repaint. On a hundred-module patch that came to roughly
-  18 ms of pure bookkeeping on every single redraw, and the synth asks for a redraw several
-  times a second while the meters are moving. The table is now worked out once and reused
-  until the patch's structure actually changes, which takes that 18 ms down to about 14
-  microseconds. Cables no longer rebuild a lookup of every connector in the patch on each
-  redraw either, and resting the pointer on a knob stopped redrawing the entire canvas on
-  every mouse movement for the sake of the two little nudge arrows.
-
-### Fixed
-
-- **Closing the editor with the slot chooser open no longer leaks it.** Open a patch, leave the
-  "open into which slot" question on screen, quit, and the dialog and everything in it were
-  left behind, which a debug build reports as a page of leaked-object warnings. The same was
-  true of the store-location dialog. Both put themselves on screen and take themselves down
-  when answered, so nobody owned one that was never answered; the editor closes them itself
-  now. The same change also stops each of them deleting itself from inside its own button's
-  click, which was a crash waiting for the right timing.
-
-- **Select All takes the text notes too**, instead of every module and none of the notes.
-
-- **Nudging a selection into an edge stops it as a block.** With several modules selected, the
-  arrow keys clamped each one on its own, so at the border they ended up stacked on the same
-  row. The selection stops when its leading edge reaches the edge, and nothing moves.
-
-- **Undoing a delete gives the selection back.** The modules returned unselected, so recovering
-  something you had just deleted meant finding and re-picking it.
-
-- **Pressing A, B, C or D on the synth now brings that slot up on screen.** It looked like the
-  buttons did nothing: the editor was adopting the slot and moving its own slot bar, but it only
-  ever opened onto a sub-window that already happened to be open, so with the others closed
-  there was nothing to see and no way to tell whether the press had landed. Opening a slot from
-  the editor first made the panel buttons appear to start working, which is what made it look
-  intermittent rather than broken. A slot button on the front panel is the user asking for that
-  slot from the other end of the cable, and the editor follows it now the way it follows its own
-  slot bar. It still will not do so in the middle of a gesture, where a slot press would cut a
-  cable drag in half.
-
-- **A module can no longer be buried under another at the bottom of the canvas** (#54).
-  Dropping, pasting or growing something into a column with no room left used to clamp the
-  push at row 128 and leave two things on the same rows; every placement now checks the whole
-  chain of pushes first and refuses outright when the column cannot absorb it, the way the
-  original editor does. A refused paste rolls the whole block back rather than leaving half
-  of it placed.
-
-- **Nothing can be dragged off the canvas any more.** Dragging a module (or a selection)
-  kept going past the edges: below row 128 or beyond the last column it still existed but
-  could not be seen or grabbed again. Drags, arrow-key nudges and the free-spot search now
-  stop at all four edges, and the bottom bound accounts for the module's own height, so a
-  tall module cannot be left hanging half out of the area either.
+## 0.16.0 — 2026-08-16
 
 ### Added
 
@@ -76,37 +15,6 @@
   under AddressSanitizer/UBSan. The packet cutting and framing rules moved into their own
   little module (`UploadPacketizer`) to be testable at all: byte-for-byte the same wire format,
   now with a test holding it there.
-
-### Changed
-
-- **The DSP cost overlay moved to `F3` and focus mode to `F4`** (#55). F10 belongs to the menu
-  bar on Windows and some Linux desktops, and macOS keeps F11 for Show Desktop, so both readouts
-  now live on keys nobody else is holding. The old keys still work as quiet aliases for fingers
-  that learned them.
-
-- **On macOS, wireframe modules moved to `Cmd+Shift+W`** (#55). The naked `Cmd+W` is the
-  system's own "close window" and fired both ways at once. Linux and Windows keep `Ctrl+W`.
-
-- **Menu shortcuts sit right-aligned in their own column** (#56), instead of riding inside the
-  item text, which the macOS menu bar printed literally, tab character and all.
-
-- **A sequencer's Clr button now parks every step at its default** (#53): a CtrlSeq fader
-  returns to centre (64) rather than being slammed to zero, which is a floor, not "empty".
-
-### Fixed
-
-- **Error messages no longer outstay their welcome** (#65). "Failed to add module" was posted
-  to the permanent status line and sat there for the rest of the session; it is a transient
-  message now, and any status message can also be dismissed by clicking it.
-
-- **The Help popup's description follows the theme** (#58) instead of staying near-white, which
-  made it invisible on light themes.
-
-- **Module help no longer shows `$Contents` and friends** (#57). The scraper that lifted the
-  original manual's text dragged a few of its navigation pages in as if they were controls, on
-  Constant, EQ Mid, LFOC, Oscillator slave FM and Sine Bank; they are filtered out now.
-
-### Added
 
 - **Every parameter of the selected module, listed in the Inspector, and editable there.** A
   module's face is knobs, and a knob is a few pixels holding 128 steps: fine for sweeping,
@@ -208,7 +116,93 @@
   were invisible there. They now sit in the same Knobs section as the rest, named by the group
   they drive, and their **x** deassigns them like any other.
 
+### Changed
+
+- **The editor no longer keeps hold of modules it has deleted.** Selecting a module, hovering
+  one, pointing at a knob or reading a DSP cost all left the editor holding the module itself
+  in memory, and deleting it, or undoing the add that made it, left those pointing at nothing.
+  That was the crash macOS users saw and Linux users never did (#61), and it was kept at bay by
+  sweeping every one of them before each redraw. Modules are now identified by where they live
+  in the patch rather than by where they sit in memory, so the question cannot be got wrong, and
+  the sweep is gone. It also behaves better than it did: deleting a selected module and undoing
+  it gets the selection back, where before the selection was simply dropped.
+
+- **Big patches draw far faster.** Every time the canvas painted a module it worked out, from
+  scratch and twice over, where every module in the patch keeps its LEDs and meters: a sorted
+  table rebuilt once per module, per repaint. On a hundred-module patch that came to roughly
+  18 ms of pure bookkeeping on every single redraw, and the synth asks for a redraw several
+  times a second while the meters are moving. The table is now worked out once and reused
+  until the patch's structure actually changes, which takes that 18 ms down to about 14
+  microseconds. Cables no longer rebuild a lookup of every connector in the patch on each
+  redraw either, and resting the pointer on a knob stopped redrawing the entire canvas on
+  every mouse movement for the sake of the two little nudge arrows.
+
+- **The DSP cost overlay moved to `F3` and focus mode to `F4`** (#55). F10 belongs to the menu
+  bar on Windows and some Linux desktops, and macOS keeps F11 for Show Desktop, so both readouts
+  now live on keys nobody else is holding. The old keys still work as quiet aliases for fingers
+  that learned them.
+
+- **On macOS, wireframe modules moved to `Cmd+Shift+W`** (#55). The naked `Cmd+W` is the
+  system's own "close window" and fired both ways at once. Linux and Windows keep `Ctrl+W`.
+
+- **Menu shortcuts sit right-aligned in their own column** (#56), instead of riding inside the
+  item text, which the macOS menu bar printed literally, tab character and all.
+
+- **A sequencer's Clr button now parks every step at its default** (#53): a CtrlSeq fader
+  returns to centre (64) rather than being slammed to zero, which is a floor, not "empty".
+
 ### Fixed
+
+- **Closing the editor with the slot chooser open no longer leaks it.** Open a patch, leave the
+  "open into which slot" question on screen, quit, and the dialog and everything in it were
+  left behind, which a debug build reports as a page of leaked-object warnings. The same was
+  true of the store-location dialog. Both put themselves on screen and take themselves down
+  when answered, so nobody owned one that was never answered; the editor closes them itself
+  now. The same change also stops each of them deleting itself from inside its own button's
+  click, which was a crash waiting for the right timing.
+
+- **Select All takes the text notes too**, instead of every module and none of the notes.
+
+- **Nudging a selection into an edge stops it as a block.** With several modules selected, the
+  arrow keys clamped each one on its own, so at the border they ended up stacked on the same
+  row. The selection stops when its leading edge reaches the edge, and nothing moves.
+
+- **Undoing a delete gives the selection back.** The modules returned unselected, so recovering
+  something you had just deleted meant finding and re-picking it.
+
+- **Pressing A, B, C or D on the synth now brings that slot up on screen.** It looked like the
+  buttons did nothing: the editor was adopting the slot and moving its own slot bar, but it only
+  ever opened onto a sub-window that already happened to be open, so with the others closed
+  there was nothing to see and no way to tell whether the press had landed. Opening a slot from
+  the editor first made the panel buttons appear to start working, which is what made it look
+  intermittent rather than broken. A slot button on the front panel is the user asking for that
+  slot from the other end of the cable, and the editor follows it now the way it follows its own
+  slot bar. It still will not do so in the middle of a gesture, where a slot press would cut a
+  cable drag in half.
+
+- **A module can no longer be buried under another at the bottom of the canvas** (#54).
+  Dropping, pasting or growing something into a column with no room left used to clamp the
+  push at row 128 and leave two things on the same rows; every placement now checks the whole
+  chain of pushes first and refuses outright when the column cannot absorb it, the way the
+  original editor does. A refused paste rolls the whole block back rather than leaving half
+  of it placed.
+
+- **Nothing can be dragged off the canvas any more.** Dragging a module (or a selection)
+  kept going past the edges: below row 128 or beyond the last column it still existed but
+  could not be seen or grabbed again. Drags, arrow-key nudges and the free-spot search now
+  stop at all four edges, and the bottom bound accounts for the module's own height, so a
+  tall module cannot be left hanging half out of the area either.
+
+- **Error messages no longer outstay their welcome** (#65). "Failed to add module" was posted
+  to the permanent status line and sat there for the rest of the session; it is a transient
+  message now, and any status message can also be dismissed by clicking it.
+
+- **The Help popup's description follows the theme** (#58) instead of staying near-white, which
+  made it invisible on light themes.
+
+- **Module help no longer shows `$Contents` and friends** (#57). The scraper that lifted the
+  original manual's text dragged a few of its navigation pages in as if they were controls, on
+  Constant, EQ Mid, LFOC, Oscillator slave FM and Sine Bank; they are filtered out now.
 
 - **The Knob Floater follows the morph dials** (#64). A knob assigned to a morph group has a cell
   in the floater like any other, and it redrew when a module parameter moved but not when a morph
@@ -1288,3 +1282,4 @@ people for the first time in 0.15.0.*
 - Undo/redo system for patch editing.
 - QuickAdd, multi-selection, copy/paste, duplicate, cable tools, zoom, randomize, initialize, parameter locks, and snapshots.
 - Help system and About/Help links.
+
