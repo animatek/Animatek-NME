@@ -159,12 +159,6 @@ const LightMeterLayout::Table& PatchCanvas::lightRangeTable() const
     return lightRangeCache_;
 }
 
-int PatchCanvas::computeModuleLightIndex(const Module& targetModule, int targetSection, bool forMeters) const
-{
-    if (const auto* slots = lightRangeTable().find(targetSection, targetModule.getContainerIndex()))
-        return forMeters ? slots->meterBase : slots->lightBase;
-    return 0;
-}
 
 PatchCanvas::PatchCanvas()
 {

@@ -345,10 +345,6 @@ private:
     int globalLightValues[128] = {};
     int globalMeterValues[128] = {};
 
-    // Compute the global base index for a module's LEDs or meters
-    // (poly modules come first, sorted by index; then common modules)
-    int computeModuleLightIndex(const Module& m, int section, bool forMeters) const;
-
     // Where each module's LEDs and meters sit in the synth's two 128-slot
     // arrays. Working the table out costs a sort and a theme lookup per module,
     // and it was being done twice per module per paint plus once per light
