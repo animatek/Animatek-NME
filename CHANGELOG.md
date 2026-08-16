@@ -25,6 +25,23 @@
 
 ### Fixed
 
+- **Closing the editor with the slot chooser open no longer leaks it.** Open a patch, leave the
+  "open into which slot" question on screen, quit, and the dialog and everything in it were
+  left behind, which a debug build reports as a page of leaked-object warnings. The same was
+  true of the store-location dialog. Both put themselves on screen and take themselves down
+  when answered, so nobody owned one that was never answered; the editor closes them itself
+  now. The same change also stops each of them deleting itself from inside its own button's
+  click, which was a crash waiting for the right timing.
+
+- **Select All takes the text notes too**, instead of every module and none of the notes.
+
+- **Nudging a selection into an edge stops it as a block.** With several modules selected, the
+  arrow keys clamped each one on its own, so at the border they ended up stacked on the same
+  row. The selection stops when its leading edge reaches the edge, and nothing moves.
+
+- **Undoing a delete gives the selection back.** The modules returned unselected, so recovering
+  something you had just deleted meant finding and re-picking it.
+
 - **Pressing A, B, C or D on the synth now brings that slot up on screen.** It looked like the
   buttons did nothing: the editor was adopting the slot and moving its own slot bar, but it only
   ever opened onto a sub-window that already happened to be open, so with the others closed
