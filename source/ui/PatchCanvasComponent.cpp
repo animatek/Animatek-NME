@@ -257,10 +257,13 @@ void PatchCanvas::zoomToSelection()
     int minX = 999999, minY = 999999, maxX = 0, maxY = 0;
     for (auto& sel : selection)
     {
-        auto gpos = sel.module->getPosition();
+        const auto* m = resolve(sel);
+        if (m == nullptr)
+            continue;
+        auto gpos = m->getPosition();
         int px = gpos.x * gridX;
         int py = gpos.y * gridY;
-        int ph = sel.module->getDescriptor() ? sel.module->getDescriptor()->height * gridY : 60;
+        int ph = m->getDescriptor() ? m->getDescriptor()->height * gridY : 60;
         minX = juce::jmin(minX, px);
         minY = juce::jmin(minY, py);
         maxX = juce::jmax(maxX, px + gridX);
@@ -359,20 +362,19 @@ PatchCanvas::~PatchCanvas()
 
 void PatchCanvas::setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td)
 {
-    // Reset all raw pointers into the old patch to avoid dangling refs
+    // A new patch reuses container indices, so every reference into the old one
+    // has to go: left behind, they would name whatever sits at the same index
+    // in the incoming patch.
     dragState = DragState();
     selection.clear();
-    selectedModule = nullptr;
-    selectedSection = -1;
+    selectedRef.clear();
     // Comment ids belong to the outgoing patch; the incoming one reuses them.
     selectedCommentIds.clear();
     commentMoveState.clear();
     dragCommentId = -1;
-    // Keyed by container index, so leaving it would name modules in the
-    // incoming patch after whatever sat at the same index in the outgoing one.
     drumPresetState.clear();
-    clearHover();   // hoverTarget holds a Module* into the outgoing patch
-    costBadgeModule = nullptr;
+    clearHover();
+    costBadgeModule.clear();
     cableSagOffsets.clear();
     activeQuickAdd = nullptr;
     showCablePreview = false;
@@ -845,10 +847,10 @@ static const juce::Image& canvasGrainTexture()
 
 void PatchCanvas::paint(juce::Graphics& g)
 {
-    // Last line of defence: whatever destroyed a module we still point at (a
-    // delete, an undone add or paste) may not have gone through this canvas at
-    // all, and everything below dereferences those pointers (issue #61).
-    forgetDeletedModules();
+    // The cable preview below reads the drag's module and connector, and a
+    // drag is the one thing here still held by pointer. Everything else names
+    // its module by reference and cannot go stale (issue #61).
+    dropDragIfModuleGone();
 
     g.fillAll(activeScheme_.gridBackground);
 
@@ -915,9 +917,9 @@ void PatchCanvas::paint(juce::Graphics& g)
     paintDragValueBadge(g);
 
     // The answer to a double-click on a module, kept up until the next click.
-    if (costBadgeModule != nullptr)
-        if (auto* desc = costBadgeModule->getDescriptor())
-            paintModuleCostBadge(g, getModuleBounds(*costBadgeModule, 0),
+    if (const auto* costModule = resolve(costBadgeModule))
+        if (auto* desc = costModule->getDescriptor())
+            paintModuleCostBadge(g, getModuleBounds(*costModule, 0),
                                  desc->fullname + "  " + formatDspCost(desc->cycles));
 
     // Cable creation preview (rubber-band cable)
@@ -1215,7 +1217,7 @@ bool PatchCanvas::findControlAt(juce::Point<int> canvasPos, HoverTarget& out) co
                 return false;
             if (findParameter(m, componentId) == nullptr)
                 return false;
-            out.module        = &m;
+            out.module        = refTo(m);
             out.componentId   = componentId;
             out.controlBounds = r.translated(bounds.getX(), bounds.getY()).toFloat();
             out.moduleBounds  = bounds;
@@ -1234,7 +1236,7 @@ bool PatchCanvas::findControlAt(juce::Point<int> canvasPos, HoverTarget& out) co
         // Over the module but not over a control: the module itself is the
         // target, and what it has to say is what it costs the DSP (issue #31,
         // which the original editor answers on a double-click).
-        out.module        = &m;
+        out.module        = refTo(m);
         out.componentId   = {};
         out.controlBounds = bounds.removeFromTop(1).toFloat();
         out.moduleBounds  = getModuleBounds(m, 0);
@@ -1438,7 +1440,7 @@ void PatchCanvas::clearHover()
 void PatchCanvas::timerCallback()
 {
     stopTimer();
-    if (hoverTarget.module == nullptr)
+    if (!hoverTarget.module.isValid())
         return;
     hoverBadgeVisible = true;
     repaint();
@@ -1481,7 +1483,7 @@ bool PatchCanvas::findSpinnerAt(juce::Point<int> canvasPos, SpinnerTarget& out)
             if (pd == nullptr || pd->maxValue <= pd->minValue)
                 return false;
 
-            out.module       = &m;
+            out.module       = refTo(m);
             out.componentId  = componentId;
             out.moduleBounds = bounds;
             out.control      = r.translated(bounds.getX(), bounds.getY()).toFloat();
@@ -1515,11 +1517,11 @@ void PatchCanvas::updateSpinner(juce::Point<int> canvasPos)
     findSpinnerAt(canvasPos, next);
     spinnerTarget = next;
 
-    // The pointer and the id together name the control: two modules of the same
+    // The module and the id together name the control: two modules of the same
     // type both have a "p1", and one module outlives a zoom that moves it.
-    const juce::String key = next.module == nullptr ? juce::String()
-        : juce::String::toHexString(reinterpret_cast<juce::pointer_sized_int>(next.module))
-              + "/" + next.componentId;
+    const juce::String key = !next.module.isValid() ? juce::String()
+        : juce::String(next.module.section) + ":"
+              + juce::String(next.module.containerIndex) + "/" + next.componentId;
 
     spinner.showFor(key, next.control, ValueSpinner::Placement::BelowEdge);
     spinner.updateHover(p);
@@ -1535,10 +1537,11 @@ void PatchCanvas::clearSpinner()
 
 bool PatchCanvas::spinnerMouseDown(juce::Point<int> canvasPos)
 {
-    if (spinnerTarget.module == nullptr)
+    auto* module = resolve(spinnerTarget.module);
+    if (module == nullptr)
         return false;
 
-    auto* param = findParameter(*spinnerTarget.module, spinnerTarget.componentId);
+    auto* param = findParameter(*module, spinnerTarget.componentId);
     if (param == nullptr)
         return false;
 
@@ -1548,10 +1551,11 @@ bool PatchCanvas::spinnerMouseDown(juce::Point<int> canvasPos)
 
 void PatchCanvas::spinnerStep(int delta)
 {
-    if (spinnerTarget.module == nullptr)
+    auto* module = resolve(spinnerTarget.module);
+    if (module == nullptr)
         return;
 
-    auto* param = findParameter(*spinnerTarget.module, spinnerTarget.componentId);
+    auto* param = findParameter(*module, spinnerTarget.componentId);
     if (param == nullptr)
         return;
     auto* pd = param->getDescriptor();
@@ -1568,7 +1572,7 @@ void PatchCanvas::spinnerStep(int delta)
 
     param->setValue(newValue);
     if (parameterChangeCallback)
-        parameterChangeCallback(mySection, spinnerTarget.module->getContainerIndex(),
+        parameterChangeCallback(mySection, spinnerTarget.module.containerIndex,
                                 pd->index, newValue);
 
     // Read the value out while it is being stepped. Chasing an exact number is
@@ -1589,14 +1593,15 @@ void PatchCanvas::spinnerStep(int delta)
 // held nudge arrow does; moving to another control closes the run first.
 void PatchCanvas::beginKeyStep()
 {
-    if (spinnerTarget.module == nullptr)
+    auto* module = resolve(spinnerTarget.module);
+    if (module == nullptr)
         return;
     if (keyStepModule == spinnerTarget.module && keyStepComponentId == spinnerTarget.componentId)
         return;   // already stepping this one
 
     endKeyStep();
 
-    if (const auto* param = findParameter(*spinnerTarget.module, spinnerTarget.componentId))
+    if (const auto* param = findParameter(*module, spinnerTarget.componentId))
     {
         keyStepModule      = spinnerTarget.module;
         keyStepComponentId = spinnerTarget.componentId;
@@ -1606,19 +1611,18 @@ void PatchCanvas::beginKeyStep()
 
 void PatchCanvas::endKeyStep()
 {
-    if (keyStepModule == nullptr)
+    if (!keyStepModule.isValid())
         return;
 
-    auto* module = keyStepModule;
+    // The module may have been deleted while the key was held; resolving the
+    // reference answers that on its own.
+    auto* module = resolve(keyStepModule);
     const auto componentId = keyStepComponentId;
     const int startValue = keyStepStartValue;
-    keyStepModule = nullptr;
+    keyStepModule.clear();
     keyStepComponentId.clear();
 
-    // The module may have been deleted while the key was held, so the patch is
-    // asked whether it still has it rather than the pointer being trusted
-    // (issue #61).
-    if (patch == nullptr || !patch->getContainer(mySection).contains(module))
+    if (module == nullptr)
         return;
 
     if (paramDragCompleteCallback)
@@ -1652,20 +1656,20 @@ void PatchCanvas::spinnerRelease()
 
     // One undo step for the whole press, however many times it repeated, the
     // way a knob drag records itself from where it started to where it landed.
-    if (spinnerTarget.module != nullptr && paramDragCompleteCallback)
-        if (auto* param = findParameter(*spinnerTarget.module, spinnerTarget.componentId))
-            if (auto* pd = param->getDescriptor())
-                if (param->getValue() != spinnerValueBeforePress)
-                    paramDragCompleteCallback(mySection, spinnerTarget.module->getContainerIndex(),
-                                              pd->index, spinnerValueBeforePress, param->getValue());
+    if (auto* module = resolve(spinnerTarget.module))
+        if (paramDragCompleteCallback)
+            if (auto* param = findParameter(*module, spinnerTarget.componentId))
+                if (auto* pd = param->getDescriptor())
+                    if (param->getValue() != spinnerValueBeforePress)
+                        paramDragCompleteCallback(mySection, spinnerTarget.module.containerIndex,
+                                                  pd->index, spinnerValueBeforePress, param->getValue());
 }
 
 void PatchCanvas::paintHoverBadge(juce::Graphics& g)
 {
     // The F5 readout already covers every control, so a hover box on top of it
     // would just be a second copy of the same number.
-    if (!hoverBadgeVisible || hoverTarget.module == nullptr
-        || overlayMode == OverlayMode::Values)
+    if (!hoverBadgeVisible || overlayMode == OverlayMode::Values)
         return;
 
     // Hovering reads out controls only. The module's own cost is asked for by
@@ -1675,7 +1679,11 @@ void PatchCanvas::paintHoverBadge(juce::Graphics& g)
     if (hoverTarget.componentId.isEmpty())
         return;
 
-    auto* param = findParameter(*hoverTarget.module, hoverTarget.componentId);
+    const auto* hoverModule = resolve(hoverTarget.module);
+    if (hoverModule == nullptr)
+        return;
+
+    auto* param = findParameter(*hoverModule, hoverTarget.componentId);
     if (param == nullptr)
         return;
 
@@ -1684,9 +1692,9 @@ void PatchCanvas::paintHoverBadge(juce::Graphics& g)
     // On a display that rotates its units, the readout answers what the value
     // is in the units the box is NOT showing, which is what the original puts
     // in its tooltip (issue #30).
-    if (const auto* unitsParam = freqUnitsParamFor(*hoverTarget.module, hoverTarget.componentId))
+    if (const auto* unitsParam = freqUnitsParamFor(*hoverModule, hoverTarget.componentId))
     {
-        const auto& m = *hoverTarget.module;
+        const auto& m = *hoverModule;
         juce::String baseFormatter = param->getDescriptor()->formatter;
         if (const auto* theme = themeData != nullptr
                 ? themeData->getModuleTheme(m.getDescriptor()->componentId) : nullptr)
@@ -1707,7 +1715,7 @@ void PatchCanvas::paintHoverBadge(juce::Graphics& g)
     }
 
     paintOverlayBadge(g, hoverTarget.controlBounds, hoverTarget.moduleBounds,
-                      *hoverTarget.module, *param, text);
+                      *hoverModule, *param, text);
 }
 
 // The module-level twin of paintOverlayBadge: same box, but anchored to the
@@ -5576,7 +5584,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
     grabKeyboardFocus();
     // A hint box left standing over a knob being turned would just be stale.
     clearHover();
-    if (costBadgeModule != nullptr) { costBadgeModule = nullptr; repaint(); }
+    if (costBadgeModule.isValid()) { costBadgeModule.clear(); repaint(); }
 
     if (patch == nullptr || themeData == nullptr)
         return;
@@ -6928,15 +6936,19 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
 
         for (auto& ms : multiMoveState)
         {
+            auto* module = resolve(ms.ref);
+            if (module == nullptr)
+                continue;   // deleted mid-drag; the rest of the block still moves
+
             // Both axes bounded: a drag that keeps going must stop at the
             // edges rather than carry the module off the canvas, where it
             // still exists but cannot be seen or grabbed again.
-            const int h = ms.module->getDescriptor()->height;
+            const int h = module->getDescriptor()->height;
             int newX = juce::jlimit(0, 39, ms.startGridPos.x + dx);
-            auto& container = patch->getContainer(ms.section);
+            auto& container = patch->getContainer(ms.ref.section);
             int rawY = juce::jlimit(0, modulePlacementRows - h, ms.startGridPos.y + dy);
-            int newY = findNearestFreeY(container, ms.module, newX, rawY, h);
-            ms.module->setPosition({ newX, newY });
+            int newY = findNearestFreeY(container, module, newX, rawY, h);
+            module->setPosition({ newX, newY });
         }
 
         // Notes travel with them. The block keeps its shape rather than each
@@ -7285,9 +7297,12 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
         {
             for (auto& ms : multiMoveState)
             {
-                auto newPos = ms.module->getPosition();
+                auto* module = resolve(ms.ref);
+                if (module == nullptr)
+                    continue;
+                auto newPos = module->getPosition();
                 if (newPos != ms.startGridPos)
-                    moduleMoveCallback(ms.section, ms.module->getContainerIndex(),
+                    moduleMoveCallback(ms.ref.section, ms.ref.containerIndex,
                                        ms.startGridPos, newPos);
             }
         }
@@ -7472,7 +7487,7 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
             ModuleContainer& container = (mySection == 1) ? patch->getPolyVoiceArea()
                                                           : patch->getCommonArea();
             for (auto& modulePtr : container.getModules())
-                selection.push_back({ modulePtr.get(), mySection });
+                selection.push_back(refTo(*modulePtr));
             repaint();
             return true;
         }
@@ -7494,15 +7509,18 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
                 undoManager->beginNewTransaction("Move Modules");
                 for (auto& sel : selection)
                 {
+                    const auto* module = resolve(sel);
+                    if (module == nullptr)
+                        continue;
                     // The bottom bound subtracts the module's own height: a
                     // nudge to row 127 used to leave everything but the top
                     // row hanging below the canvas.
-                    const int h = sel.module->getDescriptor()->height;
-                    auto oldPos = sel.module->getPosition();
+                    const int h = module->getDescriptor()->height;
+                    auto oldPos = module->getPosition();
                     juce::Point<int> newPos(juce::jlimit(0, 39, oldPos.x + dx),
                                             juce::jlimit(0, modulePlacementRows - h, oldPos.y + dy));
                     if (newPos != oldPos)
-                        moduleMoveCallback(sel.section, sel.module->getContainerIndex(),
+                        moduleMoveCallback(sel.section, sel.containerIndex,
                                            oldPos, newPos);
                 }
             }
@@ -7654,8 +7672,8 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
                     if (bounds.contains(mousePos)) { target = modPtr.get(); break; }
                 }
         }
-        if (!target && selectedModule != nullptr)
-            target = selectedModule;
+        if (!target)
+            target = resolve(selectedRef);
 
         if (target && target->getDescriptor())
         {
@@ -7708,7 +7726,7 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         else if (code == '-' || code == '_' || code == juce::KeyPress::numberPadSubtract)
             delta = -1;
 
-        if (delta != 0 && spinnerTarget.module != nullptr)
+        if (delta != 0 && spinnerTarget.module.isValid())
         {
             beginKeyStep();
             spinnerStep(delta);
@@ -8226,48 +8244,29 @@ void PatchCanvas::showParameterContextMenu(Module& m, int section, Parameter& pa
 
 bool PatchCanvas::isSelected(const Module* m) const
 {
+    if (m == nullptr)
+        return false;
+    const auto ref = refTo(*m);
     for (auto& s : selection)
-        if (s.module == m) return true;
+        if (s == ref) return true;
     return false;
 }
 
-void PatchCanvas::forgetDeletedModules()
+void PatchCanvas::dropDragIfModuleGone()
 {
-    if (patch == nullptr) return;
+    // Selection, hover, the spinner, the cost badge and the multi-move all name
+    // their modules by reference, and a reference to a deleted module resolves
+    // to nothing: there is nothing for them to forget.
+    //
+    // A drag is the exception, because it holds a Parameter* and a Connector*
+    // as well as its module. Those live inside the module rather than beside
+    // it, so an index cannot name them. A drag runs from one mouse-down to the
+    // matching mouse-up, which an undo or the MCP bridge can outlive, so it is
+    // checked before anything reads it. Costs nothing when no drag is running.
+    if (dragState.module == nullptr || patch == nullptr)
+        return;
 
-    // Hover and the cost badge don't record which section they came from, so
-    // ask both.
-    auto stillAlive = [this](const Module* m, int section)
-    {
-        if (m == nullptr) return false;
-        if (section >= 0) return patch->getContainer(section).contains(m);
-        return patch->getCommonArea().contains(m) || patch->getPolyVoiceArea().contains(m);
-    };
-
-    selection.erase(std::remove_if(selection.begin(), selection.end(),
-        [&](const SelectedModule& s) { return !stillAlive(s.module, s.section); }),
-        selection.end());
-
-    multiMoveState.erase(std::remove_if(multiMoveState.begin(), multiMoveState.end(),
-        [&](const ModuleMoveState& s) { return !stillAlive(s.module, s.section); }),
-        multiMoveState.end());
-
-    if (!stillAlive(selectedModule, selectedSection))
-    {
-        selectedModule = nullptr;
-        selectedSection = -1;
-    }
-    if (!stillAlive(hoverTarget.module, -1))
-        clearHover();
-    if (spinnerTarget.module != nullptr && !stillAlive(spinnerTarget.module, mySection))
-    {
-        spinner.mouseUp();          // the press has nothing left to step
-        spinner.hide();
-        spinnerTarget = SpinnerTarget{};
-    }
-    if (!stillAlive(costBadgeModule, -1))
-        costBadgeModule = nullptr;
-    if (dragState.module != nullptr && !stillAlive(dragState.module, dragState.section))
+    if (!patch->getContainer(dragState.section).contains(dragState.module))
         dragState = DragState();
 }
 
@@ -8276,8 +8275,7 @@ void PatchCanvas::clearSelection()
     selection.clear();
     // Notes are part of the selection, so letting go of it lets go of them too.
     selectedCommentIds.clear();
-    selectedModule = nullptr;
-    selectedSection = -1;
+    selectedRef.clear();
     if (moduleSelectedCallback) moduleSelectedCallback(nullptr, -1);
 }
 
@@ -8289,7 +8287,8 @@ void PatchCanvas::beginMultiMove(juce::Point<int> pos)
 
     multiMoveState.clear();
     for (auto& sel : selection)
-        multiMoveState.push_back({ sel.module, sel.section, sel.module->getPosition() });
+        if (const auto* m = resolve(sel))
+            multiMoveState.push_back({ sel, m->getPosition() });
 
     commentMoveState.clear();
     if (patch != nullptr)
@@ -8322,10 +8321,13 @@ PatchComment* PatchCanvas::soleSelectedComment()
 void PatchCanvas::selectModule(Module* m, int section, bool addToSelection)
 {
     if (!addToSelection) clearSelection();
+    if (m == nullptr)
+        return;
+
+    const ModuleRef ref { section, m->getContainerIndex() };
     if (!isSelected(m))
-        selection.push_back({ m, section });
-    selectedModule = m;
-    selectedSection = section;
+        selection.push_back(ref);
+    selectedRef = ref;
     // Notify inspector — report the most recently selected module
     if (moduleSelectedCallback) moduleSelectedCallback(m, section);
 }
@@ -8344,7 +8346,7 @@ void PatchCanvas::updateRubberBandSelection(juce::Rectangle<int> rect)
     {
         auto bounds = getModuleBounds(*modulePtr, 0);
         if (rect.intersects(bounds))
-            selection.push_back({ modulePtr.get(), mySection });
+            selection.push_back(refTo(*modulePtr));
     }
 
     // The band catches text notes too: dragging a box round a corner of the
@@ -8378,13 +8380,16 @@ void PatchCanvas::deleteSelection()
 
     for (auto& sel : doomed)
     {
+        // Resolved one at a time: deleting the first of them can be what
+        // destroys the rest (a cable's owner going with it).
+        auto* module = resolve(sel);
+        if (module == nullptr)
+            continue;
+
         if (deleteModuleCallback)
-            deleteModuleCallback(sel.section, sel.module);
+            deleteModuleCallback(sel.section, module);
         else
-        {
-            auto& container = patch->getContainer(sel.section);
-            container.removeModule(sel.module);
-        }
+            patch->getContainer(sel.section).removeModule(module);
     }
     repaint();
 }
@@ -8457,25 +8462,32 @@ void PatchCanvas::collectSelection(std::vector<ClipboardEntry>& entriesOut,
 
     std::map<Module*, int> modToClipIdx;
 
-    for (int i = 0; i < (int)selection.size(); ++i)
+    for (const auto& sel : selection)
     {
-        auto& sel = selection[static_cast<size_t>(i)];
+        auto* module = resolve(sel);
+        if (module == nullptr)
+            continue;
+
         ClipboardEntry entry;
-        entry.typeIndex = sel.module->getDescriptor() ? sel.module->getDescriptor()->index : 0;
-        entry.name = sel.module->getTitle();
+        entry.typeIndex = module->getDescriptor() ? module->getDescriptor()->index : 0;
+        entry.name = module->getTitle();
         entry.section = sel.section;
-        entry.gridPos = sel.module->getPosition();
-        for (auto& p : sel.module->getParameters())
+        entry.gridPos = module->getPosition();
+        for (auto& p : module->getParameters())
             entry.paramValues.push_back(p.getValue());
+        modToClipIdx[module] = static_cast<int>(entriesOut.size());
         entriesOut.push_back(entry);
-        modToClipIdx[sel.module] = i;
     }
 
     // Store internal cables — scan each unique section once (NOT per selected module,
     // which would duplicate every cable N times for N selected modules in that section).
     std::set<Module*> selSet;
     std::set<int> sectionsToScan;
-    for (auto& s : selection) { selSet.insert(s.module); sectionsToScan.insert(s.section); }
+    for (auto& s : selection)
+    {
+        if (auto* m = resolve(s)) selSet.insert(m);
+        sectionsToScan.insert(s.section);
+    }
 
     for (int section : sectionsToScan)
     {
@@ -8551,8 +8563,8 @@ void PatchCanvas::selectCreated(const std::vector<std::pair<int, int>>& created)
     {
         if (containerIndex < 0)
             continue;
-        if (auto* m = patch->getContainer(section).getModuleByIndex(containerIndex))
-            selection.push_back({ m, section });
+        if (patch->getContainer(section).getModuleByIndex(containerIndex) != nullptr)
+            selection.push_back({ section, containerIndex });
     }
     repaint();
 }
@@ -8827,8 +8839,8 @@ void PatchCanvas::showSelectionContextMenu()
                 if (undoManager)
                     undoManager->beginNewTransaction("Initialize Selection");
                 for (auto& sel : selection)
-                    if (sel.module)
-                        initModuleCallback(sel.section, sel.module);
+                    if (auto* m = resolve(sel))
+                        initModuleCallback(sel.section, m);
             }
         }
         else if (result == 6) saveSelectionAsSnippet();

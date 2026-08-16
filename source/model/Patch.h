@@ -117,6 +117,34 @@ private:
     ModuleMovedCallback onMoved;
 };
 
+/** Names a module by where it lives in the patch rather than by where it
+    happens to sit in memory.
+
+    The UI holds on to modules across events that destroy them: a delete, an
+    undo of an add or a paste, a patch arriving from the synth. A raw `Module*`
+    kept across one of those is a dangling pointer, silent on Linux and fatal
+    on macOS, and the editor had to sweep every one of them before each paint
+    to stay upright (issue #61). A container index cannot dangle: it finds
+    whatever is at that spot now, or nothing.
+
+    Undo re-inserts a module at the index it had, so a reference taken before a
+    delete is still the right one after the undo, which a pointer never was. */
+struct ModuleRef
+{
+    int section = -1;         // 0 = common, 1 = poly (PDL2/Java convention)
+    int containerIndex = -1;  // the module's index within that area
+
+    bool isValid() const { return section >= 0 && containerIndex >= 0; }
+    void clear() { section = -1; containerIndex = -1; }
+
+    bool operator== (const ModuleRef& o) const
+    { return section == o.section && containerIndex == o.containerIndex; }
+    bool operator!= (const ModuleRef& o) const { return !(*this == o); }
+    bool operator<  (const ModuleRef& o) const
+    { return section != o.section ? section < o.section
+                                  : containerIndex < o.containerIndex; }
+};
+
 class ModuleContainer
 {
 public:
@@ -283,6 +311,28 @@ public:
     // PDL2/Java convention: section 0 = common, section 1 = poly
     ModuleContainer& getContainer(int section) { return section == 1 ? polyVoiceArea : commonArea; }
     const ModuleContainer& getContainer(int section) const { return section == 1 ? polyVoiceArea : commonArea; }
+
+    /** The module a reference names, or nullptr when nothing is there any
+        more. Every read of a ModuleRef goes through here, which is what makes
+        holding one across a delete safe. */
+    Module* getModule(ModuleRef ref)
+    {
+        if (!ref.isValid())
+            return nullptr;
+        return getContainer(ref.section).getModuleByIndex(ref.containerIndex);
+    }
+    const Module* getModule(ModuleRef ref) const
+    {
+        if (!ref.isValid())
+            return nullptr;
+        return getContainer(ref.section).getModuleByIndex(ref.containerIndex);
+    }
+
+    /** A reference to a module known to be in this patch's given area. */
+    static ModuleRef refTo(const Module& module, int section)
+    {
+        return { section, module.getContainerIndex() };
+    }
 
     // Create a new module and add it to the specified section
     // Returns pointer to the created module, or nullptr if failed

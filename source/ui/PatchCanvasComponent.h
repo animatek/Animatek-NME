@@ -117,11 +117,6 @@ public:
 
     void setPatch(Patch* p, const ModuleDescriptions* md, const ThemeData* td = nullptr);
     void clearModuleSelection() { clearSelection(); repaint(); }
-    /** Drops every Module* this canvas holds whose module the patch no longer
-     *  owns. A delete, or an undone add or paste, destroys modules from under
-     *  the selection, the hover badge and the cost badge; painting from any of
-     *  those afterwards reads freed memory (issue #61). */
-    void forgetDeletedModules();
     // The most recently selected module in this section, or nullptr.
     void setCommentAddCallback(CommentAddCallback cb) { commentAddCallback = std::move(cb); }
     void setCommentMoveCallback(CommentMoveCallback cb) { commentMoveCallback = std::move(cb); }
@@ -130,16 +125,19 @@ public:
     void setCommentCreateCallback(CommentCreateCallback cb) { commentCreateCallback = std::move(cb); }
     void setCommentResizeCallback(CommentResizeCallback cb) { commentResizeCallback = std::move(cb); }
 
-    Module* getSelectedModule() const { return selectedModule; }
-    int     getSelectedSection() const { return selectedSection; }
+    Module* getSelectedModule() const { return resolve(selectedRef); }
+    int     getSelectedSection() const { return selectedRef.section; }
     void setLightMeterData(const int lights[128], const int meters[128]);
 
-    /** Returns list of currently selected modules as (module*, section) pairs */
+    /** Returns list of currently selected modules as (module*, section) pairs.
+        Modules the patch no longer owns are simply absent, so a caller cannot
+        be handed a pointer to something that has been deleted. */
     std::vector<std::pair<Module*, int>> getSelectedModules() const
     {
         std::vector<std::pair<Module*, int>> result;
-        for (auto& s : selection)
-            if (s.module) result.push_back({s.module, s.section});
+        for (auto& ref : selection)
+            if (auto* m = resolve(ref))
+                result.push_back({ m, ref.section });
         return result;
     }
 
@@ -203,6 +201,15 @@ public:
     void setSection(int s);
 
 private:
+    /** The module a reference names, or nullptr when it has been deleted.
+        Every read of a stored reference goes through here. */
+    Module* resolve(ModuleRef ref) const
+    {
+        return patch != nullptr ? patch->getModule(ref) : nullptr;
+    }
+    /** A reference to a module on this canvas. */
+    ModuleRef refTo(const Module& m) const { return Patch::refTo(m, mySection); }
+
     void paintModules(juce::Graphics& g, const ModuleContainer& container, int yOffset);
     void paintCables(juce::Graphics& g, const ModuleContainer& container, int yOffset);
     void paintOverlays(juce::Graphics& g, const ModuleContainer& container, int yOffset);
@@ -238,7 +245,7 @@ private:
     // editor does, without having to hold the whole patch's readout open.
     struct HoverTarget
     {
-        const Module* module = nullptr;
+        ModuleRef module;
         juce::String componentId;
         juce::Rectangle<float> controlBounds;   // canvas coordinates
         juce::Rectangle<int>   moduleBounds;
@@ -250,6 +257,9 @@ private:
                           juce::Rectangle<float>& outControl,
                           juce::Rectangle<int>& outModule) const;
     void clearHover();
+    /** Drops the drag if the module it is on has been destroyed under it. The
+        one thing here still held by pointer; see the definition. */
+    void dropDragIfModuleGone();
     void timerCallback() override;
     void paintHoverBadge(juce::Graphics& g);
     void paintDragValueBadge(juce::Graphics& g);
@@ -267,7 +277,7 @@ private:
     // the morph dials in the header bar behave exactly the same way.
     struct SpinnerTarget
     {
-        Module* module = nullptr;
+        ModuleRef module;
         juce::String componentId;
         juce::Rectangle<float> control;        // canvas coordinates
         juce::Rectangle<int>   moduleBounds;
@@ -290,7 +300,7 @@ private:
     // the nudge arrows are showing under, so both gestures share a target and a
     // step. Held down, the key repeats and the whole run is one undo step,
     // closed when the key comes back up.
-    Module*      keyStepModule = nullptr;
+    ModuleRef    keyStepModule;
     juce::String keyStepComponentId;
     int          keyStepStartValue = 0;
     void beginKeyStep();
@@ -298,7 +308,7 @@ private:
     bool keyStateChanged(bool isKeyDown) override;
     // Module whose DSP cost was asked for by double-clicking it, as the original
     // editor answers. Cleared by the next click.
-    const Module* costBadgeModule = nullptr;
+    ModuleRef costBadgeModule;
     // textOverride lets the hover box say something the current overlay mode
     // wouldn't; empty means "whatever the mode reads out".
     void paintOverlayBadge(juce::Graphics& g, juce::Rectangle<float> controlBounds,
@@ -464,11 +474,12 @@ private:
     juce::Point<int> cablePreviewEnd;
     bool showCablePreview = false;
 
-    // Multi-module selection
-    struct SelectedModule { Module* module = nullptr; int section = 0; };
-    std::vector<SelectedModule> selection;
+    // Multi-module selection, by reference rather than by pointer: a selection
+    // outlives the delete, the undo and the patch reload that destroy modules
+    // under it (issue #61).
+    std::vector<ModuleRef> selection;
     // For multi-move: store initial positions of all selected modules
-    struct ModuleMoveState { Module* module = nullptr; int section = 0; juce::Point<int> startGridPos; };
+    struct ModuleMoveState { ModuleRef ref; juce::Point<int> startGridPos; };
     std::vector<ModuleMoveState> multiMoveState;
     // Notes travel with the modules in a multi-move, so they need the same
     // record of where they started.
@@ -615,9 +626,8 @@ private:
     // Puts the clipboard down with its top-left at this grid position.
     void pasteBlockAt(int gx, int gy);
 
-    // Legacy single-module selection (kept for compatibility during move)
-    Module* selectedModule = nullptr;
-    int selectedSection = -1;
+    // The one module the Inspector follows: the most recently selected.
+    ModuleRef selectedRef;
 
     // Connector hit-testing helpers
     struct ConnectorHit { Module* module = nullptr; Connector* connector = nullptr; int section = 0; };
@@ -761,7 +771,8 @@ public:
     struct Selection { Module* module = nullptr; int section = -1; };
     Selection getPrimarySelection()
     {
-        forgetDeletedModules();
+        // Resolved fresh from the patch, so a module deleted since it was
+        // selected comes back as nothing rather than as a dangling pointer.
         if (auto* m = polyCanvas.getSelectedModule())
             return { m, polyCanvas.getSelectedSection() };
         if (auto* m = commonCanvas.getSelectedModule())
@@ -934,10 +945,10 @@ public:
         if (commonCanvas.hasSelection()) commonCanvas.duplicateSelected();
     }
 
-    /** Aggregate selected modules from both canvases */
+    /** Aggregate selected modules from both canvases. Each is resolved from
+        the patch as the list is built, so nothing deleted can come back in it. */
     std::vector<std::pair<Module*, int>> getSelectedModules()
     {
-        forgetDeletedModules();
         auto sel = polyCanvas.getSelectedModules();
         auto common = commonCanvas.getSelectedModules();
         sel.insert(sel.end(), common.begin(), common.end());
@@ -996,14 +1007,6 @@ public:
     {
         polyCanvas.repaint();
         commonCanvas.repaint();
-    }
-
-    /** Both sections drop their pointers to modules the patch no longer owns
-     *  (issue #61). */
-    void forgetDeletedModules()
-    {
-        polyCanvas.forgetDeletedModules();
-        commonCanvas.forgetDeletedModules();
     }
 
     void setLightMeterData(const int lights[128], const int meters[128])

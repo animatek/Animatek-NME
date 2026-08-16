@@ -11,6 +11,7 @@ target_sources(nme_tests PRIVATE
     test_patch_roundtrip.cpp
     test_module_placement.cpp
     test_light_meter_layout.cpp
+    test_module_ref.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
