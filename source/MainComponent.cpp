@@ -1564,16 +1564,21 @@ void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen)
   const juce::ScopedValueSetter<bool> focusGuard(inSlotFocusChange, true);
 
   auto& area = mainLayout->getPatchArea();
-  if (bringOnScreen) {
-    // Asked for by the user: open the sub-window if it is closed, then focus it.
+
+  // A slot button on the front panel is the user asking for that slot, just
+  // from the other end of the cable, so the editor follows it into the slot
+  // exactly as it follows its own slot bar: the window opens if it was closed.
+  // It used to follow only into a window that already happened to be open,
+  // which meant pressing A..D on the synth appeared to do nothing at all.
+  //
+  // The one thing the synth-initiated path will not do is interrupt a gesture
+  // in progress: a slot press arriving mid-drag would cut a cable in half.
+  const bool follow =
+      bringOnScreen || juce::Desktop::getInstance().getNumDraggingMouseSources() == 0;
+
+  if (follow) {
     if (!area.isSlotOpen(slot))
       area.openSlot(slot);
-    area.focusSlot(slot);
-  } else if (area.isSlotOpen(slot)
-             && juce::Desktop::getInstance().getNumDraggingMouseSources() == 0) {
-    // Asked for by the synth (a front-panel slot button). Follow it only into a
-    // window that is already open — the user closed the others on purpose — and
-    // never mid-gesture, or a slot press would cut a cable drag in half.
     area.focusSlot(slot);
   }
 
