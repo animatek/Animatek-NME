@@ -4,6 +4,15 @@
 
 ### Changed
 
+- **The editor no longer keeps hold of modules it has deleted.** Selecting a module, hovering
+  one, pointing at a knob or reading a DSP cost all left the editor holding the module itself
+  in memory, and deleting it, or undoing the add that made it, left those pointing at nothing.
+  That was the crash macOS users saw and Linux users never did (#61), and it was kept at bay by
+  sweeping every one of them before each redraw. Modules are now identified by where they live
+  in the patch rather than by where they sit in memory, so the question cannot be got wrong, and
+  the sweep is gone. It also behaves better than it did: deleting a selected module and undoing
+  it gets the selection back, where before the selection was simply dropped.
+
 - **Big patches draw far faster.** Every time the canvas painted a module it worked out, from
   scratch and twice over, where every module in the patch keeps its LEDs and meters: a sorted
   table rebuilt once per module, per repaint. On a hundred-module patch that came to roughly

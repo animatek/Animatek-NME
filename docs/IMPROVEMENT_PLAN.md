@@ -118,20 +118,35 @@ was read against each one (the spinner paints strictly inside its two button
 rectangles, the grips strictly inside the note's bounds), so the expectation
 is that they are clean.
 
-## Phase 3: Kill the raw-Module* bug class (issue #61's family)
+## Phase 3: Kill the raw-Module* bug class  [DONE 2026-08-16]
 
-The UI holds raw `Module*` in selection, hover, spinner, drag state,
-inspector and callbacks, defended by `forgetDeletedModules()` called inside
-paint() (PatchCanvasComponent.cpp:886). It works, but every new feature that
-stores a Module* can reintroduce a use-after-free (silent on Linux, fatal on
-macOS).
+- [x] `ModuleRef { section, containerIndex }` lives in model/Patch.h with
+      `Patch::getModule(ref)` as the only way to read one, plus tests
+      (tests/test_module_ref.cpp) covering the delete, the delete-then-undo
+      that a pointer never survived, and the documented index-reuse case.
+- [x] Canvas migrated: selection, multi-move, the module the Inspector
+      follows, hover badge, nudge arrows, key-step run, cost badge.
+- [x] Inspector migrated, including its assignments list's own second
+      pointer.
+- [x] `forgetDeletedModules()` deleted, and with it the sweep at the top of
+      every paint. No hand-written liveness check against #61 is left in the
+      project.
 
-- [ ] Introduce `ModuleRef { int section; int containerIndex; }` resolved to
-      Module* at point of use. The undo system already works exactly this
-      way, so this extends a proven pattern.
-- [ ] Migrate zone by zone: selection first, then hover/spinner/cost badge,
-      then callbacks and inspector.
-- [ ] End state: delete forgetDeletedModules() and the paint-time scan.
+Two places still hold pointers, both deliberately and both documented where
+they live:
+
+- The canvas's drag state, because it holds a `Parameter*` and a
+  `Connector*` as well as its module, and those live inside the module where
+  an index cannot name them. One check before paint reads it
+  (`dropDragIfModuleGone`), free while no drag is running.
+- The Inspector's parameter rows, which hold `Parameter*` on purpose so a
+  knob turned on the canvas reads true there without being told. Valid only
+  between one rebuild and the next; the gap is guarded by asking whether the
+  module reference still resolves.
+
+Finishing those two would mean naming a parameter by index rather than by
+pointer. Worth doing if the drag or the rows ever grow, not worth it on its
+own today.
 
 ## Phase 4: File splits + canvas-area features
 
