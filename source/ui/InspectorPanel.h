@@ -78,9 +78,17 @@ private:
     void textEditorFocusLost(juce::TextEditor&) override;
     void commitName();
 
-    Module* currentModule = nullptr;
-    Patch*  currentPatch  = nullptr;
-    int currentSection = -1;
+    // The module on show, named by where it lives rather than by pointer: the
+    // patch can destroy it between two repaints of this panel, and it used to
+    // be read afterwards (issue #61). resolve() is the only way to read it.
+    ModuleRef currentRef;
+    Patch*    currentPatch = nullptr;
+
+    Module* currentModule() const
+    {
+        return currentPatch != nullptr ? currentPatch->getModule(currentRef) : nullptr;
+    }
+    int currentSection() const { return currentRef.section; }
 
     // Header
     juce::Label titleLabel;

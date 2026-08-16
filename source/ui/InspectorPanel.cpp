@@ -107,7 +107,7 @@ public:
         int           group;        // 0-3
         int           paramIndex;
         int           section;
-        Module*       module = nullptr;
+        Module*       module = nullptr;   // valid only within one rebuild
         Parameter*    param  = nullptr;
         juce::String  paramName;
         juce::String  moduleName;
@@ -209,28 +209,37 @@ public:
 
     void setModule(Module* m, int sec)
     {
-        module = m;
-        // Don't clear patch — needed for knob/CC lookups in single-module mode
+        // Held as a reference, not a pointer: the patch can destroy this module
+        // between two of our repaints, and the rows below used to be read from
+        // it afterwards (issue #61).
+        moduleRef = m != nullptr ? ModuleRef { sec, m->getContainerIndex() } : ModuleRef {};
+        // Don't clear patch - needed for knob/CC lookups in single-module mode
         singleSection = sec;
         rebuild();
     }
 
     void setPatchWide(Patch* p)
     {
-        module = nullptr;
+        moduleRef.clear();
         patch = p;
         singleSection = -1;
         rebuild();
     }
 
-    // The module we point at may have been deleted (or an add undone) since the
-    // last rebuild: the patch owns it, we only hold the pointer. Deleting fires
-    // the repaint that lands here while the object is already gone, so ask the
-    // patch first and fall back to the patch-wide view (issue #61).
-    bool moduleIsStale() const
+    /** The module on show, or nullptr when there is none or it has been
+        deleted since it was chosen. */
+    Module* resolveModule() const
     {
-        return module != nullptr && patch != nullptr && singleSection >= 0
-            && !patch->getContainer(singleSection).contains(module);
+        return patch != nullptr ? patch->getModule(moduleRef) : nullptr;
+    }
+
+    /** True when the rows were built from a module the patch no longer has.
+        A delete, or an undone add, repaints this list before the rebuild that
+        follows reaches it, and the rows hold Parameter pointers into that
+        module: they must not be drawn from or clicked on in between. */
+    bool rowsAreStale() const
+    {
+        return moduleRef.isValid() && resolveModule() == nullptr;
     }
 
     void rebuild()
@@ -245,8 +254,10 @@ public:
         ctrlRows.clear();
         paramRows.clear();
 
-        if (moduleIsStale())
-            module = nullptr;
+        // Resolved once for the whole rebuild. The rows below hold Parameter
+        // pointers into it, and they are only ever read between one rebuild
+        // and the next, which is why they are safe.
+        module = resolveModule();
 
         if (module != nullptr)
         {
@@ -504,7 +515,7 @@ public:
         // reading those is reading freed memory: a hard crash on macOS and
         // silently wrong bytes on Linux (issue #61). Draw nothing until the
         // rebuild that is on its way replaces them.
-        if (moduleIsStale())
+        if (rowsAreStale())
             return;
 
         bool isGlobal = (patch != nullptr && module == nullptr);
@@ -779,7 +790,7 @@ public:
     // ── Mouse handling ──
     void mouseDown(const juce::MouseEvent& e) override
     {
-        if (moduleIsStale())
+        if (rowsAreStale())
             return;   // see paint(): the rows point at a module the patch no longer has
 
         auto hr = findHit(e.getPosition());
@@ -1337,6 +1348,10 @@ private:
 
     // ── State ──
 public:
+    // Which module the rows were built from. The pointer is re-resolved by
+    // every rebuild and is only valid between one rebuild and the next; the
+    // reference beside it is what survives (issue #61).
+    ModuleRef              moduleRef;
     Module*                module        = nullptr;
     Patch*                 patch         = nullptr;
     // Presets are shown for whichever single module is selected. The list is
@@ -1442,19 +1457,19 @@ InspectorPanel::InspectorPanel()
 
     assignmentsList->onPresetRecall = [this](int index)
     {
-        if (onPresetRecall && currentModule) onPresetRecall(currentSection, currentModule, index);
+        if (auto* m = currentModule()) if (onPresetRecall) onPresetRecall(currentSection(), m, index);
     };
     assignmentsList->onPresetDelete = [this](int index)
     {
-        if (onPresetDelete && currentModule) onPresetDelete(currentSection, currentModule, index);
+        if (auto* m = currentModule()) if (onPresetDelete) onPresetDelete(currentSection(), m, index);
     };
     assignmentsList->onPresetRename = [this](int index)
     {
-        if (onPresetRename && currentModule) onPresetRename(currentSection, currentModule, index);
+        if (auto* m = currentModule()) if (onPresetRename) onPresetRename(currentSection(), m, index);
     };
     assignmentsList->onPresetSave = [this]()
     {
-        if (onPresetSave && currentModule) onPresetSave(currentSection, currentModule);
+        if (auto* m = currentModule()) if (onPresetSave) onPresetSave(currentSection(), m);
     };
     // Folding the section changes how tall the list is, so the panel relays out.
     assignmentsList->onPresetsCollapsedChanged = [this]() { refreshMorphList(); };
@@ -1494,13 +1509,12 @@ void InspectorPanel::setPatch(Patch* p)
     // so they must be dropped here or they outlive the patch being replaced.
     if (p == nullptr)
     {
-        currentModule  = nullptr;
-        currentSection = -1;
+        currentRef.clear();
         assignmentsList->setPatchWide(nullptr);
         return;
     }
 
-    if (currentModule == nullptr)
+    if (currentModule() == nullptr)
     {
         titleLabel.setText("Assignments", juce::dontSendNotification);
         sectionLabel.setText("All modules", juce::dontSendNotification);
@@ -1515,10 +1529,9 @@ void InspectorPanel::setPatch(Patch* p)
 
 void InspectorPanel::setModule(Module* module, int section)
 {
-    currentModule  = module;
-    currentSection = section;
-
     if (module == nullptr) { clearModule(); return; }
+
+    currentRef = { section, module->getContainerIndex() };
 
     auto* desc = module->getDescriptor();
     titleLabel.setText(desc ? desc->fullname : "Module", juce::dontSendNotification);
@@ -1540,8 +1553,7 @@ void InspectorPanel::setModule(Module* module, int section)
 
 void InspectorPanel::clearModule()
 {
-    currentModule  = nullptr;
-    currentSection = -1;
+    currentRef.clear();
     nameEditor.setText("", juce::dontSendNotification);
     nameEditor.setEnabled(false);
     dspLabel.setText({}, juce::dontSendNotification);
@@ -1568,13 +1580,12 @@ void InspectorPanel::clearModule()
 
 void InspectorPanel::refreshMorphList()
 {
-    // Deleting the selected module (or undoing its add) repaints through here
-    // with our Module* already dangling — the patch destroyed it. Drop it and
-    // fall back to the patch-wide view rather than read freed memory: on macOS
-    // that was a hard crash, on Linux it silently read stale bytes (issue #61).
-    if (currentModule != nullptr && currentPatch != nullptr && currentSection >= 0
-        && !currentPatch->getContainer(currentSection).contains(currentModule))
+    // Deleting the selected module, or undoing its add, repaints through here.
+    // The reference simply stops resolving, and the panel falls back to the
+    // patch-wide view instead of reading a module that is gone (issue #61).
+    if (currentRef.isValid() && currentModule() == nullptr)
     {
+        assignmentsList->moduleRef.clear();
         assignmentsList->module = nullptr;
         clearModule();
         return;
@@ -1693,7 +1704,7 @@ void InspectorPanel::paint(juce::Graphics& g)
         }
     }
 
-    if (currentModule != nullptr)
+    if (currentModule() != nullptr)
     {
         g.setColour(theme.inputBackground);
         g.fillRect(0, margin + rowH + 2 + 14 + 14 + margin * 2 + rowH + 4, getWidth(), 1);
@@ -1724,7 +1735,7 @@ void InspectorPanel::resized()
     sectionLabel.setBounds(x, y, rowW - dspW, 14);
     dspLabel.setBounds(x + rowW - dspW, y, dspW, 14);   y += 14 + 4;
 
-    if (currentModule != nullptr)
+    if (currentModule() != nullptr)
     {
         nameLabel.setBounds(x, y, w, 14);      y += 16;
         nameEditor.setBounds(x, y, w, rowH);   y += rowH + margin;
@@ -1752,12 +1763,13 @@ void InspectorPanel::textEditorFocusLost(juce::TextEditor&)
 
 void InspectorPanel::commitName()
 {
-    if (currentModule == nullptr) return;
+    auto* module = currentModule();
+    if (module == nullptr) return;
     juce::String newName = nameEditor.getText().trim();
-    if (newName.isEmpty()) { nameEditor.setText(currentModule->getTitle(), juce::dontSendNotification); return; }
-    juce::String oldName = currentModule->getTitle();
+    if (newName.isEmpty()) { nameEditor.setText(module->getTitle(), juce::dontSendNotification); return; }
+    juce::String oldName = module->getTitle();
     if (newName == oldName) return;
     // The undoable action applies setTitle; fall back to a direct set if unwired.
-    if (onNameChanged) onNameChanged(currentSection, currentModule, oldName, newName);
-    else currentModule->setTitle(newName);
+    if (onNameChanged) onNameChanged(currentSection(), module, oldName, newName);
+    else module->setTitle(newName);
 }
