@@ -10,28 +10,31 @@ const ModuleSlots* Table::find(int section, int containerIndex) const
     return it == byModule.end() ? nullptr : &ranges[it->second];
 }
 
-juce::int64 fingerprint(const Patch* patch, const ThemeData* theme)
+std::uint64_t fingerprint(const Patch* patch, const ThemeData* theme)
 {
-    juce::int64 hash = 1469598103934665603LL;   // FNV-1a offset basis
-    auto fold = [&hash](juce::int64 value)
+    // FNV-1a, in unsigned arithmetic: the multiply is meant to wrap round, and
+    // wrapping a signed integer is undefined behaviour rather than a hash.
+    std::uint64_t hash = 1469598103934665603ULL;   // offset basis
+    auto fold = [&hash](std::uint64_t value)
     {
-        hash = (hash ^ value) * 1099511628211LL;
+        hash = (hash ^ value) * 1099511628211ULL;
     };
 
-    fold(reinterpret_cast<juce::pointer_sized_int>(patch));
-    fold(reinterpret_cast<juce::pointer_sized_int>(theme));
+    fold(reinterpret_cast<std::uintptr_t>(patch));
+    fold(reinterpret_cast<std::uintptr_t>(theme));
 
     if (patch == nullptr)
         return hash;
 
     auto foldSection = [&](const ModuleContainer& container, int sec)
     {
-        fold(sec);
-        fold(static_cast<juce::int64>(container.getModules().size()));
+        fold(static_cast<std::uint64_t>(sec));
+        fold(static_cast<std::uint64_t>(container.getModules().size()));
         for (auto& m : container.getModules())
         {
-            fold(m->getContainerIndex());
-            fold(m->getDescriptor() != nullptr ? m->getDescriptor()->index : -1);
+            fold(static_cast<std::uint64_t>(m->getContainerIndex()));
+            fold(static_cast<std::uint64_t>(
+                m->getDescriptor() != nullptr ? m->getDescriptor()->index : -1));
         }
     };
 

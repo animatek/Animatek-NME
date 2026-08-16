@@ -2,6 +2,7 @@
 
 #include "Patch.h"
 #include "ThemeData.h"
+#include <cstdint>
 #include <map>
 #include <vector>
 
@@ -27,7 +28,10 @@ namespace LightMeterLayout
     {
         std::vector<ModuleSlots> ranges;
         std::map<int, size_t> byModule;   // key(section, containerIndex) -> index into ranges
-        juce::int64 fingerprint = 0;
+        // Unsigned on purpose: a hash is meant to wrap round, and signed
+        // overflow is undefined behaviour, which is what UBSan called this out
+        // for the first time the table was built.
+        std::uint64_t fingerprint = 0;
 
         const ModuleSlots* find(int section, int containerIndex) const;
     };
@@ -44,7 +48,7 @@ namespace LightMeterLayout
         actually depend on (a reordering of the storage vector), which costs a
         rebuild that was not needed. It must never fail to change when the table
         would differ, which is what makes it safe to cache against. */
-    juce::int64 fingerprint(const Patch* patch, const ThemeData* theme);
+    std::uint64_t fingerprint(const Patch* patch, const ThemeData* theme);
 
     /** Builds the table. `fingerprint` is filled in from the same inputs. */
     Table build(const Patch* patch, const ThemeData* theme);
