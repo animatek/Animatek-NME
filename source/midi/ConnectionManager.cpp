@@ -596,60 +596,6 @@ void ConnectionManager::loadPatchFromBank(int section, int position, int targetS
     });
 }
 
-// Pack raw 8-bit bytes into 7-bit MIDI data bytes, MSB first, the trailing
-// partial group left-justified — the same encoding BitStreamWriter::toMidiBytes()
-// produces, applied per packet rather than per section.
-static std::vector<uint8_t> pack7Bit(const uint8_t* raw, size_t count)
-{
-    std::vector<uint8_t> out;
-    out.reserve((count * 8 + 6) / 7);
-
-    uint32_t buffer = 0;
-    int held = 0;
-    for (size_t i = 0; i < count; ++i)
-    {
-        buffer = (buffer << 8) | raw[i];
-        held += 8;
-        while (held >= 7)
-        {
-            held -= 7;
-            out.push_back(static_cast<uint8_t>((buffer >> held) & 0x7F));
-        }
-    }
-    if (held > 0)
-        out.push_back(static_cast<uint8_t>((buffer << (7 - held)) & 0x7F));
-
-    return out;
-}
-
-std::vector<uint8_t> ConnectionManager::buildUploadSysEx(int packetIndex, int slot)
-{
-    const auto& packet = uploadPackets[static_cast<size_t>(packetIndex)];
-    bool isFirst = (packetIndex == 0);
-    bool isLast  = (packetIndex == static_cast<int>(uploadPackets.size()) - 1);
-    int  cc      = 0x1c | (isFirst ? 1 : 0) | (isLast ? 2 : 0);
-
-    // payload[0]: 0:1 command:1 pid:6
-    //   MSB=0, command=1 (bulk upload), pid=sections ended in this packet
-    uint8_t cmdPidByte = static_cast<uint8_t>(0x40 | (packet.sectionsEnded & 0x3F));
-
-    std::vector<uint8_t> msg;
-    msg.push_back(0xF0);
-    msg.push_back(0x33);
-    msg.push_back(static_cast<uint8_t>(((cc & 0x1F) << 2) | (slot & 0x03)));
-    msg.push_back(0x06);
-    msg.push_back(cmdPidByte);
-    auto encoded = pack7Bit(packet.data.data(), packet.data.size());
-    msg.insert(msg.end(), encoded.begin(), encoded.end());
-    // Checksum: sum of all bytes (F0 through last payload byte) % 128
-    uint32_t sum = 0;
-    for (auto b : msg)
-        sum += b;
-    msg.push_back(static_cast<uint8_t>(sum % 128));
-    msg.push_back(0xF7);
-    return msg;
-}
-
 // The synth stays in bulk-receive state until it sees a packet flagged `last`.
 // An upload that simply stops — rejected section, ACK timeout, disconnect —
 // leaves it there, and from then on it answers nothing at all: no ACKs, no
@@ -661,21 +607,7 @@ void ConnectionManager::closeUploadTransfer(const char* reason)
     std::cout << "[UPLOAD] Closing transfer (" << reason
               << ") so the synth leaves bulk-receive state" << std::endl;
 
-    const int cc = 0x1c | 2;  // last, not first
-
-    std::vector<uint8_t> msg;
-    msg.push_back(0xF0);
-    msg.push_back(0x33);
-    msg.push_back(static_cast<uint8_t>(((cc & 0x1F) << 2) | (uploadSlot & 0x03)));
-    msg.push_back(0x06);
-    msg.push_back(0x40);  // command=1 (bulk upload), no section ends here
-    uint32_t sum = 0;
-    for (auto b : msg)
-        sum += b;
-    msg.push_back(static_cast<uint8_t>(sum % 128));
-    msg.push_back(0xF7);
-
-    sendRawSysEx(msg);
+    sendRawSysEx(UploadPacketizer::closeTransferFrame(uploadSlot));
 }
 
 void ConnectionManager::sendNextUploadPacket()
@@ -720,7 +652,10 @@ void ConnectionManager::sendNextUploadPacket()
         return;
     }
 
-    auto msg = buildUploadSysEx(uploadPacketIndex, uploadSlot);
+    auto msg = UploadPacketizer::frame(uploadPackets[static_cast<size_t>(uploadPacketIndex)],
+                                       /*isFirst=*/uploadPacketIndex == 0,
+                                       /*isLast=*/uploadPacketIndex == total - 1,
+                                       uploadSlot);
     const int sentPacket = uploadPacketIndex;
     const int ackGeneration = ++uploadAckGeneration;
 
@@ -799,28 +734,12 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
     PatchSerializer serializer;
     auto sections = serializer.serializeForUpload(patch);
 
-    uploadPackets.clear();
-    UploadPacket current;
-    current.data.reserve(kUploadPacketBytes);
+    std::vector<std::string> labels;
+    labels.reserve(sections.size());
     for (const auto& section : sections)
-    {
-        const std::string description = describeRawSection(section);
-        for (size_t i = 0; i < section.size(); ++i)
-        {
-            if (static_cast<int>(current.data.size()) == kUploadPacketBytes)
-            {
-                uploadPackets.push_back(std::move(current));
-                current = UploadPacket();
-                current.data.reserve(kUploadPacketBytes);
-            }
-            current.data.push_back(section[i]);
-        }
-        // The section ends inside whichever packet took its last byte.
-        current.sectionsEnded++;
-        current.label += (current.label.empty() ? "" : ", ") + description;
-    }
-    if (!current.data.empty())
-        uploadPackets.push_back(std::move(current));
+        labels.push_back(describeRawSection(section));
+
+    uploadPackets = UploadPacketizer::cut(sections, labels);
 
     uploadSlot = slot;
     uploadPacketIndex = 0;

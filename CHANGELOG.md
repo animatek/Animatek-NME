@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### Fixed
+
+- **A module can no longer be buried under another at the bottom of the canvas** (#54).
+  Dropping, pasting or growing something into a column with no room left used to clamp the
+  push at row 128 and leave two things on the same rows; every placement now checks the whole
+  chain of pushes first and refuses outright when the column cannot absorb it, the way the
+  original editor does. A refused paste rolls the whole block back rather than leaving half
+  of it placed.
+
+- **Nothing can be dragged off the canvas any more.** Dragging a module (or a selection)
+  kept going past the edges: below row 128 or beyond the last column it still existed but
+  could not be seen or grabbed again. Drags, arrow-key nudges and the free-spot search now
+  stop at all four edges, and the bottom bound accounts for the module's own height, so a
+  tall module cannot be left hanging half out of the area either.
+
+### Added
+
+- **A unit test suite and continuous integration.** `tests/` covers the layers where a quiet
+  regression costs the most: the patch codec (a patch is serialized, parsed back and serialized
+  again, and the bytes must match), the SysEx envelope, the upload packetizer (the 166-byte
+  packet rule from #39 and the transfer-closing packet from #40), and module placement
+  including the #54 refusals. They run in seconds with `ctest`, need no synth and no display,
+  and GitHub Actions now builds the app and runs them on every push, once normally and once
+  under AddressSanitizer/UBSan. The packet cutting and framing rules moved into their own
+  little module (`UploadPacketizer`) to be testable at all: byte-for-byte the same wire format,
+  now with a test holding it there.
+
 ### Changed
 
 - **The DSP cost overlay moved to `F3` and focus mode to `F4`** (#55). F10 belongs to the menu

@@ -41,20 +41,27 @@ they make a decent point release.
 Nothing else in this plan is safe to do at scale until this exists. The most
 critical layers are pure and testable without GUI or hardware.
 
-- [ ] Add Catch2 (or doctest) + CTest wiring in CMakeLists.txt.
-- [ ] Round-trip tests: PatchParser <-> PatchSerializer over the real .pch
-      corpus (including Nocticore's patches). Any byte-level mismatch is a
-      bug found for free.
-- [ ] SysExCodec: 7-bit encode/decode, checksum cases.
-- [ ] ConnectionManager upload packetizer: the 166-byte packet rule
-      (issue #39 regression here bricks MIDI until the transfer is closed;
-      see docs/RESEARCH.md and the upload-packet memory).
-- [ ] Placement logic: makeRoomForModule / isAreaFree / findNearestFreeY.
-      Fix issue #54 (overlap corner cases: bottom-of-canvas burial, paste
-      over existing modules) WITH these tests, not before them.
-- [ ] GitHub workflow: build + run tests on push (the existing
-      build-binaries.yml is manual-only), plus one ASan job running the
-      test suite.
+- [x] doctest (vendored, libs/doctest) + CTest wiring; `tests/` target
+      nme_tests builds the pure layers straight from source/. (2026-08-16)
+- [x] Round-trip tests: serialize -> parse -> serialize byte-identical over
+      a synthetic patch (modules in both areas, cable, params, morph/knob/
+      ctrl assignments) and over an init patch. (2026-08-16; the .pch disk
+      corpus round trip is a natural extension when corpus files land in
+      tests/fixtures/)
+- [x] SysExCodec: envelope, checksum, header bits, malformed frames.
+      (2026-08-16)
+- [x] Upload packetizer: extracted to source/midi/UploadPacketizer.{h,cpp}
+      (pure functions, byte-identical wire format) and pinned by tests:
+      166-byte cut, sections spanning packets, boundary-exact sections,
+      pack7Bit round trip through BitStream, frame first/last bits and
+      checksum, the issue #40 close-transfer packet. (2026-08-16)
+- [x] Placement: makeRoomForModule/restore pinned; issue #54 FIXED with a
+      new canMakeRoomForModule() pre-check (refuses placements the column
+      cannot absorb, walking the whole push chain) wired into AddModule,
+      AddComment, ResizeComment and InsertSnippet actions; a refused paste
+      rolls back whole. Needs Javier's GUI confirmation. (2026-08-16)
+- [x] CI: .github/workflows/ci.yml runs build + ctest on every push/PR,
+      plus a second job under ASan/UBSan, both with ccache. (2026-08-16)
 - [ ] Optional: clang-tidy with a narrow set (bugprone-*, performance-*).
 
 ## Phase 2: Performance quick wins (a few days, low risk)

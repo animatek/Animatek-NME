@@ -1,6 +1,7 @@
 #include "PatchCanvasComponent.h"
 #include "QuickAddPopup.h"
 #include "KnobDrag.h"
+#include "../model/ModulePlacement.h"
 #include "../format/ValueFormatters.h"
 #include "../protocol/KnobAssignmentMessage.h"
 #include "BinaryData.h"
@@ -6915,10 +6916,14 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
 
         for (auto& ms : multiMoveState)
         {
-            int newX = juce::jmax(0, ms.startGridPos.x + dx);
+            // Both axes bounded: a drag that keeps going must stop at the
+            // edges rather than carry the module off the canvas, where it
+            // still exists but cannot be seen or grabbed again.
+            const int h = ms.module->getDescriptor()->height;
+            int newX = juce::jlimit(0, 39, ms.startGridPos.x + dx);
             auto& container = patch->getContainer(ms.section);
-            int rawY = juce::jmax(0, ms.startGridPos.y + dy);
-            int newY = findNearestFreeY(container, ms.module, newX, rawY, ms.module->getDescriptor()->height);
+            int rawY = juce::jlimit(0, modulePlacementRows - h, ms.startGridPos.y + dy);
+            int newY = findNearestFreeY(container, ms.module, newX, rawY, h);
             ms.module->setPosition({ newX, newY });
         }
 
@@ -6999,12 +7004,15 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
 
     if (dragState.type == DragState::ModuleMove)
     {
-        int newGridX = juce::jmax(0, (currentPos.x - dragState.dragOffsetX + gridX / 2) / gridX);
-        int rawGridY = juce::jmax(0, (currentPos.y - dragState.dragOffsetY + gridY / 2) / gridY);
+        // Both axes bounded, same as the multi-move: the canvas is 40 columns
+        // by 128 rows and nothing may be dragged past any of its four edges.
+        int moduleHeight = dragState.module->getDescriptor()->height;
+        int newGridX = juce::jlimit(0, 39, (currentPos.x - dragState.dragOffsetX + gridX / 2) / gridX);
+        int rawGridY = juce::jlimit(0, modulePlacementRows - moduleHeight,
+                                    (currentPos.y - dragState.dragOffsetY + gridY / 2) / gridY);
 
         // Prevent overlap: snap to nearest free Y position in this column
         auto& container = patch->getContainer(dragState.section);
-        int moduleHeight = dragState.module->getDescriptor()->height;
         int newGridY = findNearestFreeY(container, dragState.module, newGridX, rawGridY, moduleHeight);
 
         auto curPos = dragState.module->getPosition();
@@ -7474,9 +7482,13 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
                 undoManager->beginNewTransaction("Move Modules");
                 for (auto& sel : selection)
                 {
+                    // The bottom bound subtracts the module's own height: a
+                    // nudge to row 127 used to leave everything but the top
+                    // row hanging below the canvas.
+                    const int h = sel.module->getDescriptor()->height;
                     auto oldPos = sel.module->getPosition();
                     juce::Point<int> newPos(juce::jlimit(0, 39, oldPos.x + dx),
-                                            juce::jlimit(0, 127, oldPos.y + dy));
+                                            juce::jlimit(0, modulePlacementRows - h, oldPos.y + dy));
                     if (newPos != oldPos)
                         moduleMoveCallback(sel.section, sel.module->getContainerIndex(),
                                            oldPos, newPos);
@@ -7761,6 +7773,13 @@ bool PatchCanvas::isAreaFree(int gx, int gw, int gy, int gh,
 int PatchCanvas::findNearestFreeYForArea(int gx, int gw, int targetY, int gh,
                                          const Module* excludeModule, int excludeCommentId) const
 {
+    // Everything below row 128 is "free" in the occupancy sense and invisible
+    // in every other sense, so the search never offers a row the block would
+    // hang out of. A drag that kept going used to drop modules off the bottom
+    // of the canvas, where they still exist but cannot be seen or clicked.
+    const int maxY = modulePlacementRows - juce::jmax(1, gh);
+    targetY = juce::jlimit(0, maxY, targetY);
+
     if (isAreaFree(gx, gw, targetY, gh, excludeModule, excludeCommentId))
         return targetY;
 
@@ -7770,7 +7789,7 @@ int PatchCanvas::findNearestFreeYForArea(int gx, int gw, int targetY, int gh,
         if (above >= 0 && isAreaFree(gx, gw, above, gh, excludeModule, excludeCommentId))
             return above;
         const int below = targetY + offset;
-        if (isAreaFree(gx, gw, below, gh, excludeModule, excludeCommentId))
+        if (below <= maxY && isAreaFree(gx, gw, below, gh, excludeModule, excludeCommentId))
             return below;
     }
     return targetY;
@@ -7783,6 +7802,11 @@ bool PatchCanvas::isPositionFree(const ModuleContainer& /*container*/, const Mod
 
 int PatchCanvas::findNearestFreeY(const ModuleContainer& container, const Module* exclude, int gx, int targetY, int height) const
 {
+    // Same bottom rule as findNearestFreeYForArea: no candidate may leave the
+    // module hanging past row 128.
+    const int maxY = modulePlacementRows - juce::jmax(1, height);
+    targetY = juce::jlimit(0, maxY, targetY);
+
     if (isPositionFree(container, exclude, gx, targetY, height))
         return targetY;
 
@@ -7793,10 +7817,10 @@ int PatchCanvas::findNearestFreeY(const ModuleContainer& container, const Module
         if (above >= 0 && isPositionFree(container, exclude, gx, above, height))
             return above;
         int below = targetY + offset;
-        if (isPositionFree(container, exclude, gx, below, height))
+        if (below <= maxY && isPositionFree(container, exclude, gx, below, height))
             return below;
     }
-    return targetY; // fallback — should not happen
+    return targetY; // fallback — a completely full column keeps the target row
 }
 
 Connector* PatchCanvas::findConnectorByComponentId(Module& m, const juce::String& componentId)

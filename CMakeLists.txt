@@ -53,6 +53,7 @@ endif()
 
 add_subdirectory(JUCE EXCLUDE_FROM_ALL)
 option(NME_BUILD_PLUGIN "Build VST3/CLAP plugin targets" OFF)
+option(NME_BUILD_TESTS "Build the unit tests (tests/, ctest)" ON)
 option(NME_MCP_BRIDGE "Build embedded MCP control-socket bridge (localhost-only, lets an MCP client add/connect modules in the live editor)" ON)
 
 if(NME_BUILD_PLUGIN)
@@ -116,6 +117,7 @@ set(NME_SHARED_SOURCES
 
     # MIDI/SysEx
     source/midi/SysExCodec.cpp
+    source/midi/UploadPacketizer.cpp
     source/midi/NmMessages.cpp
     source/midi/NmProtocol.cpp
     source/midi/MidiDeviceManager.cpp
@@ -288,6 +290,11 @@ foreach(target ${NME_TARGETS})
         juce::juce_recommended_warning_flags
     )
 endforeach()
+
+if(NME_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 
 if(UNIX AND NOT APPLE)
     set(NME_DESKTOP_ID "com.animatek.AnimatekNME")

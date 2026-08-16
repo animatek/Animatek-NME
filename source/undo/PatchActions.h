@@ -60,13 +60,22 @@ public:
     bool perform() override
     {
         // The new module keeps the spot it was dropped on; whatever was already
-        // there moves down the column (issue #36).
+        // there moves down the column (issue #36). A column that cannot absorb
+        // the push refuses the drop instead of burying what is at the bottom
+        // (issue #54).
         pushed_.clear();
         auto& container = ctx_.patch.getContainer(section_);
         if (auto* desc = ctx_.descs.getModuleByIndex(typeId_))
+        {
             if (container.canAdd(*desc))
+            {
+                if (!canMakeRoomForModule(container, section_, gridX_, gridY_, desc->height,
+                                          {}, &ctx_.patch.getComments()))
+                    return false;
                 pushed_ = makeRoomForModule(container, section_, gridX_, gridY_, desc->height,
                                             {}, &ctx_.patch.getComments());
+            }
+        }
 
         auto* mod = ctx_.patch.createModule(section_, typeId_, gridX_, gridY_, name_, ctx_.descs);
         if (!mod)
@@ -417,8 +426,14 @@ public:
     bool perform() override
     {
         // Same courtesy a module gets: whatever is under it moves down, in each
-        // of the columns the note covers.
+        // of the columns the note covers, and the same refusal when a column
+        // has no room left (issue #54).
         pushed_.clear();
+        for (int col = 0; col < width_; ++col)
+            if (!canMakeRoomForModule(ctx_.patch.getContainer(section_), section_,
+                                      gridX_ + col, gridY_, height_, {},
+                                      &ctx_.patch.getComments(), commentId_))
+                return false;
         for (int col = 0; col < width_; ++col)
         {
             auto made = makeRoomForModule(ctx_.patch.getContainer(section_), section_,
@@ -565,10 +580,18 @@ public:
 
     bool perform() override
     {
+        // A note that just grew makes room the way a dropped module does, and
+        // is refused the same way when a column cannot absorb it (issue #54).
+        for (int col = 0; col < newRect_.getWidth(); ++col)
+            if (!canMakeRoomForModule(ctx_.patch.getContainer(sectionOf()), sectionOf(),
+                                      newRect_.getX() + col, newRect_.getY(),
+                                      newRect_.getHeight(), {},
+                                      &ctx_.patch.getComments(), commentId_))
+                return false;
+
         if (!apply(newRect_))
             return false;
 
-        // A note that just grew makes room the way a dropped module does.
         pushed_.clear();
         for (int col = 0; col < newRect_.getWidth(); ++col)
         {
@@ -1255,6 +1278,21 @@ public:
             {
                 createdIndices_.push_back({ section, -1 });
                 continue;
+            }
+
+            // A column with no room left refuses the whole insert: burying
+            // whatever sits at the bottom is how pasting a block used to end
+            // up stacked on the patch (issue #54). undo() knows how to take
+            // back what this insert has done so far, so it rolls the block
+            // back rather than leaving half of it placed.
+            if (!canMakeRoomForModule(container, section, tx, ty, desc->height,
+                                      ownIndices[section == 1 ? 1 : 0],
+                                      &ctx_.patch.getComments()))
+            {
+                undo();
+                createdIndices_.clear();
+                pushed_.clear();
+                return false;
             }
 
             auto roomMade = makeRoomForModule(container, section, tx, ty, desc->height,

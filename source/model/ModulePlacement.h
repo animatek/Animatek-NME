@@ -23,6 +23,61 @@ struct PushedModule
 // A patch is 40 columns of 128 rows; nothing can be pushed past the bottom.
 inline constexpr int modulePlacementRows = 128;
 
+/** True when `height` rows at column `gx`, row `gy` can be cleared without
+    shoving anything past the bottom of the area. makeRoomForModule() clamps
+    what will not fit, and a clamped occupant lands back on top of whatever
+    pushed it (issue #54) — so a placement is checked here first and refused
+    outright when the column has no room, which is what the original editor
+    does. Same walk as makeRoomForModule, minus the moves. */
+inline bool canMakeRoomForModule (const ModuleContainer& container, int section,
+                                  int gx, int gy, int height,
+                                  const std::vector<int>& ignoreIndices = {},
+                                  const std::vector<PatchComment>* comments = nullptr,
+                                  int ignoreCommentId = -1)
+{
+    if (height < 1)
+        height = 1;
+    if (gy < 0 || gy + height > modulePlacementRows)
+        return false;
+
+    struct Occupant { int y; int height; };
+    std::vector<Occupant> column;
+
+    for (auto& modulePtr : container.getModules())
+    {
+        auto* m = modulePtr.get();
+        if (m == nullptr || m->getPosition().x != gx)
+            continue;
+        if (std::find (ignoreIndices.begin(), ignoreIndices.end(),
+                       m->getContainerIndex()) != ignoreIndices.end())
+            continue;
+
+        auto* desc = m->getDescriptor();
+        column.push_back ({ m->getPosition().y, desc != nullptr ? desc->height : 1 });
+    }
+
+    if (comments != nullptr)
+        for (auto& c : *comments)
+            if (c.section == section && c.coversColumn (gx) && c.id != ignoreCommentId)
+                column.push_back ({ c.y, c.gridHeight() });
+
+    std::sort (column.begin(), column.end(),
+               [] (const Occupant& a, const Occupant& b) { return a.y < b.y; });
+
+    int frontier = gy + height;
+    for (auto& occ : column)
+    {
+        if (occ.y + occ.height <= gy)
+            continue;
+        if (occ.y >= frontier)
+            break;
+        if (frontier + occ.height > modulePlacementRows)
+            return false;
+        frontier += occ.height;
+    }
+    return true;
+}
+
 /** Clears `height` rows at column `gx`, row `gy`, pushing the modules already
     there down the column. Modules whose container index is in `ignoreIndices`
     stay put: that is how a block being pasted keeps its own shape while

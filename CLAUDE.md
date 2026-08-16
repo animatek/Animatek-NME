@@ -22,7 +22,14 @@ cmake --build build -j$(nproc)
 cd nomad-0-3_2 && ../jdk8u482-b08/bin/java -jar nomad.jar
 ```
 
-No test framework is set up yet. No linter is configured.
+```bash
+# Run unit tests (pure layers: patch codec, SysEx, packetizer, placement)
+cmake --build build --target nme_tests && ctest --test-dir build --output-on-failure
+```
+
+Tests live in `tests/` (doctest, vendored at `libs/doctest/`); CI runs them on
+every push (`.github/workflows/ci.yml`), plain and under ASan/UBSan. No linter
+is configured.
 
 ## Architecture
 
