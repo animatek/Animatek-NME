@@ -43,6 +43,11 @@ struct UndoContext
     // Deliberately NOT fired by bulk actions (recall/randomize) so undoing a
     // variation recall can't overwrite the stored variation itself.
     std::function<void(int section, int moduleId, int paramId, int value)> onParamEdited;
+    // Fired by an undo that puts a deleted module back, so the canvas can put
+    // the selection back with it: undoing a delete should hand you back what
+    // you had, not an empty selection over the module you just recovered.
+    // May be null.
+    std::function<void(int section, int containerIndex)> onModuleRestored;
     int slot;  // which slot this context (and any edits sent below) belongs to
 };
 
@@ -317,6 +322,7 @@ public:
             ctx_.patch.ctrlAssignments.push_back(ca);
 
         ctx_.repaint();
+        if (ctx_.onModuleRestored) ctx_.onModuleRestored(section_, containerIndex_);
         if (ctx_.syncToSynth) ctx_.syncToSynth();
         return true;
     }

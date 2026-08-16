@@ -305,6 +305,12 @@ private:
     // two windows showing the same module never disagree about what exists.
     void refreshInspectorPresets();
     void rebuildUndoContext(int slot);  // call after patch change
+    // Modules an undo has just put back, filled by UndoContext::onModuleRestored
+    // while the undo runs and read once it finishes: undoing a delete hands the
+    // selection back rather than leaving you with nothing selected over the
+    // module you just recovered.
+    std::vector<std::pair<int, int>> restoredModules;   // {section, containerIndex}
+    void runUndoRestoringSelection(int slot, bool redo);
     void clearSnapshots(int slot);     // call when patch changes
 
     // Parameter variations (8 per patch slot, persisted in a .var sidecar)

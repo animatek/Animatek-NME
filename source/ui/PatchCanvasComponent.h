@@ -602,7 +602,7 @@ private:
     static SnipData toSnip(const std::vector<ClipboardEntry>& entries,
                            const std::vector<ClipboardCable>& cables,
                            juce::Point<int> origin);
-    void selectCreated(const std::vector<std::pair<int, int>>& created);
+
 
     // Parameter context menu (right-click on knob/slider/button)
     void showParameterContextMenu(Module& m, int section, Parameter& param);
@@ -664,6 +664,11 @@ public:
     // ask whether they apply before offering them (issue #42).
     // A selected text note counts as a selection everywhere the edit commands
     // are concerned: it can be cut, copied, duplicated and deleted like a module.
+    /** Selects exactly these {section, containerIndex} modules, dropping
+        whatever was selected before. Used after a paste and after an undo
+        that puts deleted modules back. */
+    void selectCreated(const std::vector<std::pair<int, int>>& created);
+
     bool hasSelection() const { return !selection.empty() || !selectedCommentIds.empty(); }
     bool canPaste()     const { return !clipboard.empty() || !clipboardComments.empty(); }
     void cutSelection()
@@ -938,6 +943,15 @@ public:
     {
         polyCanvas.repaint();
         commonCanvas.repaint();
+    }
+
+    /** Selects exactly the modules an undo has just put back, in whichever
+        area each of them lives. Both areas are told, so a block that spanned
+        the two comes back selected as one again. */
+    void selectRestored(const std::vector<std::pair<int, int>>& modules)
+    {
+        polyCanvas.selectCreated(modules);
+        commonCanvas.selectCreated(modules);
     }
 
     void setLightMeterData(const int lights[128], const int meters[128])
