@@ -531,9 +531,16 @@ public:
             return;
         }
 
-        const juce::Colour sectionInk(0xff9CA3AA);
-        const juce::Colour ctrlInk(0xffccaa66);
-        const juce::Colour presetInk(0xff7fb2d4);
+        // One ink for every section heading, taken from the theme rather than
+        // written down here (issue #68). The three colours these used to be
+        // were picked against a dark panel: on Nord Classic and the other light
+        // themes a pale grey-blue, an amber and a sky blue on a light ground
+        // all came out too faint to read, and being three of them made the
+        // headings look like they meant three different things when they only
+        // divide the panel up. textPrimary is near-white on the dark themes and
+        // near-black on the light ones, which is the same rule the macro
+        // captions follow (AppTheme::macroLabelInk).
+        const juce::Colour sectionInk = AppTheme::palette().textPrimary;
 
         for (const auto& row : layout)
         {
@@ -569,8 +576,8 @@ public:
                     break;
 
                 case RowKind::CtrlsTitle:
-                    paintSectionTitle(g, y, "MIDI CC", ctrlInk);
-                    paintCollapseChevron(g, y, ctrlInk, ctrlsSectionCollapsed, sectionTitleH);
+                    paintSectionTitle(g, y, "MIDI CC", sectionInk);
+                    paintCollapseChevron(g, y, sectionInk, ctrlsSectionCollapsed, sectionTitleH);
                     break;
                 case RowKind::CtrlRow:
                     paintHwRow(g, y, row.index, ctrlRows[size_t(row.index)], isGlobal,
@@ -578,8 +585,8 @@ public:
                     break;
 
                 case RowKind::PresetsTitle:
-                    paintSectionTitle(g, y, "Presets", presetInk);
-                    paintCollapseChevron(g, y, presetInk, presetsSectionCollapsed, sectionTitleH);
+                    paintSectionTitle(g, y, "Presets", sectionInk);
+                    paintCollapseChevron(g, y, sectionInk, presetsSectionCollapsed, sectionTitleH);
                     break;
                 case RowKind::FactoryHeader:
                     paintFactoryHeader(g, y, countFactory(presets()));
