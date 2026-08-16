@@ -116,10 +116,22 @@ void PatchCanvas::setLightMeterData(const int lights[128], const int meters[128]
     std::copy(lights, lights + 128, globalLightValues);
     std::copy(meters, meters + 128, globalMeterValues);
 
-    for (const auto& r : computeModuleLightRanges())
+    if (patch == nullptr)
+        return;
+
+    // Walk the live modules and look their slots up, rather than holding on to
+    // the pointers the table was built from: this runs on every frame the synth
+    // sends, and a module deleted between two frames would be read here.
+    const auto& table = lightRangeTable();
+    const auto& container = patch->getContainer(mySection);
+
+    for (const auto& modulePtr : container.getModules())
     {
-        if (r.section != mySection)
+        const auto* slots = table.find(mySection, modulePtr->getContainerIndex());
+        if (slots == nullptr)
             continue;
+
+        const auto& r = *slots;
 
         bool dirty = false;
         for (int i = 0; !dirty && i < r.lightCount && r.lightBase + i < 128; ++i)
@@ -129,79 +141,28 @@ void PatchCanvas::setLightMeterData(const int lights[128], const int meters[128]
 
         if (dirty)
         {
-            auto rf = getModuleBounds(*r.mod, 0).toFloat();
+            auto rf = getModuleBounds(*modulePtr, 0).toFloat();
             rf *= zoomLevel;
             repaint(rf.getSmallestIntegerContainer().expanded(2));
         }
     }
 }
 
-std::vector<PatchCanvas::ModuleLightRange> PatchCanvas::computeModuleLightRanges() const
+const LightMeterLayout::Table& PatchCanvas::lightRangeTable() const
 {
-    std::vector<ModuleLightRange> ranges;
-    if (patch == nullptr || themeData == nullptr) return ranges;
-
-    // Build sorted list: poly (section=1) first, then common (section=0), each sorted by containerIndex
-    struct ModuleRef { const Module* mod; int section; };
-    std::vector<ModuleRef> ordered;
-
-    auto addSection = [&](const ModuleContainer& container, int sec)
+    const auto fingerprint = LightMeterLayout::fingerprint(patch, themeData);
+    if (!lightRangeCacheValid_ || lightRangeCache_.fingerprint != fingerprint)
     {
-        size_t start = ordered.size();
-        for (auto& m : container.getModules())
-            ordered.push_back({ m.get(), sec });
-        std::sort(ordered.begin() + static_cast<std::ptrdiff_t>(start), ordered.end(),
-                  [](const ModuleRef& a, const ModuleRef& b) {
-                      return a.mod->getContainerIndex() < b.mod->getContainerIndex();
-                  });
-    };
-
-    addSection(patch->getPolyVoiceArea(), 1);
-    addSection(patch->getCommonArea(), 0);
-
-    int lightBase = 0;
-    int meterBase = 0;
-    for (auto& ref : ordered)
-    {
-        int lightCount = 0;
-        int meterCount = 0;
-
-        // Count lights/meters for this module from its theme
-        auto compId = ref.mod->getDescriptor() ? ref.mod->getDescriptor()->componentId : juce::String();
-        if (const ModuleTheme* theme = themeData->getModuleTheme(compId))
-        {
-            bool hasMeterOrLedArray = false;
-            int meterSlots = 0;
-            for (auto& light : theme->lights)
-            {
-                if (light.type == "meter" || light.type == "led-array")
-                {
-                    hasMeterOrLedArray = true;
-                    if (light.type == "meter")
-                        ++meterSlots;
-                }
-                if (light.type == "led")
-                    ++lightCount;
-            }
-
-            // NOMAD registers meters and sequencer led-arrays as MeterMessage
-            // pairs. A single led-array/single meter still consumes two slots.
-            if (hasMeterOrLedArray)
-                meterCount = juce::jmax(2, meterSlots);
-        }
-
-        ranges.push_back({ ref.mod, ref.section, lightBase, lightCount, meterBase, meterCount });
-        lightBase += lightCount;
-        meterBase += meterCount;
+        lightRangeCache_ = LightMeterLayout::build(patch, themeData);
+        lightRangeCacheValid_ = true;
     }
-    return ranges;
+    return lightRangeCache_;
 }
 
 int PatchCanvas::computeModuleLightIndex(const Module& targetModule, int targetSection, bool forMeters) const
 {
-    for (const auto& r : computeModuleLightRanges())
-        if (r.mod == &targetModule && r.section == targetSection)
-            return forMeters ? r.meterBase : r.lightBase;
+    if (const auto* slots = lightRangeTable().find(targetSection, targetModule.getContainerIndex()))
+        return forMeters ? slots->meterBase : slots->lightBase;
     return 0;
 }
 
@@ -210,6 +171,12 @@ PatchCanvas::PatchCanvas()
     setSize(canvasWidth, sectionHeight);
     setWantsKeyboardFocus(true);
     liveCanvases.push_back(this);
+
+    // The arrows are placed in canvas coordinates, which the zoom scales.
+    spinner.repaintArea = [this](juce::Rectangle<float> area)
+    {
+        repaintCanvasArea(area.getSmallestIntegerContainer());
+    };
 }
 
 bool PatchCanvas::handleOverlayKey(const juce::KeyPress& key, juce::Component& repaintTarget)
@@ -1093,6 +1060,10 @@ void PatchCanvas::paintGhostOutline(juce::Graphics& g, int typeIndex, int gx, in
 
 void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& container, int yOffset)
 {
+    // Validated once for the whole pass. Nothing can change the patch while a
+    // paint is running, and checking per module made the check itself the cost.
+    const auto& lightSlots = lightRangeTable();
+
     for (auto& modulePtr : container.getModules())
     {
         auto& m = *modulePtr;
@@ -1107,7 +1078,8 @@ void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& contain
             theme = themeData->getModuleTheme(m.getDescriptor()->componentId);
 
         if (theme != nullptr)
-            paintModuleThemed(g, m, mySection, rect, *theme, container);
+            paintModuleThemed(g, m, mySection, rect, *theme, container,
+                              lightSlots.find(mySection, m.getContainerIndex()));
         else
             paintModuleFallback(g, m, rect);
 
@@ -1140,7 +1112,8 @@ void PatchCanvas::paintOverlays(juce::Graphics& g, const ModuleContainer& contai
     }
 }
 
-void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container)
+void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container,
+                                    const LightMeterLayout::ModuleSlots* lightSlots)
 {
     paintModuleBackground(g, m, bounds, theme);
     paintCustomDisplays(g, m, bounds, theme);
@@ -1158,7 +1131,7 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int sect
     paintButtons(g, m, bounds, theme, bgForButtons);
     paintResetButtons(g, m, bounds, theme);
     paintConnectors(g, m, bounds, theme, container);
-    paintLights(g, m, section, bounds, theme);
+    paintLights(g, m, section, bounds, theme, lightSlots);
     if (m.getDescriptor()->index == 58)
         paintDrumSynthExtras(g, m, bounds);
 }
@@ -1362,6 +1335,11 @@ void PatchCanvas::mouseMove(const juce::MouseEvent& e)
 
         if (id != hoverCommentId || grip != hoverCommentGrip)
         {
+            // Only the note that lost the hover and the one that gained it
+            // change: this fires on every pointer move across a note's edge,
+            // and redrawing the whole area for two grip handles was the most
+            // expensive thing the mouse could do while hovering.
+            const int previousId = hoverCommentId;
             hoverCommentId = id;
             hoverCommentGrip = grip;
             setMouseCursor(grip == CommentGrip::BottomRight
@@ -1369,7 +1347,8 @@ void PatchCanvas::mouseMove(const juce::MouseEvent& e)
                                : grip == CommentGrip::BottomLeft
                                      ? juce::MouseCursor::BottomLeftCornerResizeCursor
                                      : juce::MouseCursor::NormalCursor);
-            repaint();
+            repaintComment(previousId);
+            repaintComment(id);
         }
 
         if (overComment != nullptr)
@@ -1415,13 +1394,14 @@ void PatchCanvas::mouseExit(const juce::MouseEvent&)
 
     if (hoverCommentId != -1 || hoverCommentGrip != CommentGrip::None)
     {
+        const int previousId = hoverCommentId;
         hoverCommentId = -1;
         hoverCommentGrip = CommentGrip::None;
         // Not while a block is hanging off the pointer: that cursor is the copy
         // one, and it belongs to the drop, not to the note we just left.
         if (!pendingDrop.active())
             setMouseCursor(juce::MouseCursor::NormalCursor);
-        repaint();
+        repaintComment(previousId);
     }
 
     // The block stays on the pointer when it leaves; it just stops being drawn
@@ -1431,6 +1411,23 @@ void PatchCanvas::mouseExit(const juce::MouseEvent&)
         pendingHost = nullptr;
         repaint();
     }
+}
+
+void PatchCanvas::repaintCanvasArea(juce::Rectangle<int> canvasArea)
+{
+    // Canvas coordinates are the zoomed-out ones the painting code works in;
+    // repaint() wants component pixels. A couple of pixels of margin covers
+    // the rounding and any border drawn just outside the rectangle.
+    auto scaled = canvasArea.toFloat() * zoomLevel;
+    repaint(scaled.getSmallestIntegerContainer().expanded(2));
+}
+
+void PatchCanvas::repaintComment(int commentId)
+{
+    if (commentId < 0 || patch == nullptr)
+        return;
+    if (const auto* c = patch->getCommentById(commentId))
+        repaintCanvasArea(getCommentBounds(*c));
 }
 
 void PatchCanvas::clearHover()
@@ -3699,11 +3696,15 @@ void PatchCanvas::paintStaticIcons(juce::Graphics& g, const Module& m, juce::Rec
     }
 }
 
-void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme)
+void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme,
+                              const LightMeterLayout::ModuleSlots* slots)
 {
-    // Compute base indices for this module's LEDs and meters in the global arrays
-    int ledBase   = computeModuleLightIndex(m, section, false);
-    int meterBase = computeModuleLightIndex(m, section, true);
+    // Where this module's LEDs and meters sit in the global arrays. The slots
+    // are handed in: looking them up here meant validating the whole table once
+    // per module per paint, which is the same quadratic cost the cache was
+    // added to remove, only cheaper per unit.
+    const int ledBase   = slots != nullptr ? slots->lightBase : 0;
+    const int meterBase = slots != nullptr ? slots->meterBase : 0;
 
     // Build map of meter vertical centers (for LED alignment) and meter index
     // per component-id. NOMAD's LightProcessor gives every meter/led-array
@@ -5384,12 +5385,32 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
     if (cableOpacity < 0.01f)
         return;
 
-    // Connector→module lookup built once per paint; scanning every module's
-    // connectors per cable made partial repaints needlessly expensive.
-    std::map<const Connector*, const Module*> owners;
+    // Connector-to-module lookup, rebuilt per paint. It is a sorted vector
+    // rather than a std::map because a map node is a heap allocation and a
+    // large patch has a couple of thousand connectors: that was a couple of
+    // thousand allocations on every repaint, including the small per-module
+    // ones the LEDs trigger many times a second. The buffer is a member, so
+    // after the first paint it stops allocating altogether.
+    //
+    // Deliberately NOT cached across paints: the keys are raw pointers into
+    // modules that a delete can destroy, and a freed connector buffer whose
+    // memory gets reused would turn a stale entry into a wrong answer
+    // (issue #61's family). Rebuilt inside one paint, it cannot go stale.
+    auto& owners = cableOwnerScratch_;
+    owners.clear();
     for (auto& modulePtr : container.getModules())
         for (auto& c : modulePtr->getConnectors())
-            owners[&c] = modulePtr.get();
+            owners.push_back({ &c, modulePtr.get() });
+    std::sort(owners.begin(), owners.end(),
+              [](const auto& a, const auto& b) { return a.first < b.first; });
+
+    auto findOwner = [&owners](const Connector* conn) -> const Module*
+    {
+        const auto it = std::lower_bound(owners.begin(), owners.end(), conn,
+                                         [](const auto& entry, const Connector* key)
+                                         { return entry.first < key; });
+        return (it != owners.end() && it->first == conn) ? it->second : nullptr;
+    };
 
     const auto clip = g.getClipBounds();
 
@@ -5415,13 +5436,10 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
         }
 
         // Find the modules that own these connectors
-        auto itSrc = owners.find(conn.output);
-        auto itDst = owners.find(conn.input);
-        if (itSrc == owners.end() || itDst == owners.end())
+        const Module* srcModule = findOwner(conn.output);
+        const Module* dstModule = findOwner(conn.input);
+        if (srcModule == nullptr || dstModule == nullptr)
             continue;
-
-        const Module* srcModule = itSrc->second;
-        const Module* dstModule = itDst->second;
 
         auto srcPos = getConnectorPosition(*srcModule, *conn.output, yOffset);
         auto dstPos = getConnectorPosition(*dstModule, *conn.input, yOffset);

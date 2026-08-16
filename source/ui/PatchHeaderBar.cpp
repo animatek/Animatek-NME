@@ -49,6 +49,13 @@ namespace
 
 PatchHeaderBar::PatchHeaderBar()
 {
+    // The morph dials' arrows are placed straight in this component's
+    // coordinates, so a rectangle needs no transform to become a repaint.
+    morphSpinner.repaintArea = [this](juce::Rectangle<float> area)
+    {
+        repaint(area.getSmallestIntegerContainer());
+    };
+
     // Create patch name editor (initially hidden)
     patchNameEditor = std::make_unique<juce::Label>("PatchName", "");
     patchNameEditor->setEditable(true);

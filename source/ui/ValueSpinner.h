@@ -58,6 +58,13 @@ public:
     struct Colours { juce::Colour background, border, arrow; };
     void paint (juce::Graphics& g, Colours c) const;
 
+    /** How the host repaints one rectangle of the space the buttons are placed
+        in. The canvas works in zoomed canvas coordinates and the header bar in
+        its own, so the transform is the host's business. Left unset, the whole
+        owner is repainted, which is what these two little buttons used to cost
+        on every pointer move. */
+    std::function<void (juce::Rectangle<float>)> repaintArea;
+
     // Takes the press if it landed on a button: steps once straight away, then
     // repeats while held. step is called with -1 or +1. Returns false when the
     // press missed, in which case the host carries on as if nothing happened.
@@ -85,6 +92,10 @@ private:
 
     void drawButton (juce::Graphics& g, juce::Rectangle<float> r, bool pointsUp,
                      bool hot, bool held, Colours c) const;
+
+    /** Repaints wherever the pair is now and wherever it just was. Either may
+        be empty, for the pair appearing or going away. */
+    void repaintButtons (juce::Rectangle<float> oldDown, juce::Rectangle<float> oldUp);
 
     juce::Component& owner_;
     juce::String key_;

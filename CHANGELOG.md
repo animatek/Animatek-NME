@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Changed
+
+- **Big patches draw far faster.** Every time the canvas painted a module it worked out, from
+  scratch and twice over, where every module in the patch keeps its LEDs and meters: a sorted
+  table rebuilt once per module, per repaint. On a hundred-module patch that came to roughly
+  18 ms of pure bookkeeping on every single redraw, and the synth asks for a redraw several
+  times a second while the meters are moving. The table is now worked out once and reused
+  until the patch's structure actually changes, which takes that 18 ms down to about 14
+  microseconds. Cables no longer rebuild a lookup of every connector in the patch on each
+  redraw either, and resting the pointer on a knob stopped redrawing the entire canvas on
+  every mouse movement for the sake of the two little nudge arrows.
+
 ### Fixed
 
 - **A module can no longer be buried under another at the bottom of the canvas** (#54).

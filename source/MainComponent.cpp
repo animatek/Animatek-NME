@@ -659,20 +659,18 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   mainLayout->getHeaderBar().setCableVisibilityCallback(
       [this]() { activeCanvas().repaintCanvas(); });
 
-  // Wire real-time light/meter data from synth
+  // Wire real-time light/meter data from synth. Delivered straight through:
+  // incoming SysEx is already bounced to the message thread before the
+  // protocol ever sees it (MidiDeviceManager::handleIncomingMidiMessage), so
+  // the extra callAsync only bought a copy of two 128-int arrays and a frame
+  // of latency, on the one callback the synth sends many times a second.
   connectionManager.setLightMeterCallback(
       [this](const int lights[128], const int meters[128]) {
-          std::array<int,128> l, me;
-          std::copy(lights,  lights  + 128, l.begin());
-          std::copy(meters, meters + 128, me.begin());
-          juce::Component::SafePointer<MainComponent> safeThis(this);
-          juce::MessageManager::callAsync([safeThis, l, me]() mutable {
-              if (!safeThis) return;
-              // The synth streams lights/meters for the slot it has focused,
-              // which the editor keeps in sync with activeSlot — so they belong
-              // to that slot's canvas, whichever one the user is looking at.
-              safeThis->canvasFor(safeThis->activeSlot).setLightMeterData(l.data(), me.data());
-          });
+          JUCE_ASSERT_MESSAGE_THREAD
+          // The synth streams lights/meters for the slot it has focused,
+          // which the editor keeps in sync with activeSlot, so they belong
+          // to that slot's canvas, whichever one the user is looking at.
+          canvasFor(activeSlot).setLightMeterData(lights, meters);
       });
 
   // Wire shake cables button

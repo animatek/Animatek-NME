@@ -69,6 +69,7 @@ set(NME_SHARED_SOURCES
     source/model/ModuleDescriptions.cpp
     source/model/ModulePresets.cpp
     source/model/ModuleTags.cpp
+    source/model/LightMeterLayout.cpp
     source/model/Patch.cpp
     source/model/PatchParser.cpp
     source/model/PatchSerializer.cpp

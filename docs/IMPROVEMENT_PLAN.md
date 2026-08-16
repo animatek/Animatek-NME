@@ -64,30 +64,45 @@ critical layers are pure and testable without GUI or hardware.
       plus a second job under ASan/UBSan, both with ccache. (2026-08-16)
 - [ ] Optional: clang-tidy with a narrow set (bugprone-*, performance-*).
 
-## Phase 2: Performance quick wins (a few days, low risk)
+## Phase 2: Performance quick wins  [DONE 2026-08-16]
 
-Measure first: enable JUCE_ENABLE_REPAINT_DEBUGGING in a debug build and/or
-add a paint-time readout to the status bar. Then, in order of expected value:
+Measured, not guessed. Numbers below are from a 100-module patch in a Debug
+build (tests/, throwaway benchmark, not committed).
 
-- [ ] Cache `computeModuleLightRanges()` (PatchCanvasComponent.cpp:118).
-      It allocates and sorts a vector on every light/meter frame from the
-      synth, twice (poly + common canvas), several times per second while
-      audio runs. It only depends on patch structure; invalidate on
-      setPatch / module add / module remove.
-- [ ] Remove the double async hop for light/meter data
-      (MainComponent.cpp:663-676). The callback already arrives on the
-      message thread (MidiDeviceManager bounces before dispatch), yet it
-      copies two 128-int arrays and does another callAsync. Call straight
-      through.
-- [ ] Cache the connector-to-module `owners` map in paintCables
-      (PatchCanvasComponent.cpp:5385). It is rebuilt on every repaint,
-      including the small per-module LED repaints. Same structural
-      invalidation as the light ranges. Optionally also cache cable Paths
-      with bounding boxes for per-cable clip culling.
-- [ ] Narrow the avoidable full-canvas repaint() calls on hot paths, e.g.
-      the comment-hover change in mouseMove (line ~1368). Badges, spinner
-      and selection changes can repaint just their rectangles.
-- [ ] Dev quality of life: target_precompile_headers for the JUCE headers.
+- [x] The light/meter slot table was the real bottleneck, and it was worse
+      than the plan thought: `paintLights` called `computeModuleLightIndex`
+      **twice per module**, and each call rebuilt the whole table (a vector
+      allocation, a sort, and a theme lookup per module). Painting was
+      quadratic in the module count: **18.2 ms per repaint** for 100 modules,
+      on top of the actual drawing, several times a second while the meters
+      moved. Now built once and cached, validated against a cheap structural
+      fingerprint, and looked up once per module per paint: **14 us**, about
+      1300x less. Extracted to `source/model/LightMeterLayout.{h,cpp}` so the
+      table and the fingerprint are unit tested (tests/test_light_meter_layout
+      .cpp), including a brute-force check of the property the cache rests on:
+      an unchanged fingerprint really does mean an unchanged table.
+- [x] Removed the double async hop for light/meter data
+      (MainComponent.cpp). Incoming SysEx is already bounced to the message
+      thread before the protocol decodes it, so the extra callAsync only
+      bought a copy of two 128-int arrays and a frame of latency, on the
+      callback the synth sends most often. Stale "may fire from the MIDI
+      thread" comments in ConnectionManager.h corrected while there.
+- [x] `paintCables`' connector-to-module lookup is a sorted vector reused
+      across paints instead of a `std::map` rebuilt per paint: a couple of
+      thousand heap allocations per repaint gone, including on the small
+      per-module repaints the LEDs trigger. Deliberately NOT cached across
+      paints (raw connector pointers, issue #61's family) and the code says so.
+- [x] `ValueSpinner` repainted the whole canvas on **every mouse move** over
+      a control, for two little buttons that had not moved. It now repaints
+      only when something visibly changed, and only the buttons' own
+      rectangles, via a host-supplied `repaintArea` (the canvas applies zoom,
+      the header bar does not). This is what its own doc comment always
+      claimed it did. The comment-hover grips in mouseMove got the same
+      treatment.
+- [x] Precompiled headers: measured first and skipped. The largest file in
+      the project (PatchCanvasComponent.cpp, 9.3k lines) rebuilds in 10 s;
+      PCH would shave a few seconds off that in exchange for a stale-PCH
+      failure mode on an NTFS working tree. Not worth it.
 
 Deliberately NOT in this phase: caching each module as an image and
 compositing. That is a big, risky refactor; only consider it if profiling

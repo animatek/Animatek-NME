@@ -4,6 +4,7 @@
 #include "../model/Patch.h"
 #include "../model/ModuleDescriptions.h"
 #include "../model/ThemeData.h"
+#include "../model/LightMeterLayout.h"
 #include "../model/SnipFileIO.h"
 #include "../model/ModulePresets.h"
 #include "QuickAddPopup.h"
@@ -213,7 +214,8 @@ private:
     // Classic-style themes (transparent moduleBg) use each module's own XML colour
     // so types stay distinct and legible; opaque-moduleBg themes use the light text.
     juce::Colour wireframeInk(const Module& m) const;
-    void paintModuleThemed(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container);
+    void paintModuleThemed(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container,
+                           const LightMeterLayout::ModuleSlots* lightSlots);
     void paintModuleBackground(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintConnectors(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, const ModuleContainer& container);
     void paintLabels(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
@@ -222,7 +224,11 @@ private:
     void paintButtons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, juce::Colour moduleBg);
     void paintSliders(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintTextDisplays(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
-    void paintLights(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme);
+    /** `slots` is where this module's LEDs and meters live in the synth's
+        global arrays, or null for a module that owns none. Handed in rather
+        than looked up: see lightRangeTable(). */
+    void paintLights(juce::Graphics& g, const Module& m, int section, juce::Rectangle<int> bounds, const ModuleTheme& theme,
+                     const LightMeterLayout::ModuleSlots* slots);
     void paintCustomDisplays(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintResetButtons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
     void paintStaticIcons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme);
@@ -343,16 +349,25 @@ private:
     // (poly modules come first, sorted by index; then common modules)
     int computeModuleLightIndex(const Module& m, int section, bool forMeters) const;
 
-    // Per-module slot ranges in the global light/meter arrays, in wire order
-    // (poly section first, then common, each sorted by container index).
-    struct ModuleLightRange
-    {
-        const Module* mod;
-        int section;
-        int lightBase, lightCount;
-        int meterBase, meterCount;
-    };
-    std::vector<ModuleLightRange> computeModuleLightRanges() const;
+    // Where each module's LEDs and meters sit in the synth's two 128-slot
+    // arrays. Working the table out costs a sort and a theme lookup per module,
+    // and it was being done twice per module per paint plus once per light
+    // frame from the synth: quadratic in the module count, several times a
+    // second, for something that only changes when the patch's structure does.
+    // It is cached here and validated against a fingerprint of that structure,
+    // so no caller has to remember to invalidate it (undo and the MCP bridge
+    // both mutate the patch without going through this class). The table and
+    // the fingerprint live in the model, where they are unit tested.
+    const LightMeterLayout::Table& lightRangeTable() const;
+    mutable LightMeterLayout::Table lightRangeCache_;
+    mutable bool lightRangeCacheValid_ = false;
+
+    /** Repaints one rectangle given in canvas (unzoomed) coordinates, which is
+        what all the painting code works in. */
+    void repaintCanvasArea(juce::Rectangle<int> canvasArea);
+    /** Repaints just this note, for the changes that only affect one: hover
+        grips, selection. A no-op for an id that is not on this canvas. */
+    void repaintComment(int commentId);
 
     // --- Editor text notes ---
     juce::Rectangle<int> getCommentBounds(const PatchComment& c) const;
@@ -715,6 +730,12 @@ private:
 
     // Cable shake: per-connection random sag offsets for visual redistribution
     std::map<std::pair<const Connector*, const Connector*>, float> cableSagOffsets;
+
+    // Scratch buffer for paintCables' connector-to-module lookup, kept as a
+    // member purely so its capacity survives between paints. Rebuilt from the
+    // live modules on every paint and never read outside one: see the comment
+    // there for why this must not become a cache.
+    mutable std::vector<std::pair<const Connector*, const Module*>> cableOwnerScratch_;
 
     // Check if a connector has a hidden (filtered) cable attached
     bool hasHiddenCable(const Connector& conn, const ModuleContainer& container) const;

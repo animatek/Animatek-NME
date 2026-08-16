@@ -117,7 +117,7 @@ public:
     }
     void clearSlotBankLocation(int slot) { setSlotBankLocation(slot, -1, -1); }
 
-    // Fired when the synth tells us where a slot's patch came from (MIDI thread).
+    // Fired when the synth tells us where a slot's patch came from.
     using BankLocationCallback = std::function<void(int slot)>;
     void setBankLocationCallback(BankLocationCallback cb) { bankLocationCallback = std::move(cb); }
 
@@ -161,7 +161,11 @@ public:
     void setUploadCompleteCallback(UploadCompleteCallback cb) { uploadCompleteCallback = std::move(cb); }
 
     // Called when synth sends real-time light/meter data (sc=0x39/0x3A)
-    // lights: 128 LED values (0-3), meters: 128 meter values (0-127)
+    // lights: 128 LED values (0-3), meters: 128 meter values (0-127).
+    // Like every listener callback here, it arrives on the message thread:
+    // MidiDeviceManager bounces incoming SysEx there before the protocol
+    // decodes it, so nothing downstream needs a hop of its own. The arrays
+    // belong to this object and are only valid for the duration of the call.
     using LightMeterCallback = std::function<void(const int lights[128], const int meters[128])>;
     void setLightMeterCallback(LightMeterCallback cb) { lightMeterCallback = std::move(cb); }
 
@@ -169,14 +173,14 @@ public:
     void setSynthSettingsCallback(SynthSettingsCallback cb) { synthSettingsCallback = std::move(cb); }
 
     // Patch fetch progress: fired when a fetch starts (0/N) and per completed
-    // section. May fire from the MIDI thread — bounce to the message thread.
+    // section.
     using PatchLoadProgressCallback = std::function<void(int sectionsDone, int totalSections)>;
     void setPatchLoadProgressCallback(PatchLoadProgressCallback cb) { patchLoadProgressCallback = std::move(cb); }
 
     // Fired when a patch fetch finalizes without all sections despite retries
     // (synth overloaded or connection flaky). The partial patch is still
     // delivered, but it may be missing cables/parameters — the user must be
-    // warned before editing or saving it. May fire from the MIDI thread.
+    // warned before editing or saving it.
     using PatchLoadIncompleteCallback = std::function<void(int slot, int sectionsReceived, int totalSections)>;
     void setPatchLoadIncompleteCallback(PatchLoadIncompleteCallback cb) { patchLoadIncompleteCallback = std::move(cb); }
 

@@ -1,5 +1,17 @@
 #include "ValueSpinner.h"
 
+void ValueSpinner::repaintButtons (juce::Rectangle<float> oldDown, juce::Rectangle<float> oldUp)
+{
+    auto area = oldDown.getUnion (oldUp).getUnion (down_).getUnion (up_);
+    if (area.isEmpty())
+        return;
+
+    if (repaintArea)
+        repaintArea (area.expanded (2.0f));
+    else
+        owner_.repaint();
+}
+
 void ValueSpinner::showFor (const juce::String& key, juce::Rectangle<float> control,
                             Placement placement)
 {
@@ -15,9 +27,10 @@ void ValueSpinner::showFor (const juce::String& key, juce::Rectangle<float> cont
     {
         if (hot_ != -1 || !down_.isEmpty())
         {
+            const auto oldDown = down_, oldUp = up_;
             hot_  = -1;
             down_ = up_ = {};
-            owner_.repaint();
+            repaintButtons (oldDown, oldUp);
         }
         return;
     }
@@ -38,13 +51,23 @@ void ValueSpinner::showFor (const juce::String& key, juce::Rectangle<float> cont
     const float y = inside ? control.getBottom() - h - juce::jmax (1.0f, control.getHeight() * 0.06f)
                            : control.getBottom() - h * 0.55f;
 
+    const auto oldDown = down_, oldUp = up_;
     down_ = { cx - gap * 0.5f - w, y, w, h };
     up_   = { cx + gap * 0.5f,     y, w, h };
 
+    const int oldHot = hot_;
     if (!sameControl)
         hot_ = -1;
 
-    owner_.repaint();
+    // Resting on a control calls this on every pointer move. Repainting each
+    // time was a redraw of the whole canvas per mouse event, for a pair of
+    // buttons that had not moved: this is what the class always claimed to do
+    // ("hovering the same control again is not a change worth repainting for")
+    // and now actually does.
+    if (down_ == oldDown && up_ == oldUp && hot_ == oldHot)
+        return;
+
+    repaintButtons (oldDown, oldUp);
 }
 
 bool ValueSpinner::contains (juce::Point<float> p) const
@@ -63,7 +86,7 @@ void ValueSpinner::updateHover (juce::Point<float> p)
          : up_.contains (p)   ? 1 : -1;
 
     if (hot_ != was)
-        owner_.repaint();
+        repaintButtons (down_, up_);
 }
 
 void ValueSpinner::drawButton (juce::Graphics& g, juce::Rectangle<float> r, bool pointsUp,
