@@ -328,12 +328,28 @@ MorphEntry := section:2 module:7 parameter:7 morphIndex:2 range:8
 
 ### 7-Bit Encoding
 
-All patch data is 7-bit encoded for MIDI compatibility. Every 7 bytes of original data are preceded by 1 MSB byte containing the high bits:
+All patch data is 7-bit encoded for MIDI compatibility. This is **not** the usual MIDI scheme of one
+MSB byte carrying the high bits of the next seven: a section is a *bitstream*, and the encoding is a
+straight repack of that bitstream into 7-bit groups.
+
 ```
-Encoded: [MSB] [b0] [b1] [b2] [b3] [b4] [b5] [b6]
-MSB bits: bit6=b0.7, bit5=b1.7, bit4=b2.7, ..., bit0=b6.7
+Bitstream:  b0 b1 b2 b3 b4 b5 b6 | b7 b8 b9 b10 b11 b12 b13 | ...
+Encoded:    0bbbbbbb              0bbbbbbb                    ...   (MSB of each byte always 0)
 ```
-Decode by restoring the MSB of each byte from the corresponding MSB bit. Each PatchPacket must be decoded independently.
+
+- Take the bits most significant first and emit one MIDI data byte per 7 bits.
+- A trailing group of fewer than 7 bits is **left-justified** (shifted up, zero-padded on the right),
+  never right-justified.
+- The bitstream itself is padded to a multiple of 8 bits first (the PDL2 "Section % 8" rule), and the
+  decoder truncates the recovered bits back to a byte boundary, discarding the tail padding.
+
+Implementations: `BitStreamWriter::toMidiBytes()` encodes, `BitStream`'s constructor decodes, and
+`UploadPacketizer::pack7Bit()` does the same repack starting from whole bytes rather than loose bits.
+
+**Where the packing happens differs by direction.** On download each PatchPacket is encoded, and so
+must be decoded, independently. On upload the sections are concatenated as plain bytes first
+(`BitStreamWriter::toBytes()`) and the 7-bit packing is applied per *packet*, after the 166-byte cut,
+so it does not align with section boundaries at all.
 
 ---
 
