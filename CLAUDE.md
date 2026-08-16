@@ -25,6 +25,15 @@ cd nomad-0-3_2 && ../jdk8u482-b08/bin/java -jar nomad.jar
 ```bash
 # Run unit tests (pure layers: patch codec, SysEx, packetizer, placement)
 cmake --build build --target nme_tests && ctest --test-dir build --output-on-failure
+
+# Before pushing: the same tests under the sanitizers. The plain build says
+# nothing about undefined behaviour, and CI runs this job.
+cmake -B build-asan -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+  -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+cmake --build build-asan --target nme_tests -j$(nproc)
+ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 \
+  ctest --test-dir build-asan --output-on-failure
 ```
 
 Tests live in `tests/` (doctest, vendored at `libs/doctest/`); CI runs them on
