@@ -6,6 +6,7 @@
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
 #include "ui/AboutDialog.h"
+#include "ui/SelfOwnedDialog.h"
 #include "ui/SlotSelectDialog.h"
 #include "ui/PatchSettingsDialog.h"
 #include "ui/SynthSettingsDialog.h"
@@ -942,6 +943,10 @@ MainComponent::~MainComponent() {
 #if JUCE_MAC
   juce::MenuBarModel::setMacMainMenu(nullptr);
 #endif
+  // The slot chooser and the store-location dialog live on the desktop and are
+  // owned by nobody, so quitting with one still open leaked it and printed an
+  // assertion for it and for every child it held.
+  SelfOwnedDialog::closeAllOpen();
   menuBar.reset();
   saveFloaterState();
   // Dragging a sub-window around inside Free mode does not fire onLayoutChanged
@@ -1358,11 +1363,11 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     juce::JUCEApplication::getInstance()->systemRequestedQuit();
     break;
   case 20:
-    undoManager().undo();
+    runUndoRestoringSelection(activeSlot, /*redo=*/false);
     updateDspLoadDisplay();
     break;
   case 21:
-    undoManager().redo();
+    runUndoRestoringSelection(activeSlot, /*redo=*/true);
     updateDspLoadDisplay();
     break;
   case 24:
@@ -3443,8 +3448,14 @@ void MainComponent::wireSlotView(int slot) {
       });
 
   // Undo/redo keyboard shortcuts (Ctrl+Z / Ctrl+Shift+Z), scoped to this slot
-  canvas.setUndoCallback([this, slot, updateLoad]() { slotUndoManagers[slot].undo(); updateLoad(); });
-  canvas.setRedoCallback([this, slot, updateLoad]() { slotUndoManagers[slot].redo(); updateLoad(); });
+  canvas.setUndoCallback([this, slot, updateLoad]() {
+    runUndoRestoringSelection(slot, /*redo=*/false);
+    updateLoad();
+  });
+  canvas.setRedoCallback([this, slot, updateLoad]() {
+    runUndoRestoringSelection(slot, /*redo=*/true);
+    updateLoad();
+  });
   canvas.setUndoManager(&slotUndoManagers[slot]);
 
   canvas.setFileCommandCallback([this, slot](const juce::String& cmd) {
@@ -3925,8 +3936,36 @@ void MainComponent::rebuildUndoContext(int slot)
         [this, slot](int section, int moduleId, int paramId, int value) {
             variations[slot].updateValue(section, moduleId, paramId, value);
         },
+        // An undo put a deleted module back. Collected here rather than
+        // selected one at a time: undoing a delete of several modules restores
+        // them one action at a time, and the selection is meant to come back
+        // whole, so the undo that drives them reads this list afterwards.
+        [this](int section, int containerIndex) {
+            restoredModules.push_back({ section, containerIndex });
+        },
         slot
     });
+}
+
+// Undo and redo both run through here so that an undo which puts deleted
+// modules back also puts the selection back on them. Restoring is what the
+// undo of a delete does; the actions report each module as they re-insert it,
+// and the selection is set once at the end, whole.
+void MainComponent::runUndoRestoringSelection(int slot, bool redo) {
+  if (slot < 0 || slot >= numSlots)
+    return;
+
+  restoredModules.clear();
+
+  if (redo)
+    slotUndoManagers[slot].redo();
+  else
+    slotUndoManagers[slot].undo();
+
+  if (!restoredModules.empty()) {
+    canvasFor(slot).selectRestored(restoredModules);
+    restoredModules.clear();
+  }
 }
 
 // --- Parameter Snapshots ---

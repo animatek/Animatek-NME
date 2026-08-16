@@ -4,14 +4,16 @@
 #include <array>
 #include <functional>
 #include "FlatCloseButton.h"
+#include "SelfOwnedDialog.h"
 
 // Slot chooser shown when opening a .pch (issue #21). Lists the four slots
 // A/B/C/D with the name of the patch currently loaded in each, so you can see
 // what you are about to overwrite, plus a separate "Local" option that loads
 // the patch into the editor only without uploading anything to the synth.
-// Cancel aborts the load. Modelled on PatchLocationDialog: self-owned, added to
-// the desktop, deletes itself on close.
-class SlotSelectDialog : public juce::Component
+// Cancel aborts the load. Self-owned: it lives on the desktop and takes itself
+// down when dismissed, which SelfOwnedDialog makes safe to do from a button
+// callback and survivable when the editor quits with it still open.
+class SlotSelectDialog : public SelfOwnedDialog
 {
 public:
     struct Result

@@ -136,7 +136,7 @@ void SlotSelectDialog::cancel()
     close();
 }
 
-void SlotSelectDialog::close() { removeFromDesktop(); delete this; }
+void SlotSelectDialog::close() { closeSelf(); }
 
 // ─────────────────────────────────────────────────────────────────────────────
 void SlotSelectDialog::show(juce::Component* parent,

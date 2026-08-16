@@ -135,7 +135,7 @@ void PatchLocationDialog::cancel()
     close();
 }
 
-void PatchLocationDialog::close() { removeFromDesktop(); delete this; }
+void PatchLocationDialog::close() { closeSelf(); }
 
 bool PatchLocationDialog::keyPressed (const juce::KeyPress& key)
 {

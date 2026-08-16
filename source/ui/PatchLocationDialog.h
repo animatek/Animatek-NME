@@ -1,12 +1,13 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "SelfOwnedDialog.h"
 #include <vector>
 #include <string>
 #include <functional>
 #include "FlatCloseButton.h"
 
-class PatchLocationDialog : public juce::Component
+class PatchLocationDialog : public SelfOwnedDialog
 {
 public:
     struct Result
