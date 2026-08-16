@@ -2471,6 +2471,12 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
                                                           : patch->getCommonArea();
             for (auto& modulePtr : container.getModules())
                 selection.push_back(refTo(*modulePtr));
+            // Text notes are part of a selection everywhere else, so "select
+            // all" has to mean all of it: they were the one thing this left
+            // behind.
+            for (const auto& c : patch->getComments())
+                if (c.section == mySection)
+                    selectedCommentIds.push_back(c.id);
             repaint();
             return true;
         }
@@ -2489,22 +2495,40 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         {
             if (moduleMoveCallback && undoManager)
             {
-                undoManager->beginNewTransaction("Move Modules");
+                // The selection travels as one block, so it stops when its
+                // leading edge reaches the border rather than each module
+                // stopping on its own: clamping them individually piled them
+                // all onto the same row at the edge, on top of each other.
+                bool againstEdge = false;
                 for (auto& sel : selection)
                 {
                     const auto* module = resolve(sel);
                     if (module == nullptr)
                         continue;
-                    // The bottom bound subtracts the module's own height: a
-                    // nudge to row 127 used to leave everything but the top
-                    // row hanging below the canvas.
+                    // The bottom bound subtracts the module's own height, or a
+                    // tall module ends up hanging below the canvas.
                     const int h = module->getDescriptor()->height;
-                    auto oldPos = module->getPosition();
-                    juce::Point<int> newPos(juce::jlimit(0, 39, oldPos.x + dx),
-                                            juce::jlimit(0, modulePlacementRows - h, oldPos.y + dy));
-                    if (newPos != oldPos)
-                        moduleMoveCallback(sel.section, sel.containerIndex,
-                                           oldPos, newPos);
+                    const auto pos = module->getPosition();
+                    if (pos.x + dx < 0 || pos.x + dx > 39
+                        || pos.y + dy < 0 || pos.y + dy > modulePlacementRows - h)
+                    {
+                        againstEdge = true;
+                        break;
+                    }
+                }
+
+                if (!againstEdge)
+                {
+                    undoManager->beginNewTransaction("Move Modules");
+                    for (auto& sel : selection)
+                    {
+                        const auto* module = resolve(sel);
+                        if (module == nullptr)
+                            continue;
+                        const auto oldPos = module->getPosition();
+                        const juce::Point<int> newPos(oldPos.x + dx, oldPos.y + dy);
+                        moduleMoveCallback(sel.section, sel.containerIndex, oldPos, newPos);
+                    }
                 }
             }
             repaint();
