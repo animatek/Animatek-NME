@@ -1036,7 +1036,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
         "Theme: " + ThemeRegistry::get(editorOptions.uiThemeIndex).name, 2500);
     return true;
   }
+  // On macOS the naked Cmd+W belongs to "close window" and fired both ways
+  // (issue #55), so wireframe takes Shift there; elsewhere Ctrl+W is free.
+ #if JUCE_MAC
+  if (key == juce::KeyPress('w', juce::ModifierKeys::commandModifier
+                                     | juce::ModifierKeys::shiftModifier, 0))
+ #else
   if (key == juce::KeyPress('w', juce::ModifierKeys::commandModifier, 0))
+ #endif
   {
     toggleWireframe();
     return true;
@@ -1053,9 +1060,11 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
       toggleLeftPanel();
     return true;
   }
-  // F11 blows the focused slot up to fill the work area and back, the way a
-  // tiling window manager's monocle does.
-  if (key == juce::KeyPress::F11Key)
+  // F4 blows the focused slot up to fill the work area and back, the way a
+  // tiling window manager's monocle does. It lived on F11 first, but macOS
+  // owns F11 for Show Desktop (issue #55); F11 stays as a quiet alias for
+  // fingers that learned it.
+  if (key == juce::KeyPress::F4Key || key == juce::KeyPress::F11Key)
   {
     toggleFocusMode();
     return true;
@@ -1114,58 +1123,74 @@ juce::StringArray MainComponent::getMenuBarNames() {
   return {"File", "Edit", "View", "Device", "Help", "About"};
 }
 
+// Shortcut hints go in the Item's own shortcut field, which the popup
+// LookAndFeel right-aligns in its lighter style. They used to ride inside the
+// label after a "\t", which the in-window menus rendered as one ragged line
+// and the macOS native menu bar printed literally, tab and all (issue #56).
+static void addShortcutItem(juce::PopupMenu& menu, int id, const juce::String& text,
+                            const juce::String& shortcut,
+                            bool enabled = true, bool ticked = false)
+{
+  juce::PopupMenu::Item item(text);
+  item.itemID = id;
+  item.shortcutKeyDescription = shortcut;
+  item.isEnabled = enabled;
+  item.isTicked = ticked;
+  menu.addItem(std::move(item));
+}
+
 juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
                                                const juce::String &) {
   juce::PopupMenu menu;
 
   if (menuIndex == 0) // File
   {
-    menu.addItem(1, "New Patch\tCtrl+N");
-    menu.addItem(2, "Open...\tCtrl+O");
+    addShortcutItem(menu, 1, "New Patch", "Ctrl+N");
+    addShortcutItem(menu, 2, "Open...", "Ctrl+O");
     menu.addSeparator();
-    menu.addItem(3, "Save\tCtrl+S");
-    menu.addItem(4, "Save As...\tCtrl+Shift+S");
+    addShortcutItem(menu, 3, "Save", "Ctrl+S");
+    addShortcutItem(menu, 4, "Save As...", "Ctrl+Shift+S");
     menu.addSeparator();
     menu.addItem(5, "Import Snippet...", currentPatch() != nullptr);
-    menu.addItem(6, "Preset Browser...\tCtrl+B");
+    addShortcutItem(menu, 6, "Preset Browser...", "Ctrl+B");
     menu.addSeparator();
-    menu.addItem(8, "Patch Settings...\tCtrl+P", currentPatch() != nullptr);
-    menu.addItem(9, "Synth Settings...\tCtrl+G");
-    menu.addItem(11, "Editor Options...\tCtrl+,");
+    addShortcutItem(menu, 8, "Patch Settings...", "Ctrl+P", currentPatch() != nullptr);
+    addShortcutItem(menu, 9, "Synth Settings...", "Ctrl+G");
+    addShortcutItem(menu, 11, "Editor Options...", "Ctrl+,");
     menu.addSeparator();
-    menu.addItem(10, "Quit\tCtrl+Q");
+    addShortcutItem(menu, 10, "Quit", "Ctrl+Q");
   } else if (menuIndex == 1) // Edit
   {
-    menu.addItem(20, "Undo " + undoManager().getUndoDescription() + "\tCtrl+Z",
-                 undoManager().canUndo(), false);
-    menu.addItem(21, "Redo " + undoManager().getRedoDescription() + "\tCtrl+Shift+Z",
-                 undoManager().canRedo(), false);
+    addShortcutItem(menu, 20, "Undo " + undoManager().getUndoDescription(), "Ctrl+Z",
+                    undoManager().canUndo());
+    addShortcutItem(menu, 21, "Redo " + undoManager().getRedoDescription(), "Ctrl+Shift+Z",
+                    undoManager().canRedo());
     menu.addSeparator();
     // These have always been on the keyboard and on the module's own
     // right-click menu, but never here, which is the first place anyone looks
     // (issue #42).
     auto& canvas = activeCanvas();
     const bool anySelected = canvas.hasSelection();
-    menu.addItem(24, "Cut\tCtrl+X", anySelected);
-    menu.addItem(25, "Copy\tCtrl+C", anySelected);
-    menu.addItem(26, "Paste\tCtrl+V", canvas.canPaste());
-    menu.addItem(27, "Duplicate\tCtrl+D", anySelected);
+    addShortcutItem(menu, 24, "Cut", "Ctrl+X", anySelected);
+    addShortcutItem(menu, 25, "Copy", "Ctrl+C", anySelected);
+    addShortcutItem(menu, 26, "Paste", "Ctrl+V", canvas.canPaste());
+    addShortcutItem(menu, 27, "Duplicate", "Ctrl+D", anySelected);
     menu.addSeparator();
     bool hasPatch = (currentPatch() != nullptr);
-    menu.addItem(22, "Randomize (Simple)\tCtrl+R", hasPatch);
-    menu.addItem(23, "Randomize (Gaussian)\tCtrl+Shift+R", hasPatch);
+    addShortcutItem(menu, 22, "Randomize (Simple)", "Ctrl+R", hasPatch);
+    addShortcutItem(menu, 23, "Randomize (Gaussian)", "Ctrl+Shift+R", hasPatch);
   } else if (menuIndex == 2) // View
   {
     float zoom = activeCanvas().getZoomLevel();
-    menu.addItem(60, "Zoom In\tCtrl++");
-    menu.addItem(61, "Zoom Out\tCtrl+-");
-    menu.addItem(62, "Reset Zoom (100%)\tShift+Z");
-    menu.addItem(63, "Zoom to Selection\tZ", !activeCanvas().isDragging(0, 0, 0));  // always enabled
+    addShortcutItem(menu, 60, "Zoom In", "Ctrl++");
+    addShortcutItem(menu, 61, "Zoom Out", "Ctrl+-");
+    addShortcutItem(menu, 62, "Reset Zoom (100%)", "Shift+Z");
+    addShortcutItem(menu, 63, "Zoom to Selection", "Z", !activeCanvas().isDragging(0, 0, 0));  // always enabled
     menu.addSeparator();
     juce::String zoomLabel = "Zoom: " + juce::String(juce::roundToInt(zoom * 100)) + "%";
     menu.addItem(-1, zoomLabel, false);
     menu.addSeparator();
-    menu.addItem(64, "Shake Cables\tS");
+    addShortcutItem(menu, 64, "Shake Cables", "S");
     menu.addSeparator();
     menu.addCustomItem(65, std::make_unique<CableOpacitySlider>());
     menu.addSeparator();
@@ -1173,8 +1198,21 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     for (int i = 0; i < ThemeRegistry::count(); ++i)  // ids 200+ reserved for themes
       themeMenu.addItem(200 + i, ThemeRegistry::get(i).name, true,
                         i == editorOptions.uiThemeIndex);
-    menu.addSubMenu("Theme\tCtrl+T", themeMenu);
-    menu.addItem(66, "Wireframe Modules\tCtrl+W", true, editorOptions.wireframe);
+    {
+      // A submenu with a shortcut hint needs the Item form: addSubMenu has no
+      // shortcut field, and Ctrl+T cycling the theme is worth advertising.
+      juce::PopupMenu::Item themeItem("Theme");
+      themeItem.subMenu = std::make_unique<juce::PopupMenu>(themeMenu);
+      themeItem.shortcutKeyDescription = "Ctrl+T";
+      menu.addItem(std::move(themeItem));
+    }
+    // Cmd+W is "close window" on macOS and the system wins the argument, so
+    // wireframe rides with Shift there (issue #55).
+   #if JUCE_MAC
+    addShortcutItem(menu, 66, "Wireframe Modules", "Cmd+Shift+W", true, editorOptions.wireframe);
+   #else
+    addShortcutItem(menu, 66, "Wireframe Modules", "Ctrl+W", true, editorOptions.wireframe);
+   #endif
     menu.addSeparator();
 
     auto& patchArea = mainLayout->getPatchArea();
@@ -1183,23 +1221,23 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     {
         auto letter = juce::String::charToString(static_cast<char>('A' + i));
         auto name = slotPatches[i] ? slotPatches[i]->getName() : juce::String("empty");
-        slotMenu.addItem(90 + i, "Slot " + letter + " - " + name
-                                 + "\t" NME_SLOT_TOGGLE_CHORD + juce::String(i + 1),
-                         true, patchArea.isSlotOpen(i));
+        addShortcutItem(slotMenu, 90 + i, "Slot " + letter + " - " + name,
+                        NME_SLOT_TOGGLE_CHORD + juce::String(i + 1),
+                        true, patchArea.isSlotOpen(i));
     }
     slotMenu.addSeparator();
     const bool severalOpen = patchArea.getNumOpenSlots() > 1;
     const bool grid = patchArea.getNumOpenSlots() == 4;  // up/down only exist in the 2x2
-    slotMenu.addItem(96, "Move Slot Left\tCtrl+Shift+Left", severalOpen);
-    slotMenu.addItem(97, "Move Slot Right\tCtrl+Shift+Right", severalOpen);
-    slotMenu.addItem(99, "Move Slot Up\tCtrl+Shift+Up", grid);
-    slotMenu.addItem(100, "Move Slot Down\tCtrl+Shift+Down", grid);
+    addShortcutItem(slotMenu, 96, "Move Slot Left", "Ctrl+Shift+Left", severalOpen);
+    addShortcutItem(slotMenu, 97, "Move Slot Right", "Ctrl+Shift+Right", severalOpen);
+    addShortcutItem(slotMenu, 99, "Move Slot Up", "Ctrl+Shift+Up", grid);
+    addShortcutItem(slotMenu, 100, "Move Slot Down", "Ctrl+Shift+Down", grid);
     slotMenu.addItem(98, "Rotate Slots", severalOpen);
     slotMenu.addSeparator();
     slotMenu.addItem(94, "Tile Slots", severalOpen,
                      patchArea.getTileMode() == SlotMdiArea::TileMode::Auto);
-    slotMenu.addItem(95, "Focus Mode\tF11", patchArea.getNumOpenSlots() > 1,
-                     patchArea.isFocusMode());
+    addShortcutItem(slotMenu, 95, "Focus Mode", "F4", patchArea.getNumOpenSlots() > 1,
+                    patchArea.isFocusMode());
     menu.addSubMenu("Slots", slotMenu);
 
     // The readouts had lived on the function keys alone, and people asking for
@@ -1208,30 +1246,30 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     using Overlay = PatchCanvas::OverlayMode;
     const auto overlay = PatchCanvas::getOverlayMode();
     juce::PopupMenu overlayMenu;
-    overlayMenu.addItem(110, "Parameter Values\tF5", true, overlay == Overlay::Values);
-    overlayMenu.addItem(111, "Morph Groups\tF7", true, overlay == Overlay::MorphGroups);
-    overlayMenu.addItem(112, "Knob Assignments\tF8", true, overlay == Overlay::Knobs);
-    overlayMenu.addItem(113, "MIDI CC Assignments\tF9", true, overlay == Overlay::MidiCtrls);
-    overlayMenu.addItem(114, "Module DSP Cost\tF10", true, overlay == Overlay::ModuleCosts);
+    addShortcutItem(overlayMenu, 110, "Parameter Values", "F5", true, overlay == Overlay::Values);
+    addShortcutItem(overlayMenu, 111, "Morph Groups", "F7", true, overlay == Overlay::MorphGroups);
+    addShortcutItem(overlayMenu, 112, "Knob Assignments", "F8", true, overlay == Overlay::Knobs);
+    addShortcutItem(overlayMenu, 113, "MIDI CC Assignments", "F9", true, overlay == Overlay::MidiCtrls);
+    addShortcutItem(overlayMenu, 114, "Module DSP Cost", "F3", true, overlay == Overlay::ModuleCosts);
     overlayMenu.addSeparator();
     overlayMenu.addItem(115, "None", overlay != Overlay::Off);
     menu.addSubMenu("Overlays", overlayMenu);
 
     menu.addSeparator();
     menu.addItem(69, "Module Icon Bar", true, mainLayout->isModuleIconBarVisible());
-    menu.addItem(67, "Inspector Panel\tCtrl+I", true, mainLayout->isLeftPanelVisible());
-    menu.addItem(68, "Patch Browser\tCtrl+Shift+I", true, mainLayout->isRightPanelVisible());
+    addShortcutItem(menu, 67, "Inspector Panel", "Ctrl+I", true, mainLayout->isLeftPanelVisible());
+    addShortcutItem(menu, 68, "Patch Browser", "Ctrl+Shift+I", true, mainLayout->isRightPanelVisible());
     menu.addSeparator();
-    menu.addItem(80, "Knob Floater\tCtrl+5", true,
-                 knobFloaterWindow != nullptr && knobFloaterWindow->isVisible());
-    menu.addItem(81, "Keyboard Floater\tCtrl+6", true,
-                 keyboardFloaterWindow != nullptr && keyboardFloaterWindow->isVisible());
-    menu.addItem(82, "Patch Notes\tCtrl+7", true,
-                 patchNotesFloaterWindow != nullptr && patchNotesFloaterWindow->isVisible());
-    menu.addItem(83, "Patch Mutator\tCtrl+8", true,
-                 mutatorWindow != nullptr && mutatorWindow->isVisible());
-    menu.addItem(84, "SysEx Monitor\tCtrl+9", true,
-                 sysexMonitorWindow != nullptr && sysexMonitorWindow->isVisible());
+    addShortcutItem(menu, 80, "Knob Floater", "Ctrl+5", true,
+                    knobFloaterWindow != nullptr && knobFloaterWindow->isVisible());
+    addShortcutItem(menu, 81, "Keyboard Floater", "Ctrl+6", true,
+                    keyboardFloaterWindow != nullptr && keyboardFloaterWindow->isVisible());
+    addShortcutItem(menu, 82, "Patch Notes", "Ctrl+7", true,
+                    patchNotesFloaterWindow != nullptr && patchNotesFloaterWindow->isVisible());
+    addShortcutItem(menu, 83, "Patch Mutator", "Ctrl+8", true,
+                    mutatorWindow != nullptr && mutatorWindow->isVisible());
+    addShortcutItem(menu, 84, "SysEx Monitor", "Ctrl+9", true,
+                    sysexMonitorWindow != nullptr && sysexMonitorWindow->isVisible());
   }
   else if (menuIndex == 3) // Device
   {
@@ -1676,7 +1714,7 @@ void MainComponent::toggleFocusMode() {
   const bool on = !area.isFocusMode();
   area.setFocusMode(on);
   mainLayout->getStatusBar().showMessage(
-      on ? "Focus mode on - F11 to go back to the tiling" : "Focus mode off", 2500);
+      on ? "Focus mode on - F4 to go back to the tiling" : "Focus mode off", 2500);
 }
 
 void MainComponent::toggleSlotOpen(int slot) {
@@ -1917,7 +1955,7 @@ void MainComponent::saveSlotPatch(int slot) {
     bool ok = saveSlotPatchToFile(slot, slotPatchFiles[slot]);
     mainLayout->getStatusBar().showMessage(
         ok ? "Saved: " + slotPatchFiles[slot].getFileName()
-           : "ERROR:Failed to save: " + slotPatchFiles[slot].getFileName(),
+           : "ERROR: Failed to save: " + slotPatchFiles[slot].getFileName(),
         ok ? 3000 : 5000);
   } else {
     saveSlotPatchAs(slot);
@@ -1963,7 +2001,7 @@ void MainComponent::saveSlotPatchAs(int slot) {
         if (ok) slotPatchFiles[slot] = file;
         mainLayout->getStatusBar().showMessage(
             ok ? "Saved: " + file.getFileName()
-               : "ERROR:Failed to save: " + file.getFileName(),
+               : "ERROR: Failed to save: " + file.getFileName(),
             ok ? 3000 : 5000);
       });
 }
@@ -1973,7 +2011,7 @@ void MainComponent::loadPatchFromFile(const juce::File &file, int targetSlot, bo
   auto patch = io.readFile(file);
 
   if (patch == nullptr) {
-    mainLayout->getStatusBar().showMessage("ERROR:Failed to load: " + file.getFileName(), 5000);
+    mainLayout->getStatusBar().showMessage("ERROR: Failed to load: " + file.getFileName(), 5000);
     return;
   }
 
@@ -3240,9 +3278,12 @@ void MainComponent::wireSlotView(int slot) {
   canvas.setModuleDropCallback([this, patch, ctx, undoMgr, updateLoad]
       (int typeId, int section, int gridX, int gridY, const juce::String& name) {
     if (!patch() || !ctx()) return;
+    // A transient message, NOT setConnectionStatus: this label is the
+    // persistent status line, so an error posted there outlived its moment
+    // by whole sessions (issue #65).
     if (!undoMgr().perform(new AddModuleAction(*ctx(), section, typeId, gridX, gridY, name)))
-      mainLayout->getStatusBar().setConnectionStatus(
-          "Failed to add module - check synth memory/limits", true);
+      mainLayout->getStatusBar().showMessage(
+          "ERROR: Failed to add module - check synth memory/limits", 6000);
     updateLoad();
   });
   canvas.setDeleteModuleCallback([patch, ctx, undoMgr, updateLoad](int section, Module* module) {
@@ -3736,14 +3777,18 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  F7                  Morph groups overlay\n"
       "  F8                  Knob assignments overlay\n"
       "  F9                  MIDI CC assignments overlay\n"
-      "  F10                 Module DSP cost overlay\n"
+      "  F3 (or F10)         Module DSP cost overlay\n"
       "  Double-click module Module DSP cost\n"
       "  + / -               Step the control under the pointer\n"
       "  Z                   Zoom to selection / reset\n"
       "  Shift+Z             Reset zoom to 100%\n"
       "  Ctrl++ / Ctrl+-     Zoom in / out\n"
       "  Ctrl+T              Cycle color theme\n"
+     #if JUCE_MAC
+      "  Cmd+Shift+W         Toggle wireframe modules\n"
+     #else
       "  Ctrl+W              Toggle wireframe modules\n"
+     #endif
       "  Ctrl+I              Toggle inspector panel (left)\n"
       "  Ctrl+Shift+I        Toggle patch browser (right)\n"
       "  S                   Shake cables\n"
@@ -3752,7 +3797,7 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "SLOTS\n"
       "  Ctrl+1..4           Switch to slot A..D (opens it if closed)\n"
       "  " NME_SLOT_TOGGLE_CHORD "1..4     Show/hide slot A..D's sub-window\n"
-      "  F11                 Focus mode: blow the focused slot up, and back\n"
+      "  F4 (or F11)         Focus mode: blow the focused slot up, and back\n"
       "  Maximise button     Same, on that sub-window's title bar\n"
       "  Ctrl+Shift+arrows   Move the focused slot to the neighbouring tile\n"
       "                      (up/down only exist in the four-slot 2x2)\n"

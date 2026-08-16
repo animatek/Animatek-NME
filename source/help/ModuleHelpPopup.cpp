@@ -10,9 +10,10 @@ class HelpContent : public juce::Component
 public:
     explicit HelpContent(const NordHelp::ModuleHelp& help)
     {
-        // Module description
+        // Module description. Palette colour, not a hardcoded near-white: on a
+        // light theme white-on-white made the text invisible (issue #58).
         descLabel.setFont(juce::Font(AppTheme::uiFont(13.0f)));
-        descLabel.setColour(juce::Label::textColourId,       juce::Colour(0xffdddddd));
+        descLabel.setColour(juce::Label::textColourId,       AppTheme::palette().textPrimary);
         descLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
         descLabel.setText(help.description, juce::dontSendNotification);
         descLabel.setJustificationType(juce::Justification::topLeft);
@@ -21,6 +22,11 @@ public:
 
         for (auto& p : help.params)
         {
+            // "$Contents", "$#", "$Edit"...: navigation artifacts the help
+            // scraper dragged in from the original manual's section pages,
+            // not real controls (issue #57).
+            if (p.name.startsWith("$"))
+                continue;
             auto* nl = names.add(std::make_unique<juce::Label>());
             nl->setFont(juce::Font(AppTheme::uiFont(12.0f)).boldened());
             nl->setColour(juce::Label::textColourId,       AppTheme::palette().accentWarning);

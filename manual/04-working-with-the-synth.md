@@ -39,7 +39,7 @@ Slots** to re-flow.
   slot's sub-window, and so does
   right-clicking its row in the slot bar.
 - `Ctrl+1`–`Ctrl+4` switches to a slot, opening it if it was closed.
-- `F11`, or a sub-window's maximise button, blows the focused slot up to the
+- `F4` (or `F11`), or a sub-window's maximise button, blows the focused slot up to the
   whole work area and back again for a closer look.
 - `Ctrl+Shift+` an arrow moves the focused slot to the neighbouring tile, so the
   patch you are working on goes where you want it. **View > Slots > Rotate

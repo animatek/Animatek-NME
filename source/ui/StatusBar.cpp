@@ -23,6 +23,15 @@ StatusBar::StatusBar()
     messageLabel.setFont(juce::Font(AppTheme::uiFont(12.0f).withStyle("Bold")));
     addAndMakeVisible(messageLabel);
     messageLabel.setVisible(false);
+    // Let the click through to the bar itself, which dismisses the message.
+    messageLabel.setInterceptsMouseClicks(false, false);
+}
+
+void StatusBar::mouseDown(const juce::MouseEvent& e)
+{
+    if (messageLabel.isVisible()
+        && messageLabel.getBounds().contains(e.getPosition()))
+        clearMessage();
 }
 
 void StatusBar::setConnectionStatus(const juce::String& status, bool connected)

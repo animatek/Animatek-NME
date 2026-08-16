@@ -45,14 +45,14 @@ On macOS, `Ctrl` is `Cmd`.
 | `F7` | Toggle morph groups overlay |
 | `F8` | Toggle knob assignments overlay |
 | `F9` | Toggle MIDI CC assignments overlay |
-| `F10` | Toggle module DSP cost overlay |
+| `F3` (or `F10`) | Toggle module DSP cost overlay |
 | double-click | Double-click a module to read its DSP cost |
 | `+` / `-` | Step the knob or slider the pointer is over, one value at a time. Hold to repeat; the whole run is one undo step |
 | `Z` | Zoom to selection (or reset when nothing selected) |
 | `Shift+Z` | Reset zoom to 100% |
 | `Ctrl++` / `Ctrl+-` | Zoom in / out |
 | `Ctrl+T` | Cycle color theme |
-| `Ctrl+W` | Toggle wireframe modules |
+| `Ctrl+W` | Toggle wireframe modules (**macOS: `Cmd+Shift+W`**, because macOS keeps `Cmd+W` for closing windows) |
 | `Ctrl+I` | Toggle the inspector panel (left side) |
 | `Ctrl+Shift+I` | Toggle the patch browser (right side) |
 | `S` | Shake cables |
@@ -64,7 +64,7 @@ On macOS, `Ctrl` is `Cmd`.
 |----------|--------|
 | `Ctrl+1`..`Ctrl+4` | Switch to slot A..D (opens its sub-window if closed) |
 | `Ctrl+Shift+1`..`Ctrl+Shift+4` | Show/hide slot A..D's sub-window (**macOS: `Cmd+Alt+1`..`Cmd+Alt+4`**, because macOS keeps `Cmd+Shift+3` and `Cmd+Shift+4` for its screen capture) |
-| `F11` | Focus mode: blow the focused slot up to the full area, and back |
+| `F4` (or `F11`) | Focus mode: blow the focused slot up to the full area, and back. `F4` is the advertised key because macOS reserves `F11` for Show Desktop |
 | Maximise button | The same, on that sub-window's own title bar |
 | `Ctrl+Shift+` arrows | Move the focused slot to the neighbouring tile, swapping with whatever is there. Up and down only exist in the four-slot 2x2; nothing happens at an edge |
 | Right-click a slot row | Show/hide that slot's sub-window |

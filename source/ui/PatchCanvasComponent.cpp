@@ -234,8 +234,11 @@ bool PatchCanvas::handleOverlayKey(const juce::KeyPress& key, juce::Component& r
     if (key == juce::KeyPress::F9Key) return toggle(OverlayMode::MidiCtrls);
     // Not one of the original's keys: it has no whole-patch cost readout, only
     // the per-module answer on a double-click. Worth having when you are hunting
-    // for what to cut in a patch that is over budget.
-    if (key == juce::KeyPress::F10Key) return toggle(OverlayMode::ModuleCosts);
+    // for what to cut in a patch that is over budget. It moved from F10, which
+    // Windows and some Linux desktops reserve for the menu bar; F10 stays as a
+    // quiet alias.
+    if (key == juce::KeyPress::F3Key || key == juce::KeyPress::F10Key)
+        return toggle(OverlayMode::ModuleCosts);
 
     return false;
 }
@@ -5879,13 +5882,16 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                             // every parameter to its minimum, which took the step
                             // count down to 1 and the loop and transport settings
                             // with it. Emptying a pattern should leave the shape of
-                            // the sequence alone (issue #34).
+                            // the sequence alone (issue #34). A cleared step goes to
+                            // its default, not its minimum: a CtrlSeq fader's rest
+                            // position is centre (64), and zero is the floor, not
+                            // "empty" (issue #53).
                             const auto stepIds = sequencerStepIds(*theme);
                             for (auto& p : m.getParameters())
                             {
                                 auto* pd = p.getDescriptor();
                                 if (!isSequencerStepParam(*pd, stepIds)) continue;
-                                int newVal = pd->minValue;
+                                int newVal = pd->defaultValue;
                                 if (p.getValue() == newVal) continue;
                                 p.setValue(newVal);
                                 if (parameterChangeCallback)

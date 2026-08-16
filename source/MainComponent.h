@@ -144,7 +144,7 @@ private:
     void toggleMutatorWindow();
     void toggleSysexMonitor();
     void toggleSlotOpen(int slot);  // Show/hide one slot's sub-window in the work area
-    void toggleFocusMode();         // F11: blow the focused sub-window up to the full area
+    void toggleFocusMode();         // F4 (F11 alias): blow the focused sub-window up to the full area
     bool handleFloaterShortcut(const juce::KeyPress& key);  // Ctrl+1..9, T
     void showFloaterWindow(juce::DocumentWindow& window, const juce::String& settingsPrefix);
     void saveFloaterState();

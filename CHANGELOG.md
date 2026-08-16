@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+### Changed
+
+- **The DSP cost overlay moved to `F3` and focus mode to `F4`** (#55). F10 belongs to the menu
+  bar on Windows and some Linux desktops, and macOS keeps F11 for Show Desktop, so both readouts
+  now live on keys nobody else is holding. The old keys still work as quiet aliases for fingers
+  that learned them.
+
+- **On macOS, wireframe modules moved to `Cmd+Shift+W`** (#55). The naked `Cmd+W` is the
+  system's own "close window" and fired both ways at once. Linux and Windows keep `Ctrl+W`.
+
+- **Menu shortcuts sit right-aligned in their own column** (#56), instead of riding inside the
+  item text, which the macOS menu bar printed literally, tab character and all.
+
+- **A sequencer's Clr button now parks every step at its default** (#53): a CtrlSeq fader
+  returns to centre (64) rather than being slammed to zero, which is a floor, not "empty".
+
+### Fixed
+
+- **Error messages no longer outstay their welcome** (#65). "Failed to add module" was posted
+  to the permanent status line and sat there for the rest of the session; it is a transient
+  message now, and any status message can also be dismissed by clicking it.
+
+- **The Help popup's description follows the theme** (#58) instead of staying near-white, which
+  made it invisible on light themes.
+
+- **Module help no longer shows `$Contents` and friends** (#57). The scraper that lifted the
+  original manual's text dragged a few of its navigation pages in as if they were controls, on
+  Constant, EQ Mid, LFOC, Oscillator slave FM and Sine Bank; they are filtered out now.
+
 ### Added
 
 - **Every parameter of the selected module, listed in the Inspector, and editable there.** A

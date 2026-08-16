@@ -20,6 +20,8 @@ public:
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    // A click on a transient message dismisses it (issue #65).
+    void mouseDown(const juce::MouseEvent& e) override;
 
 private:
     juce::Label connectionLabel;

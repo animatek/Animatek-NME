@@ -67,7 +67,7 @@ module's cycle cost; the synth does not report its load.
 Each module's individual share is on screen wherever you pick or inspect a
 module: in the right-click **Add Module** menu ("Audio In (2.2%)"), in the module
 browser, on every Quick Add row, and in the Inspector. **Double-click a module**
-for its own cost, as the original editor does, or press `F10` to label every
+for its own cost, as the original editor does, or press `F3` to label every
 module at once, which is the view you want when a patch is over budget and you
 are looking for what to cut. The figures are rounded to the two significant
 figures the original Clavia editor prints, so a patch optimised against the
@@ -122,6 +122,6 @@ stays legible on light and dark themes alike. A very light procedural grain over
 the canvas gives it a paper feel instead of a flat fill, most visible on Nord
 Classic.
 
-`Ctrl+W` toggles a wireframe module style that works with every theme. Both
+`Ctrl+W` (macOS: `Cmd+Shift+W`) toggles a wireframe module style that works with every theme. Both
 settings persist across sessions, as do the window size/position and floater
 layouts.
