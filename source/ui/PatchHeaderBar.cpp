@@ -328,6 +328,19 @@ bool PatchHeaderBar::isMutatorButtonAt(juce::Point<int> pos) const
     return getMutatorButtonBounds().expanded(2.0f).contains(pos.toFloat());
 }
 
+juce::Rectangle<float> PatchHeaderBar::getRetileButtonBounds() const
+{
+    // Right of MUT, where the issue asked for it. Wider than MUT because it
+    // carries four letters at the same size.
+    auto mut = getMutatorButtonBounds();
+    return { mut.getRight() + 6.0f, mut.getY(), 42.0f, mut.getHeight() };
+}
+
+bool PatchHeaderBar::isRetileButtonAt(juce::Point<int> pos) const
+{
+    return retileEnabled && getRetileButtonBounds().expanded(2.0f).contains(pos.toFloat());
+}
+
 void PatchHeaderBar::setSnapshotFilled(int index, bool filled)
 {
     if (index >= 0 && index < 8) { snapshotFilled[index] = filled; repaint(); }
@@ -740,6 +753,21 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             g.drawText("MUT", mb.toNearestInt(), juce::Justification::centred, false);
         }
 
+        // ABCD: put the slot sub-windows back in order (#51)
+        {
+            auto rb = getRetileButtonBounds();
+            g.setColour(AppTheme::palette().buttonBackground);
+            g.fillRoundedRectangle(rb, 2.0f);
+            g.setColour(AppTheme::palette().borderColor);
+            g.drawRoundedRectangle(rb.reduced(0.5f), 2.0f, 1.0f);
+            // Nothing to reorder is said by the ink, not by hiding the button:
+            // it keeps its place in the bar so the row does not shuffle about.
+            g.setColour(retileEnabled ? AppTheme::palette().textSecondary
+                                      : AppTheme::palette().textMuted);
+            g.setFont(AppTheme::uiFont(9.0f).withStyle("Bold"));
+            g.drawText("ABCD", rb.toNearestInt(), juce::Justification::centred, false);
+        }
+
         // Interpolation progress bar (below snapshot buttons)
         if (interpolationProgress >= 0.0f)
         {
@@ -890,6 +918,14 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
     {
         if (mutatorButtonCallback)
             mutatorButtonCallback();
+        return;
+    }
+
+    // ABCD re-tile button
+    if (isRetileButtonAt(pos))
+    {
+        if (retileButtonCallback)
+            retileButtonCallback();
         return;
     }
 

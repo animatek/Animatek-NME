@@ -51,6 +51,18 @@ public:
     void setMutatorButtonCallback(MutatorButtonCallback cb) { mutatorButtonCallback = std::move(cb); }
     void setMutatorOpen(bool open) { mutatorOpen = open; repaint(); }
 
+    // ABCD: re-tile the open slot sub-windows into A|B / C|D (right of MUT).
+    // Greyed out when there is nothing to put back in order, which is one slot
+    // open or a layout that is already canonical.
+    using RetileButtonCallback = std::function<void()>;
+    void setRetileButtonCallback(RetileButtonCallback cb) { retileButtonCallback = std::move(cb); }
+    void setRetileEnabled(bool enabled)
+    {
+        if (retileEnabled == enabled) return;
+        retileEnabled = enabled;
+        repaint();
+    }
+
     // Snapshot buttons (click=recall, shift+click=save, right-click=copy/init/interpolation menu)
     using SnapshotClickCallback = std::function<void(int index, bool isShiftClick)>;
     using SnapshotInterpolateCallback = std::function<void(int fromIndex, int toIndex, float seconds)>;
@@ -156,6 +168,8 @@ private:
     SnapshotInitCallback snapshotInitCallback;
     MutatorButtonCallback mutatorButtonCallback;
     bool mutatorOpen = false;
+    RetileButtonCallback retileButtonCallback;
+    bool retileEnabled = false;
 
     void showMorphKnobContextMenu(int morphIndex);
 
@@ -169,6 +183,8 @@ private:
     int getSnapshotButtonAt(juce::Point<int> pos) const;  // -1 if none
     juce::Rectangle<float> getMutatorButtonBounds() const;
     bool isMutatorButtonAt(juce::Point<int> pos) const;
+    juce::Rectangle<float> getRetileButtonBounds() const;
+    bool isRetileButtonAt(juce::Point<int> pos) const;
 
     // Morph A/B fader
     juce::Rectangle<float> getMorphFaderBounds() const;

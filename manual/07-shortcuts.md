@@ -79,6 +79,13 @@ layout re-flows whenever you open or close one. Dragging or resizing a
 sub-window leaves the windows where you put them from then on; **View > Slots >
 Tile Slots** puts them back.
 
+The **ABCD** button in the header bar, right of MUT, goes further: it puts the
+slots back in A, B, C, D order within that tiling, so four open slots land as
+A|B over C|D whatever order you opened or shuffled them into. It also drops
+focus mode and a dragged-about layout on the way, and it greys out when there
+is nothing left to put in order. **View > Slots > Reset Slot Order (ABCD)** is
+the same thing.
+
 ## Floaters
 
 | Shortcut | Action |

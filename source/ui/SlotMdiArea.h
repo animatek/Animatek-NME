@@ -71,6 +71,16 @@ public:
     enum class Direction { Left, Right, Up, Down };
     void moveFocusedTile(Direction direction);
     void rotateTiles(int direction);       // shift every slot round one tile
+    // Back to the canonical arrangement: A, B, C, D reading left to right and
+    // top to bottom, in the tiling the open count calls for (#51). Undoes a
+    // shuffle, a drag into Free mode and focus mode in one go, which is what
+    // makes it useful after loading patches into slots in whatever order.
+    // Nothing to do with one slot open: JUCE gives a lone document the whole
+    // area with no window frame at all.
+    void resetTileOrder();
+    // True when resetTileOrder() would visibly change something, so a button can
+    // grey itself out rather than lie about being available.
+    bool canResetTileOrder() const;
     juce::String getTileOrderString() const;
     void setTileOrderString(const juce::String& order);
 

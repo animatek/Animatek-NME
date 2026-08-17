@@ -224,6 +224,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   mainLayout->getPatchArea().onLayoutChanged = [this]() {
     menuItemsChanged();
     saveMdiLayout();
+    // The ABCD button greys out when the layout is already the canonical one,
+    // and this is the only place that knows the layout moved.
+    mainLayout->getHeaderBar().setRetileEnabled(
+        mainLayout->getPatchArea().canResetTileOrder());
   };
 
 
@@ -689,6 +693,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       [this](int index) { initSnapshot(index); });
   mainLayout->getHeaderBar().setMutatorButtonCallback(
       [this]() { toggleMutatorWindow(); });
+  mainLayout->getHeaderBar().setRetileButtonCallback(
+      [this]() { mainLayout->getPatchArea().resetTileOrder(); });
 
   // Wire the Morph A/B fader
   mainLayout->getHeaderBar().setMorphFaderCallback(
@@ -1239,6 +1245,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     slotMenu.addSeparator();
     slotMenu.addItem(94, "Tile Slots", severalOpen,
                      patchArea.getTileMode() == SlotMdiArea::TileMode::Auto);
+    // Same thing the ABCD button in the header bar does. "Tile Slots" above
+    // only puts the windows back into the tiling; this also puts the slots back
+    // into A, B, C, D order within it.
+    slotMenu.addItem(101, "Reset Slot Order (ABCD)", patchArea.canResetTileOrder());
     addShortcutItem(slotMenu, 95, "Focus Mode", "F4", patchArea.getNumOpenSlots() > 1,
                     patchArea.isFocusMode());
     menu.addSubMenu("Slots", slotMenu);
@@ -1550,6 +1560,10 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 100:  // ...and down
     mainLayout->getPatchArea().moveFocusedTile(SlotMdiArea::Direction::Down);
+    break;
+  case 101:  // Reset slot order: A|B / C|D, same as the header bar's ABCD
+    mainLayout->getPatchArea().resetTileOrder();
+    mainLayout->getStatusBar().showMessage("Slots back in ABCD order", 2000);
     break;
 
   default:
@@ -3832,6 +3846,8 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Open slots tile themselves: one fills the area, two split it, three\n"
       "  go in thirds, four go 2x2. Dragging or resizing a sub-window leaves\n"
       "  the windows where you put them; View > Slots > Tile Slots re-flows.\n"
+      "  The ABCD button (header bar, right of MUT) goes further and puts the\n"
+      "  slots back in A,B,C,D order within the tiling.\n"
       "\n"
       "FLOATERS\n"
       "  Ctrl+5              Knob Floater\n"

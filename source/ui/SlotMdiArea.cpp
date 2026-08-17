@@ -582,6 +582,44 @@ void SlotMdiArea::moveFocusedTile(Direction direction)
         onLayoutChanged();
 }
 
+bool SlotMdiArea::canResetTileOrder() const
+{
+    if (getNumOpenSlots() < 2)
+        return false;
+
+    if (tileMode != TileMode::Auto || focusMode)
+        return true;
+
+    for (int i = 0; i < numSlots; ++i)
+        if (tileOrder[(size_t) i] != i)
+            return true;
+
+    return false;
+}
+
+void SlotMdiArea::resetTileOrder()
+{
+    if (!canResetTileOrder())
+        return;
+
+    for (int i = 0; i < numSlots; ++i)
+        tileOrder[(size_t) i] = i;
+
+    // Free mode and focus mode are the other two ways the layout stops being
+    // the canonical one, so both go with the shuffle. Set directly rather than
+    // through the setters: each of those lays out on its own, and three
+    // animations racing each other is what a re-tile should not look like.
+    focusMode = false;
+    tileMode  = TileMode::Auto;
+
+    const int focused = getFocusedSlot();
+    applyLayout(/*animate*/ true);
+    reassertFocus(focused);
+    updateFocusHighlight();
+    if (onLayoutChanged)
+        onLayoutChanged();
+}
+
 void SlotMdiArea::rotateTiles(int direction)
 {
     if (getNumOpenSlots() < 2 || direction == 0)
