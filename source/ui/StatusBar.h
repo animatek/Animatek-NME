@@ -18,6 +18,11 @@ public:
     void setProgress(double fraction, const juce::String& label);
     void clearProgress();
 
+    // Re-reads the palette. The label colours are set on juce::Labels rather
+    // than painted, so a theme change has to hand them the new ink; without
+    // this the bar kept the colours of whichever theme was up at startup.
+    void applyTheme();
+
     void paint(juce::Graphics& g) override;
     void resized() override;
     // A click on a transient message dismisses it (issue #65).

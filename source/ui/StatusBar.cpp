@@ -6,7 +6,6 @@ StatusBar::StatusBar()
     auto setupLabel = [this](juce::Label& label, const juce::String& text)
     {
         label.setText(text, juce::dontSendNotification);
-        label.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
         label.setFont(juce::Font(AppTheme::uiFont(12.0f)));
         addAndMakeVisible(label);
     };
@@ -19,12 +18,28 @@ StatusBar::StatusBar()
 
     // Message label (centered, initially hidden)
     messageLabel.setJustificationType(juce::Justification::centred);
-    messageLabel.setColour(juce::Label::textColourId, AppTheme::palette().accentWarning); // Orange
     messageLabel.setFont(juce::Font(AppTheme::uiFont(12.0f).withStyle("Bold")));
     addAndMakeVisible(messageLabel);
     messageLabel.setVisible(false);
     // Let the click through to the bar itself, which dismisses the message.
     messageLabel.setInterceptsMouseClicks(false, false);
+
+    applyTheme();
+}
+
+void StatusBar::applyTheme()
+{
+    // The slot/connection readout and the centre message read as body text, not
+    // as accents: the same ink the Inspector's assignments use, which is white
+    // on the dark themes and black on the light ones. The green "Connected" and
+    // the orange message only held up on some of the palettes (#71); the LED is
+    // what carries the connection state now.
+    const auto ink = AppTheme::palette().textPrimary;
+    connectionLabel.setColour(juce::Label::textColourId, ink);
+    messageLabel.setColour(juce::Label::textColourId, ink);
+    voiceLabel.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
+    dspLabel.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
+    repaint();
 }
 
 void StatusBar::mouseDown(const juce::MouseEvent& e)
@@ -38,13 +53,7 @@ void StatusBar::setConnectionStatus(const juce::String& status, bool connected)
 {
     isConnected = connected;
     connectionLabel.setText(status, juce::dontSendNotification);
-
-    // Set color based on connection state
-    if (connected)
-        connectionLabel.setColour(juce::Label::textColourId, AppTheme::palette().accentSuccess); // Green
-    else
-        connectionLabel.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
-
+    // The text stays one ink in both states; the LED goes green or grey.
     repaint();
 }
 

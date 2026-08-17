@@ -386,6 +386,7 @@ void MainLayout::applyTheme()
     patchBrowserPanel.applyTheme();
     diskPresetBrowserPanel.applyTheme();
     inspectorPanel.applyTheme();
+    statusBar.applyTheme();
     leftToggleStrip.repaint();
     rightToggleStrip.repaint();
     repaint();
