@@ -4,6 +4,23 @@
 
 ### Added
 
+- **Cables can be re-routed, not just cut** (#67). Hold `Ctrl` (`Cmd` or `Alt` also work)
+  and drag a connector that already has a cable: the cable comes off that end and follows the
+  pointer from the end that stays put, ready to drop on another connector. This is the gesture
+  the original editor had, and it is what moving a patch's wiring onto a replacement module one
+  cable at a time needs. Letting go anywhere that is not a legal target puts the cable straight
+  back where it was, so trying a few destinations costs nothing; where the connector has several
+  cables the one drawn on top comes off first, and repeating the gesture takes the ones under
+  it. Lift and drop are one undo step.
+
+- **An ABCD button that puts the slot windows back in order** (#51). Right of MUT in the header
+  bar. It re-tiles the open sub-windows into A|B over C|D, or A|B|C in thirds, or A|B side by
+  side, depending on how many are open, and it puts the slots back into that order whatever
+  order you opened or shuffled them into. It also drops focus mode and a layout you had dragged
+  about, so one click is the way back to a patch you can read after loading four patches in
+  whatever order they came. Greyed out when there is nothing left to put in order.
+  **View > Slots > Reset Slot Order (ABCD)** is the same thing.
+
 - **Pinch to zoom on a trackpad** (#72). The canvas zooms around the pointer on a two-finger
   pinch, the same zoom `Ctrl`/`Cmd`+wheel already did, so the gesture Mac users reach for first
   now works. The pinch multiplies the zoom rather than adding to it, which is what makes
