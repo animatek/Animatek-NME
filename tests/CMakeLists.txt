@@ -14,6 +14,7 @@ target_sources(nme_tests PRIVATE
     test_module_ref.cpp
     test_theme_data.cpp
     test_cable_nets.cpp
+    test_patch_title.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
@@ -25,6 +26,8 @@ target_sources(nme_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/source/model/PatchSerializer.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/SysExCodec.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/UploadPacketizer.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/SysExMessage.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/SetPatchTitleMessage.cpp
 )
 
 target_include_directories(nme_tests PRIVATE

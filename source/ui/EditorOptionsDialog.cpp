@@ -62,6 +62,7 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.askSlotOnOpen  = props->getBoolValue  ("askSlotOnOpen",  true);
     o.wireframe      = props->getBoolValue  ("wireframe",      false);
     o.animateTiling  = props->getBoolValue  ("animateTiling",  true);
+    o.synthDisplayCaptions = props->getBoolValue ("synthDisplayCaptions", false);
     o.moduleIconBar  = props->getBoolValue  ("moduleIconBar",  true);
     o.moduleIconBarCategory = props->getValue ("moduleIconBarCategory", "In/Out");
     o.mcpBridgeEnabled = props->getBoolValue("mcpBridgeEnabled", false);
@@ -84,6 +85,7 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("askSlotOnOpen",   askSlotOnOpen);
     props->setValue ("wireframe",       wireframe);
     props->setValue ("animateTiling",   animateTiling);
+    props->setValue ("synthDisplayCaptions", synthDisplayCaptions);
     props->setValue ("moduleIconBar",   moduleIconBar);
     props->setValue ("moduleIconBarCategory", moduleIconBarCategory);
     props->setValue ("mcpBridgeEnabled", mcpBridgeEnabled);
@@ -182,15 +184,18 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     styleToggle (autoUploadToggle);
     styleToggle (wireframeToggle);
     styleToggle (animateTilingToggle);
+    styleToggle (synthCaptionToggle);
     styleToggle (askSlotToggle);
     autoUploadToggle.setToggleState (options.autoUpload,     juce::dontSendNotification);
     askSlotToggle   .setToggleState (options.askSlotOnOpen,  juce::dontSendNotification);
     wireframeToggle .setToggleState (options.wireframe,      juce::dontSendNotification);
     animateTilingToggle.setToggleState (options.animateTiling, juce::dontSendNotification);
+    synthCaptionToggle.setToggleState (options.synthDisplayCaptions, juce::dontSendNotification);
     addAndMakeVisible (behaviourLabel);
     addAndMakeVisible (autoUploadToggle);
     addAndMakeVisible (wireframeToggle);
     addAndMakeVisible (animateTilingToggle);
+    addAndMakeVisible (synthCaptionToggle);
     addAndMakeVisible (askSlotToggle);
 
     // Send speed selector — synth parameter throughput (Mutator/Random)
@@ -374,6 +379,8 @@ int EditorOptionsDialog::layoutComponents (bool apply)
     place (animateTilingToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH;
     place (askSlotToggle, pad + 8, y, w - pad * 2 - 8, rowH);
+    y += rowH;
+    place (synthCaptionToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH + 4;
     place (sendRateLabel,    pad + 8,  y, 80, rowH);
     place (sendRateSelector, pad + 92, y, w - pad * 2 - 100, rowH);
@@ -466,6 +473,7 @@ void EditorOptionsDialog::apply()
     options.wireframe      = wireframeToggle  .getToggleState();
     options.animateTiling  = animateTilingToggle.getToggleState();
     options.askSlotOnOpen  = askSlotToggle.getToggleState();
+    options.synthDisplayCaptions = synthCaptionToggle.getToggleState();
     options.sendRateIndex  = sendRateSelector.getSelectedId() - 1;
     options.mcpBridgeEnabled = mcpBridgeToggle.getToggleState();
 
@@ -477,7 +485,7 @@ void EditorOptionsDialog::apply()
 
 // ─── static show ─────────────────────────────────────────────────────────────
 
-void EditorOptionsDialog::show(juce::Component* parent,
+juce::Component* EditorOptionsDialog::show(juce::Component* parent,
                                const EditorOptions& current,
                                McpBridgeStatusKind mcpStatus,
                                const juce::String& mcpStatusText,
@@ -499,4 +507,5 @@ void EditorOptionsDialog::show(juce::Component* parent,
     dlg->setVisible (true);
     dlg->toFront (true);
     dlg->grabKeyboardFocus();
+    return dlg;
 }

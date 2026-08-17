@@ -167,3 +167,21 @@ recording. It does not change any synth state.
 Editor Options (`Ctrl+,`) includes a **send speed** setting that throttles bulk
 parameter streams (Mutator, Randomize) so large patches don't overrun the
 synth. Normal knob edits are always sent immediately.
+
+## Naming dialogs on the synth's display
+
+**Name dialogs on the synth display** in Editor Options (`Ctrl+,`) is off by
+default. With it on, opening About, Editor Options, MIDI Settings, Synth
+Settings, Patch Settings or the shortcuts list borrows the synth's own display
+for as long as that window is up: it reads `NME 016 About` instead of the patch
+name, and the patch name comes back when the window closes.
+
+Nothing happens to the patch. Only the message that sets the name on the synth
+is sent, so the editor's patch is untouched, nothing is marked modified and
+nothing lands on the undo stack. On the synth it changes the edit buffer only,
+never the bank, exactly like renaming a patch without storing it.
+
+One thing to know before you turn it on: if the editor is killed with one of
+those windows open, the caption stays on the synth's display until you reload
+the patch, and pressing Store on the front panel in that state would write the
+caption into the bank. That is why it is opt-in.

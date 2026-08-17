@@ -139,7 +139,7 @@ void AboutDialog::resized()
     credits.setBounds(area.reduced(pad, pad / 2));
 }
 
-void AboutDialog::show(juce::Component* parent, UrlCallback openUrl)
+juce::Component* AboutDialog::show(juce::Component* parent, UrlCallback openUrl)
 {
     juce::DialogWindow::LaunchOptions opts;
     opts.content.setOwned(new AboutDialog(std::move(openUrl)));
@@ -149,5 +149,5 @@ void AboutDialog::show(juce::Component* parent, UrlCallback openUrl)
     opts.useNativeTitleBar = false;
     opts.resizable = false;
     opts.componentToCentreAround = parent;
-    opts.launchAsync();
+    return opts.launchAsync();
 }

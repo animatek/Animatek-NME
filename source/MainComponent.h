@@ -179,6 +179,48 @@ private:
     void openSynthSettingsDialog();
     void showBetaWarning(bool forceShow = false);
     void showKeyboardShortcutsDialog();
+
+    // ── Borrowing the synth's display ─────────────────────────────────────
+    // The G1 shows the active slot's patch name on its own display. With the
+    // option on, a dialog on screen borrows it ("NME 016 About") and the patch
+    // name goes back when the dialog closes.
+    //
+    // Nothing here goes near the patch. Only the SysEx that sets the name on
+    // the synth is sent, so the editor's own Patch object is untouched: nothing
+    // is marked modified, nothing lands on the undo stack, and the bank-location
+    // matching, which works by comparing the patch name against the bank list,
+    // goes on seeing the real name. The synth's copy is its edit buffer and is
+    // not written to flash (see SetPatchTitleMessage).
+    void announceDialogOnSynth(juce::Component* dialog, const juce::String& label);
+    void setSynthCaption(const juce::String& label);
+    void clearSynthCaption();
+    bool canBorrowSynthDisplay() const;
+    static juce::String makeSynthCaption(const juce::String& label);
+
+    // Which slot's name is currently borrowed, or -1 when none is. Remembered
+    // rather than re-read at restore time, so switching slot while a dialog is
+    // open still gives the name back to the slot it was taken from.
+    int synthCaptionSlot = -1;
+
+    // The dialogs do not share a close path, so the caption is tied to the
+    // dialog component's lifetime instead: a listener that fires when it is
+    // deleted, whichever way it was dismissed, including the editor quitting
+    // with it still on screen.
+    struct SynthCaptionWatcher : public juce::ComponentListener
+    {
+        explicit SynthCaptionWatcher(MainComponent& o) : owner(o) {}
+        void componentBeingDeleted(juce::Component& c) override
+        {
+            c.removeComponentListener(this);
+            if (&c != watched)
+                return;
+            watched = nullptr;
+            owner.clearSynthCaption();
+        }
+        MainComponent& owner;
+        juce::Component* watched = nullptr;
+    };
+    SynthCaptionWatcher synthCaptionWatcher { *this };
     void randomizeSlotParameters(int slot, PatchCanvasComponent& canvas, bool gaussian);  // issue #22
     void saveSlotPatch(int slot);     // Ctrl+S: save this slot, not "the" slot (issue #22)
     void saveSlotPatchAs(int slot);   // Ctrl+Shift+S, same

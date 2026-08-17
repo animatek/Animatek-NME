@@ -277,9 +277,9 @@ void PatchSettingsDialog::resized()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-void PatchSettingsDialog::show (juce::Component* parent,
-                                const PatchHeader& header,
-                                Callback onOk)
+juce::Component* PatchSettingsDialog::show (juce::Component* parent,
+                                            const PatchHeader& header,
+                                            Callback onOk)
 {
     auto* dlg = new PatchSettingsDialog (header, std::move (onOk));
 
@@ -295,4 +295,5 @@ void PatchSettingsDialog::show (juce::Component* parent,
     dlg->setVisible (true);
     dlg->toFront (true);
     dlg->grabKeyboardFocus();
+    return dlg;
 }

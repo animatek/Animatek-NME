@@ -22,7 +22,8 @@ public:
     void mouseDown  (const juce::MouseEvent& e) override;
     void mouseDrag  (const juce::MouseEvent& e) override;
 
-    static void show(juce::Component* parent,
+    // Returns the dialog, so a caller can watch for it closing.
+    static juce::Component* show(juce::Component* parent,
                      const juce::String& currentInputId,
                      const juce::String& currentOutputId,
                      const ConnectionManager::Status& status,

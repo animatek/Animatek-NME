@@ -31,7 +31,8 @@ public:
     void mouseDown  (const juce::MouseEvent& e) override;
     void mouseDrag  (const juce::MouseEvent& e) override;
 
-    static void show (juce::Component* parent, const PatchHeader& header, Callback onOk);
+    // Returns the dialog, so a caller can watch for it closing.
+    static juce::Component* show (juce::Component* parent, const PatchHeader& header, Callback onOk);
 
 private:
     void close();

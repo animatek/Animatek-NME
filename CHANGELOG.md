@@ -23,6 +23,17 @@
   whatever order they came. Greyed out when there is nothing left to put in order.
   **View > Slots > Reset Slot Order (ABCD)** is the same thing.
 
+- **The synth's own display can name the dialog you have open.** Off by default; turn on
+  **Name dialogs on the synth display** in Editor Options. The G1's display normally shows the
+  active slot's patch name, and with this on a window borrows it: `NME 016 About` while the About
+  box is up, and the patch name back when it closes. Nothing happens to the patch. Only the
+  message that sets the name on the synth is sent, so the editor's own patch object is untouched,
+  nothing is marked modified, nothing lands on the undo stack, and the bank-location matching that
+  works by comparing patch names goes on seeing the real one. On the synth it changes the edit
+  buffer only, never the bank. It is opt-in because an editor killed with a dialog open leaves the
+  caption on the display until the patch is reloaded. The caption is also never sent while an edit
+  or a transfer is already on the wire, and it is put back before the port closes on quit.
+
 - **Pinch to zoom on a trackpad** (#72). The canvas zooms around the pointer on a two-finger
   pinch, the same zoom `Ctrl`/`Cmd`+wheel already did, so the gesture Mac users reach for first
   now works. The pinch multiplies the zoom rather than adding to it, which is what makes

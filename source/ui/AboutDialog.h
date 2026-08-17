@@ -17,7 +17,8 @@ public:
     void resized() override;
 
     // Launches it as a modal dialog window, styled like the other dialogs.
-    static void show(juce::Component* parent, UrlCallback openUrl);
+    // Returns the dialog window, so a caller can watch for it closing.
+    static juce::Component* show(juce::Component* parent, UrlCallback openUrl);
 
     // "Animatek NME 0.11.0 (Linux, JUCE 8.0.12)" — also used by the copy button.
     static juce::String versionSummary();

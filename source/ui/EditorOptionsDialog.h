@@ -20,6 +20,11 @@ struct EditorOptions
     bool        askSlotOnOpen  = true;
     bool        wireframe      = false; // outline-only module rendering (theme-independent)
     bool        animateTiling  = true;  // slide slot sub-windows to their new tiles
+    // Borrow the synth's own display to name the dialog that is on screen, and
+    // give the patch name back when it closes. Off by default: it writes to the
+    // synth's edit buffer, and an editor that dies with a dialog up leaves the
+    // caption there until the patch is reloaded.
+    bool        synthDisplayCaptions = false;
     bool        moduleIconBar  = true;  // the module icon bar under the header (issue #17)
     juce::String moduleIconBarCategory { "In/Out" };  // tab it was left on
     bool        mcpBridgeEnabled = false; // embedded MCP control socket (source/mcp/), if built in; opt-in so no localhost port opens unless asked
@@ -62,7 +67,8 @@ public:
     void mouseDown  (const juce::MouseEvent& e) override;
     void mouseDrag  (const juce::MouseEvent& e) override;
 
-    static void show(juce::Component* parent,
+    // Returns the dialog, so a caller can watch for it closing.
+    static juce::Component* show(juce::Component* parent,
                      const EditorOptions& current,
                      McpBridgeStatusKind mcpStatus,
                      const juce::String& mcpStatusText,
@@ -114,6 +120,7 @@ private:
     juce::ToggleButton askSlotToggle      { "Ask which slot when opening a patch  (off: open into the current slot)" };
     juce::ToggleButton wireframeToggle    { "Wireframe modules  (outline only, works with any theme)" };
     juce::ToggleButton animateTilingToggle { "Animate Slot Tiling  (slide sub-windows into place)" };
+    juce::ToggleButton synthCaptionToggle { "Name dialogs on the synth display  (borrows the patch name while one is open)" };
     juce::Label    sendRateLabel     { {}, "Send speed" };
     juce::ComboBox sendRateSelector;
 

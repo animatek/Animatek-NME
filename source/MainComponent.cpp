@@ -928,6 +928,12 @@ MainComponent::~MainComponent() {
     interpolationTimer->stopTimer();
   interpolationTimer.reset();
 
+  // Quitting with a dialog on screen must not leave its caption sitting on the
+  // synth's display. Before the disconnect, obviously, and before the dialogs
+  // are taken down further below: by then the port is shut and the name would
+  // have nowhere to go.
+  clearSynthCaption();
+
   // Disconnect MIDI and clear all async callbacks to prevent post-destruction
   // dispatches (fixes crash-on-close in plugin builds)
   connectionManager.disconnect();
@@ -1458,7 +1464,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
 
   // About menu
   case 54:  // About box
-    AboutDialog::show(this, [this](const juce::String& url) { openURL(url); });
+    announceDialogOnSynth(
+        AboutDialog::show(this, [this](const juce::String& url) { openURL(url); }),
+        "About");
     break;
   case 53:  // Animatek NME website
     openURL("https://animatek.net/animatek-nme-eng/");
@@ -2388,7 +2396,8 @@ void MainComponent::showPatchSettingsDialog() {
   if (currentPatch() == nullptr)
     return;
 
-  PatchSettingsDialog::show(this, currentPatch()->getHeader(),
+  announceDialogOnSynth(
+      PatchSettingsDialog::show(this, currentPatch()->getHeader(),
       [this](const PatchSettingsDialog::Result& r)
       {
         auto& h = currentPatch()->getHeader();
@@ -2411,7 +2420,8 @@ void MainComponent::showPatchSettingsDialog() {
         // Upload full patch to synth if connected
         if (connectionManager.isConnected())
           connectionManager.uploadPatch(connectionManager.getCurrentSlot(), *currentPatch());
-      });
+      }),
+      "Patch");
 }
 
 void MainComponent::showSynthSettingsDialog() {
@@ -2445,15 +2455,18 @@ void MainComponent::openSynthSettingsDialog() {
         if (connectionManager.isConnected())
           connectionManager.sendSynthSettings(s);
       });
+  announceDialogOnSynth(synthSettingsDialog, "Synth");
 }
 
 void MainComponent::showMidiSettingsDialog() {
-  MidiSettingsDialog::show(
-      this, lastInputId, lastOutputId, connectionManager.getStatus(),
-      [this](const juce::String &inputId, const juce::String &outputId) {
-        handleConnectionRequest(inputId, outputId);
-      },
-      [this]() { handleDisconnectionRequest(); });
+  announceDialogOnSynth(
+      MidiSettingsDialog::show(
+          this, lastInputId, lastOutputId, connectionManager.getStatus(),
+          [this](const juce::String &inputId, const juce::String &outputId) {
+            handleConnectionRequest(inputId, outputId);
+          },
+          [this]() { handleDisconnectionRequest(); }),
+      "MIDI");
 }
 
 void MainComponent::showEditorOptionsDialog() {
@@ -2475,10 +2488,12 @@ void MainComponent::showEditorOptionsDialog() {
   juce::String mcpStatusText = "Not built with MCP bridge support";
   juce::String mcpCommand;
 #endif
-  EditorOptionsDialog::show(this, editorOptions, mcpStatus, mcpStatusText, mcpCommand,
-                            [this](const EditorOptions& opts) {
-    applyEditorOptions(opts);
-  });
+  announceDialogOnSynth(
+      EditorOptionsDialog::show(this, editorOptions, mcpStatus, mcpStatusText, mcpCommand,
+                                [this](const EditorOptions& opts) {
+        applyEditorOptions(opts);
+      }),
+      "Options");
 }
 
 void MainComponent::applyEditorOptions(const EditorOptions& opts) {
@@ -3891,7 +3906,81 @@ void MainComponent::showKeyboardShortcutsDialog() {
   opts.escapeKeyTriggersCloseButton = true;
   opts.useNativeTitleBar = false;
   opts.resizable = false;
-  opts.launchAsync();
+  announceDialogOnSynth(opts.launchAsync(), "Keys");
+}
+
+juce::String MainComponent::makeSynthCaption(const juce::String& label)
+{
+    // Fifteen characters is a hard limit: at sixteen the synth hangs (see
+    // SetPatchTitleMessage, which truncates as a backstop). "NME 016 " is eight
+    // of them, so every label here is kept to seven or fewer rather than
+    // relying on the cut. The version has its dot removed for the same reason.
+    const juce::String version(JUCE_APPLICATION_VERSION_STRING);   // e.g. "0.16.0"
+    const auto major = version.upToFirstOccurrenceOf(".", false, false);
+    const auto minor = version.fromFirstOccurrenceOf(".", false, false)
+                              .upToFirstOccurrenceOf(".", false, false);
+    return ("NME " + major + minor + " " + label).substring(0, 15);
+}
+
+bool MainComponent::canBorrowSynthDisplay() const
+{
+    if (!editorOptions.synthDisplayCaptions || !connectionManager.isConnected())
+        return false;
+
+    // Never squeeze in between the messages of an edit or a transfer already on
+    // the wire. The display is cosmetic; the wire is not, and a patch title goes
+    // out unqueued.
+    if (!connectionManager.isAckedQueueIdle()
+        || connectionManager.isFetchingPatch()
+        || connectionManager.isUploadingPatch())
+        return false;
+
+    return slotPatches[activeSlot] != nullptr;
+}
+
+void MainComponent::setSynthCaption(const juce::String& label)
+{
+    if (!canBorrowSynthDisplay())
+        return;
+
+    if (synthCaptionSlot < 0)
+        synthCaptionSlot = activeSlot;
+
+    connectionManager.sendPatchTitle(synthCaptionSlot, makeSynthCaption(label));
+}
+
+void MainComponent::clearSynthCaption()
+{
+    if (synthCaptionSlot < 0)
+        return;
+
+    const int slot = synthCaptionSlot;
+    synthCaptionSlot = -1;
+
+    // Deliberately not gated on canBorrowSynthDisplay(): whatever the wire is
+    // doing and whatever the option now says, a borrowed name has to go back.
+    // The one case with nothing to do is a synth that is no longer there, whose
+    // edit buffer went with it.
+    if (!connectionManager.isConnected())
+        return;
+
+    if (slotPatches[slot])
+        connectionManager.sendPatchTitle(slot, slotPatches[slot]->getName());
+}
+
+void MainComponent::announceDialogOnSynth(juce::Component* dialog, const juce::String& label)
+{
+    if (dialog == nullptr || !editorOptions.synthDisplayCaptions)
+        return;
+
+    // One caption at a time. A dialog opened on top of another takes the display
+    // over, and the last one to close is what puts the patch name back.
+    if (synthCaptionWatcher.watched != nullptr)
+        synthCaptionWatcher.watched->removeComponentListener(&synthCaptionWatcher);
+
+    synthCaptionWatcher.watched = dialog;
+    dialog->addComponentListener(&synthCaptionWatcher);
+    setSynthCaption(label);
 }
 
 void MainComponent::showBetaWarning(bool forceShow)

@@ -192,7 +192,7 @@ void MidiSettingsDialog::resized()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-void MidiSettingsDialog::show(juce::Component* parent,
+juce::Component* MidiSettingsDialog::show(juce::Component* parent,
                                const juce::String& currentInputId,
                                const juce::String& currentOutputId,
                                const ConnectionManager::Status& status,
@@ -217,4 +217,5 @@ void MidiSettingsDialog::show(juce::Component* parent,
     dlg->setVisible (true);
     dlg->toFront (true);
     dlg->grabKeyboardFocus();
+    return dlg;
 }
