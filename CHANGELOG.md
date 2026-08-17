@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+### Added
+
+- **Pinch to zoom on a trackpad** (#72). The canvas zooms around the pointer on a two-finger
+  pinch, the same zoom `Ctrl`/`Cmd`+wheel already did, so the gesture Mac users reach for first
+  now works. The pinch multiplies the zoom rather than adding to it, which is what makes
+  pinching out and back in land on the level you started from.
+
+### Changed
+
+- **Uni/Bip switches say which polarity they are in** (#69). Constant, LevMult, LevAdd and the
+  Control Sequencer all have a polarity switch, and the inherited panel data labelled *both* of
+  its states "Uni": the panel read the same whichever way the switch was set, and the only clue
+  was the bevel. The button now reads **Bip** when it is out and **Uni** when it is in. The rule
+  is keyed off the parameter the button drives rather than a list of modules, so a polarity
+  switch that turns up later is labelled without anyone remembering to do it, and a test pins
+  all four.
+
+### Fixed
+
+- **The empty-canvas hint is readable on every theme** (#70). "Press Enter to add modules" took
+  its ink from the module text colour, which is black on the themes with light module faces
+  (Nomad, Nord Classic) while the canvas behind it is nearly black. It now takes its ink from
+  the canvas background it is actually drawn on: white on the dark canvases, black on Nord
+  Classic's mid grey, which is the one canvas in the registry that falls on the light side.
+
+- **The status bar follows the theme** (#71). The slot/connection readout and the centre message
+  were an accent green and an accent orange that washed out on several palettes. Both now use
+  the same ink as the Inspector's assignments, which is white on the dark themes and black on
+  the light ones; the LED beside the readout still goes green when the synth is connected. The
+  bar also re-reads the palette when the theme changes, which it never did: its colours were
+  whatever the theme at startup had been.
+
 ## 0.16.0 — 2026-08-16
 
 ### Added
