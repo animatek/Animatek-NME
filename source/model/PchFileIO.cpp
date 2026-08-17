@@ -111,6 +111,22 @@ static bool isLegacyVersionLine(const juce::String& rawLine)
         && line.containsIgnoreCase("Nord Modular patch 2.10");
 }
 
+juce::String PchFileIO::patchNameFromFileName(const juce::File& file)
+{
+    const auto stem = file.getFileNameWithoutExtension();
+
+    // "NN - " and something after it. Two digits and that exact separator is
+    // narrow enough that a patch genuinely called "35 - Bells" is the only way
+    // to trip it, and the prefix is what we wrote in the first place.
+    if (stem.length() > 5
+        && juce::CharacterFunctions::isDigit(stem[0])
+        && juce::CharacterFunctions::isDigit(stem[1])
+        && stem.substring(2, 5) == " - ")
+        return stem.substring(5);
+
+    return stem;
+}
+
 bool PchFileIO::isLegacyPatch210(const juce::File& file)
 {
     auto stream = file.createInputStream();
@@ -223,7 +239,7 @@ std::unique_ptr<Patch> PchFileIO::readFile(const juce::File& file)
 
     // Derive patch name from filename if not set from notes
     if (patch->getName() == "Init Patch")
-        patch->setName(file.getFileNameWithoutExtension());
+        patch->setName(patchNameFromFileName(file));
 
     DBG("PchFileIO: loaded \"" + patch->getName() + "\" from " + file.getFileName());
     DBG("  Poly modules: " + juce::String(patch->getPolyVoiceArea().getModules().size())
@@ -365,7 +381,7 @@ std::unique_ptr<Patch> PchFileIO::readLegacyFile(const juce::StringArray& allLin
                            cable.sourceIsOutput, cable.targetModule, cable.targetInput);
 
     if (patch->getName() == "Init Patch")
-        patch->setName(file.getFileNameWithoutExtension());
+        patch->setName(patchNameFromFileName(file));
 
     DBG("PchFileIO: loaded legacy \"" + patch->getName() + "\" from " + file.getFileName());
     DBG("  Poly modules: " + juce::String(patch->getPolyVoiceArea().getModules().size())

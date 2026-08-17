@@ -28,6 +28,15 @@
   The `Ctrl+B` preset window could not start a drag at all until now, snippets included: it was
   missing the drag container that the same panel gets from the main window.
 
+### Fixed
+
+- **A patch opened from a bank backup no longer keeps the position number in its name.** Bank
+  backups are saved as `NN - Name.pch` so the folder sorts by position, and a classic `.pch`
+  carries no name inside it, so the reader falls back to the file name and the prefix travelled
+  into the patch and on to the synth: loading `35 - BELLS++` stored it as `35 - BELLS++` instead
+  of `BELLS++`. Restoring a whole bank already stripped it; now the reader does, so every way of
+  opening one agrees, including the browsers, File → Open and a drag onto a slot.
+
 - **An ABCD button that puts the slot windows back in order** (#51). Right of MUT in the header
   bar, its four letters drawn in the quadrants they land in so the button pictures the
   arrangement it produces. It re-tiles the open sub-windows into A|B over C|D, or A|B|C in thirds, or A|B side by

@@ -19,6 +19,17 @@ public:
     static bool isLegacyPatch210(const juce::File& file);
     static bool isLegacyPatch210(const juce::StringArray& lines);
 
+    // The name a patch takes from its file when the file itself carries none,
+    // which a classic .pch never does.
+    //
+    // Bank backups are written as "NN - Name.pch" so a bank folder sorts by
+    // position, and that prefix is ours, not the patch's: left on, it travels
+    // into the patch and then onto the synth, which is how names like
+    // "86 - DoubleSawPa" used to end up stored in a bank. Stripped here rather
+    // than at each caller, so every way of opening one agrees: the browsers,
+    // File > Open, a drag onto a slot, and restoring a whole bank.
+    static juce::String patchNameFromFileName(const juce::File& file);
+
 private:
     // Reader helpers
     void parseHeader(const juce::StringArray& lines, Patch& patch);
