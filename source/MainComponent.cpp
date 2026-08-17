@@ -1465,8 +1465,7 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   // About menu
   case 54:  // About box
     announceDialogOnSynth(
-        AboutDialog::show(this, [this](const juce::String& url) { openURL(url); }),
-        "About");
+        AboutDialog::show(this, [this](const juce::String& url) { openURL(url); }));
     break;
   case 53:  // Animatek NME website
     openURL("https://animatek.net/animatek-nme-eng/");
@@ -2420,8 +2419,7 @@ void MainComponent::showPatchSettingsDialog() {
         // Upload full patch to synth if connected
         if (connectionManager.isConnected())
           connectionManager.uploadPatch(connectionManager.getCurrentSlot(), *currentPatch());
-      }),
-      "Patch");
+      }));
 }
 
 void MainComponent::showSynthSettingsDialog() {
@@ -2455,7 +2453,7 @@ void MainComponent::openSynthSettingsDialog() {
         if (connectionManager.isConnected())
           connectionManager.sendSynthSettings(s);
       });
-  announceDialogOnSynth(synthSettingsDialog, "Synth");
+  announceDialogOnSynth(synthSettingsDialog);
 }
 
 void MainComponent::showMidiSettingsDialog() {
@@ -2465,8 +2463,7 @@ void MainComponent::showMidiSettingsDialog() {
           [this](const juce::String &inputId, const juce::String &outputId) {
             handleConnectionRequest(inputId, outputId);
           },
-          [this]() { handleDisconnectionRequest(); }),
-      "MIDI");
+          [this]() { handleDisconnectionRequest(); }));
 }
 
 void MainComponent::showEditorOptionsDialog() {
@@ -2492,8 +2489,7 @@ void MainComponent::showEditorOptionsDialog() {
       EditorOptionsDialog::show(this, editorOptions, mcpStatus, mcpStatusText, mcpCommand,
                                 [this](const EditorOptions& opts) {
         applyEditorOptions(opts);
-      }),
-      "Options");
+      }));
 }
 
 void MainComponent::applyEditorOptions(const EditorOptions& opts) {
@@ -3906,20 +3902,24 @@ void MainComponent::showKeyboardShortcutsDialog() {
   opts.escapeKeyTriggersCloseButton = true;
   opts.useNativeTitleBar = false;
   opts.resizable = false;
-  announceDialogOnSynth(opts.launchAsync(), "Keys");
+  announceDialogOnSynth(opts.launchAsync());
 }
 
-juce::String MainComponent::makeSynthCaption(const juce::String& label)
+juce::String MainComponent::makeSynthCaption()
 {
-    // Fifteen characters is a hard limit: at sixteen the synth hangs (see
-    // SetPatchTitleMessage, which truncates as a backstop). "NME 016 " is eight
-    // of them, so every label here is kept to seven or fewer rather than
-    // relying on the cut. The version has its dot removed for the same reason.
+    // "ANME 0.16v": the editor and the version it is, and nothing about which
+    // window is open. Naming the dialog was the first idea and it read as noise
+    // on a display whose whole job is to tell you which patch you are on; what
+    // is worth saying there is only that the editor has borrowed it.
+    //
+    // Ten characters, against a hard limit of fifteen: at sixteen the synth
+    // hangs (see SetPatchTitleMessage, which truncates as a backstop). Fixed
+    // rather than assembled from a label, so the limit cannot be reached at all.
     const juce::String version(JUCE_APPLICATION_VERSION_STRING);   // e.g. "0.16.0"
     const auto major = version.upToFirstOccurrenceOf(".", false, false);
     const auto minor = version.fromFirstOccurrenceOf(".", false, false)
                               .upToFirstOccurrenceOf(".", false, false);
-    return ("NME " + major + minor + " " + label).substring(0, 15);
+    return ("ANME " + major + "." + minor + "v").substring(0, 15);
 }
 
 bool MainComponent::canBorrowSynthDisplay() const
@@ -3938,7 +3938,7 @@ bool MainComponent::canBorrowSynthDisplay() const
     return slotPatches[activeSlot] != nullptr;
 }
 
-void MainComponent::setSynthCaption(const juce::String& label)
+void MainComponent::setSynthCaption()
 {
     if (!canBorrowSynthDisplay())
         return;
@@ -3946,7 +3946,7 @@ void MainComponent::setSynthCaption(const juce::String& label)
     if (synthCaptionSlot < 0)
         synthCaptionSlot = activeSlot;
 
-    connectionManager.sendPatchTitle(synthCaptionSlot, makeSynthCaption(label));
+    connectionManager.sendPatchTitle(synthCaptionSlot, makeSynthCaption());
 }
 
 void MainComponent::clearSynthCaption()
@@ -3968,7 +3968,7 @@ void MainComponent::clearSynthCaption()
         connectionManager.sendPatchTitle(slot, slotPatches[slot]->getName());
 }
 
-void MainComponent::announceDialogOnSynth(juce::Component* dialog, const juce::String& label)
+void MainComponent::announceDialogOnSynth(juce::Component* dialog)
 {
     if (dialog == nullptr || !editorOptions.synthDisplayCaptions)
         return;
@@ -3980,7 +3980,7 @@ void MainComponent::announceDialogOnSynth(juce::Component* dialog, const juce::S
 
     synthCaptionWatcher.watched = dialog;
     dialog->addComponentListener(&synthCaptionWatcher);
-    setSynthCaption(label);
+    setSynthCaption();
 }
 
 void MainComponent::showBetaWarning(bool forceShow)

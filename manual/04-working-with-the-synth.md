@@ -168,12 +168,12 @@ Editor Options (`Ctrl+,`) includes a **send speed** setting that throttles bulk
 parameter streams (Mutator, Randomize) so large patches don't overrun the
 synth. Normal knob edits are always sent immediately.
 
-## Naming dialogs on the synth's display
+## Borrowing the synth's display
 
-**Name dialogs on the synth display** in Editor Options (`Ctrl+,`) is off by
+**Show the editor on the synth display** in Editor Options (`Ctrl+,`) is off by
 default. With it on, opening About, Editor Options, MIDI Settings, Synth
 Settings, Patch Settings or the shortcuts list borrows the synth's own display
-for as long as that window is up: it reads `NME 016 About` instead of the patch
+for as long as that window is up: it reads `ANME 0.16v` instead of the patch
 name, and the patch name comes back when the window closes.
 
 Nothing happens to the patch. Only the message that sets the name on the synth

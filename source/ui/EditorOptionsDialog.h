@@ -120,7 +120,7 @@ private:
     juce::ToggleButton askSlotToggle      { "Ask which slot when opening a patch  (off: open into the current slot)" };
     juce::ToggleButton wireframeToggle    { "Wireframe modules  (outline only, works with any theme)" };
     juce::ToggleButton animateTilingToggle { "Animate Slot Tiling  (slide sub-windows into place)" };
-    juce::ToggleButton synthCaptionToggle { "Name dialogs on the synth display  (borrows the patch name while one is open)" };
+    juce::ToggleButton synthCaptionToggle { "Show the editor on the synth display  (borrows the patch name while a dialog is open)" };
     juce::Label    sendRateLabel     { {}, "Send speed" };
     juce::ComboBox sendRateSelector;
 

@@ -23,10 +23,11 @@
   whatever order they came. Greyed out when there is nothing left to put in order.
   **View > Slots > Reset Slot Order (ABCD)** is the same thing.
 
-- **The synth's own display can name the dialog you have open.** Off by default; turn on
-  **Name dialogs on the synth display** in Editor Options. The G1's display normally shows the
-  active slot's patch name, and with this on a window borrows it: `NME 016 About` while the About
-  box is up, and the patch name back when it closes. Nothing happens to the patch. Only the
+- **The editor can show itself on the synth's own display.** Off by default; turn on
+  **Show the editor on the synth display** in Editor Options. The G1's display normally shows the
+  active slot's patch name, and with this on any editor dialog borrows it: it reads `ANME 0.16v`
+  while the window is up, and the patch name comes back when it closes. Nothing happens to the
+  patch. Only the
   message that sets the name on the synth is sent, so the editor's own patch object is untouched,
   nothing is marked modified, nothing lands on the undo stack, and the bank-location matching that
   works by comparing patch names goes on seeing the real one. On the synth it changes the edit

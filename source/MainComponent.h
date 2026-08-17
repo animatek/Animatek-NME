@@ -182,8 +182,10 @@ private:
 
     // ── Borrowing the synth's display ─────────────────────────────────────
     // The G1 shows the active slot's patch name on its own display. With the
-    // option on, a dialog on screen borrows it ("NME 016 About") and the patch
-    // name goes back when the dialog closes.
+    // option on, a dialog on screen borrows it ("ANME 0.16v") and the patch name
+    // goes back when the dialog closes. The caption does not name the dialog:
+    // what is worth saying on a display whose job is to tell you which patch you
+    // are on is only that the editor has taken it over.
     //
     // Nothing here goes near the patch. Only the SysEx that sets the name on
     // the synth is sent, so the editor's own Patch object is untouched: nothing
@@ -191,11 +193,11 @@ private:
     // matching, which works by comparing the patch name against the bank list,
     // goes on seeing the real name. The synth's copy is its edit buffer and is
     // not written to flash (see SetPatchTitleMessage).
-    void announceDialogOnSynth(juce::Component* dialog, const juce::String& label);
-    void setSynthCaption(const juce::String& label);
+    void announceDialogOnSynth(juce::Component* dialog);
+    void setSynthCaption();
     void clearSynthCaption();
     bool canBorrowSynthDisplay() const;
-    static juce::String makeSynthCaption(const juce::String& label);
+    static juce::String makeSynthCaption();
 
     // Which slot's name is currently borrowed, or -1 when none is. Remembered
     // rather than re-read at restore time, so switching slot while a dialog is
