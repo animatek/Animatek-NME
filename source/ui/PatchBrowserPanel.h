@@ -47,12 +47,18 @@ private:
     class PatchTreeItem : public juce::TreeViewItem
     {
     public:
-        PatchTreeItem(const juce::String& name, int section = -1, int position = -1, PatchBrowserPanel* parent = nullptr);
+        PatchTreeItem(const juce::String& name, int section = -1, int position = -1,
+                      PatchBrowserPanel* parent = nullptr, bool isEmptySlot = false);
 
         bool mightContainSubItems() override;
         void paintItem(juce::Graphics& g, int width, int height) override;
         void itemClicked(const juce::MouseEvent& e) override;
         void itemDoubleClicked(const juce::MouseEvent& e) override;
+        // Drag a patch onto a slot to load it there (issue #50). Only the leaf
+        // items offer themselves: a bank node is not a patch, and an empty bank
+        // position has nothing to load. Returning a void var leaves the item
+        // undraggable, which is what JUCE does with those.
+        juce::var getDragSourceDescription() override;
 
         void showContextMenu();
 
@@ -61,6 +67,7 @@ private:
         int section;   // -1 for root/bank nodes
         int position;  // -1 for root/bank nodes
         PatchBrowserPanel* panel;
+        bool empty;    // a bank position with no patch in it
     };
 
     std::unique_ptr<juce::TreeView> treeView;

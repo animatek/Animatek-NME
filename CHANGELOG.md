@@ -14,6 +14,14 @@
   cables the one drawn on top comes off first, and repeating the gesture takes the ones under
   it. The move itself is one undo step.
 
+- **Drag a patch out of the synth browser onto a slot to load it there** (#50). Two places
+  accept the drop: the slot's own sub-window, which is the obvious gesture, and its row in the
+  slot bar down the left side, which is the one that still works when that slot's window is
+  closed (it opens on the way). The target lights up while you are over it, and bank nodes and
+  empty bank positions cannot be picked up at all. It ends in the same load the right-click
+  **Load to Slot A..D** already did, so nothing new goes to the synth: this is the gesture that
+  was missing, not a new way of loading.
+
 - **An ABCD button that puts the slot windows back in order** (#51). Right of MUT in the header
   bar, its four letters drawn in the quadrants they land in so the button pictures the
   arrangement it produces. It re-tiles the open sub-windows into A|B over C|D, or A|B|C in thirds, or A|B side by

@@ -139,6 +139,17 @@ void SlotBar::paint(juce::Graphics& g)
             g.fillRect(bounds.getX(), bounds.getY(), 3, bounds.getHeight());
         }
 
+        // A patch is being dragged over this row and would land here. Drawn over
+        // the row's own background and under everything else, so the letter and
+        // the name stay readable.
+        if (i == dropTargetSlot)
+        {
+            g.setColour(AppTheme::palette().accentActive.withAlpha(0.25f));
+            g.fillRect(bounds);
+            g.setColour(AppTheme::palette().accentActive);
+            g.drawRect(bounds, 2);
+        }
+
         // Icon (small fixed-size synth)
         auto iconArea = bounds.removeFromLeft(20).reduced(2);
         drawSlotIcon(g, iconArea, active);
@@ -182,6 +193,63 @@ void SlotBar::paint(juce::Graphics& g)
                              static_cast<float>(slotBounds[i].getX()),
                              static_cast<float>(slotBounds[i].getRight()));
     }
+}
+
+int SlotBar::slotAt(juce::Point<int> pos) const
+{
+    for (int i = 0; i < numSlots; ++i)
+        if (slotBounds[i].contains(pos))
+            return i;
+    return -1;
+}
+
+void SlotBar::updateDropTarget(int slot)
+{
+    if (dropTargetSlot == slot)
+        return;
+
+    // Repaint both rows rather than the whole bar: the highlight moves between
+    // two of them and the LEDs on the others are on a blink timer.
+    const int previous = dropTargetSlot;
+    dropTargetSlot = slot;
+    if (previous >= 0) repaint(slotBounds[previous]);
+    if (slot >= 0)     repaint(slotBounds[slot]);
+}
+
+bool SlotBar::isInterestedInDragSource(const SourceDetails& details)
+{
+    return details.description.isObject()
+        && details.description.getProperty("type", {}).toString() == "synthPatch";
+}
+
+void SlotBar::itemDragEnter(const SourceDetails& details)
+{
+    updateDropTarget(slotAt(details.localPosition));
+}
+
+void SlotBar::itemDragMove(const SourceDetails& details)
+{
+    updateDropTarget(slotAt(details.localPosition));
+}
+
+void SlotBar::itemDragExit(const SourceDetails&)
+{
+    updateDropTarget(-1);
+}
+
+void SlotBar::itemDropped(const SourceDetails& details)
+{
+    const int slot = slotAt(details.localPosition);
+    updateDropTarget(-1);
+
+    // Dropped on the gap under the last row: no slot was named, so nothing is
+    // loaded. Silently, because the highlight already said no target was armed.
+    if (slot < 0 || !onPatchDroppedOnSlot)
+        return;
+
+    onPatchDroppedOnSlot((int) details.description.getProperty("section", -1),
+                         (int) details.description.getProperty("position", -1),
+                         slot);
 }
 
 void SlotBar::mouseDown(const juce::MouseEvent& e)

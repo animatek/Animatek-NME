@@ -1,4 +1,5 @@
 #include "SlotView.h"
+#include "AppTheme.h"
 
 SlotView::SlotView(int slot)
     : slot_(slot)
@@ -10,6 +11,46 @@ SlotView::SlotView(int slot)
 void SlotView::resized()
 {
     canvas.setBounds(getLocalBounds());
+}
+
+void SlotView::paintOverChildren(juce::Graphics& g)
+{
+    if (!dropArmed_)
+        return;
+
+    // Over the canvas rather than behind it: the canvas fills this component,
+    // so anything painted underneath would never be seen.
+    g.setColour(AppTheme::palette().accentActive);
+    g.drawRect(getLocalBounds(), 3);
+}
+
+bool SlotView::isInterestedInDragSource(const SourceDetails& details)
+{
+    return details.description.isObject()
+        && details.description.getProperty("type", {}).toString() == "synthPatch";
+}
+
+void SlotView::itemDragEnter(const SourceDetails&)
+{
+    dropArmed_ = true;
+    repaint();
+}
+
+void SlotView::itemDragExit(const SourceDetails&)
+{
+    dropArmed_ = false;
+    repaint();
+}
+
+void SlotView::itemDropped(const SourceDetails& details)
+{
+    dropArmed_ = false;
+    repaint();
+
+    if (onPatchDropped)
+        onPatchDropped((int) details.description.getProperty("section", -1),
+                       (int) details.description.getProperty("position", -1),
+                       slot_);
 }
 
 void SlotView::setPatchTitle(const juce::String& patchName)

@@ -105,6 +105,11 @@ The right-side browser (`Ctrl+B`) lists the synth's 9 internal banks. You can:
   right-click offers **Load to Slot A..D** so that with several sub-windows open
   you can pull a patch into a particular one without leaving the slot you are
   working in,
+- **drag** a patch onto a slot to load it there. Drop it on that slot's
+  sub-window, or on its row in the slot bar down the left side, which also works
+  for a slot whose window is closed: it opens on the way. The target lights up
+  while you are over it, and bank nodes and empty positions cannot be picked up
+  in the first place,
 - **store** the current patch to a bank position,
 - **copy, move and delete** patches inside synth memory.
 

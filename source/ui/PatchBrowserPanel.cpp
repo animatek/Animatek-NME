@@ -251,7 +251,7 @@ void PatchBrowserPanel::rebuildTree(const std::vector<std::string>& names)
             juce::String itemName = juce::String(displayLocation).paddedLeft('0', 3)
                                   + ": " + displayName;
 
-            auto* patchItem = new PatchTreeItem(itemName, section, position, this);
+            auto* patchItem = new PatchTreeItem(itemName, section, position, this, isEmpty);
             bankItem->addSubItem(patchItem);
             patchesAdded++;
         }
@@ -283,9 +283,26 @@ void PatchBrowserPanel::rebuildTree(const std::vector<std::string>& names)
 
 // --- PatchTreeItem implementation ---
 
-PatchBrowserPanel::PatchTreeItem::PatchTreeItem(const juce::String& name, int sec, int pos, PatchBrowserPanel* parent)
-    : itemName(name), section(sec), position(pos), panel(parent)
+PatchBrowserPanel::PatchTreeItem::PatchTreeItem(const juce::String& name, int sec, int pos,
+                                                PatchBrowserPanel* parent, bool isEmptySlot)
+    : itemName(name), section(sec), position(pos), panel(parent), empty(isEmptySlot)
 {
+}
+
+juce::var PatchBrowserPanel::PatchTreeItem::getDragSourceDescription()
+{
+    // Bank nodes and empty positions are not patches, and JUCE leaves an item
+    // undraggable when this returns void, which is exactly right for them.
+    if (section < 0 || position < 0 || empty)
+        return {};
+
+    auto* payload = new juce::DynamicObject();
+    payload->setProperty("type", "synthPatch");
+    payload->setProperty("section", section);
+    payload->setProperty("position", position);
+    // Only for what the drop shows the user while it is over a slot.
+    payload->setProperty("name", itemName.fromFirstOccurrenceOf(": ", false, false));
+    return juce::var(payload);
 }
 
 bool PatchBrowserPanel::PatchTreeItem::mightContainSubItems()

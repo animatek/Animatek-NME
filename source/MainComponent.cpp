@@ -364,6 +364,21 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     loadBankPatchIntoSlot(section, position, slot);
   };
 
+  // Dragging a patch out of the Synth browser onto a slot loads it there
+  // (issue #50). Two targets, and both end in the same call the right-click
+  // "Load to Slot A..D" already used: the slot's sub-window, which is the
+  // obvious gesture, and the slot bar's rows, which is the one that still works
+  // when that slot's window is closed.
+  mainLayout->getSlotBar().onPatchDroppedOnSlot =
+      [this](int section, int position, int slot) {
+    loadBankPatchIntoSlot(section, position, slot);
+  };
+  for (int slot = 0; slot < numSlots; ++slot)
+    mainLayout->getPatchArea().getView(slot).onPatchDropped =
+        [this](int section, int position, int targetSlot) {
+      loadBankPatchIntoSlot(section, position, targetSlot);
+    };
+
   mainLayout->getPatchBrowser().onRefreshRequested = [this]() {
     mainLayout->getPatchBrowser().setLoadingState(true);
     connectionManager.requestPatchList();

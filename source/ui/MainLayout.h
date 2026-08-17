@@ -17,6 +17,7 @@
 // off = disabled. Ctrl+click a row to toggle that slot's enable state
 // (like the original 3.3 editor); plain click moves focus.
 class SlotBar : public juce::Component,
+                public juce::DragAndDropTarget,
                 private juce::Timer
 {
 public:
@@ -26,6 +27,17 @@ public:
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
     void resized() override;
+
+    // A patch dragged out of the Synth browser can be dropped on a slot row to
+    // load it there (issue #50). The rows are the target that always works: a
+    // slot whose sub-window is closed still has one here.
+    bool isInterestedInDragSource(const SourceDetails& details) override;
+    void itemDragEnter(const SourceDetails& details) override;
+    void itemDragMove(const SourceDetails& details) override;
+    void itemDragExit(const SourceDetails& details) override;
+    void itemDropped(const SourceDetails& details) override;
+
+    std::function<void(int section, int position, int slot)> onPatchDroppedOnSlot;
 
     void setCurrentTab(int index);
     int  getCurrentTabIndex() const { return activeIndex; }
@@ -48,6 +60,11 @@ private:
     bool blinkPhase = false;
     juce::String slotNames[numSlots];  // patch names per slot
     juce::Rectangle<int> slotBounds[numSlots];
+    // Row a patch is currently being dragged over, -1 when none. Painted so the
+    // drop says where it is going before it happens.
+    int dropTargetSlot = -1;
+    void updateDropTarget(int slot);
+    int slotAt(juce::Point<int> pos) const;
 
     static constexpr const char* slotLetters[] = { "A", "B", "C", "D" };
 
