@@ -737,6 +737,30 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                             repaint();
                             return;
                         }
+                        // Ctrl/Cmd/Alt+drag on a connector that already has a
+                        // cable lifts that cable off and carries its far end to
+                        // wherever it is dropped, which is how the original
+                        // editor re-routes a connection (#67). Three modifiers
+                        // because the issue asked for whichever is easiest per
+                        // platform and none of them was doing anything here.
+                        //
+                        // The unplug waits for the first mouse move (see
+                        // mouseDrag): a modifier+click that never travels should
+                        // leave the patch alone rather than unplug a cable and
+                        // plug it straight back in.
+                        const bool rerouteMods = e.mods.isCommandDown()
+                                              || e.mods.isCtrlDown()
+                                              || e.mods.isAltDown();
+                        if (rerouteMods && connectorHasCable(*area.container, conn))
+                        {
+                            dragState.type = DragState::CableReroute;
+                            dragState.module = &m;
+                            dragState.sourceConnector = conn;
+                            dragState.section = area.section;
+                            cablePreviewEnd = pos;
+                            return;
+                        }
+
                         // Start cable creation
                         dragState.type = DragState::CableCreate;
                         dragState.module = &m;
@@ -2044,6 +2068,28 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
         return;
     }
 
+    // First movement of a re-route: unplug the cable, and carry on as an
+    // ordinary cable drag from the end that stayed put.
+    if (dragState.type == DragState::CableReroute)
+    {
+        auto anchor = (patch != nullptr)
+            ? liftCableFrom(patch->getContainer(dragState.section),
+                            dragState.section, dragState.sourceConnector)
+            : ConnectorHit{};
+
+        if (anchor.connector == nullptr)
+        {
+            dragState = DragState();
+            return;
+        }
+
+        dragState.type = DragState::CableCreate;
+        dragState.module = anchor.module;
+        dragState.sourceConnector = anchor.connector;
+        dragState.rerouting = true;
+        showCablePreview = true;
+    }
+
     if (dragState.type == DragState::CableCreate)
     {
         cablePreviewEnd = currentPos;
@@ -2342,9 +2388,18 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
         return;
     }
 
+    // A re-route that never moved: the cable was never unplugged, so there is
+    // nothing to put back and nothing on the undo stack.
+    if (dragState.type == DragState::CableReroute)
+    {
+        dragState = DragState();
+        return;
+    }
+
     if (dragState.type == DragState::CableCreate)
     {
         showCablePreview = false;
+        bool connected = false;
         auto hit = findConnectorAt(screenToCanvas(e.getPosition()));
         if (hit.connector != nullptr && hit.connector != dragState.sourceConnector
             && hit.section == dragState.section)
@@ -2374,30 +2429,57 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
                     outConn = inConn = nullptr;
             }
 
+            // Find module owners: needed for the undo record, and for telling a
+            // re-route that landed back on the connector it came from from one
+            // that actually moved.
+            auto findOwner = [&](Connector* c) -> Module* {
+                for (auto& mp : container.getModules())
+                    for (auto& mc : mp->getConnectors())
+                        if (&mc == c) return mp.get();
+                return nullptr;
+            };
+            auto* outMod = (outConn != nullptr) ? findOwner(outConn) : nullptr;
+            auto* inMod  = (inConn  != nullptr) ? findOwner(inConn)  : nullptr;
+
+            // Dropped straight back where it came from. Nothing moved, so the
+            // restore path below puts it back with no undo step to show for a
+            // gesture that changed nothing.
+            if (dragState.rerouting && outMod != nullptr && inMod != nullptr
+                && sameAsLiftedCable(outMod->getContainerIndex(), outConn,
+                                     inMod->getContainerIndex(), inConn))
+                outConn = inConn = nullptr;
+
             if (outConn && inConn)
             {
-                container.addConnection(outConn, inConn);
-
-                if (cableCreatedCallback && dragState.module)
+                // A re-route is one undo step from the lift to the drop, so the
+                // unplug is recorded here rather than when it happened: it only
+                // becomes a move once the cable has somewhere to go.
+                if (undoManager)
+                    undoManager->beginNewTransaction(dragState.rerouting ? "Move Cable"
+                                                                         : "Add Cable");
+                if (dragState.rerouting)
                 {
-                    if (undoManager)
-                        undoManager->beginNewTransaction("Add Cable");
-                    // Find module owners for undo info
-                    auto findOwner = [&](Connector* c) -> Module* {
-                        for (auto& mp : container.getModules())
-                            for (auto& mc : mp->getConnectors())
-                                if (&mc == c) return mp.get();
-                        return nullptr;
-                    };
-                    auto* outMod = findOwner(outConn);
-                    auto* inMod = findOwner(inConn);
-                    if (outMod && inMod)
-                        cableCreatedCallback(dragState.section,
-                            outMod->getContainerIndex(), outConn->getDescriptor()->index, outConn->getDescriptor()->isOutput,
-                            inMod->getContainerIndex(), inConn->getDescriptor()->index, inConn->getDescriptor()->isOutput);
+                    fireLiftedCableDeleted();
+                    liftedCable = {};
                 }
+
+                container.addConnection(outConn, inConn);
+                connected = true;
+
+                if (cableCreatedCallback && dragState.module && outMod && inMod)
+                    cableCreatedCallback(dragState.section,
+                        outMod->getContainerIndex(), outConn->getDescriptor()->index, outConn->getDescriptor()->isOutput,
+                        inMod->getContainerIndex(), inConn->getDescriptor()->index, inConn->getDescriptor()->isOutput);
             }
         }
+
+        // A re-route that found nowhere legal to land puts the cable back
+        // exactly where it came from. Dragging a cable end about to see where it
+        // is allowed to go is the same gesture as moving it, and it should not
+        // cost you the cable; right-click still deletes.
+        if (dragState.rerouting && !connected)
+            restoreLiftedCable();
+
         repaint();
         dragState = DragState();
         return;

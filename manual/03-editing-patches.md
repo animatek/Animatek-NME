@@ -92,6 +92,14 @@ with the patch when you share it.
   OscA1 Pitch, then OscA1 Pitch → OscA2 Pitch. The hardware rule is enforced:
   a net can only be driven by **one** output, and illegal targets won't light
   up.
+- **Re-route**: hold `Ctrl` (`Cmd` or `Alt` work too) and drag a connector that
+  already has a cable. The cable comes off that end and follows the pointer from
+  the end that stays put, so you can drop it on another connector, which is how
+  you move a patch's wiring onto a replacement module one cable at a time. Let
+  go anywhere that is not a legal target and the cable goes straight back where
+  it was, so you can try a few before committing. If the connector has several
+  cables the one drawn on top comes off first; repeat to take the ones under it.
+  The whole move is a single undo step.
 - **Delete**: right-click a connector to remove its cables.
 - Cable visibility filters, styles and the `S` shake help untangle big patches.
 

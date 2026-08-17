@@ -418,10 +418,14 @@ private:
     // Dragging state
     struct DragState
     {
-        enum Type { None, Knob, Slider, Button, NoteSeqEditor, NoteSeqScrollbar, ModuleMove, MultiModuleMove, CableCreate, RubberBand, MorphRange, CanvasPan, CommentMove, CommentResize } type = None;
+        enum Type { None, Knob, Slider, Button, NoteSeqEditor, NoteSeqScrollbar, ModuleMove, MultiModuleMove, CableCreate, CableReroute, RubberBand, MorphRange, CanvasPan, CommentMove, CommentResize } type = None;
         Module* module = nullptr;
         Parameter* parameter = nullptr;
         Connector* sourceConnector = nullptr;  // CableCreate: source connector
+        // CableCreate that began by lifting an existing cable off a connector
+        // (#67). The drop then belongs in the transaction the lift opened, so a
+        // single undo puts the cable back where it came from.
+        bool rerouting = false;
         int section = 0;  // 0=common, 1=poly (PDL2/Java convention)
         juce::Point<int> startPos;
         int startValue = 0;
@@ -634,6 +638,34 @@ private:
     // Connector hit-testing helpers
     struct ConnectorHit { Module* module = nullptr; Connector* connector = nullptr; int section = 0; };
     ConnectorHit findConnectorAt(juce::Point<int> pos);
+    // True when at least one cable is plugged into `conn`, which is what decides
+    // whether a modifier+drag re-routes or starts a new cable (#67).
+    static bool connectorHasCable(const ModuleContainer& container, const Connector* conn);
+
+    // The cable a re-route lifted off a connector, named by index rather than by
+    // pointer. The lift and the drop are a whole gesture apart, and an index
+    // still means the same cable if the patch moved underneath in between: the
+    // same reason ModuleRef exists.
+    struct LiftedCable
+    {
+        int section = -1;   // -1 = nothing lifted
+        int outModIndex = 0, outConnIndex = 0; bool outIsOutput = false;
+        int inModIndex  = 0, inConnIndex  = 0; bool inIsOutput  = false;
+        bool isValid() const { return section >= 0; }
+    };
+    LiftedCable liftedCable;
+
+    // Takes one cable off `conn` and returns the connector at its far end, which
+    // the drag then carries. The removal is only on the model at this point: it
+    // reaches the undo stack when the drop lands somewhere, and is rolled back
+    // by restoreLiftedCable() when it does not.
+    ConnectorHit liftCableFrom(ModuleContainer& container, int section, Connector* conn);
+    void fireLiftedCableDeleted();
+    void restoreLiftedCable();
+    // True when this pair is the cable that was lifted, i.e. the drop landed
+    // back where the drag started.
+    bool sameAsLiftedCable(int outModIndex, const Connector* out,
+                           int inModIndex,  const Connector* in) const;
     Connector* findConnectorByComponentId(Module& m, const juce::String& componentId);
 
     // Module overlap prevention. The area form is the general one: a text note

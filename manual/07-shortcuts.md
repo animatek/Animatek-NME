@@ -58,6 +58,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl+Shift+I` | Toggle the patch browser (right side) |
 | `S` | Shake cables |
 | Middle-drag | Pan the canvas |
+| `Ctrl`-drag a connector | Re-route: lift the cable off that end and drop it on another connector (`Cmd` or `Alt` also work). One undo step |
 
 ## Slots
 

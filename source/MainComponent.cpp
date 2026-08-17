@@ -3812,6 +3812,12 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Ctrl+Shift+I        Toggle patch browser (right)\n"
       "  S                   Shake cables\n"
       "  Middle-drag         Pan canvas\n"
+     #if JUCE_MAC
+      "  Cmd-drag connector  Re-route: lift the cable off that end and drop it\n"
+     #else
+      "  Ctrl-drag connector Re-route: lift the cable off that end and drop it\n"
+     #endif
+      "                      on another connector (Alt works too)\n"
       "\n"
       "SLOTS\n"
       "  Ctrl+1..4           Switch to slot A..D (opens it if closed)\n"

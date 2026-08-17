@@ -241,6 +241,9 @@ void PatchCanvas::setPatch(Patch* p, const ModuleDescriptions* md, const ThemeDa
     // has to go: left behind, they would name whatever sits at the same index
     // in the incoming patch.
     dragState = DragState();
+    // Names modules in the outgoing patch, and a re-route can only ever be
+    // resolved against the patch it was lifted from.
+    liftedCable = {};
     selection.clear();
     selectedRef.clear();
     // Comment ids belong to the outgoing patch; the incoming one reuses them.
@@ -733,6 +736,118 @@ bool PatchCanvas::isSelected(const Module* m) const
     return false;
 }
 
+bool PatchCanvas::connectorHasCable(const ModuleContainer& container, const Connector* conn)
+{
+    for (const auto& c : container.getConnections())
+        if (c.output == conn || c.input == conn)
+            return true;
+    return false;
+}
+
+// Resolves one end of a lifted cable back to a live connector, or nullptr when
+// the module it belonged to is gone.
+static Connector* findConnectorByIndex(ModuleContainer& container, int moduleIndex,
+                                       int connIndex, bool isOutput)
+{
+    auto* mod = container.getModuleByIndex(moduleIndex);
+    if (mod == nullptr)
+        return nullptr;
+
+    for (auto& c : mod->getConnectors())
+        if (c.getDescriptor()->index == connIndex && c.getDescriptor()->isOutput == isOutput)
+            return &c;
+
+    return nullptr;
+}
+
+PatchCanvas::ConnectorHit PatchCanvas::liftCableFrom(ModuleContainer& container,
+                                                    int section, Connector* conn)
+{
+    // The last cable in the list is the one drawn on top, which is the one the
+    // pointer looks like it is grabbing. Repeating the gesture walks down the
+    // stack, so several cables come off a connector one at a time.
+    const Connection* found = nullptr;
+    for (const auto& c : container.getConnections())
+        if (c.output == conn || c.input == conn)
+            found = &c;
+
+    if (found == nullptr)
+        return {};
+
+    // Copied out before the removal invalidates the vector this points into.
+    Connector* out = found->output;
+    Connector* in  = found->input;
+
+    auto findOwner = [&container](const Connector* c) -> Module*
+    {
+        for (auto& mp : container.getModules())
+            for (auto& mc : mp->getConnectors())
+                if (&mc == c) return mp.get();
+        return nullptr;
+    };
+
+    auto* outMod = findOwner(out);
+    auto* inMod  = findOwner(in);
+    if (outMod == nullptr || inMod == nullptr)
+        return {};
+
+    liftedCable = { section,
+                    outMod->getContainerIndex(), out->getDescriptor()->index, out->getDescriptor()->isOutput,
+                    inMod->getContainerIndex(),  in->getDescriptor()->index,  in->getDescriptor()->isOutput };
+
+    // Off the model, and therefore off the synth, so the cable visibly follows
+    // the pointer. Nothing is on the undo stack yet: the drop decides whether
+    // this was a move or a gesture that came to nothing.
+    container.removeConnection(out, in);
+
+    // The end that stays put is the one the drag now carries.
+    return (out == conn) ? ConnectorHit{ inMod, in, section }
+                         : ConnectorHit{ outMod, out, section };
+}
+
+void PatchCanvas::fireLiftedCableDeleted()
+{
+    if (!liftedCable.isValid() || !cableDeletedCallback)
+        return;
+
+    cableDeletedCallback(liftedCable.section,
+                         liftedCable.outModIndex, liftedCable.outConnIndex, liftedCable.outIsOutput,
+                         liftedCable.inModIndex,  liftedCable.inConnIndex,  liftedCable.inIsOutput);
+}
+
+bool PatchCanvas::sameAsLiftedCable(int outModIndex, const Connector* out,
+                                    int inModIndex,  const Connector* in) const
+{
+    if (!liftedCable.isValid() || out == nullptr || in == nullptr)
+        return false;
+
+    return outModIndex == liftedCable.outModIndex
+        && out->getDescriptor()->index    == liftedCable.outConnIndex
+        && out->getDescriptor()->isOutput == liftedCable.outIsOutput
+        && inModIndex  == liftedCable.inModIndex
+        && in->getDescriptor()->index     == liftedCable.inConnIndex
+        && in->getDescriptor()->isOutput  == liftedCable.inIsOutput;
+}
+
+void PatchCanvas::restoreLiftedCable()
+{
+    if (!liftedCable.isValid() || patch == nullptr)
+        return;
+
+    auto& container = patch->getContainer(liftedCable.section);
+    auto* out = findConnectorByIndex(container, liftedCable.outModIndex,
+                                     liftedCable.outConnIndex, liftedCable.outIsOutput);
+    auto* in  = findConnectorByIndex(container, liftedCable.inModIndex,
+                                     liftedCable.inConnIndex, liftedCable.inIsOutput);
+
+    // Nothing to put it back on: the module went away while the drag was
+    // running, and the cable went with it.
+    if (out != nullptr && in != nullptr)
+        container.addConnection(out, in);
+
+    liftedCable = {};
+}
+
 void PatchCanvas::dropDragIfModuleGone()
 {
     // Selection, hover, the spinner, the cost badge and the multi-move all name
@@ -748,7 +863,14 @@ void PatchCanvas::dropDragIfModuleGone()
         return;
 
     if (!patch->getContainer(dragState.section).contains(dragState.module))
+    {
+        // A re-route in flight is holding a cable that is off the model and not
+        // yet on the undo stack. Dropping the drag without putting it back would
+        // lose it with nothing to undo.
+        if (dragState.rerouting)
+            restoreLiftedCable();
         dragState = DragState();
+    }
 }
 
 void PatchCanvas::clearSelection()
