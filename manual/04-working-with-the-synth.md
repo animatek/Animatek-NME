@@ -109,10 +109,12 @@ The right-side browser (`Ctrl+B`) lists the synth's 9 internal banks. You can:
   sub-window, or on its row in the slot bar down the left side, which also works
   for a slot whose window is closed: it opens on the way. The target lights up
   while you are over it, and bank nodes and empty positions cannot be picked up
-  in the first place. Patches in the **Disk** tab drag onto a slot the same way,
-  from the tab or from the `Ctrl+B` window; unlike File → Open they do not ask
-  which slot, because the drop already said. Snippets keep going onto the canvas,
-  where they merge into the patch at the point they land,
+  in the first place. Disk files drag onto a slot the same way, from the **Disk**
+  tab or from the `Ctrl+B` window, and that includes the **BANK**-tagged ones,
+  which are ordinary patches saved out of a bank rather than bank files. Unlike
+  File → Open they do not ask which slot, because the drop already said. Snippets
+  keep going onto the canvas, where they merge into the patch at the point they
+  land,
 - **store** the current patch to a bank position,
 - **copy, move and delete** patches inside synth memory.
 

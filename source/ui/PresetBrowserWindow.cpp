@@ -340,20 +340,16 @@ juce::var DiskPresetBrowserPanel::getDragSourceDescription(const juce::SparseSet
     const auto& entry = allEntries[static_cast<size_t>(visibleEntryIndices[static_cast<size_t>(row)])];
 
     // Snippets go on the canvas, where they merge into the patch at the point
-    // they land. Whole patches go on a slot, where they replace what is there,
-    // the same way double-clicking one does (issue #50). A bank is neither, so
-    // it stays undraggable.
+    // they land. Everything else is a whole patch and goes on a slot, where it
+    // replaces what is there (issue #50).
+    //
+    // That includes the BANK-tagged entries, which are not bank files: a bank
+    // backup is a folder of ordinary .pch files, one per position, and the tag
+    // only says which bank folder this one came out of. Double-clicking one has
+    // always loaded it exactly like a patch, and dragging one does the same.
     auto* obj = new juce::DynamicObject();
-    if (entry.type == Entry::Type::Snippet)
-        obj->setProperty("type", "snippetFile");
-    else if (entry.type == Entry::Type::Patch)
-        obj->setProperty("type", "patchFile");
-    else
-    {
-        delete obj;
-        return {};
-    }
-
+    obj->setProperty("type", entry.type == Entry::Type::Snippet ? "snippetFile"
+                                                                : "patchFile");
     obj->setProperty("path", entry.file.getFullPathName());
     obj->setProperty("name", entry.displayName);
     return juce::var(obj);

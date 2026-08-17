@@ -19,7 +19,7 @@
   window. Two places accept the drop: the slot's own sub-window, which is the obvious gesture,
   and its row in the slot bar down the left side, which is the one that still works when that
   slot's window is closed (it opens on the way). The target lights up while you are over it, and
-  bank nodes, empty bank positions and bank files cannot be picked up at all. Each drop ends in
+  bank nodes and empty bank positions cannot be picked up at all. Each drop ends in
   the load that already existed, so nothing new goes to the synth: the bank ones in the same call
   as the right-click **Load to Slot A..D**, the disk ones in the same call as File → Open, minus
   the slot question because the drop already answered it. Snippets keep dragging onto the canvas
