@@ -14,7 +14,8 @@
   it. Lift and drop are one undo step.
 
 - **An ABCD button that puts the slot windows back in order** (#51). Right of MUT in the header
-  bar. It re-tiles the open sub-windows into A|B over C|D, or A|B|C in thirds, or A|B side by
+  bar, its four letters drawn in the quadrants they land in so the button pictures the
+  arrangement it produces. It re-tiles the open sub-windows into A|B over C|D, or A|B|C in thirds, or A|B side by
   side, depending on how many are open, and it puts the slots back into that order whatever
   order you opened or shuffled them into. It also drops focus mode and a layout you had dragged
   about, so one click is the way back to a patch you can read after loading four patches in

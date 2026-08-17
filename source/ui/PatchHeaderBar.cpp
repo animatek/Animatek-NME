@@ -330,10 +330,13 @@ bool PatchHeaderBar::isMutatorButtonAt(juce::Point<int> pos) const
 
 juce::Rectangle<float> PatchHeaderBar::getRetileButtonBounds() const
 {
-    // Right of MUT, where the issue asked for it. Wider than MUT because it
-    // carries four letters at the same size.
+    // Right of MUT, where the issue asked for it, but two rows tall instead of
+    // one: the face is a picture of the layout it produces (A|B over C|D), and
+    // two rows of letters do not fit in MUT's single-line height. The bar is
+    // 48px, so the extra height costs nothing.
     auto mut = getMutatorButtonBounds();
-    return { mut.getRight() + 6.0f, mut.getY(), 42.0f, mut.getHeight() };
+    constexpr float w = 34.0f, h = 22.0f;
+    return { mut.getRight() + 6.0f, mut.getCentreY() - h * 0.5f, w, h };
 }
 
 bool PatchHeaderBar::isRetileButtonAt(juce::Point<int> pos) const
@@ -762,10 +765,31 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             g.drawRoundedRectangle(rb.reduced(0.5f), 2.0f, 1.0f);
             // Nothing to reorder is said by the ink, not by hiding the button:
             // it keeps its place in the bar so the row does not shuffle about.
-            g.setColour(retileEnabled ? AppTheme::palette().textSecondary
-                                      : AppTheme::palette().textMuted);
-            g.setFont(AppTheme::uiFont(9.0f).withStyle("Bold"));
-            g.drawText("ABCD", rb.toNearestInt(), juce::Justification::centred, false);
+            const auto ink = retileEnabled ? AppTheme::palette().textSecondary
+                                           : AppTheme::palette().textMuted;
+
+            // The four letters sit in the quadrants they actually land in, with
+            // the tile divisions drawn between them, so the button reads as the
+            // arrangement it produces rather than as the word "ABCD".
+            auto cells = rb.reduced(2.0f);
+            g.setColour(ink.withAlpha(0.35f));
+            g.drawLine(cells.getCentreX(), cells.getY(),
+                       cells.getCentreX(), cells.getBottom(), 1.0f);
+            g.drawLine(cells.getX(), cells.getCentreY(),
+                       cells.getRight(), cells.getCentreY(), 1.0f);
+
+            g.setColour(ink);
+            g.setFont(AppTheme::uiFont(8.0f).withStyle("Bold"));
+            static const char* const tileLetters[] = { "A", "B", "C", "D" };
+            for (int i = 0; i < 4; ++i)
+            {
+                juce::Rectangle<float> cell(
+                    cells.getX() + static_cast<float>(i % 2) * cells.getWidth()  * 0.5f,
+                    cells.getY() + static_cast<float>(i / 2) * cells.getHeight() * 0.5f,
+                    cells.getWidth() * 0.5f, cells.getHeight() * 0.5f);
+                g.drawText(tileLetters[i], cell.toNearestInt(),
+                           juce::Justification::centred, false);
+            }
         }
 
         // Interpolation progress bar (below snapshot buttons)
