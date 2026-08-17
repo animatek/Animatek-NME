@@ -95,11 +95,12 @@ with the patch when you share it.
 - **Re-route**: hold `Ctrl` (`Cmd` or `Alt` work too) and drag a connector that
   already has a cable. The cable comes off that end and follows the pointer from
   the end that stays put, so you can drop it on another connector, which is how
-  you move a patch's wiring onto a replacement module one cable at a time. Let
-  go anywhere that is not a legal target and the cable goes straight back where
-  it was, so you can try a few before committing. If the connector has several
-  cables the one drawn on top comes off first; repeat to take the ones under it.
-  The whole move is a single undo step.
+  you move a patch's wiring onto a replacement module one cable at a time.
+  Nothing happens to the patch until you let go, so you can carry a cable end
+  around to see where it is allowed to go and let go anywhere that is not a
+  legal target: the cable simply comes back. If the connector has several cables
+  the one drawn on top comes off first; repeat to take the ones under it. The
+  move is a single undo step.
 - **Delete**: right-click a connector to remove its cables.
 - Cable visibility filters, styles and the `S` shake help untangle big patches.
 

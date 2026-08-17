@@ -4068,6 +4068,15 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
         if (conn.output == nullptr || conn.input == nullptr)
             continue;
 
+        // The cable a re-route is carrying is still in the patch, and stays
+        // there until the drop lands. Hiding it here is the whole illusion of
+        // it having been unplugged, and it costs the patch nothing if the drag
+        // comes to nothing. Gated on the drag as well as on the note, so a drag
+        // that ends any way other than a drop cannot leave a cable invisible.
+        if (dragState.rerouting && liftedCable.isValid()
+            && conn.output == liftedCable.out && conn.input == liftedCable.in)
+            continue;
+
         // Check cable visibility by signal type
         if (patch != nullptr)
         {

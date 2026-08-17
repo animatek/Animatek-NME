@@ -173,7 +173,13 @@ public:
      *  connector driving it, or nullptr for an undriven net. Cables may chain
      *  input→input (the Connection "output" slot then holds an input), so a
      *  net has at most one real output. */
-    Connector* findNetOutput(Connector* start);
+    // The output driving the net `start` belongs to, or nullptr for an undriven
+    // net. `ignoreOutput`/`ignoreInput` name one cable to walk around: a
+    // re-route in flight has to judge the net as it will be once the cable has
+    // moved, not as it still is while the drag runs.
+    Connector* findNetOutput(Connector* start,
+                             const Connector* ignoreOutput = nullptr,
+                             const Connector* ignoreInput = nullptr);
 
     Module* getModuleByIndex(int containerIndex);
     const Module* getModuleByIndex(int containerIndex) const;

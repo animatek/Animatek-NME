@@ -211,7 +211,9 @@ void ModuleContainer::removeConnectionsForConnector(Connector* conn)
         connections.end());
 }
 
-Connector* ModuleContainer::findNetOutput(Connector* start)
+Connector* ModuleContainer::findNetOutput(Connector* start,
+                                          const Connector* ignoreOutput,
+                                          const Connector* ignoreInput)
 {
     if (start == nullptr)
         return nullptr;
@@ -229,6 +231,11 @@ Connector* ModuleContainer::findNetOutput(Connector* start)
 
         for (const auto& conn : connections)
         {
+            // The one cable a re-route is carrying counts as already gone.
+            if (ignoreOutput != nullptr
+                && conn.output == ignoreOutput && conn.input == ignoreInput)
+                continue;
+
             Connector* other = nullptr;
             if (conn.output == c)      other = conn.input;
             else if (conn.input == c)  other = conn.output;

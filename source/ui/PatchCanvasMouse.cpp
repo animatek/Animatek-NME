@@ -2073,8 +2073,8 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
     if (dragState.type == DragState::CableReroute)
     {
         auto anchor = (patch != nullptr)
-            ? liftCableFrom(patch->getContainer(dragState.section),
-                            dragState.section, dragState.sourceConnector)
+            ? noteCableToLift(patch->getContainer(dragState.section),
+                              dragState.section, dragState.sourceConnector)
             : ConnectorHit{};
 
         if (anchor.connector == nullptr)
@@ -2399,7 +2399,6 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
     if (dragState.type == DragState::CableCreate)
     {
         showCablePreview = false;
-        bool connected = false;
         auto hit = findConnectorAt(screenToCanvas(e.getPosition()));
         if (hit.connector != nullptr && hit.connector != dragState.sourceConnector
             && hit.section == dragState.section)
@@ -2420,11 +2419,14 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
             else if (!srcOut && !dstOut) { outConn = src; inConn = dst; }
 
             // A net is driven by at most one output: refuse to join two nets
-            // that already have distinct outputs.
+            // that already have distinct outputs. The cable a re-route is
+            // carrying is still in the patch at this point, so the walk is told
+            // to step over it: the question is what the nets look like once the
+            // move has landed, not what they look like mid-gesture.
             if (outConn && inConn)
             {
-                auto* drv1 = container.findNetOutput(outConn);
-                auto* drv2 = container.findNetOutput(inConn);
+                auto* drv1 = container.findNetOutput(outConn, liftedCable.out, liftedCable.in);
+                auto* drv2 = container.findNetOutput(inConn,  liftedCable.out, liftedCable.in);
                 if (drv1 != nullptr && drv2 != nullptr && drv1 != drv2)
                     outConn = inConn = nullptr;
             }
@@ -2441,9 +2443,8 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
             auto* outMod = (outConn != nullptr) ? findOwner(outConn) : nullptr;
             auto* inMod  = (inConn  != nullptr) ? findOwner(inConn)  : nullptr;
 
-            // Dropped straight back where it came from. Nothing moved, so the
-            // restore path below puts it back with no undo step to show for a
-            // gesture that changed nothing.
+            // Dropped straight back where it came from: nothing to move, and
+            // nothing goes to the synth or onto the undo stack for it.
             if (dragState.rerouting && outMod != nullptr && inMod != nullptr
                 && sameAsLiftedCable(outMod->getContainerIndex(), outConn,
                                      inMod->getContainerIndex(), inConn))
@@ -2451,20 +2452,17 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
 
             if (outConn && inConn)
             {
-                // A re-route is one undo step from the lift to the drop, so the
-                // unplug is recorded here rather than when it happened: it only
-                // becomes a move once the cable has somewhere to go.
                 if (undoManager)
                     undoManager->beginNewTransaction(dragState.rerouting ? "Move Cable"
                                                                          : "Add Cable");
-                if (dragState.rerouting)
-                {
-                    fireLiftedCableDeleted();
-                    liftedCable = {};
-                }
 
-                container.addConnection(outConn, inConn);
-                connected = true;
+                // A re-route takes the old cable off here, not when the drag
+                // started: it is one edit, and until the drop lands there is
+                // nothing to say.
+                if (dragState.rerouting)
+                    commitLiftedCableMove(container, outConn, inConn);
+                else
+                    container.addConnection(outConn, inConn);
 
                 if (cableCreatedCallback && dragState.module && outMod && inMod)
                     cableCreatedCallback(dragState.section,
@@ -2473,12 +2471,10 @@ void PatchCanvas::mouseUp(const juce::MouseEvent& e)
             }
         }
 
-        // A re-route that found nowhere legal to land puts the cable back
-        // exactly where it came from. Dragging a cable end about to see where it
-        // is allowed to go is the same gesture as moving it, and it should not
-        // cost you the cable; right-click still deletes.
-        if (dragState.rerouting && !connected)
-            restoreLiftedCable();
+        // A re-route that found nowhere legal to land simply never happened:
+        // the cable is still in the patch, and dropping the note puts it back on
+        // screen. Nothing was sent, so there is nothing to take back.
+        liftedCable = {};
 
         repaint();
         dragState = DragState();

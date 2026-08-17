@@ -8,10 +8,11 @@
   and drag a connector that already has a cable: the cable comes off that end and follows the
   pointer from the end that stays put, ready to drop on another connector. This is the gesture
   the original editor had, and it is what moving a patch's wiring onto a replacement module one
-  cable at a time needs. Letting go anywhere that is not a legal target puts the cable straight
-  back where it was, so trying a few destinations costs nothing; where the connector has several
+  cable at a time needs. Nothing happens to the patch until you let go: the cable is only hidden
+  from the canvas while you carry it, so a re-route that lands nowhere legal costs nothing, sends
+  nothing to the synth and leaves nothing on the undo stack. Where the connector has several
   cables the one drawn on top comes off first, and repeating the gesture takes the ones under
-  it. Lift and drop are one undo step.
+  it. The move itself is one undo step.
 
 - **An ABCD button that puts the slot windows back in order** (#51). Right of MUT in the header
   bar, its four letters drawn in the quadrants they land in so the button pictures the

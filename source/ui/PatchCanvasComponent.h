@@ -642,28 +642,35 @@ private:
     // whether a modifier+drag re-routes or starts a new cable (#67).
     static bool connectorHasCable(const ModuleContainer& container, const Connector* conn);
 
-    // The cable a re-route lifted off a connector, named by index rather than by
-    // pointer. The lift and the drop are a whole gesture apart, and an index
-    // still means the same cable if the patch moved underneath in between: the
-    // same reason ModuleRef exists.
+    // The cable a re-route is carrying. Nothing has happened to the patch while
+    // this is set: the cable is only hidden from the canvas so it looks lifted.
+    // The model, and therefore the synth, is not touched until the drop lands,
+    // so a re-route that comes to nothing sends nothing at all.
+    //
+    // Held both ways on purpose. The two pointers are what the painter skips and
+    // what the net walk steps over, and they are only read inside the one drag
+    // that set them. The indices are what the undo actions and the synth
+    // messages are addressed by, and they still name the same cable if the patch
+    // moved underneath: the same reason ModuleRef exists.
     struct LiftedCable
     {
         int section = -1;   // -1 = nothing lifted
+        Connector* out = nullptr;
+        Connector* in  = nullptr;
         int outModIndex = 0, outConnIndex = 0; bool outIsOutput = false;
         int inModIndex  = 0, inConnIndex  = 0; bool inIsOutput  = false;
         bool isValid() const { return section >= 0; }
     };
     LiftedCable liftedCable;
 
-    // Takes one cable off `conn` and returns the connector at its far end, which
-    // the drag then carries. The removal is only on the model at this point: it
-    // reaches the undo stack when the drop lands somewhere, and is rolled back
-    // by restoreLiftedCable() when it does not.
-    ConnectorHit liftCableFrom(ModuleContainer& container, int section, Connector* conn);
-    void fireLiftedCableDeleted();
-    void restoreLiftedCable();
+    // Picks the cable a re-route will carry and returns the connector at its far
+    // end, which the drag then anchors to. Reads the patch; does not change it.
+    ConnectorHit noteCableToLift(ModuleContainer& container, int section, Connector* conn);
+    // Performs the move: takes the lifted cable off and puts the new one on, in
+    // that order, both on the model and on the undo stack.
+    void commitLiftedCableMove(ModuleContainer& container, Connector* outConn, Connector* inConn);
     // True when this pair is the cable that was lifted, i.e. the drop landed
-    // back where the drag started.
+    // back where the drag started and there is nothing to do.
     bool sameAsLiftedCable(int outModIndex, const Connector* out,
                            int inModIndex,  const Connector* in) const;
     Connector* findConnectorByComponentId(Module& m, const juce::String& componentId);
