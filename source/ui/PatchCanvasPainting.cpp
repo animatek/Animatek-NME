@@ -137,11 +137,30 @@ void PatchCanvas::paint(juce::Graphics& g)
         return visible.toFloat() / juce::jmax(0.01f, zoomLevel);
     };
 
-    if (patch == nullptr)
+    // The hint is painted on the canvas background, so its ink has to be taken
+    // from that background and not from moduleText: the themes with light module
+    // faces (Nomad, Nord Classic) set moduleText to black, and their canvas is
+    // nearly black too, which left the hint unreadable (#70). contrasting() picks
+    // the readable end for whatever background the theme brings.
+    auto drawPlaceholder = [this, &g, &placeholderArea]
     {
-        g.setColour(activeScheme_.moduleText.withAlpha(0.28f));
+        // Not juce::Colour::contrasting(), which flips from dark ink to light at
+        // exactly 0.5 perceived brightness: Nord Classic's canvas is #80808b,
+        // sitting right on that boundary, and it came back a light grey on a mid
+        // grey. Anything but a genuinely dark canvas takes the dark ink. The two
+        // alphas differ because dark ink on a light ground fades sooner than
+        // light ink does on a dark one; both land above the 3:1 that large text
+        // wants while still reading as a hint rather than a heading.
+        const bool darkCanvas = activeScheme_.gridBackground.getPerceivedBrightness() < 0.42f;
+        g.setColour(darkCanvas ? juce::Colours::white.withAlpha(0.45f)
+                               : juce::Colours::black.withAlpha(0.60f));
         g.setFont(juce::FontOptions(28.0f));
         g.drawText("Press Enter to add modules", placeholderArea(), juce::Justification::centred, false);
+    };
+
+    if (patch == nullptr)
+    {
+        drawPlaceholder();
         return;
     }
 
@@ -150,11 +169,7 @@ void PatchCanvas::paint(juce::Graphics& g)
     auto& container = (mySection == 1) ? patch->getPolyVoiceArea() : patch->getCommonArea();
 
     if (container.getModules().empty())
-    {
-        g.setColour(activeScheme_.moduleText.withAlpha(0.28f));
-        g.setFont(juce::FontOptions(28.0f));
-        g.drawText("Press Enter to add modules", placeholderArea(), juce::Justification::centred, false);
-    }
+        drawPlaceholder();
 
     paintComments(g);
     paintModules(g, container, 0);
