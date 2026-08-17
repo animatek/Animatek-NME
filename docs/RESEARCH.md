@@ -235,6 +235,24 @@ Hardware-tested dead ends (2026-06-11), do not retry:
   against the bank list, and cannot when the name is not unique (verified on a real
   G1, 2026-08-12).
 
+### What the editor cannot drive
+
+- **Panel LEDs.** The front panel does light up on its own: assigning a parameter to a
+  knob turns that knob's LED green, and removing the assignment turns it off (confirmed
+  on hardware, 2026-08-17). But there is no message for it. `Lights` (sc=0x39, 20x 2-bit)
+  is an **NMInfo** subcommand, i.e. synth → editor, and it reports the state of the
+  *patch's* module LEDs that the DSP computes, not the panel. Nothing in `midi.pdl2`
+  goes the other way. Driving panel LEDs would mean assigning and de-assigning knobs,
+  which is a patch edit per frame; see the next point for why that is a non-starter.
+
+- **Structural edits in rapid succession, at all.** The acked queue in
+  `ConnectionManager` exists because they freeze the synth, and that is not theoretical:
+  the first cut of cable re-routing (#67) sent a `CableDelete` and a `CableInsert` back
+  to back for a gesture that changed nothing, and froze a real G1 (2026-08-17). Budget:
+  MIDI DIN is 31250 baud, ~3125 bytes/s, a cable or knob-assignment message is ~10-12
+  bytes, and the synth is already streaming Lights and Meters over the same wire. Any
+  feature that would send structural edits at animation rates is out.
+
 ### Protocol Behavior
 - Request/response pattern with **3-second timeout**
 - ACK messages confirm operations (type=0x7f for completion)
