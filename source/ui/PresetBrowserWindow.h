@@ -83,7 +83,13 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DiskPresetBrowserPanel)
 };
 
-class PresetBrowserWindow : public juce::DocumentWindow
+// Also a DragAndDropContainer: the same panel sits in the main window's Disk tab,
+// where MainLayout provides one, and without this the identical list simply
+// refused to start a drag when it was in this window instead. JUCE lets the drag
+// image live on the desktop, so a patch dragged out of here still lands on a slot
+// in the main window.
+class PresetBrowserWindow : public juce::DocumentWindow,
+                            public juce::DragAndDropContainer
 {
 public:
     PresetBrowserWindow();

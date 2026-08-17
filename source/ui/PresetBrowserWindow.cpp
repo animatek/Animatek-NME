@@ -338,11 +338,22 @@ juce::var DiskPresetBrowserPanel::getDragSourceDescription(const juce::SparseSet
         return {};
 
     const auto& entry = allEntries[static_cast<size_t>(visibleEntryIndices[static_cast<size_t>(row)])];
-    if (entry.type != Entry::Type::Snippet)
-        return {};
 
+    // Snippets go on the canvas, where they merge into the patch at the point
+    // they land. Whole patches go on a slot, where they replace what is there,
+    // the same way double-clicking one does (issue #50). A bank is neither, so
+    // it stays undraggable.
     auto* obj = new juce::DynamicObject();
-    obj->setProperty("type", "snippetFile");
+    if (entry.type == Entry::Type::Snippet)
+        obj->setProperty("type", "snippetFile");
+    else if (entry.type == Entry::Type::Patch)
+        obj->setProperty("type", "patchFile");
+    else
+    {
+        delete obj;
+        return {};
+    }
+
     obj->setProperty("path", entry.file.getFullPathName());
     obj->setProperty("name", entry.displayName);
     return juce::var(obj);

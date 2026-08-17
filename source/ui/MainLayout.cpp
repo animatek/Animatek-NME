@@ -218,8 +218,7 @@ void SlotBar::updateDropTarget(int slot)
 
 bool SlotBar::isInterestedInDragSource(const SourceDetails& details)
 {
-    return details.description.isObject()
-        && details.description.getProperty("type", {}).toString() == "synthPatch";
+    return SlotDrop::isAccepted(details.description);
 }
 
 void SlotBar::itemDragEnter(const SourceDetails& details)
@@ -244,12 +243,17 @@ void SlotBar::itemDropped(const SourceDetails& details)
 
     // Dropped on the gap under the last row: no slot was named, so nothing is
     // loaded. Silently, because the highlight already said no target was armed.
-    if (slot < 0 || !onPatchDroppedOnSlot)
+    if (slot < 0)
         return;
 
-    onPatchDroppedOnSlot((int) details.description.getProperty("section", -1),
-                         (int) details.description.getProperty("position", -1),
-                         slot);
+    const auto& d = details.description;
+
+    if (SlotDrop::isSynthPatch(d) && onPatchDroppedOnSlot)
+        onPatchDroppedOnSlot((int) d.getProperty("section", -1),
+                             (int) d.getProperty("position", -1),
+                             slot);
+    else if (SlotDrop::isPatchFile(d) && onPatchFileDroppedOnSlot)
+        onPatchFileDroppedOnSlot(SlotDrop::fileOf(d), slot);
 }
 
 void SlotBar::mouseDown(const juce::MouseEvent& e)

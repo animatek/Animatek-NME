@@ -26,8 +26,7 @@ void SlotView::paintOverChildren(juce::Graphics& g)
 
 bool SlotView::isInterestedInDragSource(const SourceDetails& details)
 {
-    return details.description.isObject()
-        && details.description.getProperty("type", {}).toString() == "synthPatch";
+    return SlotDrop::isAccepted(details.description);
 }
 
 void SlotView::itemDragEnter(const SourceDetails&)
@@ -47,10 +46,14 @@ void SlotView::itemDropped(const SourceDetails& details)
     dropArmed_ = false;
     repaint();
 
-    if (onPatchDropped)
-        onPatchDropped((int) details.description.getProperty("section", -1),
-                       (int) details.description.getProperty("position", -1),
+    const auto& d = details.description;
+
+    if (SlotDrop::isSynthPatch(d) && onPatchDropped)
+        onPatchDropped((int) d.getProperty("section", -1),
+                       (int) d.getProperty("position", -1),
                        slot_);
+    else if (SlotDrop::isPatchFile(d) && onPatchFileDropped)
+        onPatchFileDropped(SlotDrop::fileOf(d), slot_);
 }
 
 void SlotView::setPatchTitle(const juce::String& patchName)

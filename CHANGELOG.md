@@ -14,13 +14,19 @@
   cables the one drawn on top comes off first, and repeating the gesture takes the ones under
   it. The move itself is one undo step.
 
-- **Drag a patch out of the synth browser onto a slot to load it there** (#50). Two places
-  accept the drop: the slot's own sub-window, which is the obvious gesture, and its row in the
-  slot bar down the left side, which is the one that still works when that slot's window is
-  closed (it opens on the way). The target lights up while you are over it, and bank nodes and
-  empty bank positions cannot be picked up at all. It ends in the same load the right-click
-  **Load to Slot A..D** already did, so nothing new goes to the synth: this is the gesture that
-  was missing, not a new way of loading.
+- **Drag a patch onto a slot to load it there** (#50). Works from both browsers: a patch in
+  the synth's banks from the **Synth** tab, and a `.pch` from the **Disk** tab or the `Ctrl+B`
+  window. Two places accept the drop: the slot's own sub-window, which is the obvious gesture,
+  and its row in the slot bar down the left side, which is the one that still works when that
+  slot's window is closed (it opens on the way). The target lights up while you are over it, and
+  bank nodes, empty bank positions and bank files cannot be picked up at all. Each drop ends in
+  the load that already existed, so nothing new goes to the synth: the bank ones in the same call
+  as the right-click **Load to Slot A..D**, the disk ones in the same call as File → Open, minus
+  the slot question because the drop already answered it. Snippets keep dragging onto the canvas
+  as before.
+
+  The `Ctrl+B` preset window could not start a drag at all until now, snippets included: it was
+  missing the drag container that the same panel gets from the main window.
 
 - **An ABCD button that puts the slot windows back in order** (#51). Right of MUT in the header
   bar, its four letters drawn in the quadrants they land in so the button pictures the

@@ -369,15 +369,26 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // "Load to Slot A..D" already used: the slot's sub-window, which is the
   // obvious gesture, and the slot bar's rows, which is the one that still works
   // when that slot's window is closed.
+  // The Disk browser's patches drop the same way, and land in the same places.
+  // No slot chooser on this path, unlike File > Open: the drop already named the
+  // slot, and asking again would be asking twice.
   mainLayout->getSlotBar().onPatchDroppedOnSlot =
       [this](int section, int position, int slot) {
     loadBankPatchIntoSlot(section, position, slot);
   };
-  for (int slot = 0; slot < numSlots; ++slot)
-    mainLayout->getPatchArea().getView(slot).onPatchDropped =
-        [this](int section, int position, int targetSlot) {
+  mainLayout->getSlotBar().onPatchFileDroppedOnSlot =
+      [this](const juce::File& file, int slot) {
+    loadPatchFromFile(file, slot, /*localOnly=*/false);
+  };
+  for (int slot = 0; slot < numSlots; ++slot) {
+    auto& view = mainLayout->getPatchArea().getView(slot);
+    view.onPatchDropped = [this](int section, int position, int targetSlot) {
       loadBankPatchIntoSlot(section, position, targetSlot);
     };
+    view.onPatchFileDropped = [this](const juce::File& file, int targetSlot) {
+      loadPatchFromFile(file, targetSlot, /*localOnly=*/false);
+    };
+  }
 
   mainLayout->getPatchBrowser().onRefreshRequested = [this]() {
     mainLayout->getPatchBrowser().setLoadingState(true);

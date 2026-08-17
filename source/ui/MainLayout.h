@@ -28,7 +28,7 @@ public:
     void mouseDown(const juce::MouseEvent& e) override;
     void resized() override;
 
-    // A patch dragged out of the Synth browser can be dropped on a slot row to
+    // A patch dragged out of either browser can be dropped on a slot row to
     // load it there (issue #50). The rows are the target that always works: a
     // slot whose sub-window is closed still has one here.
     bool isInterestedInDragSource(const SourceDetails& details) override;
@@ -38,6 +38,7 @@ public:
     void itemDropped(const SourceDetails& details) override;
 
     std::function<void(int section, int position, int slot)> onPatchDroppedOnSlot;
+    std::function<void(const juce::File& file, int slot)> onPatchFileDroppedOnSlot;
 
     void setCurrentTab(int index);
     int  getCurrentTabIndex() const { return activeIndex; }
