@@ -294,6 +294,26 @@ void ThemeData::parseSlider(const juce::XmlElement& elem, ModuleTheme& theme)
     theme.sliders.push_back(ts);
 }
 
+// A polarity switch: two states, bipolar when the button is out and unipolar
+// when it is in. The inherited theme XML labels *both* states "Uni" on every
+// module that has one (Constant, LevMult, LevAdd, CtrlSeq), so the panel reads
+// the same whichever way the switch is set and the only clue is the bevel. Name
+// the states instead, from one place: keyed off the parameter the button drives
+// rather than a list of module IDs, so a polarity switch that turns up in a
+// later module or a hand-edited theme is labelled without touching this code
+// or repeating the pair of strings in the XML (issue #69).
+namespace
+{
+bool isPolarityParam(const juce::String& paramAlt)
+{
+    return paramAlt.equalsIgnoreCase("uni") || paramAlt.equalsIgnoreCase("unipolar");
+}
+
+// Index is the parameter value: 0 = off = bipolar, 1 = on = unipolar, which is
+// what the hardware does ("in bipolar mode, button not depressed").
+const std::vector<juce::String> kPolarityLabels { "Bip", "Uni" };
+}
+
 void ThemeData::parseButton(const juce::XmlElement& elem, ModuleTheme& theme)
 {
     ThemeButton tb;
@@ -306,8 +326,12 @@ void ThemeData::parseButton(const juce::XmlElement& elem, ModuleTheme& theme)
     tb.landscape = (elem.getStringAttribute("landscape") == "true");
     tb.reversed = (elem.getStringAttribute("reverse") == "true");
 
+    juce::String paramAlt;
     if (auto* param = elem.getChildByName("parameter"))
+    {
         tb.componentId = param->getStringAttribute("component-id");
+        paramAlt       = param->getStringAttribute("alt");
+    }
 
     // Collect button labels indexed by btn index
     std::vector<juce::String> docLabels, docImageRefs;
@@ -352,6 +376,15 @@ void ThemeData::parseButton(const juce::XmlElement& elem, ModuleTheme& theme)
     {
         tb.labels.assign(docLabels.rbegin(), docLabels.rend());
         tb.imageRefs.assign(docImageRefs.rbegin(), docImageRefs.rend());
+    }
+
+    // Polarity switches say which polarity they are in, whatever the XML labels
+    // them (see isPolarityParam above). Increment and radio blocks are left
+    // alone: this is only about the one-button toggle.
+    if (tb.cyclic && !tb.isIncrement && isPolarityParam(paramAlt))
+    {
+        tb.labels = kPolarityLabels;
+        tb.imageRefs.clear();   // the labels are the whole button
     }
 
     // Detect <call component="..." method="rnd"> (Vocoder Rnd button)
