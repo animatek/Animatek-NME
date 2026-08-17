@@ -104,6 +104,8 @@ public:
     void zoomToSelection();
     void resetZoom();
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
+    // Trackpad pinch (macOS, and any platform JUCE feeds magnify events from).
+    void mouseMagnify(const juce::MouseEvent& e, float scaleFactor) override;
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
@@ -734,6 +736,10 @@ private:
         return { juce::roundToInt(p.x / zoomLevel), juce::roundToInt(p.y / zoomLevel) };
     }
     void updateSizeForZoom();
+    // Zooms to `newZoom`, keeping the canvas point under the pointer where it
+    // is. Shared by Ctrl+wheel and the trackpad pinch, which differ only in how
+    // they arrive at the new level.
+    void zoomAnchoredToPointer(float newZoom, const juce::MouseEvent& e);
 
     static constexpr int paramSendIntervalMs = 50;  // Min interval between param sends during drag
 

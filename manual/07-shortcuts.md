@@ -51,6 +51,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `Z` | Zoom to selection (or reset when nothing selected) |
 | `Shift+Z` | Reset zoom to 100% |
 | `Ctrl++` / `Ctrl+-` | Zoom in / out |
+| `Ctrl`+wheel, trackpad pinch | Zoom in / out around the pointer |
 | `Ctrl+T` | Cycle color theme |
 | `Ctrl+W` | Toggle wireframe modules (**macOS: `Cmd+Shift+W`**, because macOS keeps `Cmd+W` for closing windows) |
 | `Ctrl+I` | Toggle the inspector panel (left side) |

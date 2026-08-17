@@ -32,37 +32,50 @@ static bool isSequencerStepParam(const ParameterDescriptor& pd,
 
 // Decoration bitmap cache: iconName ("decoration-N") → loaded juce::Image.
 // PNGs are embedded via juce_add_binary_data in CMakeLists.txt.
+void PatchCanvas::zoomAnchoredToPointer(float newZoom, const juce::MouseEvent& e)
+{
+    newZoom = juce::jlimit(zoomMin, zoomMax, newZoom);
+    if (std::abs(newZoom - zoomLevel) < 0.001f)
+        return;
+
+    // Get canvas-space point under cursor before zoom
+    auto canvasPt = screenToCanvas(e.getPosition());
+
+    zoomLevel = newZoom;
+    updateSizeForZoom();
+
+    // Adjust viewport so the same canvas point stays under the cursor
+    if (auto* vp = findParentComponentOfClass<juce::Viewport>())
+    {
+        auto vpMouse = e.getEventRelativeTo(vp).getPosition();
+        int newVpX = juce::roundToInt(canvasPt.x * newZoom) - vpMouse.x;
+        int newVpY = juce::roundToInt(canvasPt.y * newZoom) - vpMouse.y;
+        vp->setViewPosition(juce::jmax(0, newVpX), juce::jmax(0, newVpY));
+    }
+
+    repaint();
+}
+
 void PatchCanvas::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
 {
     if (e.mods.isCommandDown() || e.mods.isCtrlDown())
     {
-        // Zoom towards mouse cursor
-        float oldZoom = zoomLevel;
-        float newZoom = juce::jlimit(zoomMin, zoomMax, oldZoom + wheel.deltaY * zoomStep * 3.0f);
-        if (std::abs(newZoom - oldZoom) < 0.001f)
-            return;
-
-        // Get canvas-space point under cursor before zoom
-        auto canvasPt = screenToCanvas(e.getPosition());
-
-        zoomLevel = newZoom;
-        updateSizeForZoom();
-
-        // Adjust viewport so the same canvas point stays under the cursor
-        if (auto* vp = findParentComponentOfClass<juce::Viewport>())
-        {
-            auto vpMouse = e.getEventRelativeTo(vp).getPosition();
-            int newVpX = juce::roundToInt(canvasPt.x * newZoom) - vpMouse.x;
-            int newVpY = juce::roundToInt(canvasPt.y * newZoom) - vpMouse.y;
-            vp->setViewPosition(juce::jmax(0, newVpX), juce::jmax(0, newVpY));
-        }
-
-        repaint();
+        zoomAnchoredToPointer(zoomLevel + wheel.deltaY * zoomStep * 3.0f, e);
         return;
     }
 
     // Default: let viewport handle normal scrolling
     juce::Component::mouseWheelMove(e, wheel);
+}
+
+void PatchCanvas::mouseMagnify(const juce::MouseEvent& e, float scaleFactor)
+{
+    // Trackpad pinch (issue #72). scaleFactor is a multiplier for the gesture
+    // step, not an increment, so it multiplies the zoom: pinching out and back
+    // in lands on the level you started from, which adding would not do. No
+    // modifier here, unlike the wheel: on a trackpad the pinch is the gesture.
+    if (scaleFactor > 0.0f)
+        zoomAnchoredToPointer(zoomLevel * scaleFactor, e);
 }
 
 bool PatchCanvas::findControlAt(juce::Point<int> canvasPos, HoverTarget& out) const

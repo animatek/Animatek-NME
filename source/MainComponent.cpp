@@ -3797,6 +3797,11 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Z                   Zoom to selection / reset\n"
       "  Shift+Z             Reset zoom to 100%\n"
       "  Ctrl++ / Ctrl+-     Zoom in / out\n"
+     #if JUCE_MAC
+      "  Cmd+wheel, pinch    Zoom around the pointer\n"
+     #else
+      "  Ctrl+wheel          Zoom around the pointer\n"
+     #endif
       "  Ctrl+T              Cycle color theme\n"
      #if JUCE_MAC
       "  Cmd+Shift+W         Toggle wireframe modules\n"
