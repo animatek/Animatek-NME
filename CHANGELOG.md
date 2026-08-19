@@ -30,6 +30,16 @@
 
 ### Fixed
 
+- **The patch stops reloading itself every few seconds** (#73). The canvas jumped back to its
+  top-left corner on its own, and the status bar flashed "loading patch 1/13", with nobody
+  touching anything. The G1 does not only answer an `IAm`, it announces itself: the SysEx dumps
+  on the issue have one arriving roughly every three seconds for as long as the synth is on.
+  The editor read each announcement as a connection that had just come up and re-ran its whole
+  opening sequence, patch list and synth settings and a patch fetch included, so the patch was
+  pulled down again on top of the one you were working in. An announcement from a synth the
+  editor is already talking to now changes nothing. It is still listened to while disconnected,
+  so a synth switched on after the editor still brings the connection up by itself.
+
 - **The macOS menus show their keyboard shortcuts again** (#74). The Mac menu bar is the
   system's own, and it only prints a shortcut that comes from a JUCE command manager: the
   hint field that the Windows and Linux menus right-align is thrown away there. Moving the

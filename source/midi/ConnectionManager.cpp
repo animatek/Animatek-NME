@@ -278,6 +278,25 @@ void ConnectionManager::onIAmReceived(const IAmMessage& msg)
     // sender=1 means the synth is responding
     if (msg.sender == 1)
     {
+        // The G1 does not only answer an IAm, it announces itself, over and
+        // over: the dumps on issue #73 settle into one every three seconds for
+        // as long as the synth is on, with nothing asked of it. Every one of
+        // them used to be read as a connection that had just come up and re-ran
+        // the whole opening sequence: patch list, synth settings, and a patch
+        // fetch for the slot on screen. That is the "loading patch 1/13" loop
+        // in the report, and reloading the patch under the user is what threw
+        // the canvas back to its top-left corner while they were working in it.
+        //
+        // The original editor ignores this message outright outside its own
+        // connect(). We keep listening while disconnected, so a synth switched
+        // on after the editor still connects on its own, and ignore it once
+        // there is nothing left to learn from it.
+        if (status.state == State::Connected)
+        {
+            DBG("ConnectionManager: IAm from a synth we are already talking to, ignoring");
+            return;
+        }
+
         cancelHandshakeTimeout();
 
         status.synthVersionHigh = msg.versionHigh;
