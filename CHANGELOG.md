@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **The About box names the people paying for this editor.** The Supporters section listed only
+  a Patreon link; it now lists the backers on the 5 EUR tier and above by the name they use on
+  Patreon, alphabetically, with no ranking by amount and nothing else from the membership export.
+  Kept in `data/credits.txt`, so it is one file to update per release.
+
 ## 0.17.0 — 2026-08-19
 
 ### Added
