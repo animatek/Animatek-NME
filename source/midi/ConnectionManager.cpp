@@ -291,9 +291,14 @@ void ConnectionManager::onIAmReceived(const IAmMessage& msg)
         // connect(). We keep listening while disconnected, so a synth switched
         // on after the editor still connects on its own, and ignore it once
         // there is nothing left to learn from it.
+        // Printed rather than DBG'd: the announcements are the one thing that
+        // tells a unit doing this apart from one that is not, and the console
+        // is where a bug report's evidence comes from.
         if (status.state == State::Connected)
         {
-            DBG("ConnectionManager: IAm from a synth we are already talking to, ignoring");
+            std::cout << "[SYNTH] IAm announcement from a synth already connected"
+                         " (v" << msg.versionHigh << "." << msg.versionLow
+                      << ", serial " << msg.serial << "), ignoring" << std::endl;
             return;
         }
 
