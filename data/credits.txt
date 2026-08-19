@@ -34,22 +34,7 @@ TESTING AND BUG REPORTS
 SUPPORTERS
 
   Animatek NME is developed in the open and funded by the people
-  who back it on Patreon. This editor exists because of them:
-
-  Andaloop
-  Dan
-  David Ion
-  feltsenserecs
-  Gábor Kakuk
-  Go Dam
-  J
-  Justin
-  Lewis
-  Nolsin
-  Piotr Ceglarek
-  Rainer Hain
-  Sam Abate
-  Santeri
+  who back it on Patreon. Thank you.
 
   patreon.com/animatek
 
