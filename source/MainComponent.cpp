@@ -3939,7 +3939,7 @@ void MainComponent::showKeyboardShortcutsDialog() {
 
 juce::String MainComponent::makeSynthCaption()
 {
-    // "ANME 0.16v": the editor and the version it is, and nothing about which
+    // "ANME 0.17v": the editor and the version it is, and nothing about which
     // window is open. Naming the dialog was the first idea and it read as noise
     // on a display whose whole job is to tell you which patch you are on; what
     // is worth saying there is only that the editor has borrowed it.
@@ -3947,7 +3947,7 @@ juce::String MainComponent::makeSynthCaption()
     // Ten characters, against a hard limit of fifteen: at sixteen the synth
     // hangs (see SetPatchTitleMessage, which truncates as a backstop). Fixed
     // rather than assembled from a label, so the limit cannot be reached at all.
-    const juce::String version(JUCE_APPLICATION_VERSION_STRING);   // e.g. "0.16.0"
+    const juce::String version(JUCE_APPLICATION_VERSION_STRING);   // e.g. "0.17.0"
     const auto major = version.upToFirstOccurrenceOf(".", false, false);
     const auto minor = version.fromFirstOccurrenceOf(".", false, false)
                               .upToFirstOccurrenceOf(".", false, false);

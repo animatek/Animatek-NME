@@ -6,7 +6,7 @@ to run on current macOS, Windows, and Linux systems without requiring an old Jav
 
 ## Status and how to get it
 
-**Animatek NME is in active beta** (current version 0.16.0, see
+**Animatek NME is in active beta** (current version 0.17.0, see
 [CHANGELOG.md](CHANGELOG.md)). There are two ways to get it, and both give you the
 same application:
 

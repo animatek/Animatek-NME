@@ -1,6 +1,6 @@
 # Animatek NME Status
 
-Current version: **0.16.0** (released 2026-08-16)
+Current version: **0.17.0** (released 2026-08-19)
 
 The project was renamed from **Nomad2026** to **Animatek NME — Nord Modular Editor G1** in 0.6.0.
 
@@ -45,6 +45,14 @@ This file tracks the current project state at a practical level. Detailed versio
 
 ## Recent Milestones
 
+- **0.17.0**: the one where cables move. A cable can be lifted off a connector and dropped on
+  another (#67), and a patch can be dragged from either browser straight onto a slot (#50), both
+  gestures the original editor had. Four faults that only showed on other people's machines are
+  fixed: the macOS menus lost every keyboard shortcut in 0.16.0 (#74), the patch reloaded itself
+  every three seconds when the synth announced itself unprompted (#73), cable opacity was
+  unreachable on macOS and never persisted anywhere (moved to Editor Options), and a bank
+  backup's position number travelled into the patch name. Plus the ABCD slot-order button (#51),
+  pinch to zoom (#72), Uni/Bip switch labels (#69), and two theme fixes (#70, #71).
 - **0.16.0**: the release that went inwards. Big patches draw far faster (the canvas was
   recomputing where every module keeps its LEDs twice per module per repaint), modules are no
   longer held by pointer so the family of crashes behind #61 cannot come back, and the project

@@ -182,7 +182,7 @@ private:
 
     // ── Borrowing the synth's display ─────────────────────────────────────
     // The G1 shows the active slot's patch name on its own display. With the
-    // option on, a dialog on screen borrows it ("ANME 0.16v") and the patch name
+    // option on, a dialog on screen borrows it ("ANME 0.17v") and the patch name
     // goes back when the dialog closes. The caption does not name the dialog:
     // what is worth saying on a display whose job is to tell you which patch you
     // are on is only that the editor has taken it over.

@@ -9,7 +9,7 @@ if(NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
         "Minimum macOS version supported by Animatek NME")
 endif()
 
-project(AnimatekNME VERSION 0.16.0 LANGUAGES C CXX)
+project(AnimatekNME VERSION 0.17.0 LANGUAGES C CXX)
 
 include(GNUInstallDirs)
 

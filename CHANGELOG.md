@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.17.0 — 2026-08-19
 
 ### Added
 
@@ -75,7 +75,7 @@
 
 - **The editor can show itself on the synth's own display.** Off by default; turn on
   **Show the editor on the synth display** in Editor Options. The G1's display normally shows the
-  active slot's patch name, and with this on any editor dialog borrows it: it reads `ANME 0.16v`
+  active slot's patch name, and with this on any editor dialog borrows it: it reads `ANME 0.17v`
   while the window is up, and the patch name comes back when it closes. Nothing happens to the
   patch. Only the
   message that sets the name on the synth is sent, so the editor's own patch object is untouched,
