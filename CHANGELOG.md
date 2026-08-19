@@ -30,6 +30,23 @@
 
 ### Fixed
 
+- **The macOS menus show their keyboard shortcuts again** (#74). The Mac menu bar is the
+  system's own, and it only prints a shortcut that comes from a JUCE command manager: the
+  hint field that the Windows and Linux menus right-align is thrown away there. Moving the
+  hints into that field in 0.16.0 (so the Mac would stop printing a literal tab, #56) left
+  every Mac menu with no shortcuts at all. They are now written into the item's own text on
+  macOS, in the symbols a Mac reads: **New Patch ⌘N**, **Save As... ⇧⌘S**, **Slot A ⌥⌘1**.
+  Nothing changes on Windows or Linux.
+
+- **Cable opacity moves to Editor Options, where every platform can reach it** (#74). It was
+  a slider inside the View menu, and the Mac's menu bar is the system's own: it cannot host a
+  custom control, so JUCE dropped it and left a blank line. The setting was untouchable on
+  macOS. It now sits under **File → Editor Options**, next to the cable style it belongs
+  with, as a percentage slider: the canvas follows it while you drag so you can see what you
+  are choosing, and Cancel puts the old value back. It also survives a restart now, which it
+  never did from the menu: the value went to the canvas and nowhere else, so it came back at
+  80% on the next launch.
+
 - **A patch opened from a bank backup no longer keeps the position number in its name.** Bank
   backups are saved as `NN - Name.pch` so the folder sorts by position, and a classic `.pch`
   carries no name inside it, so the reader falls back to the file name and the prefix travelled

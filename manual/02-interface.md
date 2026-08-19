@@ -103,9 +103,11 @@ Cables take the color of the signal they carry:
 | Green / Purple | User-recolored cables |
 | White | Unknown |
 
-The View menu and header tools let you hide cable colors selectively, change
-cable style (curved/straight, thick/thin) and opacity, and `S` "shakes" the
-cables so overlapping runs redistribute visually.
+The View menu and header tools let you hide cable colors selectively, and `S`
+"shakes" the cables so overlapping runs redistribute visually. Cable style
+(curved/straight, thick/thin) and opacity live in **File → Editor Options**;
+the canvas follows the opacity slider while you drag it, and Cancel puts the
+old value back.
 
 ## Themes
 

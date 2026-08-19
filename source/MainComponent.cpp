@@ -21,54 +21,6 @@
 #include <set>
 #include <climits>
 
-// ─── Cable opacity slider for View menu ──────────────────────────────────────
-class CableOpacitySlider : public juce::PopupMenu::CustomComponent
-{
-public:
-    CableOpacitySlider()
-        : juce::PopupMenu::CustomComponent(false)  // false = don't auto-dismiss on click
-    {
-        slider.setRange(0.0, 1.0, 0.01);
-        slider.setValue(static_cast<double>(PatchCanvas::getCableOpacity()),
-                        juce::dontSendNotification);
-        slider.setSliderStyle(juce::Slider::LinearHorizontal);
-        slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 38, 18);
-        slider.setColour(juce::Slider::textBoxTextColourId,       AppTheme::palette().accentWarning);
-        slider.setColour(juce::Slider::textBoxBackgroundColourId, AppTheme::palette().inputBackground);
-        slider.setColour(juce::Slider::textBoxOutlineColourId,    AppTheme::palette().borderColor);
-        slider.setColour(juce::Slider::thumbColourId,             AppTheme::palette().accentActive);
-        slider.setColour(juce::Slider::trackColourId,             AppTheme::palette().buttonActive);
-        slider.onValueChange = [this]
-        {
-            PatchCanvas::setCableOpacity(static_cast<float>(slider.getValue()));
-            if (auto* topComp = juce::Desktop::getInstance().getComponent(0))
-                topComp->repaint();
-        };
-        addAndMakeVisible(slider);
-    }
-
-    void getIdealSize(int& w, int& h) override { w = 230; h = 28; }
-
-    void resized() override
-    {
-        auto b = getLocalBounds().reduced(2, 2);
-        const int labelW = 90;
-        slider.setBounds(b.withTrimmedLeft(labelW));
-    }
-
-    void paint(juce::Graphics& g) override
-    {
-        g.setColour(AppTheme::palette().textSecondary);
-        g.setFont(AppTheme::uiFont(12.0f));
-        g.drawText("Cable Opacity", getLocalBounds().withTrimmedRight(getWidth() - 90).reduced(6, 0),
-                   juce::Justification::centredLeft);
-    }
-
-private:
-    juce::Slider slider;
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CableOpacitySlider)
-};
-
 MainComponent::MainComponent(juce::ApplicationProperties &props)
     : appProperties(props) {
   editorOptions = EditorOptions::load(appProperties.getUserSettings());
@@ -1164,6 +1116,46 @@ juce::StringArray MainComponent::getMenuBarNames() {
   return {"File", "Edit", "View", "Device", "Help", "About"};
 }
 
+#if JUCE_MAC
+// The Mac menu bar is a real NSMenu, and JUCE only ever fills in an item's key
+// equivalent from an ApplicationCommandManager: shortcutKeyDescription is a
+// LookAndFeel affair that the native menu drops on the floor. So moving the
+// hints into that field for issue #56 left the Mac menus with no shortcuts at
+// all (issue #74). Write them into the item's own text there instead, in the
+// symbols a Mac user reads, since our "Ctrl" is Cmd on that platform anyway.
+static juce::String macShortcutSymbols(const juce::String& shortcut)
+{
+  auto sym = [](const char* utf8) { return juce::String::fromUTF8(utf8); };
+
+  juce::String rest = shortcut;
+  bool cmd = false, shift = false, alt = false;
+  for (;;)
+  {
+    // Note the modifier names are stripped one at a time rather than split on
+    // '+', which "Ctrl++" (zoom in) would tear into empty pieces.
+    if (rest.startsWith("Ctrl+") || rest.startsWith("Cmd+"))       cmd   = true;
+    else if (rest.startsWith("Shift+"))                            shift = true;
+    else if (rest.startsWith("Alt+") || rest.startsWith("Option+")) alt  = true;
+    else break;
+
+    rest = rest.fromFirstOccurrenceOf("+", false, false);
+  }
+
+  juce::String key = rest;
+  if      (key == "Left")  key = sym("\xe2\x86\x90");
+  else if (key == "Right") key = sym("\xe2\x86\x92");
+  else if (key == "Up")    key = sym("\xe2\x86\x91");
+  else if (key == "Down")  key = sym("\xe2\x86\x93");
+
+  // Control, Option, Shift, Command: the order the Mac itself prints them in.
+  juce::String out;
+  if (alt)   out << sym("\xe2\x8c\xa5");
+  if (shift) out << sym("\xe2\x87\xa7");
+  if (cmd)   out << sym("\xe2\x8c\x98");
+  return out + key;
+}
+#endif
+
 // Shortcut hints go in the Item's own shortcut field, which the popup
 // LookAndFeel right-aligns in its lighter style. They used to ride inside the
 // label after a "\t", which the in-window menus rendered as one ragged line
@@ -1172,7 +1164,11 @@ static void addShortcutItem(juce::PopupMenu& menu, int id, const juce::String& t
                             const juce::String& shortcut,
                             bool enabled = true, bool ticked = false)
 {
+ #if JUCE_MAC
+  juce::PopupMenu::Item item(text + "   " + macShortcutSymbols(shortcut));
+ #else
   juce::PopupMenu::Item item(text);
+ #endif
   item.itemID = id;
   item.shortcutKeyDescription = shortcut;
   item.isEnabled = enabled;
@@ -1233,8 +1229,6 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addSeparator();
     addShortcutItem(menu, 64, "Shake Cables", "S");
     menu.addSeparator();
-    menu.addCustomItem(65, std::make_unique<CableOpacitySlider>());
-    menu.addSeparator();
     juce::PopupMenu themeMenu;
     for (int i = 0; i < ThemeRegistry::count(); ++i)  // ids 200+ reserved for themes
       themeMenu.addItem(200 + i, ThemeRegistry::get(i).name, true,
@@ -1242,7 +1236,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     {
       // A submenu with a shortcut hint needs the Item form: addSubMenu has no
       // shortcut field, and Ctrl+T cycling the theme is worth advertising.
+     #if JUCE_MAC
+      juce::PopupMenu::Item themeItem("Theme   " + macShortcutSymbols("Ctrl+T"));
+     #else
       juce::PopupMenu::Item themeItem("Theme");
+     #endif
       themeItem.subMenu = std::make_unique<juce::PopupMenu>(themeMenu);
       themeItem.shortcutKeyDescription = "Ctrl+T";
       menu.addItem(std::move(themeItem));
@@ -2511,11 +2509,19 @@ void MainComponent::showEditorOptionsDialog() {
   juce::String mcpStatusText = "Not built with MCP bridge support";
   juce::String mcpCommand;
 #endif
-  announceDialogOnSynth(
+  auto* dialog =
       EditorOptionsDialog::show(this, editorOptions, mcpStatus, mcpStatusText, mcpCommand,
                                 [this](const EditorOptions& opts) {
         applyEditorOptions(opts);
-      }));
+      });
+  // Cable opacity is a look, not a number: the canvas follows the slider live
+  // and the dialog itself puts the old value back unless OK is what closed it.
+  dialog->onCableOpacityPreview = [](float v) {
+    PatchCanvas::setCableOpacity(v);
+    if (auto* topComp = juce::Desktop::getInstance().getComponent(0))
+      topComp->repaint();
+  };
+  announceDialogOnSynth(dialog);
 }
 
 void MainComponent::applyEditorOptions(const EditorOptions& opts) {

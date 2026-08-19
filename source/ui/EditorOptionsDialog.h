@@ -60,6 +60,10 @@ public:
                         const juce::String& mcpCommand);
 
     std::function<void(const EditorOptions&)> onChange;
+    // Cable opacity is the one setting you have to see to choose, so it moves
+    // the canvas while the slider does, and the dialog puts the old value back
+    // if it is closed any way other than OK.
+    std::function<void(float)> onCableOpacityPreview;
 
     void paint   (juce::Graphics& g) override;
     void resized () override;
@@ -67,8 +71,9 @@ public:
     void mouseDown  (const juce::MouseEvent& e) override;
     void mouseDrag  (const juce::MouseEvent& e) override;
 
-    // Returns the dialog, so a caller can watch for it closing.
-    static juce::Component* show(juce::Component* parent,
+    // Returns the dialog, so a caller can watch for it closing and can hook up
+    // the live callbacks above.
+    static EditorOptionsDialog* show(juce::Component* parent,
                      const EditorOptions& current,
                      McpBridgeStatusKind mcpStatus,
                      const juce::String& mcpStatusText,
@@ -107,6 +112,10 @@ private:
     juce::ToggleButton cableStraightThick { "Straight (thick)" };
     juce::ToggleButton cableCurvedThin    { "Curved (thin)" };
     juce::ToggleButton cableStraightThin  { "Straight (thin)" };
+    juce::Label    cableOpacityLabel  { {}, "Opacity" };
+    juce::Slider   cableOpacitySlider;
+    const float    openingOpacity = 0.80f;  // what to restore on Cancel
+    bool           applied = false;
 
     // Knob Control
     juce::Label    knobControlLabel  { {}, "KNOB CONTROL" };

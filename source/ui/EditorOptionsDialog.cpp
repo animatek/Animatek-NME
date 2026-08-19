@@ -136,7 +136,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
                                          McpBridgeStatusKind mcpStatus,
                                          const juce::String& mcpStatusText,
                                          const juce::String& mcpCommand)
-    : options(current)
+    : options(current), openingOpacity(current.cableOpacity)
 {
     setOpaque (true);
     setWantsKeyboardFocus (true);
@@ -165,6 +165,32 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     cableCurvedThin   .setToggleState (options.cableStyle == EditorOptions::CableStyle::CurvedThin,    juce::dontSendNotification);
     cableStraightThin .setToggleState (options.cableStyle == EditorOptions::CableStyle::StraightThin,  juce::dontSendNotification);
     addAndMakeVisible (cableStyleLabel);
+
+    // Cable opacity. This lived on a slider inside the View menu, which the
+    // macOS menu bar cannot host at all: it is a real NSMenu and JUCE drops any
+    // custom component put in one, so the setting was out of reach there
+    // (issue #74). It belongs next to the cable style anyway.
+    styleLabel (cableOpacityLabel);
+    cableOpacitySlider.setSliderStyle (juce::Slider::LinearHorizontal);
+    cableOpacitySlider.setRange (0.0, 100.0, 1.0);
+    cableOpacitySlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 52, 20);
+    cableOpacitySlider.setTextValueSuffix ("%");
+    cableOpacitySlider.setValue (juce::roundToInt (options.cableOpacity * 100.0f),
+                                 juce::dontSendNotification);
+    cableOpacitySlider.setColour (juce::Slider::textBoxTextColourId,       p().textSecondary);
+    cableOpacitySlider.setColour (juce::Slider::textBoxBackgroundColourId, p().inputBackground);
+    cableOpacitySlider.setColour (juce::Slider::textBoxOutlineColourId,    p().borderColor);
+    cableOpacitySlider.setColour (juce::Slider::thumbColourId,             p().accentActive);
+    cableOpacitySlider.setColour (juce::Slider::trackColourId,             p().buttonActive);
+    cableOpacitySlider.setTooltip ("How solid the cables are drawn. Lower it to read the modules "
+                                   "under a dense patch. The canvas follows the slider while you "
+                                   "drag it; Cancel puts it back.");
+    cableOpacitySlider.onValueChange = [this]() {
+        if (onCableOpacityPreview)
+            onCableOpacityPreview (static_cast<float> (cableOpacitySlider.getValue()) * 0.01f);
+    };
+    addAndMakeVisible (cableOpacityLabel);
+    addAndMakeVisible (cableOpacitySlider);
 
     // Knob Control (radio group 2)
     styleLabel (knobControlLabel, true);
@@ -355,7 +381,10 @@ int EditorOptionsDialog::layoutComponents (bool apply)
         place (*b, pad + 8, y, w - pad * 2 - 8, rowH);
         y += rowH;
     }
-    y += secGap;
+    y += 4;
+    place (cableOpacityLabel,  pad + 8,  y, 80, rowH);
+    place (cableOpacitySlider, pad + 92, y, w - pad * 2 - 100, rowH);
+    y += rowH + secGap;
 
     // ── Knob Control ─────────────────────────────────────────
     y = sectionSep (y);
@@ -430,7 +459,16 @@ void EditorOptionsDialog::mouseDown (const juce::MouseEvent& e)
 void EditorOptionsDialog::mouseDrag (const juce::MouseEvent& e)
     { dragger.dragComponent (this, e, nullptr); }
 
-void EditorOptionsDialog::close() { removeFromDesktop(); delete this; }
+void EditorOptionsDialog::close()
+{
+    // Escape, the X and Cancel all land here. Anything but OK has to undo the
+    // opacity the canvas has been previewing while the slider moved.
+    if (! applied && onCableOpacityPreview)
+        onCableOpacityPreview (openingOpacity);
+
+    removeFromDesktop();
+    delete this;
+}
 
 void EditorOptionsDialog::browseLibraryRoot()
 {
@@ -476,7 +514,9 @@ void EditorOptionsDialog::apply()
     options.synthDisplayCaptions = synthCaptionToggle.getToggleState();
     options.sendRateIndex  = sendRateSelector.getSelectedId() - 1;
     options.mcpBridgeEnabled = mcpBridgeToggle.getToggleState();
+    options.cableOpacity   = static_cast<float> (cableOpacitySlider.getValue()) * 0.01f;
 
+    applied = true;
     if (onChange)
         onChange (options);
 
@@ -485,7 +525,7 @@ void EditorOptionsDialog::apply()
 
 // ─── static show ─────────────────────────────────────────────────────────────
 
-juce::Component* EditorOptionsDialog::show(juce::Component* parent,
+EditorOptionsDialog* EditorOptionsDialog::show(juce::Component* parent,
                                const EditorOptions& current,
                                McpBridgeStatusKind mcpStatus,
                                const juce::String& mcpStatusText,
