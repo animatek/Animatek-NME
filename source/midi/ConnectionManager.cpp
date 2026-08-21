@@ -209,18 +209,51 @@ bool ConnectionManager::connect(const juce::String& inputId, const juce::String&
     }
 
     setStatus(State::Connecting, "Connecting...");
+    sendHandshake();
+    startHandshakeTimeout();
+    return true;
+}
 
-    // Send IAm handshake (sender=0 means PC, version 3.3)
-    // IAm has no checksum per the PDL2 spec
+// Say hello: sender=0 means PC, version 3.3. IAm carries no checksum per the
+// PDL2 spec.
+void ConnectionManager::sendHandshake()
+{
     IAmMessage iam;
     iam.sender = 0;
     iam.versionHigh = 3;
     iam.versionLow = 3;
-    auto payload = iam.encode();
-    protocol.sendMessage(NmCmd::IAm, 0, payload, /*expectsReply=*/true, /*addChecksum=*/false);
+    lastHandshakeMs = juce::Time::getMillisecondCounter();
+    protocol.sendMessage(NmCmd::IAm, 0, iam.encode(), /*expectsReply=*/true, /*addChecksum=*/false);
+}
 
+// The synth said something while we are not connected to it.
+//
+// The only route from Disconnected to Connected without the user opening MIDI
+// Settings is an IAm from the synth, and a G1 does not reliably volunteer one:
+// it answers the hello it is sent. Start the editor with the synth switched
+// off and that hello goes out into a dead cable, so switching the synth on
+// afterwards left the editor sitting at "No response from synth" with the
+// synth's own chatter arriving all the while (issue #73).
+//
+// Anything it sends of its own accord - a light frame, the slot mask, the
+// voice counts - is proof that it is there and listening, so say hello again.
+// Rate-limited to one attempt per reply timeout so a stream of light frames
+// cannot turn into a stream of handshakes, and stopped for good once the
+// connection is up, where the IAm answer itself is the thing that changes the
+// state.
+void ConnectionManager::onSynthMessage(int cc)
+{
+    if (cc == NmCmd::IAm || status.state == State::Connected || midiDevice == nullptr)
+        return;
+
+    const auto now = juce::Time::getMillisecondCounter();
+    if (now - lastHandshakeMs < static_cast<juce::uint32>(NmProtocol::timeoutMs))
+        return;
+
+    std::cout << "[SYNTH] Heard the synth while disconnected, saying hello again" << std::endl;
+    setStatus(State::Connecting, "Synth detected, connecting...");
+    sendHandshake();
     startHandshakeTimeout();
-    return true;
 }
 
 void ConnectionManager::disconnect()

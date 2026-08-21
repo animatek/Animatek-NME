@@ -217,6 +217,7 @@ public:
 private:
     // NmProtocol::Listener
     void onIAmReceived(const IAmMessage& msg) override;
+    void onSynthMessage(int cc) override;
     void onParameterChanged(const ParameterChangeMessage& msg) override;
     void onAckReceived(const AckMessage& msg) override;
     void onPatchListReceived(const AckMessage& msg) override;
@@ -227,6 +228,8 @@ private:
     void setStatus(State state, const juce::String& message);
     void sendNoteEvent(int note, int velocity, bool on);
     void startHandshakeTimeout();
+    void sendHandshake();          // IAm, sender=0: the editor introducing itself
+    juce::uint32 lastHandshakeMs = 0;  // rate-limits the re-hello in onSynthMessage
     void cancelHandshakeTimeout();
     void startSlotDetectionFallback();
     void sendGetPatchMessages(int patchId, int slot);

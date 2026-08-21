@@ -109,6 +109,8 @@ void NmProtocol::flushSendQueue()
 
 void NmProtocol::dispatchMessage(const SysEx::DecodedMessage& msg)
 {
+    listeners.call([&](Listener& l) { l.onSynthMessage(msg.cc); });
+
     // Message type is identified by cc field in the SysEx header, not payload
     switch (msg.cc)
     {

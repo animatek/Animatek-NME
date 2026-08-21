@@ -27,6 +27,10 @@ public:
         virtual void onPatchPacketReceived(const PatchPacketMessage&) {}
         virtual void onError(const ErrorMessage&) {}
         virtual void onConnectionChanged(bool /*connected*/) {}
+        // Every message the synth sends, by cc, before the typed callbacks
+        // above. For anything that only needs to know the synth is there and
+        // talking, whatever it is saying.
+        virtual void onSynthMessage(int /*cc*/) {}
     };
 
     void addListener(Listener* listener);

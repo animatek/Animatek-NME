@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Fixed
+
+- **A synth switched on after the editor connects on its own again** (#73). Starting the editor
+  with the synth off sent the editor's hello into a dead cable, and the only route from
+  disconnected to connected without opening MIDI Settings was an `IAm` from the synth, which a
+  G1 does not reliably volunteer: it answers the hello it is sent. The editor therefore sat at
+  "No response from synth (timeout)" with the synth's own chatter arriving all the while.
+  Anything the synth sends of its own accord, a light frame, the slot mask, the voice counts, is
+  now taken as proof that it is there and the hello is sent again, at most once every three
+  seconds and only while disconnected.
+
 ### Changed
 
 - **The About box names the people paying for this editor.** The Supporters section listed only
