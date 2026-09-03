@@ -32,6 +32,17 @@
   call on the routing display, so it now moves what that display shows: the 16 analysis bands.
   FilterBank's Rnd, which is declared on the module, still takes the whole module.
 
+- **`+` and `-` step the arrow-pair controls** (#76, #77). The keys looked for a knob or a
+  slider under the pointer, so the controls that are already a pair of arrows, the Vocoder's
+  bands and NoteSeqB's notes, had nothing to step; NoteSeqA, which has sliders, worked. The
+  arrows are now targets like anything else, without a second floating pair appearing over
+  them.
+
+- **The numeric keypad's minus steps and zooms out.** Its plus always worked. JUCE's X11 layer
+  folds the keypad onto the main keyboard before a component sees the key, and it folds
+  KP_Subtract onto the soft hyphen rather than the ASCII one, so the code that arrived matched
+  nothing. This was true of every knob and slider, not just the new arrow targets.
+
 - **NoteSeqB's Gclk output is spelled the way NoteSeqA spells it** (#76). It read "Gclck".
 
 - **A synth switched on after the editor connects on its own again** (#73). Starting the editor

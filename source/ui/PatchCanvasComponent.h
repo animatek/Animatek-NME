@@ -283,6 +283,10 @@ private:
         juce::String componentId;
         juce::Rectangle<float> control;        // canvas coordinates
         juce::Rectangle<int>   moduleBounds;
+        /** The control draws its own arrows (a mode="increment" button), so the
+            floating pair would sit on top of a pair that is already there. It
+            still names the target `+` and `-` step. */
+        bool ownArrows = false;
     };
     ValueSpinner spinner { *this };
     SpinnerTarget spinnerTarget;

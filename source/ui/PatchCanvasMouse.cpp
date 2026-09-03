@@ -293,9 +293,12 @@ void PatchCanvas::timerCallback()
 
 // ── Nudge arrows ─────────────────────────────────────────────────────────────
 
-// Same walk as findControlAt, but only over the things worth nudging: a button
+// Same walk as findControlAt, but only over the things worth nudging: a toggle
 // has two states and a text display is driven by the knob beside it, so neither
-// has a step to take.
+// has a step to take. An increment button does: it is a range with the arrows
+// already drawn on it, and leaving it out of this walk is why `+` and `-` did
+// nothing over the Vocoder's bands or NoteSeqB's notes, while NoteSeqA, which
+// has sliders, stepped fine (issues #76, #77).
 bool PatchCanvas::findSpinnerAt(juce::Point<int> canvasPos, SpinnerTarget& out)
 {
     out = SpinnerTarget{};
@@ -317,7 +320,8 @@ bool PatchCanvas::findSpinnerAt(juce::Point<int> canvasPos, SpinnerTarget& out)
 
         const auto rel = canvasPos - bounds.getPosition();
 
-        auto take = [&](const juce::String& componentId, juce::Rectangle<int> r) -> bool
+        auto take = [&](const juce::String& componentId, juce::Rectangle<int> r,
+                        bool ownArrows = false) -> bool
         {
             if (componentId.isEmpty() || !r.contains(rel))
                 return false;
@@ -332,6 +336,7 @@ bool PatchCanvas::findSpinnerAt(juce::Point<int> canvasPos, SpinnerTarget& out)
             out.componentId  = componentId;
             out.moduleBounds = bounds;
             out.control      = r.translated(bounds.getX(), bounds.getY()).toFloat();
+            out.ownArrows    = ownArrows;
             return true;
         };
 
@@ -339,6 +344,9 @@ bool PatchCanvas::findSpinnerAt(juce::Point<int> canvasPos, SpinnerTarget& out)
             if (take(tk.componentId, { tk.x, tk.y, tk.size, tk.size })) return true;
         for (const auto& ts : theme->sliders)
             if (take(ts.componentId, { ts.x, ts.y, ts.width, ts.height })) return true;
+        for (const auto& tb : theme->buttons)
+            if (tb.isIncrement && !tb.isCall
+                && take(tb.componentId, { tb.x, tb.y, tb.width, tb.height }, true)) return true;
 
         return false;   // over the module, but not over anything that steps
     }
@@ -368,7 +376,13 @@ void PatchCanvas::updateSpinner(juce::Point<int> canvasPos)
         : juce::String(next.module.section) + ":"
               + juce::String(next.module.containerIndex) + "/" + next.componentId;
 
-    spinner.showFor(key, next.control, ValueSpinner::Placement::BelowEdge);
+    // A control that carries its own arrows gets no floating pair: it is the
+    // keyboard that needed a target here, not the pointer, which already has
+    // the arrows drawn under it.
+    if (next.ownArrows)
+        spinner.hide();
+    else
+        spinner.showFor(key, next.control, ValueSpinner::Placement::BelowEdge);
     spinner.updateHover(p);
 }
 
@@ -2805,15 +2819,34 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    // JUCE's X11 layer folds the numeric keypad onto the main keyboard before
+    // the key ever reaches a component, and it folds KP_Subtract onto XK_hyphen
+    // (0xad, the soft hyphen) where KP_Add lands on a plain '+'. So the keypad's
+    // plus was recognised and its minus arrived as a code nothing here tested
+    // for, on knobs as much as on the arrows. numberPadSubtract is never
+    // delivered on Linux at all, but it still is on the other platforms, so both
+    // stay in the test.
+    constexpr int softHyphen = 0xad;   // XK_hyphen: what KP_Subtract becomes on X11
+
+    auto isPlusKey = [](int code)
+    {
+        return code == '+' || code == '=' || code == juce::KeyPress::numberPadAdd;
+    };
+    auto isMinusKey = [softHyphen](int code)
+    {
+        return code == '-' || code == '_' || code == softHyphen
+            || code == juce::KeyPress::numberPadSubtract;
+    };
+
     // Ctrl++ → Zoom In, Ctrl+- → Zoom Out
     if (key.getModifiers().isCommandDown())
     {
-        if (key.getKeyCode() == '+' || key.getKeyCode() == '=' || key.getKeyCode() == juce::KeyPress::numberPadAdd)
+        if (isPlusKey(key.getKeyCode()))
         {
             setZoomLevel(zoomLevel + zoomStep);
             return true;
         }
-        if (key.getKeyCode() == '-' || key.getKeyCode() == juce::KeyPress::numberPadSubtract)
+        if (isMinusKey(key.getKeyCode()))
         {
             setZoomLevel(zoomLevel - zoomStep);
             return true;
@@ -2828,9 +2861,9 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
     {
         const int code = key.getKeyCode();
         int delta = 0;
-        if (code == '+' || code == '=' || code == juce::KeyPress::numberPadAdd)
+        if (isPlusKey(code))
             delta = 1;
-        else if (code == '-' || code == '_' || code == juce::KeyPress::numberPadSubtract)
+        else if (isMinusKey(code))
             delta = -1;
 
         if (delta != 0 && spinnerTarget.module.isValid())
