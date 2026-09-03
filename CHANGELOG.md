@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- **No patch and an empty patch no longer look the same** (#75). Starting the editor with
+  the synth off left you looking at the working canvas, grid and all, under "Press Enter to
+  add modules", which is an instruction that cannot be followed: there is nothing to add the
+  module to. Without a patch the canvas now goes flat, drops its grid and its grain, and says
+  "No patch open" over the two keys that make one.
+
 - **A synth switched on after the editor connects on its own again** (#73). Starting the editor
   with the synth off sent the editor's hello into a dead cable, and the only route from
   disconnected to connected without opening MIDI Settings was an `IAm` from the synth, which a

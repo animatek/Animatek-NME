@@ -100,9 +100,23 @@ void PatchCanvas::paint(juce::Graphics& g)
     // its module by reference and cannot go stale (issue #61).
     dropDragIfModuleGone();
 
-    g.fillAll(activeScheme_.gridBackground);
+    // No patch at all is not the same thing as a patch with nothing in it, and
+    // both used to draw the same grid under the same "Press Enter to add
+    // modules" (issue #75). Starting the editor with the synth off leaves you
+    // looking at a working canvas that is not one, under an instruction that
+    // cannot be followed, because Enter does nothing without a patch to add to.
+    // Without one the ground goes flat, loses its grid and its grain, and
+    // settles on a neutral slate: darker than the light themes' canvas and
+    // lighter than the dark ones', so it reads as inert whatever the theme.
+    const bool hasPatch = (patch != nullptr);
+    const juce::Colour ground = hasPatch
+        ? activeScheme_.gridBackground
+        : juce::Colour::greyLevel(0.26f).interpolatedWith(
+              activeScheme_.gridBackground.withSaturation(0.15f), 0.2f);
 
-    if (activeScheme_.canvasTexture)
+    g.fillAll(ground);
+
+    if (hasPatch && activeScheme_.canvasTexture)
     {
         g.setTiledImageFill(canvasGrainTexture(), 0, 0, 1.0f);
         g.fillRect(g.getClipBounds());
@@ -112,17 +126,20 @@ void PatchCanvas::paint(juce::Graphics& g)
     g.addTransform(juce::AffineTransform::scale(zoomLevel));
 
     // Draw grid lines at column/row boundaries
-    g.setColour(activeScheme_.gridLines);
-    auto clip = g.getClipBounds();
+    if (hasPatch)
+    {
+        g.setColour(activeScheme_.gridLines);
+        auto clip = g.getClipBounds();
 
-    int startX = (clip.getX() / gridX) * gridX;
-    int startY = (clip.getY() / gridY) * gridY;
+        int startX = (clip.getX() / gridX) * gridX;
+        int startY = (clip.getY() / gridY) * gridY;
 
-    for (int x = startX; x < clip.getRight(); x += gridX)
-        g.drawVerticalLine(x, static_cast<float>(clip.getY()), static_cast<float>(clip.getBottom()));
+        for (int x = startX; x < clip.getRight(); x += gridX)
+            g.drawVerticalLine(x, static_cast<float>(clip.getY()), static_cast<float>(clip.getBottom()));
 
-    for (int y = startY; y < clip.getBottom(); y += gridY)
-        g.drawHorizontalLine(y, static_cast<float>(clip.getX()), static_cast<float>(clip.getRight()));
+        for (int y = startY; y < clip.getBottom(); y += gridY)
+            g.drawHorizontalLine(y, static_cast<float>(clip.getX()), static_cast<float>(clip.getRight()));
+    }
 
     // Where to centre the "empty canvas" hint. Deliberately NOT g.getClipBounds():
     // a partial repaint clips to the dirty rectangle, so centring there draws one
@@ -142,7 +159,7 @@ void PatchCanvas::paint(juce::Graphics& g)
     // faces (Nomad, Nord Classic) set moduleText to black, and their canvas is
     // nearly black too, which left the hint unreadable (#70). contrasting() picks
     // the readable end for whatever background the theme brings.
-    auto drawPlaceholder = [this, &g, &placeholderArea]
+    auto drawPlaceholder = [this, &g, &placeholderArea, &ground]
     {
         // Not juce::Colour::contrasting(), which flips from dark ink to light at
         // exactly 0.5 perceived brightness: Nord Classic's canvas is #80808b,
@@ -151,11 +168,32 @@ void PatchCanvas::paint(juce::Graphics& g)
         // alphas differ because dark ink on a light ground fades sooner than
         // light ink does on a dark one; both land above the 3:1 that large text
         // wants while still reading as a hint rather than a heading.
-        const bool darkCanvas = activeScheme_.gridBackground.getPerceivedBrightness() < 0.42f;
-        g.setColour(darkCanvas ? juce::Colours::white.withAlpha(0.45f)
-                               : juce::Colours::black.withAlpha(0.60f));
+        const bool darkCanvas = ground.getPerceivedBrightness() < 0.42f;
+        const auto ink = darkCanvas ? juce::Colours::white.withAlpha(0.45f)
+                                    : juce::Colours::black.withAlpha(0.60f);
+        g.setColour(ink);
         g.setFont(juce::FontOptions(28.0f));
-        g.drawText("Press Enter to add modules", placeholderArea(), juce::Justification::centred, false);
+
+        if (patch != nullptr)
+        {
+            g.drawText("Press Enter to add modules", placeholderArea(),
+                       juce::Justification::centred, false);
+            return;
+        }
+
+        // Two lines, because the first says what is wrong and the second says
+        // what to do about it. Centred as a pair on the same box the one-line
+        // hint uses, so it sits where the eye already expects the hint.
+        const auto area = placeholderArea();
+        auto top = area.withHeight(area.getHeight() * 0.5f);
+        g.drawText("No patch open", top,
+                   juce::Justification::centredBottom, false);
+
+        g.setColour(ink.withMultipliedAlpha(0.75f));
+        g.setFont(juce::FontOptions(16.0f));
+        g.drawText("Ctrl+N for a new one, or Ctrl+O to open one",
+                   area.withTop(area.getCentreY() + 6.0f).withHeight(24.0f),
+                   juce::Justification::centredTop, false);
     };
 
     if (patch == nullptr)

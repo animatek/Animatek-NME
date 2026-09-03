@@ -33,7 +33,9 @@ The canvas was split from one 9,330-line file into six. It is provably the same
 code, but every line that draws a module moved, so this block is a sweep for
 anything that vanished.
 
-1. Launch with no patch. The empty canvas reads "Press Enter to add modules".
+1. Launch with no patch. The canvas is flat and gridless and reads "No patch
+   open"; after `Ctrl+N` the grid comes back and the hint becomes "Press Enter to
+   add modules".
 2. Open `all.pch`. Every module draws its face: knobs, sliders, buttons, LEDs,
    text displays, the little icons on the buttons.
    **Look for**: a blank module face, missing knobs, a wrong colour, a missing
