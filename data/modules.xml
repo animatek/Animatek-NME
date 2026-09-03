@@ -543,7 +543,7 @@
     <parameter component-id="p18" index="17" name="edit position" class="parameter" maxValue="16" />
     <parameter component-id="p19" index="18" name="record" class="parameter" maxValue="1" formatter="fmtOffOn" />
     <parameter component-id="p20" index="19" name="pause" class="parameter" maxValue="1" formatter="fmtOffOn" />
-    <parameter component-id="p21" index="20" name="active" class="parameter" maxValue="1" formatter="fmtOffOn" />
+    <parameter component-id="p21" index="20" name="loop" class="parameter" maxValue="1" defaultValue="1" formatter="fmtOffOn" />
     <parameter component-id="m1" index="0" name="morph:step 1" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m2" index="1" name="morph:step 2" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m3" index="2" name="morph:step 3" class="morph" role="morph"  minValue="-127" maxValue="127" />
@@ -2429,7 +2429,7 @@
     <parameter component-id="p20" index="17" name="currentstep" class="parameter" maxValue="16" extension="m20" />
     <parameter component-id="p21" index="18" name="record" class="parameter" maxValue="1" formatter="fmtOffOn" />
     <parameter component-id="p22" index="19" name="play" class="parameter" maxValue="1" formatter="fmtOffOn" />
-    <parameter component-id="p23" index="20" name="loop" class="parameter" maxValue="1" formatter="fmtOffOn" />
+    <parameter component-id="p23" index="20" name="loop" class="parameter" maxValue="1" defaultValue="1" formatter="fmtOffOn" />
     <parameter component-id="m3" index="0" name="morph:note 1" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m4" index="1" name="morph:note 2" class="morph" role="morph"  minValue="-127" maxValue="127"/>
     <parameter component-id="m5" index="2" name="morph:note 3" class="morph" role="morph"  minValue="-127" maxValue="127"/>

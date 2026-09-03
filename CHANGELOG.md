@@ -17,6 +17,11 @@
   an extra empty first step. The strip is gone and the steps fill the display, one per arrow.
   The black-key lanes still mark the pitches.
 
+- **Loop starts on in NoteSeqA and NoteSeqB**, as it does in the original editor. Both sat at
+  off on a freshly added module.
+
+- **NoteSeqB's Gclk output is spelled the way NoteSeqA spells it** (#76). It read "Gclck".
+
 - **A synth switched on after the editor connects on its own again** (#73). Starting the editor
   with the synth off sent the editor's hello into a dead cable, and the only route from
   disconnected to connected without opening MIDI Settings was an `IAm` from the synth, which a

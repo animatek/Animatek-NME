@@ -4125,7 +4125,7 @@ label{fill:#000;}
 			<connector component-id="c5" alt="link" />
 		</connector>
 		
-		<label x="228" y="77">Gclck</label>
+		<label x="228" y="77">Gclk</label>
 		<connector x="235" y="88" size="13" class="cLOGIC">
 			<connector component-id="c6" alt="gclk" />
 		</connector>
