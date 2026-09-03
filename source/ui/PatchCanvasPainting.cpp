@@ -497,9 +497,14 @@ void PatchCanvas::paintDragValueBadge(juce::Graphics& g)
     if (overlayMode == OverlayMode::Values)
         return;   // the whole patch is already reading out, this one included
 
+    // Dragging a note inside NoteSeqB's piano roll counts: it is the gesture
+    // that actually sets notes, and until now it was the one parameter edit that
+    // said nothing about where it had landed. The badge anchors on the step's
+    // arrow button below the roll, which is the same column (issue #76).
     const bool draggingParam = dragState.type == DragState::Knob
                             || dragState.type == DragState::Slider
                             || dragState.type == DragState::Button
+                            || dragState.type == DragState::NoteSeqEditor
                             || dragState.type == DragState::MorphRange;
     if (!draggingParam || dragState.module == nullptr || dragState.parameter == nullptr)
         return;
@@ -2258,7 +2263,7 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
             // C++ port of nmformat.js — single source of truth for value display.
             const juce::String& fmtName = td.formatterOverride.isNotEmpty()
                 ? td.formatterOverride
-                : param->getDescriptor()->formatter;
+                : param->getDescriptor()->displayFormatter (ValueFormatters::preferNoteNames());
 
             // Displays with a units setting read the same value through whichever
             // unit the patch has stored for them (issue #30).

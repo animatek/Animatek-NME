@@ -523,22 +523,22 @@
     <connector component-id="c5" index="2" name="link" type="output" signal="logic" />
     <connector component-id="c6" index="3" name="gclk" type="output" signal="logic" />
     <!-- parameter(s) -->
-    <parameter component-id="p1" index="0" name="step 1" class="parameter" defaultValue="64" formatter="value-64" extension="m1" />
-    <parameter component-id="p2" index="1" name="step 2" class="parameter" defaultValue="64" formatter="value-64" extension="m2" />
-    <parameter component-id="p3" index="2" name="step 3" class="parameter" defaultValue="64" formatter="value-64" extension="m3" />
-    <parameter component-id="p4" index="3" name="step 4" class="parameter" defaultValue="64" formatter="value-64" extension="m4" />
-    <parameter component-id="p5" index="4" name="step 5" class="parameter" defaultValue="64" formatter="value-64" extension="m5" />
-    <parameter component-id="p6" index="5" name="step 6" class="parameter" defaultValue="64" formatter="value-64" extension="m6" />
-    <parameter component-id="p7" index="6" name="step 7" class="parameter" defaultValue="64" formatter="value-64" extension="m7" />
-    <parameter component-id="p8" index="7" name="step 8" class="parameter" defaultValue="64" formatter="value-64" extension="m8" />
-    <parameter component-id="p9" index="8" name="step 9" class="parameter" defaultValue="64" formatter="value-64" extension="m9" />
-    <parameter component-id="p10" index="9" name="step 10" class="parameter" defaultValue="64" formatter="value-64" extension="m10" />
-    <parameter component-id="p11" index="10" name="step 11" class="parameter" defaultValue="64" formatter="value-64" extension="m11" />
-    <parameter component-id="p12" index="11" name="step 12" class="parameter" defaultValue="64" formatter="value-64" extension="m12" />
-    <parameter component-id="p13" index="12" name="step 13" class="parameter" defaultValue="64" formatter="value-64" extension="m13" />
-    <parameter component-id="p14" index="13" name="step 14" class="parameter" defaultValue="64" formatter="value-64" extension="m14" />
-    <parameter component-id="p15" index="14" name="step 15" class="parameter" defaultValue="64" formatter="value-64" extension="m15" />
-    <parameter component-id="p16" index="15" name="step 16" class="parameter" defaultValue="64" formatter="value-64" extension="m16" />
+    <parameter component-id="p1" index="0" name="step 1" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m1" />
+    <parameter component-id="p2" index="1" name="step 2" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m2" />
+    <parameter component-id="p3" index="2" name="step 3" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m3" />
+    <parameter component-id="p4" index="3" name="step 4" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m4" />
+    <parameter component-id="p5" index="4" name="step 5" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m5" />
+    <parameter component-id="p6" index="5" name="step 6" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m6" />
+    <parameter component-id="p7" index="6" name="step 7" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m7" />
+    <parameter component-id="p8" index="7" name="step 8" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m8" />
+    <parameter component-id="p9" index="8" name="step 9" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m9" />
+    <parameter component-id="p10" index="9" name="step 10" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m10" />
+    <parameter component-id="p11" index="10" name="step 11" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m11" />
+    <parameter component-id="p12" index="11" name="step 12" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m12" />
+    <parameter component-id="p13" index="12" name="step 13" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m13" />
+    <parameter component-id="p14" index="13" name="step 14" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m14" />
+    <parameter component-id="p15" index="14" name="step 15" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m15" />
+    <parameter component-id="p16" index="15" name="step 16" class="parameter" defaultValue="64" formatter="value-64" noteFormatter="fmtSeqInterval" extension="m16" />
     <parameter component-id="p17" index="16" name="step count" class="parameter" defaultValue="15" formatter="value+1" />
     <parameter component-id="p18" index="17" name="edit position" class="parameter" maxValue="16" />
     <parameter component-id="p19" index="18" name="record" class="parameter" maxValue="1" formatter="fmtOffOn" />
@@ -2409,22 +2409,22 @@
       <attribute name="custom" type="boolean" value="yes" />
     </parameter> 
     <!-- parameter(s) -->
-    <parameter component-id="p3" index="0" name="note 1" class="parameter" defaultValue="60" extension="m3" />
-    <parameter component-id="p4" index="1" name="note 2" class="parameter" defaultValue="60" extension="m4" />
-    <parameter component-id="p5" index="2" name="note 3" class="parameter" defaultValue="60" extension="m5" />
-    <parameter component-id="p6" index="3" name="note 4" class="parameter" defaultValue="60" extension="m6" />
-    <parameter component-id="p7" index="4" name="note 5" class="parameter" defaultValue="60" extension="m7" />
-    <parameter component-id="p8" index="5" name="note 6" class="parameter" defaultValue="60" extension="m8" />
-    <parameter component-id="p9" index="6" name="note 7" class="parameter" defaultValue="60" extension="m9" />
-    <parameter component-id="p10" index="7" name="note 8" class="parameter" defaultValue="60" extension="m10" />
-    <parameter component-id="p11" index="8" name="note 9" class="parameter" defaultValue="60" extension="m11" />
-    <parameter component-id="p12" index="9" name="note 10" class="parameter" defaultValue="60" extension="m12" />
-    <parameter component-id="p13" index="10" name="note 11" class="parameter" defaultValue="60" extension="m13" />
-    <parameter component-id="p14" index="11" name="note 12" class="parameter" defaultValue="60" extension="m14" />
-    <parameter component-id="p15" index="12" name="note 13" class="parameter" defaultValue="60" extension="m15" />
-    <parameter component-id="p16" index="13" name="note 14" class="parameter" defaultValue="60" extension="m16" />
-    <parameter component-id="p17" index="14" name="note 15" class="parameter" defaultValue="60" extension="m17" />
-    <parameter component-id="p18" index="15" name="note 16" class="parameter" defaultValue="60" extension="m18" />
+    <parameter component-id="p3" index="0" name="note 1" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m3" />
+    <parameter component-id="p4" index="1" name="note 2" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m4" />
+    <parameter component-id="p5" index="2" name="note 3" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m5" />
+    <parameter component-id="p6" index="3" name="note 4" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m6" />
+    <parameter component-id="p7" index="4" name="note 5" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m7" />
+    <parameter component-id="p8" index="5" name="note 6" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m8" />
+    <parameter component-id="p9" index="6" name="note 7" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m9" />
+    <parameter component-id="p10" index="7" name="note 8" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m10" />
+    <parameter component-id="p11" index="8" name="note 9" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m11" />
+    <parameter component-id="p12" index="9" name="note 10" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m12" />
+    <parameter component-id="p13" index="10" name="note 11" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m13" />
+    <parameter component-id="p14" index="11" name="note 12" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m14" />
+    <parameter component-id="p15" index="12" name="note 13" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m15" />
+    <parameter component-id="p16" index="13" name="note 14" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m16" />
+    <parameter component-id="p17" index="14" name="note 15" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m17" />
+    <parameter component-id="p18" index="15" name="note 16" class="parameter" defaultValue="60" noteFormatter="fmtSeqNote" extension="m18" />
     <parameter component-id="p19" index="16" name="step" class="parameter" defaultValue="15" formatter="value+1" extension="m19" />
     <parameter component-id="p20" index="17" name="currentstep" class="parameter" maxValue="16" extension="m20" />
     <parameter component-id="p21" index="18" name="record" class="parameter" maxValue="1" formatter="fmtOffOn" />

@@ -14,6 +14,7 @@
 #include "ui/ThemeRegistry.h"
 #include "model/Mutator.h"
 #include "model/MutationCategories.h"
+#include "format/ValueFormatters.h"
 #include "protocol/StorePatchMessage.h"
 #include "protocol/MorphKeyboardAssignmentMessage.h"
 #include "BinaryData.h"
@@ -30,6 +31,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   KnobDrag::setMode           (static_cast<int>(editorOptions.knobControl));
   PatchCanvas::setAutoUpload   (editorOptions.autoUpload);
   PatchCanvas::setCableOpacity (editorOptions.cableOpacity);
+  ValueFormatters::setPreferNoteNames (editorOptions.seqNoteNames);
   {
     const auto& rates = EditorOptions::sendRates();
     const int ri = juce::jlimit(0, static_cast<int>(rates.size()) - 1, editorOptions.sendRateIndex);
@@ -2535,6 +2537,9 @@ void MainComponent::applyEditorOptions(const EditorOptions& opts) {
   KnobDrag::setMode           (static_cast<int>(opts.knobControl));
   PatchCanvas::setAutoUpload   (opts.autoUpload);
   PatchCanvas::setCableOpacity (opts.cableOpacity);
+  // Every surface that draws a value reads this, so switching it has to redraw
+  // the canvases and the inspector; applyUiTheme below does both.
+  ValueFormatters::setPreferNoteNames (opts.seqNoteNames);
   mainLayout->getPatchArea().setAnimated(opts.animateTiling);
   applyUiTheme(editorOptions.uiThemeIndex, false);
 

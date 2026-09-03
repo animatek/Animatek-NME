@@ -48,6 +48,11 @@ anything that vanished.
    and double-clicking opens the editor.
 6. Add a sequencer (NoteSeqA or EventSeq). Its step display draws and its
    Rnd/Clr buttons are there.
+7. Add a **NoteSeqB**, hover a step: the badge reads a number. Turn on **Read
+   sequencer steps as note names** in Editor Options and hover it again: it reads
+   a pitch (`C4` on a fresh module), and the Inspector row reads the same. A
+   NoteSeqA step reads `0` at its default and `+7 (G)` seven steps up. Nothing
+   else in the patch changes what it says.
 
 ## Block B: selection, delete, undo (~15 min)
 

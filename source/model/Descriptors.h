@@ -15,8 +15,20 @@ struct ParameterDescriptor
     int defaultValue = 0;
     juce::String paramClass;   // "parameter", "morph", "custom"
     juce::String formatter;
+    // An alternative reading of the same value, offered as an editor-wide
+    // setting: the note sequencers' steps can read as note names rather than
+    // as the numbers the original editor shows. Empty when there is only one
+    // sensible way to read the parameter, which is the usual case.
+    juce::String noteFormatter;
     juce::String extension;    // linked morph parameter component-id
     juce::String role;
+
+    // The formatter a display should read this parameter through. `noteNames`
+    // is the editor-wide setting; a parameter with no alternative ignores it.
+    const juce::String& displayFormatter (bool noteNames) const
+    {
+        return (noteNames && noteFormatter.isNotEmpty()) ? noteFormatter : formatter;
+    }
 };
 
 struct ConnectorDescriptor

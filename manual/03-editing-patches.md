@@ -143,6 +143,17 @@ with the patch when you share it.
   is *not* displaying, so a suboscillator can be set to `-12(Oct)` and checked in
   hertz without changing anything. The choice belongs to the module and is saved
   with the patch.
+- **Read sequencer steps as note names** in Editor Options (`Ctrl+,`) changes
+  what a note sequencer's steps say, everywhere a value is shown: hovering one,
+  dragging it, the `F5` overlay and the Inspector. NoteSeqB's steps become
+  pitches on the same 60 = C4 its piano roll is drawn around, so a step reads
+  `C4` or `F#4` instead of `60` or `66`. NoteSeqA's are a bipolar control value
+  with its zero at 64, and only become a pitch once they reach an oscillator, so
+  those read as the interval they transpose by: `0`, `+7 (G)`, `-1 (B)`. The
+  setting is the editor's rather than the patch's, and it is off by default, so
+  a patch reads the way the original editor writes it until you ask otherwise.
+  The Inspector accepts what it shows, so with the setting on you can type `C4`
+  into a NoteSeqB step.
 
 ## Reading a patch: the overlay keys
 

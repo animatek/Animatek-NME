@@ -63,6 +63,7 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.wireframe      = props->getBoolValue  ("wireframe",      false);
     o.animateTiling  = props->getBoolValue  ("animateTiling",  true);
     o.synthDisplayCaptions = props->getBoolValue ("synthDisplayCaptions", false);
+    o.seqNoteNames   = props->getBoolValue  ("seqNoteNames",   false);
     o.moduleIconBar  = props->getBoolValue  ("moduleIconBar",  true);
     o.moduleIconBarCategory = props->getValue ("moduleIconBarCategory", "In/Out");
     o.mcpBridgeEnabled = props->getBoolValue("mcpBridgeEnabled", false);
@@ -86,6 +87,7 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("wireframe",       wireframe);
     props->setValue ("animateTiling",   animateTiling);
     props->setValue ("synthDisplayCaptions", synthDisplayCaptions);
+    props->setValue ("seqNoteNames",    seqNoteNames);
     props->setValue ("moduleIconBar",   moduleIconBar);
     props->setValue ("moduleIconBarCategory", moduleIconBarCategory);
     props->setValue ("mcpBridgeEnabled", mcpBridgeEnabled);
@@ -212,17 +214,20 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     styleToggle (animateTilingToggle);
     styleToggle (synthCaptionToggle);
     styleToggle (askSlotToggle);
+    styleToggle (seqNoteNamesToggle);
     autoUploadToggle.setToggleState (options.autoUpload,     juce::dontSendNotification);
     askSlotToggle   .setToggleState (options.askSlotOnOpen,  juce::dontSendNotification);
     wireframeToggle .setToggleState (options.wireframe,      juce::dontSendNotification);
     animateTilingToggle.setToggleState (options.animateTiling, juce::dontSendNotification);
     synthCaptionToggle.setToggleState (options.synthDisplayCaptions, juce::dontSendNotification);
+    seqNoteNamesToggle.setToggleState (options.seqNoteNames, juce::dontSendNotification);
     addAndMakeVisible (behaviourLabel);
     addAndMakeVisible (autoUploadToggle);
     addAndMakeVisible (wireframeToggle);
     addAndMakeVisible (animateTilingToggle);
     addAndMakeVisible (synthCaptionToggle);
     addAndMakeVisible (askSlotToggle);
+    addAndMakeVisible (seqNoteNamesToggle);
 
     // Send speed selector — synth parameter throughput (Mutator/Random)
     styleLabel (sendRateLabel);
@@ -410,6 +415,8 @@ int EditorOptionsDialog::layoutComponents (bool apply)
     place (askSlotToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH;
     place (synthCaptionToggle, pad + 8, y, w - pad * 2 - 8, rowH);
+    y += rowH;
+    place (seqNoteNamesToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH + 4;
     place (sendRateLabel,    pad + 8,  y, 80, rowH);
     place (sendRateSelector, pad + 92, y, w - pad * 2 - 100, rowH);
@@ -512,6 +519,7 @@ void EditorOptionsDialog::apply()
     options.animateTiling  = animateTilingToggle.getToggleState();
     options.askSlotOnOpen  = askSlotToggle.getToggleState();
     options.synthDisplayCaptions = synthCaptionToggle.getToggleState();
+    options.seqNoteNames   = seqNoteNamesToggle.getToggleState();
     options.sendRateIndex  = sendRateSelector.getSelectedId() - 1;
     options.mcpBridgeEnabled = mcpBridgeToggle.getToggleState();
     options.cableOpacity   = static_cast<float> (cableOpacitySlider.getValue()) * 0.01f;

@@ -16,12 +16,14 @@ target_sources(nme_tests PRIVATE
     test_cable_nets.cpp
     test_patch_title.cpp
     test_patch_file_name.cpp
+    test_seq_note_names.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
     ${CMAKE_SOURCE_DIR}/source/model/ThemeData.cpp
     ${CMAKE_SOURCE_DIR}/source/model/Patch.cpp
     ${CMAKE_SOURCE_DIR}/source/model/ModuleDescriptions.cpp
+    ${CMAKE_SOURCE_DIR}/source/format/ValueFormatters.cpp
     ${CMAKE_SOURCE_DIR}/source/model/ModuleTags.cpp
     ${CMAKE_SOURCE_DIR}/source/model/PatchParser.cpp
     ${CMAKE_SOURCE_DIR}/source/model/PatchSerializer.cpp

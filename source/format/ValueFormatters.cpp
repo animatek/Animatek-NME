@@ -225,6 +225,35 @@ static juce::String fmtNote (int value)
     return juce::String (NOTE_NOTES[v12]) + juce::String (oct) + NOTE_SHARPS[v12];
 }
 
+// The note reading of a NoteSeqB step (issue #76). Not the original's fmtNote:
+// that one is a faithful port of nmformat.js, quirks and all, and it both rounds
+// the octave (MIDI 66 comes out an octave high) and puts the sharp after it
+// ("C4#"). Nothing in the original reads a sequencer step as a note, so there is
+// no behaviour to be faithful to here, and this spells the note the way a
+// musician writes it, on the same 60 = C4 the piano roll above it draws.
+static juce::String fmtSeqNote (int value)
+{
+    const int v12 = ((value % 12) + 12) % 12;
+    const int oct = static_cast<int> (std::floor (value / 12.0)) - 1;
+    return juce::String (NOTE_NOTES[v12]) + juce::String (NOTE_SHARPS[v12]).trim()
+         + juce::String (oct);
+}
+
+// NoteSeqA's steps are a bipolar control value with its zero at 64, not absolute
+// pitches: what a step is worth only becomes a note once it reaches an
+// oscillator. So the note reading of one is the interval it transposes by, named
+// as the note that interval lands on when counting up from C.
+static juce::String fmtSeqInterval (int value)
+{
+    const int delta = value - 64;
+    if (delta == 0)
+        return "0";
+
+    const int v12 = ((delta % 12) + 12) % 12;
+    const auto name = (juce::String (NOTE_NOTES[v12]) + NOTE_SHARPS[v12]).trim();
+    return (delta > 0 ? "+" : "-") + juce::String (std::abs (delta)) + " (" + name + ")";
+}
+
 static juce::String fmtNoteScale (int value)
 {
     if (value == 0)   return "0 (Oct)";
@@ -538,6 +567,8 @@ static const std::unordered_map<juce::String, Fn>& registry()
         { "fmtLogicDelay",            fmtLogicDelay },
         { "fmtNote",                  fmtNote },
         { "fmtNoteScale",             fmtNoteScale },
+        { "fmtSeqNote",               fmtSeqNote },
+        { "fmtSeqInterval",           fmtSeqInterval },
         { "fmtOffset64_2",            fmtOffset64_2 },
         { "fmtOscHz",                 fmtOscHz },
         { "fmtPartialRange",          fmtPartialRange },
@@ -595,6 +626,16 @@ juce::String format (const juce::String& name, int value)
         return it->second (value);
 
     return juce::String (value);
+}
+
+static bool preferNoteNamesFlag = false;
+
+void setPreferNoteNames (bool on) { preferNoteNamesFlag = on; }
+bool preferNoteNames()            { return preferNoteNamesFlag; }
+
+juce::String format (const ParameterDescriptor& pd, int value)
+{
+    return format (pd.displayFormatter (preferNoteNamesFlag), value);
 }
 
 } // namespace ValueFormatters

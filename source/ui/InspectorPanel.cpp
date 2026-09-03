@@ -52,7 +52,7 @@ static int valueFromText(const ParameterDescriptor& pd, const juce::String& type
         return -1;
 
     for (int v = pd.minValue; v <= pd.maxValue; ++v)
-        if (ValueFormatters::format(pd.formatter, v).trim().equalsIgnoreCase(wanted))
+        if (ValueFormatters::format(pd, v).trim().equalsIgnoreCase(wanted))
             return v;
 
     // getDoubleValue stops at the first character that cannot belong to a
@@ -66,7 +66,7 @@ static int valueFromText(const ParameterDescriptor& pd, const juce::String& type
     double bestDistance = 0.0;
     for (int v = pd.minValue; v <= pd.maxValue; ++v)
     {
-        const auto text = ValueFormatters::format(pd.formatter, v).trim();
+        const auto text = ValueFormatters::format(pd, v).trim();
         if (!text.containsAnyOf("0123456789"))
             continue;
         const double distance = std::abs(text.getDoubleValue() - target);
@@ -708,7 +708,7 @@ public:
             return {};
         const auto* pd = r.param->getDescriptor();
         return pd == nullptr ? juce::String(r.param->getValue())
-                             : ValueFormatters::format(pd->formatter, r.param->getValue());
+                             : ValueFormatters::format(*pd, r.param->getValue());
     }
 
     // A parameter the module wears as a button, drawn as one: lit while it is on

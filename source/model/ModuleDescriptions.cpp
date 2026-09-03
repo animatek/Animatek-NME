@@ -64,6 +64,7 @@ void ModuleDescriptions::parseModule(const juce::XmlElement& elem)
             p.minValue     = child->getIntAttribute("minValue", 0);
             p.maxValue     = child->getIntAttribute("maxValue", 127);
             p.formatter    = child->getStringAttribute("formatter");
+            p.noteFormatter= child->getStringAttribute("noteFormatter");
             p.extension    = child->getStringAttribute("extension");
             p.role         = child->getStringAttribute("role");
             desc.parameters.push_back(std::move(p));

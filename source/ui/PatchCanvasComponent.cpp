@@ -558,7 +558,7 @@ juce::String PatchCanvas::getParameterValueText(const Parameter& param) const
     if (pd == nullptr)
         return juce::String(param.getValue());
 
-    const auto fmt = [pd](int v) { return ValueFormatters::format(pd->formatter, v); };
+    const auto fmt = [pd](int v) { return ValueFormatters::format(*pd, v); };
     const auto start = fmt(param.getValue());
 
     const int group = param.getMorphGroup();

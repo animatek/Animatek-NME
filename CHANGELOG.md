@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### Added
+
+- **Note sequencer steps can read as note names** (#76). A new **Read sequencer steps as
+  note names** in Editor Options changes what a step says wherever a value is shown: hovering
+  it, dragging it, the F5 overlay and the Inspector, which also accepts what it shows, so a
+  NoteSeqB step can be set by typing `C4`. NoteSeqB reads absolute pitches on the same
+  60 = C4 its piano roll is drawn around; NoteSeqA's steps are a bipolar control value whose
+  zero is 64 and which only become a pitch once they reach an oscillator, so they read as the
+  interval they transpose by: `0`, `+7 (G)`, `-1 (B)`. Off by default, and the editor's
+  setting rather than the patch's: the note sequencers have no room left in the G1's patch
+  format for a preference of their own.
+
+- **Dragging a note in NoteSeqB's piano roll says which note it landed on** (#76). Every
+  other parameter edit puts its value on screen while the mouse is down; the one gesture that
+  sets notes did not. The badge appears over the step's own arrow button, so it reads in
+  whichever of the two units the setting above asks for.
+
 ### Fixed
 
 - **No patch and an empty patch no longer look the same** (#75). Starting the editor with

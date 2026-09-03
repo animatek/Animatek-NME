@@ -25,6 +25,10 @@ struct EditorOptions
     // synth's edit buffer, and an editor that dies with a dialog up leaves the
     // caption there until the patch is reloaded.
     bool        synthDisplayCaptions = false;
+    // Read a note sequencer's steps as note names rather than as the numbers the
+    // original editor shows (issue #76). Off by default, so a patch reads the
+    // way the original does until it is asked not to.
+    bool        seqNoteNames   = false;
     bool        moduleIconBar  = true;  // the module icon bar under the header (issue #17)
     juce::String moduleIconBarCategory { "In/Out" };  // tab it was left on
     bool        mcpBridgeEnabled = false; // embedded MCP control socket (source/mcp/), if built in; opt-in so no localhost port opens unless asked
@@ -130,6 +134,7 @@ private:
     juce::ToggleButton wireframeToggle    { "Wireframe modules  (outline only, works with any theme)" };
     juce::ToggleButton animateTilingToggle { "Animate Slot Tiling  (slide sub-windows into place)" };
     juce::ToggleButton synthCaptionToggle { "Show the editor on the synth display  (borrows the patch name while a dialog is open)" };
+    juce::ToggleButton seqNoteNamesToggle { "Read sequencer steps as note names  (NoteSeqB in pitches, NoteSeqA in intervals)" };
     juce::Label    sendRateLabel     { {}, "Send speed" };
     juce::ComboBox sendRateSelector;
 
