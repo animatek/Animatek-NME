@@ -720,12 +720,12 @@
     <connector component-id="c3" index="2" name="in3" type="input" signal="audio" />
     <connector component-id="c4" index="0" name="out" type="output" signal="audio" />
     <!-- parameter(s) -->
-    <parameter component-id="p1" index="0" name="in sense 1" class="parameter" defaultValue="127" extension="m1" role="audio,in,level" />
-    <parameter component-id="p2" index="1" name="in sense 2" class="parameter" defaultValue="127" extension="m2" role="audio,in,level" />
-    <parameter component-id="p3" index="2" name="in sense 3" class="parameter" defaultValue="127" extension="m3" role="audio,in,level" />
-    <parameter component-id="m1" index="0" name="morph:in sense 1" class="morph" role="morph"  minValue="-127" maxValue="127" />
-    <parameter component-id="m2" index="1" name="morph:in sense 2" class="morph" role="morph"  minValue="-127" maxValue="127" />
-    <parameter component-id="m3" index="2" name="morph:in sense 3" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="p1" index="0" name="in level 1" class="parameter" defaultValue="127" extension="m1" role="audio,in,level" />
+    <parameter component-id="p2" index="1" name="in level 2" class="parameter" defaultValue="127" extension="m2" role="audio,in,level" />
+    <parameter component-id="p3" index="2" name="in level 3" class="parameter" defaultValue="127" extension="m3" role="audio,in,level" />
+    <parameter component-id="m1" index="0" name="morph:in level 1" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m2" index="1" name="morph:in level 2" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m3" index="2" name="morph:in level 3" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <!-- custom attributes -->
     <attribute name="cycles" type="double" value="0.8895" />
     <attribute name="x-mem" type="double" value="0.15625" />
@@ -1292,23 +1292,23 @@
     <connector component-id="c8" index="7" name="in 8" type="input" signal="audio" />
     <connector component-id="c9" index="0" name="out" type="output" signal="audio" />
     <!-- parameter(s) -->
-    <parameter component-id="p1" index="0" name="in sense 1" class="parameter" defaultValue="100" extension="m1" role="audio,in,level" />
-    <parameter component-id="p2" index="1" name="in sense 2" class="parameter" defaultValue="100" extension="m2" role="audio,in,level" />
-    <parameter component-id="p3" index="2" name="in sense 3" class="parameter" defaultValue="100" extension="m3" role="audio,in,level" />
-    <parameter component-id="p4" index="3" name="in sense 4" class="parameter" defaultValue="100" extension="m4" role="audio,in,level" />
-    <parameter component-id="p5" index="4" name="in sense 5" class="parameter" defaultValue="100" extension="m5" role="audio,in,level" />
-    <parameter component-id="p6" index="5" name="in sense 6" class="parameter" defaultValue="100" extension="m6" role="audio,in,level" />
-    <parameter component-id="p7" index="6" name="in sense 7" class="parameter" defaultValue="100" extension="m7" role="audio,in,level" />
-    <parameter component-id="p8" index="7" name="in sense 8" class="parameter" defaultValue="100" extension="m8" role="audio,in,level" />
+    <parameter component-id="p1" index="0" name="in level 1" class="parameter" defaultValue="100" extension="m1" role="audio,in,level" />
+    <parameter component-id="p2" index="1" name="in level 2" class="parameter" defaultValue="100" extension="m2" role="audio,in,level" />
+    <parameter component-id="p3" index="2" name="in level 3" class="parameter" defaultValue="100" extension="m3" role="audio,in,level" />
+    <parameter component-id="p4" index="3" name="in level 4" class="parameter" defaultValue="100" extension="m4" role="audio,in,level" />
+    <parameter component-id="p5" index="4" name="in level 5" class="parameter" defaultValue="100" extension="m5" role="audio,in,level" />
+    <parameter component-id="p6" index="5" name="in level 6" class="parameter" defaultValue="100" extension="m6" role="audio,in,level" />
+    <parameter component-id="p7" index="6" name="in level 7" class="parameter" defaultValue="100" extension="m7" role="audio,in,level" />
+    <parameter component-id="p8" index="7" name="in level 8" class="parameter" defaultValue="100" extension="m8" role="audio,in,level" />
     <parameter component-id="p9" index="8" name="-6dB" class="parameter" maxValue="1" extension="m9" />
-    <parameter component-id="m1" index="0" name="morph:in sense 1" class="morph" role="morph"  minValue="-127" maxValue="127" />
-    <parameter component-id="m2" index="1" name="morph:in sense 2" class="morph" role="morph"  minValue="-127" maxValue="127" />
-    <parameter component-id="m3" index="2" name="morph:in sense 3" class="morph" role="morph"  minValue="-127" maxValue="127" />
-    <parameter component-id="m4" index="3" name="morph:in sense 4" class="morph" role="morph"  minValue="-127" maxValue="127"/>
-    <parameter component-id="m5" index="4" name="morph:in sense 5" class="morph" role="morph"  minValue="-127" maxValue="127" />
-    <parameter component-id="m6" index="5" name="morph:in sense 6" class="morph" role="morph"  minValue="-127" maxValue="127" />
-    <parameter component-id="m7" index="6" name="morph:in sense 7" class="morph" role="morph"  minValue="-127" maxValue="127" />
-    <parameter component-id="m8" index="7" name="morph:in sense 8" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m1" index="0" name="morph:in level 1" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m2" index="1" name="morph:in level 2" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m3" index="2" name="morph:in level 3" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m4" index="3" name="morph:in level 4" class="morph" role="morph"  minValue="-127" maxValue="127"/>
+    <parameter component-id="m5" index="4" name="morph:in level 5" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m6" index="5" name="morph:in level 6" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m7" index="6" name="morph:in level 7" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m8" index="7" name="morph:in level 8" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m9" index="8" name="morph:-6dB" class="morph" role="morph"  minValue="-1" maxValue="1" />
     
     <light component-id="ledAudioOut" name="LED Audio Out" index="0" type="led" />

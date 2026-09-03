@@ -77,5 +77,10 @@ Full parameter reference: `mcp-bridge/README.md` in the repository.
   guessable; an assistant that cables without looking them up will fail.
 - **Prefer `mutate_patch`** to a burst of `set_parameter` calls: it is one undo
   step and respects locks, excluded modules and Output modules.
+- **Parameter names can change.** `set_parameter` takes either `parameterId`,
+  which is stable, or `parameterName`, which is a label and may be corrected:
+  the two mixers' input attenuators were renamed from `in sense N` to
+  `in level N`. Retired names keep working, so an existing script does not
+  break, but `parameterId` is the safer thing to store.
 - **`store_to_bank` needs a connected synth** with its patch list loaded; it
   uploads first and writes to the bank only once the upload is acknowledged.

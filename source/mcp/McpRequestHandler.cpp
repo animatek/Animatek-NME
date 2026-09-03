@@ -227,6 +227,32 @@ juce::var moduleTypeToVar(const ModuleDescriptor& d, bool includeConnectors)
     return juce::var(obj);
 }
 
+
+// Parameters we have renamed since the bridge became something other people
+// script against. A caller can always address a parameter by parameterId, but a
+// script that wrote the old name should not break because the editor found a
+// better word for it (issue #78).
+bool parameterNameMatches(const juce::String& current, const juce::String& wanted)
+{
+    if (current.equalsIgnoreCase(wanted))
+        return true;
+
+    struct RetiredName { const char* was; const char* now; };
+    static const RetiredName retired[] = {
+        { "in sense", "in level" },   // the two mixers' input attenuators
+    };
+
+    for (const auto& r : retired)
+    {
+        const juce::String was(r.was);
+        if (!wanted.startsWithIgnoreCase(was))
+            continue;
+        // Both names carry the same trailing index ("in sense 3"), so keep it.
+        if (current.equalsIgnoreCase(juce::String(r.now) + wanted.substring(was.length())))
+            return true;
+    }
+    return false;
+}
 } // namespace
 
 int McpRequestHandler::resolveSlot(const juce::var& params) const
@@ -974,7 +1000,7 @@ juce::var McpRequestHandler::setParameter(const juce::var& params)
         {
             auto* descriptor = candidate.getDescriptor();
             if (descriptor->paramClass == "parameter"
-                && descriptor->name.equalsIgnoreCase(wantedName))
+                && parameterNameMatches(descriptor->name, wantedName))
             {
                 namedParameter = &candidate;
                 break;

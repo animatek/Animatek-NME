@@ -3579,28 +3579,28 @@ label{fill:#000;}
 			<connector component-id="c9" alt="out" />
 		</connector>
 		<knob x="6" y="32" size="21">
-			<parameter component-id="p1" alt="in sense 1" />
+			<parameter component-id="p1" alt="in level 1" />
 		</knob>
 		<knob x="34" y="32" size="21">
-			<parameter component-id="p2" alt="in sense 2" />
+			<parameter component-id="p2" alt="in level 2" />
 		</knob>
 		<knob x="61" y="32" size="21">
-			<parameter component-id="p3" alt="in sense 3" />
+			<parameter component-id="p3" alt="in level 3" />
 		</knob>
 		<knob x="88" y="32" size="21">
-			<parameter component-id="p4" alt="in sense 4" />
+			<parameter component-id="p4" alt="in level 4" />
 		</knob>
 		<knob x="116" y="32" size="21">
-			<parameter component-id="p5" alt="in sense 5" />
+			<parameter component-id="p5" alt="in level 5" />
 		</knob>
 		<knob x="143" y="32" size="21">
-			<parameter component-id="p6" alt="in sense 6" />
+			<parameter component-id="p6" alt="in level 6" />
 		</knob>
 		<knob x="170" y="32" size="21">
-			<parameter component-id="p7" alt="in sense 7" />
+			<parameter component-id="p7" alt="in level 7" />
 		</knob>
 		<knob x="197" y="32" size="21">
-			<parameter component-id="p8" alt="in sense 8" />
+			<parameter component-id="p8" alt="in level 8" />
 		</knob>
 		<button x="222" y="11" width="26" height="16" cyclic="true" landscape="false">
 			<parameter component-id="p9" alt="-6dB" />
@@ -4353,13 +4353,13 @@ label{fill:#000;}
 			<connector component-id="c4" alt="out" />
 		</connector>
 		<knob x="70" y="4" size="21">
-			<parameter component-id="p1" alt="in sense 1" />
+			<parameter component-id="p1" alt="in level 1" />
 		</knob>
 		<knob x="120" y="4" size="21">
-			<parameter component-id="p2" alt="in sense 2" />
+			<parameter component-id="p2" alt="in level 2" />
 		</knob>
 		<knob x="171" y="4" size="21">
-			<parameter component-id="p3" alt="in sense 3" />
+			<parameter component-id="p3" alt="in level 3" />
 		</knob>
 	</module>
 	<module component-id="m11" width="255" height="45">

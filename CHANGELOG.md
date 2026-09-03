@@ -78,6 +78,14 @@
   Patreon, alphabetically, with no ranking by amount and nothing else from the membership export.
   Kept in `data/credits.txt`, so it is one file to update per release.
 
+- **The mixers' input knobs are named "In level" rather than "In sense"** (#78). Clavia's own
+  documentation calls them attenuation controls and never uses "sense", which came from the
+  community's reverse-engineered parameter dump along with NoteSeqA's "active" above;
+  EqMid and EqShelving already called the same kind of control an in level. The name is only
+  ever seen in the Inspector, the hover badge and the right-click menus, since the knobs carry
+  no label on the panel. The MCP bridge's `set_parameter` still accepts the old name, so a
+  script that used it keeps working.
+
 ## 0.17.0 — 2026-08-19
 
 ### Added

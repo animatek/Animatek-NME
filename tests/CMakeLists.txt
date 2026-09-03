@@ -17,6 +17,7 @@ target_sources(nme_tests PRIVATE
     test_patch_title.cpp
     test_patch_file_name.cpp
     test_seq_note_names.cpp
+    test_module_naming.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
