@@ -41,6 +41,7 @@ struct ThemeButton
     bool reversed = false;     // vertical radio buttons: render index 0 at bottom
     bool isCall = false;       // button triggers a call action, not a parameter change
     juce::String callMethod;   // e.g. "rnd", "shift", "invert", "min", "max"
+    juce::String callComponent; // <call component="..."> → the call is scoped to that display
     int callValue = 0;         // e.g. shift amount (-2..+2) for "shift" method
 };
 

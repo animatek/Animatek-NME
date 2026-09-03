@@ -906,10 +906,19 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                     {
                         if (tb.callMethod == "rnd")
                         {
+                            // A Rnd that names a component randomises what that
+                            // component shows and nothing else. The Vocoder's
+                            // belongs to the routing display, so it shuffles the
+                            // 16 analysis bands and leaves the output gain where
+                            // it was, as the original editor does (issue #77).
+                            // FilterBank's Rnd names no component and still takes
+                            // the whole module.
+                            const bool scopedToBands = tb.callComponent.isNotEmpty();
                             for (auto& p : m.getParameters())
                             {
                                 auto* pd = p.getDescriptor();
                                 if (pd->maxValue - pd->minValue <= 1) continue; // skip binary params (bypass etc)
+                                if (scopedToBands && !pd->name.startsWith("band ")) continue;
                                 int rndVal = juce::Random::getSystemRandom().nextInt(pd->maxValue - pd->minValue + 1) + pd->minValue;
                                 p.setValue(rndVal);
                                 if (parameterChangeCallback)

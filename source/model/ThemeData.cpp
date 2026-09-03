@@ -390,9 +390,10 @@ void ThemeData::parseButton(const juce::XmlElement& elem, ModuleTheme& theme)
     // Detect <call component="..." method="rnd"> (Vocoder Rnd button)
     if (auto* call = elem.getChildByName("call"))
     {
-        tb.isCall     = true;
-        tb.callMethod = call->getStringAttribute("method");
-        tb.callValue  = call->getIntAttribute("value", 0);
+        tb.isCall        = true;
+        tb.callMethod    = call->getStringAttribute("method");
+        tb.callComponent = call->getStringAttribute("component");
+        tb.callValue     = call->getIntAttribute("value", 0);
     }
 
     // Multi-Env (m52) p10 sustain: original Nomad UI renders this as a small

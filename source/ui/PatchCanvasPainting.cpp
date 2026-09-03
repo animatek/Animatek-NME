@@ -2024,14 +2024,30 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
             }
             else if (label.isNotEmpty())
             {
+                // The height alone used to pick the size, so a label wider than
+                // its button was handed to drawText's ellipsis and came back as
+                // "..." or with its first letter shaved off: the Vocoder's Rnd
+                // in 16px and INV in 20px both did (issue #77). Measure the text
+                // and shrink until it fits, so the label is small before it is
+                // ever cut.
                 float fontSize = juce::jmin(8.0f, juce::jmin(sw * 0.85f, sh - 2.0f));
                 if (fontSize < 4.0f) fontSize = 4.0f;
+
+                const float availW = juce::jmax(1.0f, sw - 2.0f);
+                juce::Font font(juce::FontOptions("Fira Sans", fontSize, juce::Font::bold));
+                const float naturalW = font.getStringWidthFloat(label);
+                if (naturalW > availW)
+                {
+                    fontSize = juce::jmax(4.5f, fontSize * (availW / naturalW));
+                    font = juce::Font(juce::FontOptions("Fira Sans", fontSize, juce::Font::bold));
+                }
+
                 g.setColour(labelColour);
-                g.setFont(juce::FontOptions("Fira Sans", fontSize, juce::Font::bold));
+                g.setFont(font);
                 g.drawText(label,
                            static_cast<int>(sx + ox), static_cast<int>(sy + oy),
                            static_cast<int>(sw), static_cast<int>(sh),
-                           juce::Justification::centred, true);
+                           juce::Justification::centred, false);
             }
         };
 
@@ -2113,7 +2129,12 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
         }
 
         // --- Mute / compact toggle: small button (<=20x20) rendered as connector-sized square ---
-        if (tb.cyclic && bw <= 20.0f && bh <= 20.0f)
+        // Only where the face is an icon or a single letter, which is what this
+        // shape was drawn for: the M of a mute, the B of a bypass. The Vocoder
+        // states its buttons at their real size and writes words on them, and
+        // squaring those off to 13x13 is what turned Rnd into "..." and cut the
+        // I off INV (issue #77).
+        if (tb.cyclic && bw <= 20.0f && bh <= 20.0f && labelText.length() <= 1)
         {
             const float sq = 13.0f;
             float sx = bx + (bw - sq) * 0.5f;

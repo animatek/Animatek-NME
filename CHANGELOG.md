@@ -20,6 +20,18 @@
 - **Loop starts on in NoteSeqA and NoteSeqB**, as it does in the original editor. Both sat at
   off on a freshly added module.
 
+- **The Vocoder's buttons can be read again** (#77). Mon, INV, Rnd and the five shift buttons
+  are cyclic buttons 20px and under, which put them down the path meant for the single-letter
+  mute and bypass toggles: it squares the button off to 13x13, so INV lost its I and Rnd came
+  out as "...". That shape is now only used where the face is an icon or one letter, and any
+  label too wide for its button shrinks to fit instead of being handed to the ellipsis. Mon
+  also keeps its name in both states rather than reading "Off" when off.
+
+- **The Vocoder's Rnd leaves the output gain alone** (#77). It shuffled every parameter on the
+  module that was not a switch, the output level with them. It is declared in the theme as a
+  call on the routing display, so it now moves what that display shows: the 16 analysis bands.
+  FilterBank's Rnd, which is declared on the module, still takes the whole module.
+
 - **NoteSeqB's Gclk output is spelled the way NoteSeqA spells it** (#76). It read "Gclck".
 
 - **A synth switched on after the editor connects on its own again** (#73). Starting the editor
