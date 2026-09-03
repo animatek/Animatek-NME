@@ -3086,24 +3086,26 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
             g.reduceClipRegion(juce::Rectangle<int>(static_cast<int>(dx), static_cast<int>(dy),
                                                     static_cast<int>(dw), static_cast<int>(dh)));
 
-            const float keyW = 16.0f;
-            const float rollX = dx + keyW;
-            const float rollW = juce::jmax(1.0f, dw - keyW);
+            // The 16 steps fill the display edge to edge, because they have to
+            // line up with the arrow buttons underneath: the theme lays those
+            // out from the display's own left edge, one 12px button per step.
+            // A 16px piano-key strip used to eat into the left of the roll,
+            // which pushed every step across by more than a full step and left
+            // the strip itself looking like an empty first step (issue #76).
+            // The black-key lanes carry the pitch reference on their own.
+            const float rollX = dx;
+            const float rollW = juce::jmax(1.0f, dw);
             const float stepW = rollW / static_cast<float>(kSteps);
             const float rowH = dh / static_cast<float>(visibleNotes + 1);
 
-            // Piano-key strip and pitch lanes.
-            g.setColour(activeScheme_.displayBg.darker(0.25f));
-            g.fillRect(dx, dy, keyW, dh);
+            // Pitch lanes.
             for (int note = lowNote; note <= highNote; ++note)
             {
                 float y = dy + (static_cast<float>(highNote - note) / static_cast<float>(visibleNotes)) * dh;
-                bool black = isBlackKey(note);
-                if (black)
+                if (isBlackKey(note))
                 {
                     g.setColour(juce::Colours::black.withAlpha(0.28f));
                     g.fillRect(rollX, y - rowH * 0.5f, rollW, juce::jmax(1.0f, rowH));
-                    g.fillRect(dx + 2.0f, y - rowH * 0.45f, keyW - 4.0f, juce::jmax(1.0f, rowH * 0.9f));
                 }
 
                 g.setColour((note % 12 == 0) ? activeScheme_.displayGrid.withAlpha(0.75f)

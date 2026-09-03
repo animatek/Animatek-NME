@@ -10,6 +10,13 @@
   module to. Without a patch the canvas now goes flat, drops its grid and its grain, and says
   "No patch open" over the two keys that make one.
 
+- **NoteSeqB's note arrows line up with the steps they belong to** (#76). The piano roll kept
+  a 16px piano-key strip down its left side, so its sixteen steps were squeezed into the
+  remaining width while the arrow buttons below stayed on the module's own 12px grid: every
+  arrow pointed at roughly the step after the one above it, and the key strip itself read as
+  an extra empty first step. The strip is gone and the steps fill the display, one per arrow.
+  The black-key lanes still mark the pitches.
+
 - **A synth switched on after the editor connects on its own again** (#73). Starting the editor
   with the synth off sent the editor's hello into a dead cable, and the only route from
   disconnected to connected without opening MIDI Settings was an `IAm` from the synth, which a
