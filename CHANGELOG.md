@@ -19,142 +19,100 @@
   sets notes did not. The badge appears over the step's own arrow button, so it reads in
   whichever of the two units the setting above asks for.
 
-- **Los presets de modulo se marcan y se recorren con las flechas**
-  ([#60](https://github.com/animatek/Animatek-NME/issues/60)). Al recargar un preset desde
-  el inspector cambiaba el modulo y no quedaba ni rastro de cual habia sido: una lista de
-  ocho eran ocho filas identicas y ninguna forma de volver al que gustaba. La fila recargada
-  queda ahora marcada, y con la lista enfocada las flechas arriba y abajo recorren los
-  presets **cargandolos al pasar** — que es el gesto que se quiere, escuchar, no seleccionar
-  y confirmar. Recorren las filas visibles, asi que una carpeta Factory plegada se salta
-  igual que se la salta la vista, y la fila elegida se trae a la vista si queda fuera. No dan
-  la vuelta al llegar al final.
+- **The Inspector marks the preset it recalled, and the arrows walk them**
+  ([#60](https://github.com/animatek/Animatek-NME/issues/60)). Recalling a preset changed
+  the module and left no trace of which one it had been, so a list of eight was eight
+  identical rows and no way back to the one you liked. The recalled row is now marked, and
+  with the list focused the up and down keys walk the presets **recalling each as they pass
+  it** — the gesture wanted here is auditioning, not selecting and then confirming. They
+  walk the visible rows, so a collapsed Factory folder is skipped by the arrows exactly as
+  it is skipped by the eye, and the chosen row scrolls into view if it falls outside it.
+  Nothing wraps.
 
-- **Flechas para recorrer los presets del navegador de disco**
-  ([#60](https://github.com/animatek/Animatek-NME/issues/60)). Hasta ahora cada preset
-  pedia un doble clic, asi que auditar una carpeta era volver al raton en cada fichero.
-  Dos flechas junto al contador cargan el anterior y el siguiente de un clic, y en la
-  lista las teclas de direccion mas `Enter` hacen lo mismo sin soltar el teclado. Recorren
-  las entradas **visibles**, asi que la busqueda y los filtros de tipo las acotan igual que
-  acotan la lista. No dan la vuelta al llegar al final: la flecha se apaga, que en una
-  biblioteca larga es lo que se espera.
+- **Arrows to step through the disk preset browser**
+  ([#60](https://github.com/animatek/Animatek-NME/issues/60)). Every preset asked for a
+  double click, so auditioning a folder meant going back to the mouse for each file. Two
+  arrows beside the counter load the previous and next entry outright, and in the list the
+  arrow keys plus `Enter` do the same without leaving the keyboard. They walk the
+  **visible** entries, so the search box and the type filters bound them exactly as they
+  bound the list. Nothing wraps: the arrow greys out at either end, which on a long library
+  is what is meant.
 
 ### Fixed
 
-- **Un LED huerfano ya no se queda encendido para siempre.** El barrido de
-  asignaciones huerfanas las quitaba del modelo y ahi acababa la cosa: el sinte
-  seguia con esa asignacion y con su LED encendido, y el editor ya no sabia que
-  existia, asi que ningun borrado ni ninguna subida podia llegar a ella nunca.
-  Visto en "DRUM VICIUS": el parche entro con una asignacion colgada del Knob 16,
-  el barrido la tiro, y al borrar los modulos salieron los deassign de los knobs
-  1-15 y 18 — el 16 no, porque ya no estaba en el modelo. El barrido dice ahora que
-  knobs y que CC quito, y al instalar el parche que viene del sinte se envia el
-  deassign de cada uno.
+- **An orphaned LED no longer stays lit for good.** The sweep for dangling assignments
+  dropped them from the model and stopped there: the synth still held the assignment and
+  still had its LED on, and the editor no longer knew it existed, so no delete and no
+  upload could ever reach it. Caught on "DRUM VICIUS": the patch arrived with an assignment
+  dangling off Knob 16, the sweep threw it away, and deleting the modules sent deassigns
+  for knobs 1-15 and 18 — not 16, because it was no longer in the model. The sweep now
+  reports which knobs and which MIDI CCs it dropped, and installing a patch that came from
+  the synth deassigns each of them.
 
-- **Reemplazar el parche de un slot ya no lee memoria liberada.** Las cuatro rutas que
-  destruyen un parche —el que llega del sinte, `replacePatchInSlot` del puente MCP, parche
-  nuevo y abrir un `.pch`— soltaban el inspector con `clearModule()`, que **conserva** su
-  puntero al parche y con el rearma la lista de asignaciones: justo el parche que la linea
-  siguiente destruye. Despues `clearSnapshots()` recorre esa lista y lee memoria liberada.
-  Sobrevivia de casualidad porque los modulos del contenedor liberado se leen como null.
-  Ahora se sueltan con `setPatch(nullptr)`, que es el unico que tira los dos punteros; las
-  cuatro se vuelven a apuntar al parche entrante mas abajo, como ya hacian. El crash que
-  esto provoco esta tapado desde la #61, pero el fallo de memoria seguia ahi.
+- **Replacing a slot's patch no longer reads freed memory.** All four paths that destroy a
+  patch — the one arriving from the synth, the MCP bridge's `replacePatchInSlot`, New
+  Patch, and opening a `.pch` — detached the Inspector with `clearModule()`, which **keeps**
+  its own patch pointer and re-arms the assignments list with it: the very patch the next
+  line destroys. `clearSnapshots()` then walks that list and reads freed memory. It survived
+  only because the freed container's module slots read back as null. They now detach with
+  `setPatch(nullptr)`, the one call that drops both pointers; all four re-point at the
+  incoming patch further down, as they already did. The crash this caused has been covered
+  since #61, but the use-after-free underneath it had not been touched.
 
-- **Borrar varios modulos a la vez apaga sus LEDs, no solo borrarlos de uno en uno.**
-  Las luces de los knobs no siguen al parche: solo se mueven con los mensajes
-  incrementales de asignar y desasignar, y los dos se resuelven contra el parche que
-  el sinte tiene en ese momento. Un `deassign` llega a tiempo si el sinte todavia
-  tiene el modulo al que apuntaba y si va dirigido al parche vigente. Borrar una
-  seleccion ejecuta las acciones seguidas en una sola pasada, y bastaba con que un
-  `DeleteModule` o un `DeleteCable` incremental saliera a mitad para mover el parche
-  del sinte: todos los deassign que quedaban por salir iban dirigidos a un parche que
-  ya no existia y el sinte los descartaba. De ahi que uno a uno funcionara y todos de
-  golpe no. Ahora **todo** borrado va suprimido y se sincroniza con una subida
-  completa, incluso el que no libera nada: mientras dura la pasada no sale nada
-  incremental, el parche del sinte y su id se quedan quietos, y todos los deassign
-  son validos. Los cambios de asignacion de knob no mueven el id — el sinte los
-  confirma con el mismo.
+- **Deleting several modules at once puts their LEDs out, not just deleting them one by
+  one.** The knob lights do not follow the patch: they move only for the incremental
+  assign and deassign messages, and both are resolved against the patch the synth holds at
+  that moment. A `deassign` lands if the synth still has the module the knob pointed at and
+  if it is addressed to the current patch. Deleting a selection runs the actions back to
+  back in a single pass, and one incremental `DeleteModule` or `DeleteCable` let out
+  mid-pass was enough to move the synth's patch on: every deassign still to go was
+  addressed to a patch that no longer existed, and the synth dropped it. Which is why one
+  at a time worked and all at once did not. **Every** delete is now suppressed and synced
+  by one full upload, even one that frees nothing: with nothing let out during the pass the
+  synth's patch and its id hold still, and every deassign is valid. Knob assignment changes
+  do not move the id themselves — the synth ACKs them with it unchanged.
 
-- **La subida solo afirma lo que el parche tiene.** Desasignar en bloque desde ahi no
-  servia de nada: despues de una subida que quito modulos, la asignacion que el
-  mensaje nombra ya no esta, el sinte no tiene sobre que actuar y el LED se queda
-  encendido igual. Apagar una luz es cosa del borrado, antes de que el modulo se
-  vaya; encenderla es de la subida, cuando el sinte ya tiene el modulo.
+- **An upload states only what the patch holds.** Blanket-deassigning the rest from there
+  achieved nothing: after an upload that removed modules, the assignment the message names
+  is already gone, the synth has nothing to act on, and the LED stays lit anyway. Putting a
+  light out is the delete's job, before the module goes; lighting one is the upload's, once
+  the synth has the module.
 
-- **Un LED huerfano ya no se queda encendido para siempre.** El barrido de
-  asignaciones huerfanas las quitaba del modelo y ahi acababa la cosa: el sinte
-  seguia con esa asignacion y con su LED encendido, y el editor ya no sabia que
-  existia, asi que ningun borrado ni ninguna subida podia llegar a ella nunca.
-  Visto en "DRUM VICIUS": el parche entro con una asignacion colgada del Knob 16,
-  el barrido la tiro, y al borrar los modulos salieron los deassign de los knobs
-  1-15 y 18 — el 16 no, porque ya no estaba en el modelo. El barrido dice ahora que
-  knobs y que CC quito, y al instalar el parche que viene del sinte se envia el
-  deassign de cada uno.
+- **Deleting a module no longer leaves its assignments on the synth.** The editor's model
+  did drop the deleted module's morphs, knobs and MIDI CCs, but there is no way in the
+  protocol to unassign a morph, so an incremental `DeleteModule` left the synth's morph and
+  knob maps naming the module that had just gone. Re-reading the patch brought those
+  leftovers back into the editor and into the saved `.pch`: the patch was corrupt, and the
+  rubbish latched onto whatever module landed on that index next. That is where the G1
+  froze when an oscillator was added. A module that carried assignments is now synced by a
+  full upload, which rewrites both maps; it is debounced and coalesced, so deleting a whole
+  selection sends one. A module with no assignments keeps the cheap incremental path.
 
-- **El panel del sinte se declara entero al terminar cada subida.** Las luces de los
-  knobs no siguen al parche: solo se mueven con los mensajes incrementales de
-  asignar y desasignar. Corregirlas de una en una obliga a que cada mensaje llegue
-  en un momento en que siga siendo cierto, y borrar varios modulos a la vez es justo
-  donde eso se rompe — los borrados, sus cables y la subida se mueven por debajo, y
-  quedaban LEDs encendidos sin nada que los apagara. Al acabar la subida se declara
-  ahora el mapa de knobs completo: cada uno de los 21, asignado o no. Son 21 mensajes
-  cortos y dejan el panel igual al parche viniera por donde viniera. El reenvio va
-  despues del ACK del ultimo paquete y no junto a la subida: una asignacion nombra un
-  modulo, y enviada antes de que el sinte tenga el parche nombra un modulo que
-  todavia no esta ahi y se descarta — que es lo que dejaba un borrado deshecho con
-  sus modulos de vuelta y sus knobs sin asignar. Los CC MIDI son 128 y no encienden
-  nada, asi que siguen liberandose uno a uno al borrar.
+- **A patch coming in is swept of orphaned assignments.** Every morph, knob and MIDI CC
+  naming a module the patch does not have is discarded as it is read, from the synth or
+  from a `.pch`. An already corrupted patch therefore heals when it is opened, instead of
+  carrying the leftovers into the next upload. Section 2, the morph section, is left alone:
+  its module is not in a voice area's list and always exists.
 
-- **Un LED huerfano ya no se queda encendido para siempre.** El barrido de
-  asignaciones huerfanas las quitaba del modelo y ahi acababa la cosa: el sinte
-  seguia con esa asignacion y con su LED encendido, y el editor ya no sabia que
-  existia, asi que ningun borrado ni ninguna subida podia llegar a ella nunca.
-  Visto en "DRUM VICIUS": el parche entro con una asignacion colgada del Knob 16,
-  el barrido la tiro, y al borrar los modulos salieron los deassign de los knobs
-  1-15 y 18 — el 16 no, porque ya no estaba en el modelo. El barrido dice ahora que
-  knobs y que CC quito, y al instalar el parche que viene del sinte se envia el
-  deassign de cada uno.
+- **NewModule's pid fits in its six bits.** `PatchPacket := 0:1 command:1 pid:6`:
+  NewModule is the only edit message on cc=0x1f, and so the only one whose pid is six bits
+  wide — move, delete, rename and the cables all ride cc=0x17, where it gets seven. It was
+  masked with `0x7F` both when the message was built and when the pid was rewritten in the
+  send queue, so a pid of 64 or more raised the `command` bit, which is what marks a bulk
+  upload stream (`UploadPacketizer::frame`), and the synth would have read the packet as
+  something else entirely.
 
-- **Borrar un modulo ya no deja sus asignaciones en el sinte.** El modelo del
-  editor si quitaba los morphs, knobs y CC del modulo borrado, pero el protocolo no
-  tiene forma de desasignar un morph, asi que un `DeleteModule` incremental dejaba
-  los mapas de morph y de knobs del sinte apuntando al modulo que acababa de irse.
-  Al volver a leer el parche esos restos entraban otra vez en el editor y se
-  guardaban en el `.pch`: el parche quedaba corrupto, y la basura se enganchaba al
-  siguiente modulo que cayera en ese indice. Ahi es donde el G1 se colgaba al añadir
-  un oscilador. Un modulo que llevaba asignaciones se sincroniza ahora con una
-  subida completa, que reescribe los dos mapas; va con rebote y se agrupa, asi que
-  borrar una seleccion entera manda una sola. Un modulo sin asignaciones sigue por
-  la via incremental.
+- **An unanswered PatchPacket closes its transfer.** When an acked-queue message on
+  cc=0x1c-0x1f runs out its three seconds with no reply, the empty terminating packet goes
+  out. The synth stays in bulk-receive state until it sees a packet flagged `last`, and
+  there it stops answering anything at all (issue #40): the close gets it back without a
+  power cycle.
 
-- **Un parche que entra se limpia de asignaciones huerfanas.** Todo morph, knob o CC
-  que nombra un modulo que el parche no tiene se descarta al leerlo, venga del sinte
-  o de un `.pch`. Asi un parche ya corrupto se cura al abrirlo en vez de arrastrar la
-  basura a la siguiente subida. La seccion 2 (la de morph) no se toca: su modulo no
-  esta en la lista de un area de voces y siempre existe.
-
-- **El pid de NewModule cabe en sus seis bits.** `PatchPacket := 0:1 command:1 pid:6`:
-  NewModule es el unico mensaje de edicion que va por cc=0x1f, y por tanto el unico
-  con un pid de seis bits — mover, borrar, renombrar y los cables van por cc=0x17,
-  donde el pid tiene siete. Se enmascaraba con `0x7F` tanto al construir el mensaje
-  como al reescribir el pid en la cola de envio, asi que un pid de 64 o mas encendia
-  el bit de `command`, que es el que marca un flujo de subida masiva
-  (`UploadPacketizer::frame`), y el sinte habria leido el paquete como otra cosa.
-
-- **Un PatchPacket sin respuesta cierra su transferencia.** Si un mensaje de la cola
-  con ACK va por cc=0x1c-0x1f y agota los tres segundos sin contestacion, se envia el
-  paquete vacio de cierre. El sinte se queda en estado de recepcion masiva hasta que
-  ve un paquete marcado `last`, y ahi deja de contestar a todo (incidencia #40): el
-  cierre lo saca sin apagarlo.
-
-- **Alta de OscA: se incluyen sus valores custom en el SysEx.** El sincronizador
-  enviaba siempre un CustomDump vacío, omitiendo la unidad de frecuencia de OscA
-  y los ajustes custom del resto de módulos. NewModule conserva ahora los campos
-  de 8 bits del protocolo y respeta el límite de 16 caracteres sin añadir un NUL
-  extra que desplace las secciones. Verificado con compilación Debug, CTest y
-  tres pruebas de regresión (337 comprobaciones), incluida la coincidencia byte
-  a byte con el paquete OscA de referencia de jnmprotocol. Pendiente confirmar
-  en el Nord real si resuelve el bloqueo comunicado al añadir el oscilador.
+- **Adding an OscA carries its custom values in the SysEx.** The synchronizer always sent
+  an empty CustomDump, leaving out OscA's frequency-display unit and every other module's
+  custom settings. NewModule now keeps the protocol's eight-bit fields and respects the
+  sixteen-character limit without the extra NUL that shifted the sections along. Verified
+  byte for byte against jnmprotocol's reference OscA packet.
 
 - **No patch and an empty patch no longer look the same** (#75). Starting the editor with
   the synth off left you looking at the working canvas, grid and all, under "Press Enter to
