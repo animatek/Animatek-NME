@@ -71,6 +71,8 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl+Shift+` arrows | Move the focused slot to the neighbouring tile, swapping with whatever is there. Up and down only exist in the four-slot 2x2; nothing happens at an edge |
 | Right-click a slot row | Show/hide that slot's sub-window |
 | Right-click a patch in the Synth browser | **Load to Slot A..D**: fetch it into a named slot |
+| Arrow keys then `Enter` in the Preset browser | Walk the list and load what is selected |
+| The two arrow buttons in the Preset browser | Load the previous or next entry outright, one click per preset |
 | `Ctrl+click` a slot row | Enable/disable the slot without selecting it |
 
 Open slots tile themselves, the way a tiling window manager does: one fills the

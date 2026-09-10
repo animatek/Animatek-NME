@@ -26,6 +26,20 @@ private:
 
     };
 
+    // Step to the previous or next entry in the list and load it, so a library
+    // can be auditioned without going back to the mouse for every file
+    // (issue #60). Steps through the visible entries, so search and the type
+    // filters bound it the way they bound the list itself.
+    class StepIconButton : public juce::Button
+    {
+    public:
+        StepIconButton(const juce::String& name, int direction);
+        void paintButton(juce::Graphics& g, bool highlighted, bool down) override;
+
+    private:
+        int step;   // -1 previous, +1 next
+    };
+
     class FilterIconButton : public juce::Button
     {
     public:
@@ -49,9 +63,19 @@ private:
         int legacyPatch210 = -1;  // -1 = not sniffed yet, 0 = no, 1 = yes
     };
 
+    // Loads the entry on `row`, whatever route asked for it: a double click,
+    // Enter, or the step buttons.
+    void loadRow(int row);
+    // Moves the selection by `delta` visible rows and loads what it lands on.
+    void stepSelection(int delta);
+    // Greys out whichever arrow has nowhere left to go.
+    void updateStepButtons();
+
     int getNumRows() override;
     void paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected) override;
     void listBoxItemDoubleClicked(int row, const juce::MouseEvent&) override;
+    void returnKeyPressed(int lastRowSelected) override;
+    void selectedRowsChanged(int lastRowSelected) override;
     juce::var getDragSourceDescription(const juce::SparseSet<int>& selectedRows) override;
 
     void rebuildVisibleEntries();
@@ -71,6 +95,8 @@ private:
     FilterIconButton banksButton { "Banks", FilterIconButton::Icon::Bank };
     FilterIconButton hidePch2Button { "Hide PCH2", FilterIconButton::Icon::Legacy };
     RefreshIconButton refreshButton;
+    StepIconButton prevButton { "Previous preset", -1 };
+    StepIconButton nextButton { "Next preset", 1 };
     juce::Label statusLabel;
     juce::ListBox listBox { "Disk Presets", this };
 

@@ -5,44 +5,30 @@ release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](../CHANGELOG
 
 ## High Priority
 
-- [ ] **Module Icon Bar** ([#17](https://github.com/animatek/Animatek-NME/issues/17)) —
-  reinstate the original editor's drag-and-drop bar of module icons, hideable via a View
-  toggle for users who prefer the text browser or Quick Add. The complete nmedit icon set
-  (109 modules, 16x16 and 32x32, keyed by `modules.xml` `index`) already exists locally and
-  needs no redrawing, and `PatchCanvas` already accepts the exact drag payload
-  `ModuleBrowserPanel` emits. Design notes, asset paths and open questions:
-  [MODULE_ICON_BAR.md](MODULE_ICON_BAR.md).
+- [x] **Module Icon Bar** ([#17](https://github.com/animatek/Animatek-NME/issues/17)) —
+  shipped as the module bar under the header: category tabs with the modules of the chosen
+  category, dragged or clicked onto a patch area, hideable via View. Issue closed
+  2026-08-09. The chips carry names rather than pictograms on purpose; the artwork is
+  [#52](https://github.com/animatek/Animatek-NME/issues/52), deliberately parked.
 
-- [ ] **Slot selection dialog on patch load**
-  ([#21](https://github.com/animatek/Animatek-NME/issues/21)) — the original editor asks
-  which slot an opened `.pch` goes to, listing A/B/C/D with each slot's current patch name
-  (`Unknown` for slots it has not fetched yet) plus a separate **Local** option that loads
-  into the editor without touching the synth. ANME has neither: a file load always targets
-  the active slot and always uploads when connected (`MainComponent.cpp:1618`), so there is
-  no way to open a patch without overwriting synth state, and no way to load into a slot
-  you have not visited. Reference screenshots (gitignored):
-  `Implementaciones/Dialogo de carga de slots selection.png`.
+- [x] **Slot selection dialog on patch load**
+  ([#21](https://github.com/animatek/Animatek-NME/issues/21)) — shipped
+  (`source/ui/SlotSelectDialog.h`). Issue closed 2026-07-24.
 
-- [ ] **MCP bridge: no way to save, store or rename from a client**
-  ([#23](https://github.com/animatek/Animatek-NME/issues/23)) — building a patch through the
-  bridge works, but nothing can be persisted from it (no `save_patch`, no `store_to_bank`),
-  so an assistant-composed patch lives in memory until the user saves it by hand. Renaming
-  existing modules is also missing, and is blocked by the editor itself: module renames are
-  not undoable (`MainComponent.cpp:478` only logs; there is no `RenameModuleAction`), which
-  is worth fixing on its own. Module names also never reach the synth.
+- [x] **MCP bridge: save, store and rename from a client**
+  ([#23](https://github.com/animatek/Animatek-NME/issues/23)) — shipped: `save_patch`,
+  `store_to_bank` and `rename_module` all exist. Issue closed 2026-07-24.
 
-- [ ] **`replacePatchInSlot` still reads the patch it just freed** — the crash this caused is
-  fixed (null-guarded `ModuleContainer::getModuleByIndex`, see the changelog), but the
-  use-after-free itself is untouched. The detach block at `MainComponent.cpp:1454` calls
-  `InspectorPanel::clearModule()`, which ends in `assignmentsList->setPatchWide(currentPatch)`
-  — it re-arms the assignments list with the very patch about to be destroyed by
-  `slotPatches[slot] = std::move(patch)`. `clearSnapshots()` then walks it through
-  `resetMorphAB()` → `refreshMorphUi()` → `buildHwFromPatch()`, reading freed memory; it
-  survives only because the freed container's module slots read back as null. The fix is to
-  detach with `setPatch(nullptr)` (which now does release the list) instead of
-  `clearModule()`, at both sites — the active-slot one and `slotWindows[slot]` at line 1465.
-  Both already get re-pointed at the new patch afterwards (lines 1495 and 1510), so nothing
-  else needs moving. Worth an ASAN run over the slot-replacement path while in there.
+- [x] **`replacePatchInSlot` read the patch it had just freed** — fixed. All four paths
+  that destroy a patch (the synth fetch, `replacePatchInSlot`, `newPatch`, and the disk
+  load) detached the Inspector with `clearModule()`, which keeps its own `currentPatch`
+  and re-arms `assignmentsList->setPatchWide()` with it — the very patch the next line
+  destroys. `clearSnapshots()` then walked that list and read freed memory; it survived
+  only because the freed container's module slots read back as null. They now detach with
+  `setPatch(nullptr)`, the only one that drops both pointers, and all four re-point at the
+  incoming patch further down as they already did. The `clearModule()` calls that remain
+  (`switchToSlot`, `prepareSlotModuleDeletion`, the selection change) are not
+  detach-before-destroy: their patch outlives the call.
 
 - [ ] **MCP bridge: no way to assign knobs or morphs from a client** — the editor has full
   hardware knob and morph assignment (`KnobAssignmentMessage`, `AssignmentsListComponent`,
@@ -153,11 +139,9 @@ Tracked as GitHub issues; the detail lives there.
   — already fixed after 0.9.0 and shipped in 0.10.0 (one-decimal Load meters); reported
   against an older build. Closed.
 
-- [ ] **Theme submenu checkmark sticks on the initial theme**
-  ([#19](https://github.com/animatek/Animatek-NME/issues/19)) — a fix shipped in 0.10.0, but
-  it is left open until verified in a real session. Note the original report came from macOS,
-  where the native menu bar handles ticks differently from the in-window menu on Linux, so
-  confirming it on Linux alone does not close it.
+- [x] **Theme submenu checkmark sticks on the initial theme**
+  ([#19](https://github.com/animatek/Animatek-NME/issues/19)) — fix shipped in 0.10.0 and
+  the issue was closed 2026-07-23.
 
 ## Parked / Future
 

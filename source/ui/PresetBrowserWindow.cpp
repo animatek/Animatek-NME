@@ -51,6 +51,43 @@ void DiskPresetBrowserPanel::RefreshIconButton::paintButton(juce::Graphics& g, b
     g.strokePath(p, juce::PathStrokeType(1.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 }
 
+DiskPresetBrowserPanel::StepIconButton::StepIconButton(const juce::String& name, int direction)
+    : juce::Button(name), step(direction)
+{
+    setTooltip(name);
+}
+
+void DiskPresetBrowserPanel::StepIconButton::paintButton(juce::Graphics& g, bool highlighted, bool down)
+{
+    auto area = getLocalBounds().toFloat().reduced(2.0f);
+    auto bg = down ? AppTheme::palette().buttonActive
+                  : highlighted ? AppTheme::palette().backgroundElevated
+                                : AppTheme::palette().inputBackground;
+
+    g.setColour(bg);
+    g.fillRoundedRectangle(area, 4.0f);
+    g.setColour(AppTheme::palette().borderColor);
+    g.drawRoundedRectangle(area, 4.0f, 1.0f);
+
+    auto icon = area.reduced(area.getWidth() * 0.32f, area.getHeight() * 0.28f);
+    juce::Path p;
+    if (step < 0)
+    {
+        p.addTriangle(icon.getRight(), icon.getY(),
+                      icon.getRight(), icon.getBottom(),
+                      icon.getX(),     icon.getCentreY());
+    }
+    else
+    {
+        p.addTriangle(icon.getX(),     icon.getY(),
+                      icon.getX(),     icon.getBottom(),
+                      icon.getRight(), icon.getCentreY());
+    }
+
+    g.setColour(AppTheme::palette().textSecondary.withAlpha(isEnabled() ? (down ? 0.75f : 1.0f) : 0.35f));
+    g.fillPath(p);
+}
+
 DiskPresetBrowserPanel::FilterIconButton::FilterIconButton(const juce::String& name, Icon iconType)
     : juce::Button(name), icon(iconType)
 {
@@ -134,6 +171,11 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
         addAndMakeVisible(*b);
     }
     allButton.setToggleState(true, juce::dontSendNotification);
+    addAndMakeVisible(prevButton);
+    addAndMakeVisible(nextButton);
+    prevButton.onClick = [this]() { stepSelection(-1); };
+    nextButton.onClick = [this]() { stepSelection(1); };
+
     allButton.onClick = [this]() { typeFilter = TypeFilter::All; rebuildVisibleEntries(); };
     patchesButton.onClick = [this]() { typeFilter = TypeFilter::Patches; rebuildVisibleEntries(); };
     snippetsButton.onClick = [this]() { typeFilter = TypeFilter::Snippets; rebuildVisibleEntries(); };
@@ -260,6 +302,7 @@ void DiskPresetBrowserPanel::rebuildVisibleEntries()
 
     listBox.updateContent();
     listBox.repaint();
+    updateStepButtons();
 }
 
 void DiskPresetBrowserPanel::resized()
@@ -276,7 +319,10 @@ void DiskPresetBrowserPanel::resized()
     for (auto* button : { &allButton, &patchesButton, &snippetsButton, &banksButton, &hidePch2Button })
         button->setBounds(filterRow.removeFromLeft(filterWidth).reduced(1));
 
-    statusLabel.setBounds(area.removeFromTop(24));
+    auto statusRow = area.removeFromTop(24);
+    nextButton.setBounds(statusRow.removeFromRight(26));
+    prevButton.setBounds(statusRow.removeFromRight(26));
+    statusLabel.setBounds(statusRow);
     area.removeFromTop(4);
     listBox.setBounds(area);
 }
@@ -314,7 +360,7 @@ void DiskPresetBrowserPanel::paintListBoxItem(int row, juce::Graphics& g, int wi
     g.drawText(entry.displayName, 62, 0, width - 68, height, juce::Justification::centredLeft, true);
 }
 
-void DiskPresetBrowserPanel::listBoxItemDoubleClicked(int row, const juce::MouseEvent&)
+void DiskPresetBrowserPanel::loadRow(int row)
 {
     if (row < 0 || row >= getNumRows())
         return;
@@ -329,6 +375,55 @@ void DiskPresetBrowserPanel::listBoxItemDoubleClicked(int row, const juce::Mouse
     {
         onPatchChosen(entry.file);
     }
+}
+
+// Walks the *visible* rows, so whatever the search box and the type filters
+// left on screen is exactly what the arrows step through. Nothing wraps: at
+// either end the button greys out rather than jumping to the far side of the
+// library, which on a list this long is never what was meant.
+void DiskPresetBrowserPanel::stepSelection(int delta)
+{
+    const int rows = getNumRows();
+    if (rows == 0)
+        return;
+
+    const int current = listBox.getSelectedRow();
+    // No selection yet: the first press picks an end rather than nothing, so a
+    // freshly opened browser can be auditioned straight from the keyboard.
+    const int target = current < 0 ? (delta > 0 ? 0 : rows - 1)
+                                   : current + delta;
+    if (target < 0 || target >= rows)
+        return;
+
+    listBox.selectRow(target);
+    loadRow(target);
+}
+
+void DiskPresetBrowserPanel::listBoxItemDoubleClicked(int row, const juce::MouseEvent&)
+{
+    loadRow(row);
+}
+
+// Enter loads whatever is selected, so the arrow keys the ListBox already
+// handles become a way through the library on their own.
+void DiskPresetBrowserPanel::returnKeyPressed(int lastRowSelected)
+{
+    loadRow(lastRowSelected);
+}
+
+void DiskPresetBrowserPanel::selectedRowsChanged(int)
+{
+    updateStepButtons();
+}
+
+void DiskPresetBrowserPanel::updateStepButtons()
+{
+    const int rows = getNumRows();
+    const int current = listBox.getSelectedRow();
+
+    // With nothing selected both arrows are live: either one is a way in.
+    prevButton.setEnabled(rows > 0 && (current < 0 || current > 0));
+    nextButton.setEnabled(rows > 0 && (current < 0 || current < rows - 1));
 }
 
 juce::var DiskPresetBrowserPanel::getDragSourceDescription(const juce::SparseSet<int>& selectedRows)

@@ -405,9 +405,14 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
           // Store patch in the correct slot
           safeThis->slotSynchronizers[targetSlot].reset();
 
-          // If replacing the active slot, clear UI refs BEFORE destroying old patch
+          // If replacing the active slot, clear UI refs BEFORE destroying old
+          // patch. setPatch(nullptr), not clearModule(): clearModule keeps the
+          // inspector's own Patch pointer and re-arms the assignments list with
+          // it, so the list goes on holding the patch this function is about to
+          // destroy. Only setPatch(nullptr) drops both. It is re-pointed at the
+          // incoming patch further down.
           if (targetSlot == safeThis->activeSlot) {
-            safeThis->mainLayout->getInspector().clearModule();
+            safeThis->mainLayout->getInspector().setPatch(nullptr);
             if (safeThis->knobFloaterWindow)
               safeThis->knobFloaterWindow->setPatch(nullptr);
             if (safeThis->patchNotesFloaterWindow)
@@ -1829,7 +1834,11 @@ bool MainComponent::replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
   // Detach them before replacing the owning unique_ptr.
   slotSynchronizers[slot].reset();
   if (slot == activeSlot) {
-    mainLayout->getInspector().clearModule();
+    // setPatch(nullptr), not clearModule(): see the note at the synth-fetch
+    // site above. clearSnapshots() below walks the morph UI while this patch is
+    // already gone, and it is the assignments list's cached pointer that it
+    // reads. Re-pointed at the end of this function.
+    mainLayout->getInspector().setPatch(nullptr);
     if (knobFloaterWindow)
       knobFloaterWindow->setPatch(nullptr);
     if (patchNotesFloaterWindow)
@@ -1956,7 +1965,9 @@ void MainComponent::newPatch() {
 
   // CRITICAL: Destroy synchronizer BEFORE replacing patch
   currentSynchronizer().reset();
-  mainLayout->getInspector().clearModule();
+  // setPatch(nullptr) and not clearModule(): clearModule leaves the assignments
+  // list holding the patch replaced below.
+  mainLayout->getInspector().setPatch(nullptr);
   if (knobFloaterWindow)
     knobFloaterWindow->setPatch(nullptr);
   if (patchNotesFloaterWindow)
@@ -2093,8 +2104,10 @@ void MainComponent::loadPatchFromFile(const juce::File &file, int targetSlot, bo
 
   // CRITICAL: Destroy synchronizer BEFORE replacing patch
   currentSynchronizer().reset();
-  // Clear inspector before replacing patch — its currentModule points into the old patch
-  mainLayout->getInspector().clearModule();
+  // Clear inspector before replacing patch — it points into the old patch, and
+  // setPatch(nullptr) is what drops the assignments list's copy of that pointer
+  // as well; clearModule() re-arms the list with it instead.
+  mainLayout->getInspector().setPatch(nullptr);
   if (knobFloaterWindow)
     knobFloaterWindow->setPatch(nullptr);
   if (patchNotesFloaterWindow)

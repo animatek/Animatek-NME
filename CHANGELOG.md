@@ -19,6 +19,15 @@
   sets notes did not. The badge appears over the step's own arrow button, so it reads in
   whichever of the two units the setting above asks for.
 
+- **Flechas para recorrer los presets del navegador de disco**
+  ([#60](https://github.com/animatek/Animatek-NME/issues/60)). Hasta ahora cada preset
+  pedia un doble clic, asi que auditar una carpeta era volver al raton en cada fichero.
+  Dos flechas junto al contador cargan el anterior y el siguiente de un clic, y en la
+  lista las teclas de direccion mas `Enter` hacen lo mismo sin soltar el teclado. Recorren
+  las entradas **visibles**, asi que la busqueda y los filtros de tipo las acotan igual que
+  acotan la lista. No dan la vuelta al llegar al final: la flecha se apaga, que en una
+  biblioteca larga es lo que se espera.
+
 ### Fixed
 
 - **Un LED huerfano ya no se queda encendido para siempre.** El barrido de
@@ -30,6 +39,16 @@
   1-15 y 18 — el 16 no, porque ya no estaba en el modelo. El barrido dice ahora que
   knobs y que CC quito, y al instalar el parche que viene del sinte se envia el
   deassign de cada uno.
+
+- **Reemplazar el parche de un slot ya no lee memoria liberada.** Las cuatro rutas que
+  destruyen un parche —el que llega del sinte, `replacePatchInSlot` del puente MCP, parche
+  nuevo y abrir un `.pch`— soltaban el inspector con `clearModule()`, que **conserva** su
+  puntero al parche y con el rearma la lista de asignaciones: justo el parche que la linea
+  siguiente destruye. Despues `clearSnapshots()` recorre esa lista y lee memoria liberada.
+  Sobrevivia de casualidad porque los modulos del contenedor liberado se leen como null.
+  Ahora se sueltan con `setPatch(nullptr)`, que es el unico que tira los dos punteros; las
+  cuatro se vuelven a apuntar al parche entrante mas abajo, como ya hacian. El crash que
+  esto provoco esta tapado desde la #61, pero el fallo de memoria seguia ahi.
 
 - **Borrar varios modulos a la vez apaga sus LEDs, no solo borrarlos de uno en uno.**
   Las luces de los knobs no siguen al parche: solo se mueven con los mensajes
