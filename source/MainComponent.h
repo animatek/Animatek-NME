@@ -348,6 +348,9 @@ private:
     // After a save or a delete, every open inspector redraws its preset list, so
     // two windows showing the same module never disagree about what exists.
     void refreshInspectorPresets();
+    // Deassign on the synth whatever the incoming sweep dropped: the panel's
+    // LEDs do not follow a patch, only the incremental assignment messages.
+    void clearDroppedPanelAssignments(int slot);
     void rebuildUndoContext(int slot);  // call after patch change
     // Modules an undo has just put back, filled by UndoContext::onModuleRestored
     // while the undo runs and read once it finishes: undoing a delete hands the

@@ -366,6 +366,31 @@ public:
     // parameters (sequencer events, clock-divider displays, ...)
     void applyCustomDumpEntry(int section, const CustomDumpEntry& entry);
 
+    // What dropDanglingAssignments() threw away. The knob and MIDI-CC lists
+    // matter beyond the count: the synth still holds those assignments, and its
+    // panel keeps their LEDs lit until it is told knob by knob. Dropping them
+    // from the model alone is what leaves a light on that nothing can reach.
+    struct DroppedAssignments
+    {
+        std::vector<int> knobs;   // knob indices (KnobMapDump order)
+        std::vector<int> ctrls;   // MIDI CC numbers
+        int morphs = 0;
+        int total() const { return static_cast<int>(knobs.size() + ctrls.size()) + morphs; }
+    };
+
+    // Drop morph, knob and MIDI-CC assignments that name a module the patch
+    // does not have. They are what a delete leaves behind on the synth (nothing
+    // in the protocol unassigns a morph, so the synth's map keeps the entry
+    // after the module is gone), and re-fetching that patch brings them back
+    // into the model. Kept, they latch onto the next module to land on the same
+    // index. Only the voice areas are checked: section 2 is the morph section,
+    // whose module always exists.
+    DroppedAssignments dropDanglingAssignments();
+
+    // Set by the call above, and read once by whoever installs the patch in a
+    // slot: if the synth is the one holding it, the panel needs the deassigns.
+    DroppedAssignments danglingDropped;
+
     // Notes
     std::vector<NoteSlot> notes;
 

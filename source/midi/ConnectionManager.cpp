@@ -4,6 +4,8 @@
 #include "../protocol/SetPatchTitleMessage.h"
 #include "../protocol/SetModuleTitleMessage.h"
 #include "../protocol/SendControllerSnapshotMessage.h"
+#include "../protocol/KnobAssignmentMessage.h"
+#include "../protocol/MidiCtrlAssignmentMessage.h"
 #include "../model/PatchSerializer.h"
 #include "../model/Patch.h"
 #include <iostream>
@@ -667,6 +669,43 @@ void ConnectionManager::closeUploadTransfer(const char* reason)
     sendRawSysEx(UploadPacketizer::closeTransferFrame(uploadSlot));
 }
 
+// The knob and MIDI-CC lights on the front panel only follow the incremental
+// assign/deassign messages, never a patch upload -- the upload rewrites the maps
+// inside the patch and leaves every LED exactly as it was.
+//
+// Only what the patch holds is stated. Blanket-deassigning the rest from here
+// does nothing: both messages are resolved against the patch the synth has, and
+// after an upload that removed a module the assignment they name is already
+// gone, so the synth has nothing to act on and the LED stays lit. Freeing a
+// light is the delete's job, before the module goes; lighting one is this one's,
+// after the synth has the module.
+void ConnectionManager::replayPanelAssignments()
+{
+    if (!isConnected() || (uploadKnobAssignments.empty() && uploadCtrlAssignments.empty()))
+    {
+        uploadKnobAssignments.clear();
+        uploadCtrlAssignments.clear();
+        return;
+    }
+
+    const int slot = uploadSlot & 0x03;
+    const int pid = getPatchId(slot);
+
+    for (const auto& a : uploadKnobAssignments)
+        sendRawSysEx(KnobAssignmentMessage::assign(pid, a.index, a.section,
+                                                   a.module, a.param, slot));
+    for (const auto& a : uploadCtrlAssignments)
+        sendRawSysEx(MidiCtrlAssignmentMessage::assign(pid, a.index, a.section,
+                                                       a.module, a.param, slot));
+
+    std::cout << "[UPLOAD] Panel assignments replayed: "
+              << uploadKnobAssignments.size() << " knob(s), "
+              << uploadCtrlAssignments.size() << " MIDI CC(s)" << std::endl;
+
+    uploadKnobAssignments.clear();
+    uploadCtrlAssignments.clear();
+}
+
 void ConnectionManager::sendNextUploadPacket()
 {
     int total = static_cast<int>(uploadPackets.size());
@@ -680,6 +719,8 @@ void ConnectionManager::sendNextUploadPacket()
         {
             auto cb = std::move(bankUploadResultCallback);
             bankUploadResultCallback = nullptr;
+            uploadKnobAssignments.clear();
+            uploadCtrlAssignments.clear();
             juce::MessageManager::callAsync([cb]() { cb(true); });
         }
         else
@@ -688,6 +729,8 @@ void ConnectionManager::sendNextUploadPacket()
             // can reuse it without re-fetching. (Bank uploads excluded above:
             // they push disk files, not the editor model.)
             slotModelDelivered[static_cast<size_t>(uploadSlot & 0x03)] = true;
+
+            replayPanelAssignments();
 
             if (uploadCompleteCallback)
             {
@@ -797,6 +840,20 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
         labels.push_back(describeRawSection(section));
 
     uploadPackets = UploadPacketizer::cut(sections, labels);
+
+    // Kept aside for the replay once the synth has the modules (see
+    // replayPanelAssignments): the upload alone leaves the panel's lights where
+    // they were.
+    uploadKnobAssignments.clear();
+    uploadCtrlAssignments.clear();
+    for (int k = 0; k < 23; ++k)
+    {
+        const auto& ka = patch.knobAssignments[static_cast<size_t>(k)];
+        if (ka.assigned)
+            uploadKnobAssignments.push_back({ k, ka.section, ka.module, ka.param });
+    }
+    for (const auto& ca : patch.ctrlAssignments)
+        uploadCtrlAssignments.push_back({ ca.control, ca.section, ca.module, ca.param });
 
     uploadSlot = slot;
     uploadPacketIndex = 0;
@@ -1120,9 +1177,17 @@ void ConnectionManager::drainAckedQueue()
     auto msg = ackedQueue.front();
     ackedQueue.pop_front();
 
+    // A PatchPacket (cc=0x1c-0x1f) spends bit 6 of byte 4 on the command flag,
+    // so its pid is six bits; the cc=0x17 edits get all seven. Overwriting a
+    // pid of 64 or more with a 0x7F mask would set that flag and the synth
+    // would read the packet as a bulk-upload stream.
+    const int msgCc = msg.bytes.size() > 2 ? ((msg.bytes[2] >> 2) & 0x1F) : 0;
+    const bool isPatchPacket = msgCc >= 0x1c;
+
     if (msg.allowNewPatchInSlotReply && msg.bytes.size() > 4)
     {
-        msg.bytes[4] = static_cast<uint8_t>(slotPatchIds[static_cast<size_t>(msg.slot & 0x03)] & 0x7F);
+        const int pidMask = isPatchPacket ? 0x3F : 0x7F;
+        msg.bytes[4] = static_cast<uint8_t>(slotPatchIds[static_cast<size_t>(msg.slot & 0x03)] & pidMask);
 
         if (msg.bytes.size() > 6 && msg.bytes.front() == 0xF0 && msg.bytes.back() == 0xF7)
             msg.bytes[msg.bytes.size() - 2] = SysEx::checksum(msg.bytes.data(), msg.bytes.size() - 2);
@@ -1139,12 +1204,26 @@ void ConnectionManager::drainAckedQueue()
     // 3-second timeout: if no ACK arrives, unblock the queue.
     // The generation check ensures only the timeout for the *current* message fires.
     auto aliveFlag = alive;
-    juce::Timer::callAfterDelay(ackedTimeoutMs, [this, generation, aliveFlag]() {
+    const int msgSlot = msg.slot;
+    juce::Timer::callAfterDelay(ackedTimeoutMs, [this, generation, aliveFlag,
+                                                 isPatchPacket, msgSlot]() {
         if (!*aliveFlag) return;
         if (ackedQueueWaiting && ackedQueueGeneration == generation)
         {
             std::cout << "[QUEUE] ACK timeout (gen=" << generation << "), unblocking queue ("
                       << ackedQueue.size() << " pending)" << std::endl;
+
+            // A PatchPacket the synth never answered may have left it in
+            // bulk-receive state, where it goes deaf to all MIDI until it sees
+            // a packet flagged `last` (issue #40). One empty terminating packet
+            // gets it back without a power cycle.
+            if (isPatchPacket)
+            {
+                std::cout << "[QUEUE] Unanswered patch packet: closing the transfer "
+                             "so the synth leaves bulk-receive state" << std::endl;
+                sendRawSysEx(UploadPacketizer::closeTransferFrame(msgSlot));
+            }
+
             ackedQueueWaiting = false;
             ackedQueueWaitingAllowsNewPatchInSlot = false;
             drainAckedQueue();

@@ -201,6 +201,57 @@ keyboard floater and hardware-verified (the editor also sends off+on pairs when 
 notes in drone mode). Sniffing technique: the Wine editor exposes an ALSA seq client
 ("WINE midi driver"), so `aseqdump -p <client>:1` shows its TX directly.
 
+### The panel's knob LEDs do not follow a patch upload
+A bulk upload rewrites KnobMapDump and ControlMapDump in the patch, and the synth
+ACKs it, but the panel keeps every assigned knob's LED lit. Those lights only
+follow the incremental messages: `KnobAssignment` (sc=0x25) /
+`KnobAssignmentChange` (sc=0x26), and `MidiCtrlAssignment` (sc=0x22) /
+`MidiCtrlAssignmentChange` (sc=0x23). Observed 2026-09-10: a delete of every
+module in a slot uploaded 16 sections with zero knob assignments, was ACKed, and
+left the panel LEDs on. So a delete has to send a deassign per knob as well as
+uploading the patch, and an upload has to replay its assignments afterwards.
+
+An assign names a module, so it only lands once the synth has that module: sent
+alongside an upload that is still in flight it is dropped silently. The replay
+therefore belongs after the last packet is ACKed, not next to the upload call.
+A deassign names only the knob, so it can go at any time — and it has to, because
+it is the one message that can reach a light the editor no longer has a model
+for: dropping a dangling assignment without deassigning it strands that LED on
+for good.
+
+Both messages are resolved against the patch the synth holds, which fixes when
+each one can be sent:
+
+| Message | Lands only if | So it goes |
+|---|---|---|
+| deassign | the synth still has the module the knob pointed at | before the module is deleted |
+| assign | the synth already has the module | after the upload's last packet is ACKed |
+
+Neither survives being aimed at a superseded patch, and that is what breaks a
+multi-module delete: the actions run back to back in one pass, all addressed to
+the patch id as it was when the pass began, and a single incremental
+ModuleDeletion or CableDelete let out mid-pass moves the synth on, so every
+deassign still to come is dropped. Suppress the incremental messages for the
+whole pass and close it with one upload — the synth's patch and its id then hold
+still throughout. Knob assignment changes do not move the id themselves: the
+synth ACKs them with it unchanged.
+
+Blanket-deassigning every knob after an upload does not work as a catch-all: by
+then the assignment the message names is already gone with the module.
+
+### Morph and knob assignments outlive their module
+There is no unassign message for a morph: `MorphAssignment` (sc=0x64) can only
+point a parameter at a morph group. So a `ModuleDeletion` (sc=0x32) leaves the
+synth's MorphMap and KnobMapDump still naming the module that went, and the next
+`GetPatch` hands those leftovers back to the editor. They are harmless until a
+module lands on the same index — then the stale entries bind to it and the G1
+stops answering MIDI (observed 2026-09-10 on a patch whose audio half had been
+deleted in one go: 25 morph and 9 knob assignments, every one of them dangling,
+including index 1, the next index the editor hands out). Deleting a module that
+carries assignments therefore needs a full patch upload, not the incremental
+message, and any patch coming in is swept of assignments naming a module it
+does not have.
+
 Hardware-tested dead ends (2026-06-11), do not retry:
 - `NoteEvent` (sc=0x41, vel/onoff/note) is **incoming-only** — the synth reports keyboard
   notes with it but refuses it as input with error 5 ("no slot focused"), even right after

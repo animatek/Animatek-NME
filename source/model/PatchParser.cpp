@@ -66,6 +66,16 @@ std::unique_ptr<Patch> PatchParser::parse(const std::vector<std::vector<uint8_t>
     for (const auto& entry : patch->commonCustomDump)
         patch->applyCustomDumpEntry(0, entry);
 
+    // A delete leaves the synth's morph and knob maps naming a module that is
+    // gone, and this is where they come back into the editor. Dropped here so
+    // they cannot latch onto the next module handed the same index.
+    if (const auto dropped = patch->dropDanglingAssignments(); dropped.total() > 0)
+        DBG("PatchParser: dropped " + juce::String(dropped.total())
+            + " assignment(s) naming a module the patch does not have ("
+            + juce::String(dropped.morphs) + " morph, "
+            + juce::String(dropped.knobs.size()) + " knob, "
+            + juce::String(dropped.ctrls.size()) + " MIDI CC)");
+
     DBG("PatchParser: done. Patch name: \"" + patch->getName() + "\"");
     DBG("  Poly modules: " + juce::String(patch->getPolyVoiceArea().getModules().size())
         + ", Common modules: " + juce::String(patch->getCommonArea().getModules().size()));

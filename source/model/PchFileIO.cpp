@@ -237,6 +237,12 @@ std::unique_ptr<Patch> PchFileIO::readFile(const juce::File& file)
     for (const auto& entry : patch->commonCustomDump)
         patch->applyCustomDumpEntry(0, entry);
 
+    // Same clean-up as the synth path: a .pch saved after a delete that the
+    // synth never applied to its morph/knob maps carries the leftovers.
+    if (const auto dropped = patch->dropDanglingAssignments(); dropped.total() > 0)
+        DBG("PchFileIO: dropped " + juce::String(dropped.total())
+            + " assignment(s) naming a module the patch does not have");
+
     // Derive patch name from filename if not set from notes
     if (patch->getName() == "Init Patch")
         patch->setName(patchNameFromFileName(file));

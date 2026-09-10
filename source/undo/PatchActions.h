@@ -243,12 +243,43 @@ public:
                 return ma.section == section_ && ma.module == containerIndex_;
             }), morphs.end());
 
+        // Every delete is suppressed and synced by a full upload, even one that
+        // frees nothing. It is not about this module: it is about the ones
+        // deleted beside it. Deleting a selection runs these actions back to
+        // back in a single pass, and the deassign messages below are built with
+        // the patch id as it is at that moment. One incremental DeleteModule or
+        // DeleteCable let out mid-pass moves the synth's patch on, and every
+        // deassign still to come in that pass is addressed to a patch that is
+        // no longer there, so the synth drops it and the light stays on. With
+        // nothing let out, the synth's patch — and its id — hold still until
+        // the upload at the end. Knob assignment changes themselves do not move
+        // it: the synth ACKs them with the id unchanged.
+        SyncSuppressor guard(ctx_.syncPtr);
+
+        // The panel's lights do not follow a patch upload, only the incremental
+        // assign/deassign messages, so each one has to be freed by name. Sent
+        // before the module goes: a deassign that arrives once the synth no
+        // longer has the module it was pointing at leaves the LED lit.
+        const bool connected = ctx_.connMgr.isConnected();
+        const int assignPid = ctx_.connMgr.getPatchId(ctx_.slot);
+
         for (int k = 0; k < 23; ++k)
         {
             auto& ka = ctx_.patch.knobAssignments[static_cast<size_t>(k)];
             if (ka.assigned && ka.section == section_ && ka.module == containerIndex_)
+            {
                 ka.assigned = false;
+                if (connected)
+                    ctx_.connMgr.sendRawSysEx(
+                        KnobAssignmentMessage::deassign(assignPid, k, ctx_.slot));
+            }
         }
+
+        if (connected)
+            for (const auto& ca : ctx_.patch.ctrlAssignments)
+                if (ca.section == section_ && ca.module == containerIndex_)
+                    ctx_.connMgr.sendRawSysEx(
+                        MidiCtrlAssignmentMessage::deassign(assignPid, ca.control, ctx_.slot));
 
         auto& ctrls = ctx_.patch.ctrlAssignments;
         ctrls.erase(std::remove_if(ctrls.begin(), ctrls.end(),
@@ -256,9 +287,10 @@ public:
                 return ca.section == section_ && ca.module == containerIndex_;
             }), ctrls.end());
 
-        // removeModule fires the sync callback which sends DeleteModule to synth
         container.removeModule(mod);
+
         ctx_.repaint();
+        if (ctx_.syncToSynth) ctx_.syncToSynth();
         return true;
     }
 
@@ -313,11 +345,14 @@ public:
         for (auto& ma : stashedMorphs_)
             ctx_.patch.morphAssignments.push_back(ma);
 
-        // Restore knob assignments
+        // Restore knob and ctrl assignments. Nothing is sent from here: an
+        // assign names a module, and at this point the synth has not taken the
+        // upload below, so it does not have the module yet and would drop the
+        // message. The upload replays them itself once its last packet is ACKed
+        // (ConnectionManager::replayPanelAssignments).
         for (auto& [k, ka] : stashedKnobs_)
             ctx_.patch.knobAssignments[static_cast<size_t>(k)] = ka;
 
-        // Restore ctrl assignments
         for (auto& ca : stashedCtrls_)
             ctx_.patch.ctrlAssignments.push_back(ca);
 

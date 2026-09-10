@@ -1,6 +1,7 @@
 #include "Patch.h"
 #include "ModuleDescriptions.h"
 #include <set>
+#include <algorithm>
 
 // --- Module ---
 
@@ -310,6 +311,49 @@ Module* Patch::createModule(int section, int typeId, int gridX, int gridY,
     Module* modulePtr = container.addModule(std::move(module));
 
     return modulePtr;
+}
+
+Patch::DroppedAssignments Patch::dropDanglingAssignments()
+{
+    // section 0 and 1 are the voice areas and name a module by index; 2 is the
+    // morph section, which has no module list to check against.
+    auto missing = [this](int section, int moduleIndex)
+    {
+        if (section != 0 && section != 1)
+            return false;
+        return getContainer(section).getModuleByIndex(moduleIndex) == nullptr;
+    };
+
+    DroppedAssignments dropped;
+
+    const auto morphsBefore = morphAssignments.size();
+    morphAssignments.erase(
+        std::remove_if(morphAssignments.begin(), morphAssignments.end(),
+            [&missing](const MorphAssignment& ma) { return missing(ma.section, ma.module); }),
+        morphAssignments.end());
+    dropped.morphs = static_cast<int>(morphsBefore - morphAssignments.size());
+
+    for (size_t k = 0; k < knobAssignments.size(); ++k)
+    {
+        auto& ka = knobAssignments[k];
+        if (ka.assigned && missing(ka.section, ka.module))
+        {
+            ka = KnobAssignment{};
+            dropped.knobs.push_back(static_cast<int>(k));
+        }
+    }
+
+    for (const auto& ca : ctrlAssignments)
+        if (missing(ca.section, ca.module))
+            dropped.ctrls.push_back(ca.control);
+
+    ctrlAssignments.erase(
+        std::remove_if(ctrlAssignments.begin(), ctrlAssignments.end(),
+            [&missing](const CtrlAssignment& ca) { return missing(ca.section, ca.module); }),
+        ctrlAssignments.end());
+
+    danglingDropped = dropped;
+    return dropped;
 }
 
 void Patch::applyCustomDumpEntry(int section, const CustomDumpEntry& entry)

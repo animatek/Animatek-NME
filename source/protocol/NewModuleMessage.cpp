@@ -1,5 +1,4 @@
 #include "NewModuleMessage.h"
-#include "../model/IntStream.h"
 #include "../model/BitStreamWriter.h"
 #include "ParameterEncoder.h"
 
@@ -27,156 +26,68 @@ std::vector<uint8_t> NewModuleMessageProto::toSysEx(int slot) const
     // cc=0x1f indicates PatchPacket with both first+last bits set
     appendHeader(msg, 0x1f, slot);
 
-    // Payload: pid + encoded patch data
-    msg.push_back(static_cast<uint8_t>(pid_ & 0x7F));
+    // Payload: pid + encoded patch data.
+    // PatchPacket := 0:1 command:1 pid:6 -- only six bits for the pid here, and
+    // bit 6 is the command flag, which the bulk upload sets and an edit leaves
+    // at 0 (see UploadPacketizer::frame). NewModule is the one edit message on
+    // cc=0x1f; move/delete/rename/cables ride cc=0x17, where the pid is seven
+    // bits wide. Masking with 0x7F would turn a pid of 64 or more into
+    // command=1 and the synth would read the packet as a bulk-upload stream.
+    msg.push_back(static_cast<uint8_t>(pid_ & 0x3F));
 
-    // Build IntStream exactly like Java (values, not bits)
-    IntStream patchData;
-
-    // Section 1: SingleModule (type 48)
-    patchData.append(48);
-    patchData.append(typeId_);
-    patchData.append(section_);
-    patchData.append(index_);
-    patchData.append(xpos_);
-    patchData.append(ypos_);
-    patchData.appendString(name_);
-
-    // Section 2: CableDump (type 82)
-    patchData.append(82);
-    patchData.append(section_);
-    patchData.append(0);  // ncables = 0
-
-    // Section 3: ParameterDump (type 77)
-    patchData.append(77);
-    patchData.append(section_);
-    if (!paramValues_.empty())
-    {
-        patchData.append(1);  // nmodules = 1
-        patchData.append(index_);
-        patchData.append(typeId_);
-        for (int val : paramValues_)
-            patchData.append(val);
-    }
-    else
-    {
-        patchData.append(0);  // nmodules = 0
-    }
-
-    // Section 4: CustomDump (type 91)
-    patchData.append(91);
-    patchData.append(section_);
-    if (!customValues_.empty())
-    {
-        patchData.append(1);  // nmodules = 1
-        patchData.append(index_);
-        patchData.append(static_cast<int>(customValues_.size()));
-        for (int val : customValues_)
-            patchData.append(val);
-    }
-    else
-    {
-        patchData.append(0);  // nmodules = 0
-    }
-
-    // Section 5: NameDump (type 90)
-    patchData.append(90);
-    patchData.append(section_);
-    patchData.append(1);  // nmodules = 1
-    patchData.append(index_);
-    patchData.appendString(name_);
-
-    // Convert IntStream to BitStream using PDL2 rules
-    // The PDL2 parser would interpret each IntStream value according to the schema,
-    // but we know the exact structure for NewModuleMessage, so we can encode directly.
-
+    // Encode each byte-aligned PDL2 section directly. Values are not MIDI
+    // bytes yet: SingleModule fields and CustomValue both use all eight bits.
     BitStreamWriter bsw;
 
-    // Process each value from IntStream according to NewModuleMessage structure
-    const auto& vals = patchData.getValues();
-    size_t pos = 0;
-
-    // Helper to read next value
-    auto nextVal = [&vals, &pos]() -> int {
-        return (pos < vals.size()) ? vals[pos++] : 0;
-    };
-
-    // Section 1: SingleModule (type 48)
-    // PDL2: SingleModule := type:8 section:8 index:8 xpos:8 ypos:8 String$name
-    bsw.writeBits(nextVal(), 8);  // type = 48
-    bsw.writeBits(nextVal(), 8);  // module type ID (8 bits!)
-    bsw.writeBits(nextVal(), 8);  // section (8 bits!)
-    bsw.writeBits(nextVal(), 8);  // index (8 bits!)
-    bsw.writeBits(nextVal(), 8);  // xpos (8 bits!)
-    bsw.writeBits(nextVal(), 8);  // ypos (8 bits!)
-    // String$name (null-terminated)
-    while (pos < vals.size() && vals[pos] != 0)
-        bsw.writeBits(nextVal(), 8);
-    bsw.writeBits(nextVal(), 8);  // null terminator
+    // SingleModule := type:8 section:8 index:8 xpos:8 ypos:8 String$name
+    bsw.writeBits(48, 8);
+    bsw.writeBits(typeId_, 8);
+    bsw.writeBits(section_, 8);
+    bsw.writeBits(index_, 8);
+    bsw.writeBits(xpos_, 8);
+    bsw.writeBits(ypos_, 8);
+    bsw.writeString16(name_);
     bsw.alignToByte();
 
-    // Section 2: CableDump (type 82)
-    bsw.writeBits(nextVal(), 8);   // type = 82
-    bsw.writeBits(nextVal(), 1);   // section
-    bsw.writeBits(nextVal(), 15);  // ncables
+    // CableDump := section:1 ncables:15
+    bsw.writeBits(82, 8);
+    bsw.writeBits(section_, 1);
+    bsw.writeBits(0, 15);
     bsw.alignToByte();
 
-    // Section 3: ParameterDump (type 77)
-    bsw.writeBits(nextVal(), 8);  // type = 77
-    bsw.writeBits(nextVal(), 1);  // section
-    int nmodules = nextVal();
-    bsw.writeBits(nmodules, 7);
-    if (nmodules > 0)
+    // ParameterDump := section:1 nmodules:7 [index:7 type:7 params]
+    bsw.writeBits(77, 8);
+    bsw.writeBits(section_, 1);
+    bsw.writeBits(paramValues_.empty() ? 0 : 1, 7);
+    if (!paramValues_.empty())
     {
-        bsw.writeBits(nextVal(), 7);  // index
-        int moduleType = nextVal();
-        bsw.writeBits(moduleType, 7);  // type
-
-        // Get parameter bit widths for this module type
-        auto bitWidths = ParameterEncoder::getParameterBitWidths(moduleType);
-
-        if (!bitWidths.empty())
-        {
-            // Encode parameters with correct bit widths from PDL2
-            // Use bitWidths.size() as the exact bound — do NOT check for 90/91
-            // sentinel values since parameter values can legitimately be 90 or 91.
-            for (size_t i = 0; i < bitWidths.size() && pos < vals.size(); ++i)
-                bsw.writeBits(nextVal(), bitWidths[i]);
-        }
-        else
-        {
-            // Fallback: unknown module type, write all as 7 bits
-            while (pos < vals.size() && vals[pos] != 91 && vals[pos] != 90)
-                bsw.writeBits(nextVal(), 7);
-        }
+        bsw.writeBits(index_, 7);
+        bsw.writeBits(typeId_, 7);
+        const auto widths = ParameterEncoder::getParameterBitWidths(typeId_);
+        for (size_t i = 0; i < paramValues_.size(); ++i)
+            bsw.writeBits(paramValues_[i], i < widths.size() ? widths[i] : 7);
     }
     bsw.alignToByte();
 
-    // Section 4: CustomDump (type 91)
-    bsw.writeBits(nextVal(), 8);  // type = 91
-    bsw.writeBits(nextVal(), 1);  // section
-    nmodules = nextVal();
-    bsw.writeBits(nmodules, 7);
-    if (nmodules > 0)
+    // CustomDump := section:1 nmodules:7 [index:7 nparams:8 values:8*]
+    bsw.writeBits(91, 8);
+    bsw.writeBits(section_, 1);
+    bsw.writeBits(customValues_.empty() ? 0 : 1, 7);
+    if (!customValues_.empty())
     {
-        bsw.writeBits(nextVal(), 7);     // index
-        int nparams = nextVal();
-        bsw.writeBits(nparams, 8);
-        for (int i = 0; i < nparams; ++i)
-            bsw.writeBits(nextVal(), 7);
+        bsw.writeBits(index_, 7);
+        bsw.writeBits(static_cast<uint32_t>(customValues_.size()), 8);
+        for (int value : customValues_)
+            bsw.writeBits(value, 8);
     }
     bsw.alignToByte();
 
-    // Section 5: NameDump (type 90)
-    bsw.writeBits(nextVal(), 8);  // type = 90
-    bsw.writeBits(nextVal(), 1);  // section
-    bsw.writeBits(nextVal(), 7);  // nmodules
-    bsw.writeBits(nextVal(), 8);  // index
-    // Name (null-terminated string)
-    while (pos < vals.size() && vals[pos] != 0)
-        bsw.writeBits(nextVal(), 8);
-    if (pos < vals.size())
-        bsw.writeBits(nextVal(), 8);  // null terminator
+    // NameDump := section:1 nmodules:7 [index:8 String$name]
+    bsw.writeBits(90, 8);
+    bsw.writeBits(section_, 1);
+    bsw.writeBits(1, 7);
+    bsw.writeBits(index_, 8);
+    bsw.writeString16(name_);
     bsw.alignToByte();
 
     // Convert bitstream to 7-bit MIDI bytes and append

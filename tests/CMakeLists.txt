@@ -6,6 +6,7 @@ juce_add_console_app(nme_tests PRODUCT_NAME "nme_tests")
 
 target_sources(nme_tests PRIVATE
     test_main.cpp
+    test_new_module_message.cpp
     test_sysex_codec.cpp
     test_upload_packetizer.cpp
     test_patch_roundtrip.cpp
@@ -18,6 +19,7 @@ target_sources(nme_tests PRIVATE
     test_patch_file_name.cpp
     test_seq_note_names.cpp
     test_module_naming.cpp
+    test_dangling_assignments.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
@@ -31,6 +33,8 @@ target_sources(nme_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/source/model/PchFileIO.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/SysExCodec.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/UploadPacketizer.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/NewModuleMessage.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/ParameterEncoder.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/SysExMessage.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/SetPatchTitleMessage.cpp
 )
