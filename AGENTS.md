@@ -90,3 +90,7 @@ path to this repo's changelog. Technical detail stays here and is not duplicated
 - Uncommitted work is marked explicitly as `cambio local, sin commit`.
 - The panel picks it up in the next morning's ingest. To see it now:
   `Animatek.net/panel/ingesta/actualizar.sh`.
+- **Do not read the whole thing just to write in it.** It grows ~13 KB a day and is split by
+  month: the current month in the note, closed months in `CHANGELOG - CODE/AAAA-MM.md` next to
+  it. Query it with `cambios` — `cambios buscar "morph"`, `cambios de NME`, `cambios ver
+  2026-09-10` — which asks the database and returns the entry, not the file.
