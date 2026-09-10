@@ -316,6 +316,16 @@ private:
     // Patch request state
     bool waitingForPatchAck = false;
     bool collectingSections = false;
+    // The panel's LEDs do not follow a patch upload: the knob and MIDI-CC lights
+    // only move for the incremental assign/deassign messages. An upload of the
+    // editor's own model therefore replays its assignments once the last packet
+    // is ACKed -- by then the modules they name exist on the synth, which is
+    // what a lone assign needs and why it cannot be sent alongside the upload.
+    struct PanelAssignment { int index; int section; int module; int param; };
+    std::vector<PanelAssignment> uploadKnobAssignments;
+    std::vector<PanelAssignment> uploadCtrlAssignments;
+    void replayPanelAssignments();
+
     bool waitingForUploadAck = false;      // True while waiting for synth ACK after uploadPatch
     bool suppressNextAutoFetch = false;    // Set after upload completes; clears on next NewPatchInSlot
     bool suppressNewPatchInSlot_ = false;  // Set during upload-in-progress

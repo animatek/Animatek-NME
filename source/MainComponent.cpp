@@ -17,6 +17,8 @@
 #include "format/ValueFormatters.h"
 #include "protocol/StorePatchMessage.h"
 #include "protocol/MorphKeyboardAssignmentMessage.h"
+#include "protocol/KnobAssignmentMessage.h"
+#include "protocol/MidiCtrlAssignmentMessage.h"
 #include "BinaryData.h"
 #include <iostream>
 #include <set>
@@ -482,6 +484,14 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             // And give it back its comments, notes, variations and Mutator
             // exclusions, which could not travel over the wire.
             safeThis->attachExtrasFromLibrary(targetSlot);
+
+            // The sweep on the way in threw away assignments naming a module
+            // this patch does not have. The synth is the one holding the patch,
+            // so its panel still has those LEDs lit and nothing else will ever
+            // reach them: the editor has just forgotten they existed. Told here,
+            // knob by knob, while the model and the synth still agree on
+            // everything else.
+            safeThis->clearDroppedPanelAssignments(targetSlot);
 
             const char* slotLetters[] = {"A", "B", "C", "D"};
             std::cout << "[SYNC] Patch loaded into slot " << slotLetters[targetSlot]
@@ -4027,6 +4037,37 @@ void MainComponent::showBetaWarning(bool forceShow)
         return;
 
     new BetaWarningPopup(this, appProperties);
+}
+
+// A patch arriving from the synth is swept of assignments naming a module it
+// does not have (Patch::dropDanglingAssignments). The synth keeps them, and its
+// panel keeps their lights on: the knob LEDs only follow the incremental
+// assign/deassign messages, never the patch. So whatever the sweep dropped is
+// deassigned here, or the light stays on for the rest of the session with
+// nothing in the editor that could refer to it.
+void MainComponent::clearDroppedPanelAssignments(int slot)
+{
+    if (slot < 0 || slot >= numSlots || !slotPatches[slot])
+        return;
+
+    auto& dropped = slotPatches[slot]->danglingDropped;
+    if (dropped.knobs.empty() && dropped.ctrls.empty())
+        return;
+
+    if (connectionManager.isConnected())
+    {
+        const int pid = connectionManager.getPatchId(slot);
+        for (int knob : dropped.knobs)
+            connectionManager.sendRawSysEx(KnobAssignmentMessage::deassign(pid, knob, slot));
+        for (int ctrl : dropped.ctrls)
+            connectionManager.sendRawSysEx(MidiCtrlAssignmentMessage::deassign(pid, ctrl, slot));
+
+        std::cout << "[SYNC] Panel cleared of " << dropped.knobs.size()
+                  << " orphaned knob assignment(s) and " << dropped.ctrls.size()
+                  << " MIDI CC assignment(s)" << std::endl;
+    }
+
+    dropped = Patch::DroppedAssignments{};
 }
 
 void MainComponent::rebuildUndoContext(int slot)

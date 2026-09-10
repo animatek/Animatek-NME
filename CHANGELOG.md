@@ -21,6 +21,112 @@
 
 ### Fixed
 
+- **Un LED huerfano ya no se queda encendido para siempre.** El barrido de
+  asignaciones huerfanas las quitaba del modelo y ahi acababa la cosa: el sinte
+  seguia con esa asignacion y con su LED encendido, y el editor ya no sabia que
+  existia, asi que ningun borrado ni ninguna subida podia llegar a ella nunca.
+  Visto en "DRUM VICIUS": el parche entro con una asignacion colgada del Knob 16,
+  el barrido la tiro, y al borrar los modulos salieron los deassign de los knobs
+  1-15 y 18 — el 16 no, porque ya no estaba en el modelo. El barrido dice ahora que
+  knobs y que CC quito, y al instalar el parche que viene del sinte se envia el
+  deassign de cada uno.
+
+- **Borrar varios modulos a la vez apaga sus LEDs, no solo borrarlos de uno en uno.**
+  Las luces de los knobs no siguen al parche: solo se mueven con los mensajes
+  incrementales de asignar y desasignar, y los dos se resuelven contra el parche que
+  el sinte tiene en ese momento. Un `deassign` llega a tiempo si el sinte todavia
+  tiene el modulo al que apuntaba y si va dirigido al parche vigente. Borrar una
+  seleccion ejecuta las acciones seguidas en una sola pasada, y bastaba con que un
+  `DeleteModule` o un `DeleteCable` incremental saliera a mitad para mover el parche
+  del sinte: todos los deassign que quedaban por salir iban dirigidos a un parche que
+  ya no existia y el sinte los descartaba. De ahi que uno a uno funcionara y todos de
+  golpe no. Ahora **todo** borrado va suprimido y se sincroniza con una subida
+  completa, incluso el que no libera nada: mientras dura la pasada no sale nada
+  incremental, el parche del sinte y su id se quedan quietos, y todos los deassign
+  son validos. Los cambios de asignacion de knob no mueven el id — el sinte los
+  confirma con el mismo.
+
+- **La subida solo afirma lo que el parche tiene.** Desasignar en bloque desde ahi no
+  servia de nada: despues de una subida que quito modulos, la asignacion que el
+  mensaje nombra ya no esta, el sinte no tiene sobre que actuar y el LED se queda
+  encendido igual. Apagar una luz es cosa del borrado, antes de que el modulo se
+  vaya; encenderla es de la subida, cuando el sinte ya tiene el modulo.
+
+- **Un LED huerfano ya no se queda encendido para siempre.** El barrido de
+  asignaciones huerfanas las quitaba del modelo y ahi acababa la cosa: el sinte
+  seguia con esa asignacion y con su LED encendido, y el editor ya no sabia que
+  existia, asi que ningun borrado ni ninguna subida podia llegar a ella nunca.
+  Visto en "DRUM VICIUS": el parche entro con una asignacion colgada del Knob 16,
+  el barrido la tiro, y al borrar los modulos salieron los deassign de los knobs
+  1-15 y 18 — el 16 no, porque ya no estaba en el modelo. El barrido dice ahora que
+  knobs y que CC quito, y al instalar el parche que viene del sinte se envia el
+  deassign de cada uno.
+
+- **El panel del sinte se declara entero al terminar cada subida.** Las luces de los
+  knobs no siguen al parche: solo se mueven con los mensajes incrementales de
+  asignar y desasignar. Corregirlas de una en una obliga a que cada mensaje llegue
+  en un momento en que siga siendo cierto, y borrar varios modulos a la vez es justo
+  donde eso se rompe — los borrados, sus cables y la subida se mueven por debajo, y
+  quedaban LEDs encendidos sin nada que los apagara. Al acabar la subida se declara
+  ahora el mapa de knobs completo: cada uno de los 21, asignado o no. Son 21 mensajes
+  cortos y dejan el panel igual al parche viniera por donde viniera. El reenvio va
+  despues del ACK del ultimo paquete y no junto a la subida: una asignacion nombra un
+  modulo, y enviada antes de que el sinte tenga el parche nombra un modulo que
+  todavia no esta ahi y se descarta — que es lo que dejaba un borrado deshecho con
+  sus modulos de vuelta y sus knobs sin asignar. Los CC MIDI son 128 y no encienden
+  nada, asi que siguen liberandose uno a uno al borrar.
+
+- **Un LED huerfano ya no se queda encendido para siempre.** El barrido de
+  asignaciones huerfanas las quitaba del modelo y ahi acababa la cosa: el sinte
+  seguia con esa asignacion y con su LED encendido, y el editor ya no sabia que
+  existia, asi que ningun borrado ni ninguna subida podia llegar a ella nunca.
+  Visto en "DRUM VICIUS": el parche entro con una asignacion colgada del Knob 16,
+  el barrido la tiro, y al borrar los modulos salieron los deassign de los knobs
+  1-15 y 18 — el 16 no, porque ya no estaba en el modelo. El barrido dice ahora que
+  knobs y que CC quito, y al instalar el parche que viene del sinte se envia el
+  deassign de cada uno.
+
+- **Borrar un modulo ya no deja sus asignaciones en el sinte.** El modelo del
+  editor si quitaba los morphs, knobs y CC del modulo borrado, pero el protocolo no
+  tiene forma de desasignar un morph, asi que un `DeleteModule` incremental dejaba
+  los mapas de morph y de knobs del sinte apuntando al modulo que acababa de irse.
+  Al volver a leer el parche esos restos entraban otra vez en el editor y se
+  guardaban en el `.pch`: el parche quedaba corrupto, y la basura se enganchaba al
+  siguiente modulo que cayera en ese indice. Ahi es donde el G1 se colgaba al añadir
+  un oscilador. Un modulo que llevaba asignaciones se sincroniza ahora con una
+  subida completa, que reescribe los dos mapas; va con rebote y se agrupa, asi que
+  borrar una seleccion entera manda una sola. Un modulo sin asignaciones sigue por
+  la via incremental.
+
+- **Un parche que entra se limpia de asignaciones huerfanas.** Todo morph, knob o CC
+  que nombra un modulo que el parche no tiene se descarta al leerlo, venga del sinte
+  o de un `.pch`. Asi un parche ya corrupto se cura al abrirlo en vez de arrastrar la
+  basura a la siguiente subida. La seccion 2 (la de morph) no se toca: su modulo no
+  esta en la lista de un area de voces y siempre existe.
+
+- **El pid de NewModule cabe en sus seis bits.** `PatchPacket := 0:1 command:1 pid:6`:
+  NewModule es el unico mensaje de edicion que va por cc=0x1f, y por tanto el unico
+  con un pid de seis bits — mover, borrar, renombrar y los cables van por cc=0x17,
+  donde el pid tiene siete. Se enmascaraba con `0x7F` tanto al construir el mensaje
+  como al reescribir el pid en la cola de envio, asi que un pid de 64 o mas encendia
+  el bit de `command`, que es el que marca un flujo de subida masiva
+  (`UploadPacketizer::frame`), y el sinte habria leido el paquete como otra cosa.
+
+- **Un PatchPacket sin respuesta cierra su transferencia.** Si un mensaje de la cola
+  con ACK va por cc=0x1c-0x1f y agota los tres segundos sin contestacion, se envia el
+  paquete vacio de cierre. El sinte se queda en estado de recepcion masiva hasta que
+  ve un paquete marcado `last`, y ahi deja de contestar a todo (incidencia #40): el
+  cierre lo saca sin apagarlo.
+
+- **Alta de OscA: se incluyen sus valores custom en el SysEx.** El sincronizador
+  enviaba siempre un CustomDump vacío, omitiendo la unidad de frecuencia de OscA
+  y los ajustes custom del resto de módulos. NewModule conserva ahora los campos
+  de 8 bits del protocolo y respeta el límite de 16 caracteres sin añadir un NUL
+  extra que desplace las secciones. Verificado con compilación Debug, CTest y
+  tres pruebas de regresión (337 comprobaciones), incluida la coincidencia byte
+  a byte con el paquete OscA de referencia de jnmprotocol. Pendiente confirmar
+  en el Nord real si resuelve el bloqueo comunicado al añadir el oscilador.
+
 - **No patch and an empty patch no longer look the same** (#75). Starting the editor with
   the synth off left you looking at the working canvas, grid and all, under "Press Enter to
   add modules", which is an instruction that cannot be followed: there is nothing to add the
@@ -1481,4 +1587,3 @@ people for the first time in 0.15.0.*
 - Undo/redo system for patch editing.
 - QuickAdd, multi-selection, copy/paste, duplicate, cable tools, zoom, randomize, initialize, parameter locks, and snapshots.
 - Help system and About/Help links.
-
