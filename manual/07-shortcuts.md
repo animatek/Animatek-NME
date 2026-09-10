@@ -72,6 +72,7 @@ On macOS, `Ctrl` is `Cmd`.
 | Right-click a slot row | Show/hide that slot's sub-window |
 | Right-click a patch in the Synth browser | **Load to Slot A..D**: fetch it into a named slot |
 | Arrow keys then `Enter` in the Preset browser | Walk the list and load what is selected |
+| Arrow keys over the Inspector's preset list | Walk the module's presets, recalling each as you pass it |
 | The two arrow buttons in the Preset browser | Load the previous or next entry outright, one click per preset |
 | `Ctrl+click` a slot row | Enable/disable the slot without selecting it |
 

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "InspectorPanel.h"
 #include "AppTheme.h"
 #include "protocol/KnobAssignmentMessage.h"
@@ -166,6 +167,9 @@ public:
     AssignmentsListComponent()
     {
         setInterceptsMouseClicks(true, false);
+        // Recalling a preset gives this list the keyboard, so the arrows can
+        // walk the rest of them without going back to the mouse (issue #60).
+        setWantsKeyboardFocus(true);
 
         addChildComponent(valueEditor);
         valueEditor.setBorder(juce::BorderSize<int>(1));
@@ -215,6 +219,7 @@ public:
         moduleRef = m != nullptr ? ModuleRef { sec, m->getContainerIndex() } : ModuleRef {};
         // Don't clear patch - needed for knob/CC lookups in single-module mode
         singleSection = sec;
+        selectedPreset = -1;   // a different module, a different preset list
         rebuild();
     }
 
@@ -223,7 +228,87 @@ public:
         moduleRef.clear();
         patch = p;
         singleSection = -1;
+        selectedPreset = -1;
         rebuild();
+    }
+
+    // ── Preset selection (issue #60) ──
+
+    // The preset indices actually on screen, in the order they are drawn. Built
+    // from the layout rather than from the library, so a collapsed Factory
+    // folder is skipped by the arrows exactly as it is skipped by the eye.
+    std::vector<int> visiblePresetRows() const
+    {
+        std::vector<int> rows;
+        for (const auto& row : layout)
+            if (row.kind == RowKind::PresetRow)
+                rows.push_back(row.index);
+        return rows;
+    }
+
+    // Everything that loads a preset comes through here: the click, and each
+    // press of an arrow key.
+    void recallPreset(int index)
+    {
+        selectedPreset = index;
+        grabKeyboardFocus();
+        scrollPresetIntoView(index);
+        repaint();
+        if (onPresetRecall) onPresetRecall(index);
+    }
+
+    // The list lives in a viewport taller than itself, so walking off the
+    // bottom would otherwise load presets you cannot see.
+    void scrollPresetIntoView(int index)
+    {
+        auto* viewport = findParentComponentOfClass<juce::Viewport>();
+        if (viewport == nullptr) return;
+
+        const auto rowBounds = boundsOf(RowKind::PresetRow, index);
+        if (rowBounds.isEmpty()) return;
+
+        const int top = viewport->getViewPositionY();
+        const int bottom = top + viewport->getViewHeight();
+
+        if (rowBounds.getY() < top)
+            viewport->setViewPosition(viewport->getViewPositionX(), rowBounds.getY());
+        else if (rowBounds.getBottom() > bottom)
+            viewport->setViewPosition(viewport->getViewPositionX(),
+                                      rowBounds.getBottom() - viewport->getViewHeight());
+    }
+
+    // Up and down walk the preset list and load as they go, which is the whole
+    // point: auditioning is the gesture, not selecting and then confirming.
+    bool keyPressed(const juce::KeyPress& key) override
+    {
+        if (!presetRowsVisible())
+            return false;
+        if (key != juce::KeyPress::upKey && key != juce::KeyPress::downKey)
+            return false;
+
+        const auto rows = visiblePresetRows();
+        if (rows.empty())
+            return false;
+
+        const int delta = key == juce::KeyPress::downKey ? 1 : -1;
+
+        // Nothing recalled yet: the first press takes the end the arrow points
+        // away from, so either key is a way in.
+        auto it = std::find(rows.begin(), rows.end(), selectedPreset);
+        if (it == rows.end())
+        {
+            recallPreset(delta > 0 ? rows.front() : rows.back());
+            return true;
+        }
+
+        const int at = static_cast<int>(std::distance(rows.begin(), it)) + delta;
+        // Stops at the ends rather than wrapping: a list you are auditioning
+        // should not jump back to the top under your fingers.
+        if (at < 0 || at >= static_cast<int>(rows.size()))
+            return true;
+
+        recallPreset(rows[static_cast<size_t>(at)]);
+        return true;
     }
 
     /** The module on show, or nullptr when there is none or it has been
@@ -422,6 +507,10 @@ public:
     }
 
     // Where one particular row ended up, empty when it is not on screen.
+    // Which preset row was last recalled, so it can be marked and the arrows
+    // have somewhere to start. -1 while none has been.
+    int selectedPreset = -1;
+
     juce::Rectangle<int> boundsOf(RowKind kind, int index) const
     {
         for (const auto& row : layout)
@@ -595,7 +684,7 @@ public:
                 {
                     const auto& list = presets();
                     if (row.index >= 0 && row.index < (int)list.size())
-                        paintPresetRow(g, y, list[size_t(row.index)]);
+                        paintPresetRow(g, y, list[size_t(row.index)], row.index == selectedPreset);
                     break;
                 }
                 case RowKind::PresetSave:
@@ -645,10 +734,20 @@ public:
                              factoryPresetsCollapsed, rowH);
     }
 
-    void paintPresetRow(juce::Graphics& g, int y, const ModulePreset& preset)
+    void paintPresetRow(juce::Graphics& g, int y, const ModulePreset& preset, bool selected)
     {
         const auto& theme = AppTheme::palette();
-        g.setColour(theme.textSecondary);
+
+        // Recalling a preset changed the module and left no trace of which one
+        // it was, so a list of eight was eight identical rows and no way back
+        // to the one you liked (issue #60). The recalled row is now marked.
+        if (selected)
+        {
+            g.setColour(theme.buttonActive);
+            g.fillRect(marginX - 4, y + 1, getWidth() - (marginX - 4) * 2, rowH - 2);
+        }
+
+        g.setColour(selected ? theme.textPrimary : theme.textSecondary);
         g.setFont(AppTheme::uiFont(fontRow));
         g.drawText(preset.name, marginX, y, getWidth() - marginX * 2 - xBtnW, rowH,
                    juce::Justification::centredLeft, true);
@@ -928,7 +1027,7 @@ public:
         // rebuild, so the list on screen can never disagree with what was written.
         if (hr.type == HitType::PresetRecall)
         {
-            if (onPresetRecall) onPresetRecall(hr.rowIdx);
+            recallPreset(hr.rowIdx);
             return;
         }
         if (hr.type == HitType::PresetDelete)

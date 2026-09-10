@@ -19,6 +19,16 @@
   sets notes did not. The badge appears over the step's own arrow button, so it reads in
   whichever of the two units the setting above asks for.
 
+- **Los presets de modulo se marcan y se recorren con las flechas**
+  ([#60](https://github.com/animatek/Animatek-NME/issues/60)). Al recargar un preset desde
+  el inspector cambiaba el modulo y no quedaba ni rastro de cual habia sido: una lista de
+  ocho eran ocho filas identicas y ninguna forma de volver al que gustaba. La fila recargada
+  queda ahora marcada, y con la lista enfocada las flechas arriba y abajo recorren los
+  presets **cargandolos al pasar** — que es el gesto que se quiere, escuchar, no seleccionar
+  y confirmar. Recorren las filas visibles, asi que una carpeta Factory plegada se salta
+  igual que se la salta la vista, y la fila elegida se trae a la vista si queda fuera. No dan
+  la vuelta al llegar al final.
+
 - **Flechas para recorrer los presets del navegador de disco**
   ([#60](https://github.com/animatek/Animatek-NME/issues/60)). Hasta ahora cada preset
   pedia un doble clic, asi que auditar una carpeta era volver al raton en cada fichero.
