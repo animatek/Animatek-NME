@@ -1,6 +1,6 @@
 # Animatek NME Status
 
-Current version: **0.17.0** (released 2026-08-19)
+Current version: **0.18.0** (released 2026-09-10)
 
 The project was renamed from **Nomad2026** to **Animatek NME — Nord Modular Editor G1** in 0.6.0.
 
@@ -44,6 +44,19 @@ This file tracks the current project state at a practical level. Detailed versio
 - `MODULE_CHECKLIST.md` remains the detailed source of truth for per-module visual/behavior review.
 
 ## Recent Milestones
+
+- **0.18.0**: the one that stopped corrupting patches. Deleting a module cleared its morph,
+  knob and MIDI-CC assignments in the editor and told the synth nothing — nothing in the
+  protocol unassigns a morph — so the synth's maps kept naming a module that was gone,
+  re-fetching brought the leftovers back into the model and into saved `.pch` files, and they
+  latched onto whatever module was next handed the same index. That is what made the G1 stop
+  answering MIDI when an oscillator was added to one of those patches; it was reported as a
+  freeze on add and caused by an earlier delete. A delete is now one full upload, any patch
+  coming in is swept of assignments naming a module it does not have, and the front panel's
+  knob lights are driven by the two incremental messages that actually move them, each sent
+  at the only moment it can land. Plus a use-after-free on every path that replaces a slot's
+  patch, note names on the sequencer steps (#76), and preset navigation in both browsers
+  (#60).
 
 - **0.17.0**: the one where cables move. A cable can be lifted off a connector and dropped on
   another (#67), and a patch can be dragged from either browser straight onto a slot (#50), both
