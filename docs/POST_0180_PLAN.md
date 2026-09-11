@@ -112,13 +112,20 @@ Version browsing and retention are V2, not prerequisites for this safety fix.
 `loadPatchFromFile()` captures a destination slot but reads `currentPatch()` inside
 a delayed callback. Focus can change between scheduling and execution.
 
-- [ ] Address the intended slot explicitly, never resolve its contents via focus.
-- [ ] Bind deferred work to a patch generation; cancel it when that slot's patch
+- [x] Address the intended slot explicitly, never resolve its contents via focus.
+- [x] Bind deferred work to a patch generation; cancel it when that slot's patch
   is replaced, the connection changes or a newer operation supersedes it.
-- [ ] Audit the sibling settings/store/upload callbacks for the same mismatch.
+  `slotPatchGeneration[]` is bumped at all four sites that replace a slot's patch.
+- [x] Audit the sibling settings/store/upload callbacks for the same mismatch.
+  Only `showPatchSettingsDialog()` shared it, in both directions, and is fixed.
+  The others already guard on `activeSlot` or carry their own generation.
 - [ ] Test loading into A then focusing B before 200 ms, two rapid loads into A,
   New Patch during the delay, and disconnect/reconnect during the delay.
 - [ ] Assert both destination and serialized contents; no stale upload may land.
+
+Implemented 2026-09-11. The fix was verified by reading the code, not by a test:
+the 200 ms window needs the controllable scheduler T1 calls for, so the last two
+boxes stay open.
 
 Source: [MainComponent.cpp](../source/MainComponent.cpp), `loadPatchFromFile()` and
 `showPatchSettingsDialog()`.
@@ -174,13 +181,20 @@ Sources: `MainComponent::saveSlotPatchToFile()`,
 
 ### S7. Feed Custom Values Into NewModule
 
-- [ ] Collect custom-class parameters in descriptor order in the synchronizer,
+- [x] Collect custom-class parameters in descriptor order in the synchronizer,
   including zero values, and pass them to the existing encoder.
-- [ ] Test the production synchronizer path, not only a hand-constructed message.
-- [ ] Check OscA and another custom-bearing module against serialization/reference
+- [x] Test the production synchronizer path, not only a hand-constructed message.
+  `tests/test_synchronizer_new_module.cpp`, on the recording transport from S1.
+- [x] Check OscA and another custom-bearing module against serialization/reference
   data; cover ordinary add and applicable import paths.
+  OscA (one custom value) and NoteSeqB (two), both through `createModule`.
+  Import paths do not go through the synchronizer and are not covered here.
 - [ ] Verify the G1 reread preserves the intended custom settings. Do not attribute
   unrelated oscillator freezes to this fix without hardware evidence.
+
+Implemented 2026-09-11. Note for the record: this fix was written once before, on
+2026-09-10, and reported in the 0.18.0 changelog. The code was never committed and
+the release shipped without it, which is why the regression test exists now.
 
 Sources: [PatchSynchronizer.cpp](../source/sync/PatchSynchronizer.cpp),
 [NewModuleMessage.cpp](../source/protocol/NewModuleMessage.cpp),
