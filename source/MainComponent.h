@@ -275,6 +275,10 @@ private:
     // Multi-slot state (4 slots: A/B/C/D)
     static constexpr int numSlots = 4;
     std::unique_ptr<Patch> slotPatches[numSlots];
+    // Bumped every time a slot's patch object is replaced, so deferred work
+    // scheduled for the old one (a delayed upload, say) can tell that it is
+    // stale instead of pushing the wrong sound at the synth.
+    int slotPatchGeneration[numSlots] {};
     juce::File slotPatchFiles[numSlots];
     std::unique_ptr<PatchSynchronizer> slotSynchronizers[numSlots];
     juce::UndoManager slotUndoManagers[numSlots];

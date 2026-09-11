@@ -438,6 +438,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
           }
 
           safeThis->slotPatches[targetSlot] = std::move(p);
+          ++safeThis->slotPatchGeneration[targetSlot];
           if (safeThis->slotPatches[targetSlot]) {
             if (safeThis->connectionManager.isConnected()) {
               safeThis->slotSynchronizers[targetSlot] = std::make_unique<PatchSynchronizer>(
@@ -1845,6 +1846,7 @@ bool MainComponent::replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
       patchNotesFloaterWindow->setPatch(nullptr);
   }
   slotPatches[slot] = std::move(patch);
+  ++slotPatchGeneration[slot];
   slotPatchFiles[slot] = sourceFile;
   // Whatever bank location this slot held belongs to the patch just replaced.
   connectionManager.clearSlotBankLocation(slot);
@@ -1978,6 +1980,7 @@ void MainComponent::newPatch() {
   flushExtras(activeSlot);
 
   currentPatch() = std::make_unique<Patch>();
+  ++slotPatchGeneration[activeSlot];
   currentPatch()->extrasId = PatchExtrasStore::newId();
   currentPatchFile() = juce::File();
   clearSnapshots(activeSlot);
@@ -2114,6 +2117,7 @@ void MainComponent::loadPatchFromFile(const juce::File &file, int targetSlot, bo
     patchNotesFloaterWindow->setPatch(nullptr);
 
   currentPatch() = std::move(patch);
+  ++slotPatchGeneration[activeSlot];
   currentPatchFile() = file;
   clearSnapshots(activeSlot);
 
@@ -2168,11 +2172,23 @@ void MainComponent::loadPatchFromFile(const juce::File &file, int targetSlot, bo
           "Uploaded " + fileName + " to synth slot " + slotName, 3000);
     });
 
-    juce::Timer::callAfterDelay(200, [safeThis, slot]() {
-      if (!safeThis || !safeThis->connectionManager.isConnected() || !safeThis->currentPatch())
+    // Address the destination slot's own patch, never currentPatch(): that
+    // follows the focused tab, and 200 ms is long enough to switch tabs. Doing
+    // so uploaded whatever you had just switched to into the slot this file was
+    // meant for. The generation check drops the upload entirely if the slot's
+    // patch was replaced again in the meantime (a second load, or New Patch).
+    const int loadGeneration = slotPatchGeneration[slot];
+    juce::Timer::callAfterDelay(200, [safeThis, slot, loadGeneration]() {
+      if (!safeThis || !safeThis->connectionManager.isConnected())
         return;
+      if (!safeThis->slotPatches[slot]
+          || safeThis->slotPatchGeneration[slot] != loadGeneration) {
+        std::cout << "[FILE] Delayed upload to slot " << slot
+                  << " dropped: that slot holds a different patch now" << std::endl;
+        return;
+      }
 
-      safeThis->connectionManager.uploadPatch(slot, *safeThis->currentPatch());
+      safeThis->connectionManager.uploadPatch(slot, *safeThis->slotPatches[slot]);
       std::cout << "[FILE] Uploading loaded patch to synth slot " << slot << std::endl;
     });
 
@@ -2444,11 +2460,23 @@ void MainComponent::showPatchSettingsDialog() {
   if (currentPatch() == nullptr)
     return;
 
+  // Bind the dialog to the patch it was opened on. Reading currentPatch() when
+  // it closes would apply the settings to whatever tab has focus by then, and
+  // uploading to getCurrentSlot() would send them to whichever slot the synth
+  // is looking at, which is not necessarily this one (same mismatch as the
+  // delayed upload in loadPatchFromFile).
+  const int slot = activeSlot;
+  const int settingsGeneration = slotPatchGeneration[slot];
+
   announceDialogOnSynth(
       PatchSettingsDialog::show(this, currentPatch()->getHeader(),
-      [this](const PatchSettingsDialog::Result& r)
+      [this, slot, settingsGeneration](const PatchSettingsDialog::Result& r)
       {
-        auto& h = currentPatch()->getHeader();
+        if (slotPatches[slot] == nullptr
+            || slotPatchGeneration[slot] != settingsGeneration)
+          return;  // that patch is gone; the settings no longer belong anywhere
+
+        auto& h = slotPatches[slot]->getHeader();
         h.voices = r.voices;
         h.velRangeMin = r.velRangeMin;
         h.velRangeMax = r.velRangeMax;
@@ -2467,7 +2495,7 @@ void MainComponent::showPatchSettingsDialog() {
 
         // Upload full patch to synth if connected
         if (connectionManager.isConnected())
-          connectionManager.uploadPatch(connectionManager.getCurrentSlot(), *currentPatch());
+          connectionManager.uploadPatch(slot, *slotPatches[slot]);
       }));
 }
 
