@@ -1,5 +1,10 @@
 # Improvement & Optimization Plan
 
+Historical review: the current delivery plan after 0.18.0 is
+[POST_0180_PLAN.md](POST_0180_PLAN.md). The record below is retained as written;
+some pending items here shipped later, so use [ROADMAP.md](ROADMAP.md) and the
+current plan for scheduling, not this August checklist.
+
 Code health review of 2026-08-16 (48.5k lines of C++). Overall verdict: the
 foundations are sound. The model layer is clean, undo references modules by
 container index rather than pointer, all incoming MIDI is bounced to the

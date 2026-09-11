@@ -3,6 +3,25 @@
 This roadmap is intentionally limited to real remaining implementation work. Completed features and
 release history belong in [STATUS.md](STATUS.md) and [CHANGELOG.md](../CHANGELOG.md).
 
+## Post-0.18.0 Plan
+
+The [post-0.18.0 development plan](POST_0180_PLAN.md) owns the detailed tasks,
+evidence, dependencies and acceptance criteria from the September code review.
+Patch version history and library tags are explicit priorities agreed with Javier.
+Proposed release targets, not fixed dates:
+
+| Target | Focus |
+|--------|-------|
+| 0.18.1 | Disconnect lifetime, safe backups, slot/document ownership, LOCAL isolation and coherent saves |
+| 0.19.0 | Integration tests, asynchronous browsing, revision-driven persistence and session recovery |
+| 0.20.0 | Patch history, versioned bank backups, library tags and favourites |
+| 0.21.0 | Semantic comparison, content search/duplicates, diagnostics and grouped MCP operations |
+
+Implementation has started with S1 (locally tested; hardware acceptance pending).
+Track completion in that plan rather than duplicating
+its checkboxes here. The MCP assignments item below remains the existing feature
+definition; the new plan supplies its delivery and verification context.
+
 ## High Priority
 
 - [x] **Module Icon Bar** ([#17](https://github.com/animatek/Animatek-NME/issues/17)) —
