@@ -4,6 +4,33 @@
 
 ### Fixed
 
+- **A patch loaded from disk goes to the slot you chose, with its own contents**
+  (S3, 2026-09-11). The upload was deliberately addressed to the destination slot,
+  but 200 ms later it read `currentPatch()`, which follows the focused tab. Switch
+  tabs inside that window and the patch you had just switched to was uploaded into
+  the slot the file was meant for, silently overwriting it. The delayed upload now
+  addresses that slot's own patch, and a per-slot generation counter drops it
+  entirely if the slot was loaded again, replaced by New Patch or filled from the
+  synth in the meantime. The Patch Settings dialog had the same mismatch twice
+  over: it applied its result to whichever patch had focus when the dialog closed
+  and uploaded it to whichever slot the synth was looking at. It is now bound to
+  the slot it was opened on, and does nothing if that patch is gone.
+
+- **Adding a module sends its custom values** (S7, 2026-09-11). The synchronizer
+  always passed an empty CustomDump, so OscA's frequency-display unit, the note
+  sequencers' steps and every other custom control arrived at the synth as
+  whatever default it chose for itself. The values are now collected in
+  descriptor order, zeros included: the dump is positional, so a skipped zero
+  shifts every later value. The encoder and its byte-for-byte agreement with
+  jnmprotocol's reference OscA packet were already right and already tested; only
+  the caller was empty. This was reported fixed in 0.18.0 and was not: the change
+  was never committed and the release shipped without it.
+  Verification: `tests/test_synchronizer_new_module.cpp` drives the real
+  synchronizer against a real patch and the real descriptors, recording the frames
+  off the protocol instead of a MIDI port, and checks OscA (one custom value) and
+  NoteSeqB (two). Confirmed to fail without the fix. Hardware confirmation that
+  this is what froze an added OscA on the G1 is still pending.
+
 - **Disconnecting cancels the old MIDI session, not just its ports** (S1,
   2026-09-11). The protocol's sender captured a destroyed `MidiDeviceManager`,
   so a queued request drained after its timeout through freed memory. Detaching

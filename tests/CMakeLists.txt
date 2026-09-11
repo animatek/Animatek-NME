@@ -20,6 +20,7 @@ target_sources(nme_tests PRIVATE
     test_module_naming.cpp
     test_dangling_assignments.cpp
     test_midi_lifecycle.cpp
+    test_synchronizer_new_module.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
@@ -38,6 +39,11 @@ target_sources(nme_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/source/midi/MidiMonitor.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/MidiDeviceManager.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/ConnectionManager.cpp
+    ${CMAKE_SOURCE_DIR}/source/sync/PatchSynchronizer.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/NewCableMessage.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/DeleteCableMessage.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/MoveModuleMessage.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/DeleteModuleMessage.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/NewModuleMessage.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/ParameterEncoder.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/SysExMessage.cpp
