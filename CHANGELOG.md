@@ -1,5 +1,39 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Disconnecting cancels the old MIDI session, not just its ports** (S1,
+  2026-09-11). The protocol's sender captured a destroyed `MidiDeviceManager`,
+  so a queued request drained after its timeout through freed memory. Detaching
+  or replacing the sender now clears the queue and reply wait; input callbacks
+  already posted to the message thread are invalidated before the ports close.
+- Connection-owned ACK/parameter queues, partial downloads, bank locations and
+  one-shot completion callbacks are cleared on disconnect. Delayed operations
+  use a fresh cancellation flag per session, preventing settings/list requests
+  and upload completions from crossing a reconnect. The settings-readback timer
+  also had an unguarded `this` capture, reproduced under ASan before the fix.
+  An interrupted upload still sends its terminating packet before detaching;
+  an outstanding bank-upload callback receives failure once, never stale success.
+- **MIDI lifetime regressions now run in the normal test target.** Immediate and
+  queued sends share the existing transport callback, allowing frame recording
+  and simulated replies without opening MIDI ports. Ten new test cases cover
+  teardown, timeout, reconnect, queue cancellation and upload completion.
+  Verification: full Linux Debug app build succeeded (existing warnings remain);
+  all 75 cases / 2,153 assertions pass in Debug and ASan/UBSan, including five
+  consecutive sanitizer runs with DISPLAY and WAYLAND_DISPLAY unset.
+  Real port-open failure/reconnect and G1/platform smoke tests remain pending;
+  no hardware was operated and no new release was published.
+
+### Documentation
+
+- Added [the post-0.18.0 development plan](docs/POST_0180_PLAN.md): seven safety
+  findings with regression criteria, integration/performance work, session recovery,
+  patch and bank version history, library tags/favourites, comparison and MCP.
+  The proposed release sequence is linked from the roadmap; the August plan is
+  retained as historical context. This is planning only, not shipped functionality.
+
 ## 0.18.0 — 2026-09-10
 
 ### Added

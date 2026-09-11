@@ -243,6 +243,8 @@ private:
     void sendPatchRequest(int slot);   // One RequestPatch attempt, under the retry budget
     void serviceDeferredAutoFetch();   // Run a fetch the wire was too busy to take
 
+    // Cancel delayed work on disconnect, not just destruction. Never re-arm a
+    // captured flag: the next session gets a fresh one.
     std::shared_ptr<std::atomic<bool>> alive { std::make_shared<std::atomic<bool>>(true) };
     NmProtocol protocol;
 
@@ -335,6 +337,7 @@ private:
     // tested); this class only walks the packet list against the ACK stream.
     std::vector<UploadPacketizer::Packet> uploadPackets;
     void sendNextUploadPacket();
+    void notifyBankUploadResult(bool success);
     // An upload that just stops leaves the synth parked in bulk-receive state,
     // deaf to all MIDI until something closes the transfer (issue #40).
     void closeUploadTransfer(const char* reason);

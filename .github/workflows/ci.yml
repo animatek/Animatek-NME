@@ -1,8 +1,8 @@
 name: CI
 
-# Build + unit tests on every push and pull request. The tests cover the pure
-# layers (patch codec round-trip, SysEx framing, upload packetization, module
-# placement) and run without a GUI or a synth; the full app build catches
+# Build + tests on every push and pull request. Pure-layer tests and recorded
+# MIDI connection-lifetime regressions run without windows or MIDI ports;
+# the full app build catches
 # compile breakage in the UI code the tests do not reach.
 on:
   push:

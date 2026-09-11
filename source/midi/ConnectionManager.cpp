@@ -191,10 +191,10 @@ ConnectionManager::ConnectionManager()
 
 ConnectionManager::~ConnectionManager()
 {
-    *alive = false;   // Cancel any pending Timer::callAfterDelay lambdas
     protocol.stopTimer();
     protocol.removeListener(this);
     disconnect();
+    *alive = false;
 }
 
 bool ConnectionManager::connect(const juce::String& inputId, const juce::String& outputId)
@@ -260,11 +260,40 @@ void ConnectionManager::onSynthMessage(int cc)
 
 void ConnectionManager::disconnect()
 {
+    *alive = false;
+    alive = std::make_shared<std::atomic<bool>>(true);
+    auto bankUploadAborted = std::move(bankUploadResultCallback);
+    bankUploadResultCallback = nullptr;
+
     cancelHandshakeTimeout();
     invalidateParamQueue("disconnect");
+    waitingForPatchAck = false;
     collectingSections = false;
+    ++patchTimeoutGeneration;
+    patchRequestAttemptsLeft = 0;
+    sectionAccumulator.clear();
+    patchSections.clear();
+    sectionsReceived = 0;
+    sectionSeen.fill(false);
+    fetchPatchId = -1;
+    sectionRetriesLeft = 0;
+    patchFetchCompleteCallback = nullptr;
+    bankFetchCallback = nullptr;
+
+    ackedQueue.clear();
+    ackedQueueWaiting = false;
+    ackedQueueWaitingAllowsNewPatchInSlot = false;
+    ++ackedQueueGeneration;
+    pendingSyncEchoes_ = 0;
+    suppressNewPatchInSlot_ = false;
+    suppressNextAutoFetch = false;
+
     pendingBankLoadSlot = -1;
     pendingBankLoadGeneration++;
+    lastLoadedSection = lastLoadedPosition = -1;
+    suppressNextLocationClear = false;
+    for (int slot = 0; slot < 4; ++slot)
+        clearSlotBankLocation(slot);
     slotDetected = false;
     slotDetectGeneration++;
     // Slot state can change while we're away — relearn it on reconnect
@@ -272,7 +301,14 @@ void ConnectionManager::disconnect()
     slotEnabled.fill(false);
     slotPinned.fill(false);
     slotPatchIds.fill(0);
+    currentPatchId = 0;
     slotModelDelivered.fill(false);
+    autoFetchPending.fill(false);
+    fetchingPatchList = false;
+    patchListLoaded = false;
+    ++patchListGeneration;
+    patchListNames.clear();
+    lastListCancelMs = 0;
     patchListInterruptedByFetch = false;
     slotPrefetchQueue.clear();
     backgroundPrefetchSlot = -1;
@@ -281,14 +317,17 @@ void ConnectionManager::disconnect()
     // synth stays parked waiting for the rest of a transfer that will never
     // arrive and answers no MIDI at all afterwards (issue #40).
     if (waitingForUploadAck)
-    {
-        ++uploadAckGeneration;
         closeUploadTransfer("disconnect");
-        waitingForUploadAck = false;
-        uploadPackets.clear();
-        uploadPacketIndex = 0;
-    }
 
+    ++uploadAckGeneration;
+    waitingForUploadAck = false;
+    uploadPackets.clear();
+    uploadPacketIndex = 0;
+    uploadKnobAssignments.clear();
+    uploadCtrlAssignments.clear();
+    uploadCompleteCallback = nullptr;
+
+    protocol.setSendFunction({});
     if (midiDevice)
     {
         midiDevice->disconnect();
@@ -296,6 +335,8 @@ void ConnectionManager::disconnect()
     }
 
     setStatus(State::Disconnected, "Disconnected");
+    if (bankUploadAborted)
+        bankUploadAborted(false);
 }
 
 juce::Array<juce::MidiDeviceInfo> ConnectionManager::getAvailableInputDevices()
@@ -717,11 +758,9 @@ void ConnectionManager::sendNextUploadPacket()
         // Notify the bank transfer (if one is running) or MainComponent
         if (bankUploadResultCallback)
         {
-            auto cb = std::move(bankUploadResultCallback);
-            bankUploadResultCallback = nullptr;
             uploadKnobAssignments.clear();
             uploadCtrlAssignments.clear();
-            juce::MessageManager::callAsync([cb]() { cb(true); });
+            notifyBankUploadResult(true);
         }
         else
         {
@@ -735,7 +774,10 @@ void ConnectionManager::sendNextUploadPacket()
             if (uploadCompleteCallback)
             {
                 auto cb = uploadCompleteCallback;
-                juce::MessageManager::callAsync([cb]() { cb(); });
+                auto aliveFlag = alive;
+                juce::MessageManager::callAsync([cb, aliveFlag]() {
+                    if (*aliveFlag) cb();
+                });
             }
 
             resumePatchListIfInterrupted();
@@ -790,12 +832,22 @@ void ConnectionManager::sendNextUploadPacket()
             setStatus(State::Connected, "Upload timeout at packet " + juce::String(sentPacket));
 
             if (bankUploadResultCallback)
-            {
-                auto cb = std::move(bankUploadResultCallback);
-                bankUploadResultCallback = nullptr;
-                juce::MessageManager::callAsync([cb]() { cb(false); });
-            }
+                notifyBankUploadResult(false);
         }
+    });
+}
+
+void ConnectionManager::notifyBankUploadResult(bool success)
+{
+    // Keep the one-shot callback installed until delivery, so a disconnect in
+    // between can finish the bank operation as failed instead of stranding it.
+    auto aliveFlag = alive;
+    const int generation = uploadAckGeneration;
+    juce::MessageManager::callAsync([this, aliveFlag, generation, success]() {
+        if (!*aliveFlag || generation != uploadAckGeneration) return;
+        auto cb = std::move(bankUploadResultCallback);
+        bankUploadResultCallback = nullptr;
+        if (cb) cb(success);
     });
 }
 
@@ -913,8 +965,9 @@ void ConnectionManager::sendSynthSettings(const SynthSettings& settings)
         std::cout << " " << std::hex << std::setw(2) << std::setfill('0') << (int) b;
     std::cout << std::dec << std::endl;
 
-    juce::Timer::callAfterDelay(250, [this]() {
-        if (isConnected())
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(250, [this, aliveFlag]() {
+        if (*aliveFlag && isConnected())
             requestSynthSettings();
     });
 }
@@ -1117,10 +1170,10 @@ void ConnectionManager::sendControllerSnapshot()
 
 void ConnectionManager::sendRawSysEx(const std::vector<uint8_t>& sysex)
 {
-    if (!isConnected() || !midiDevice)
+    if (!isConnected())
         return;
 
-    midiDevice->sendSysEx(sysex);
+    protocol.sendRawSysEx(sysex);
 }
 
 void ConnectionManager::sendNoteOn(int note, int velocity)
@@ -1142,7 +1195,7 @@ void ConnectionManager::sendNoteEvent(int note, int velocity, bool on)
     // (sc=0x41) is incoming-only and rejected with synth error 5.
     juce::ignoreUnused(velocity);
 
-    if (!isConnected() || !midiDevice)
+    if (!isConnected())
     {
         std::cout << "[KEYS] note event skipped: not connected" << std::endl;
         return;
@@ -1154,12 +1207,12 @@ void ConnectionManager::sendNoteEvent(int note, int velocity, bool on)
         static_cast<uint8_t>(on ? 0x00 : 0x01),
         static_cast<uint8_t>(note & 0x7F)
     };
-    midiDevice->sendSysEx(SysEx::encode(0x17, currentSlot, payload, /*addChecksum=*/true));
+    sendRawSysEx(SysEx::encode(0x17, currentSlot, payload, /*addChecksum=*/true));
 }
 
 void ConnectionManager::sendAckedSysEx(const std::vector<uint8_t>& sysex, bool allowNewPatchInSlotReply)
 {
-    if (!isConnected() || !midiDevice)
+    if (!isConnected())
         return;
 
     // Remember which slot the message was built for (header byte 2 carries
@@ -1171,7 +1224,7 @@ void ConnectionManager::sendAckedSysEx(const std::vector<uint8_t>& sysex, bool a
 
 void ConnectionManager::drainAckedQueue()
 {
-    if (ackedQueueWaiting || ackedQueue.empty())
+    if (!isConnected() || ackedQueueWaiting || ackedQueue.empty())
         return;
 
     auto msg = ackedQueue.front();
@@ -1196,7 +1249,7 @@ void ConnectionManager::drainAckedQueue()
     ackedQueueWaiting = true;
     ackedQueueWaitingAllowsNewPatchInSlot = msg.allowNewPatchInSlotReply;
     int generation = ++ackedQueueGeneration;
-    midiDevice->sendSysEx(msg.bytes);
+    sendRawSysEx(msg.bytes);
 
     std::cout << "[QUEUE] Sent queued message (gen=" << generation
               << ", " << ackedQueue.size() << " remaining), waiting for ACK" << std::endl;
@@ -1955,10 +2008,11 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
 
         if (synthErrorCallback)
         {
-            // Capture callback by value so it's safe even if ConnectionManager
-            // is destroyed before the async fires.
             auto cb = synthErrorCallback;
-            juce::MessageManager::callAsync([cb, errorCode]() { cb(errorCode); });
+            auto aliveFlag = alive;
+            juce::MessageManager::callAsync([cb, errorCode, aliveFlag]() {
+                if (*aliveFlag) cb(errorCode);
+            });
         }
     }
 
@@ -2103,7 +2157,10 @@ void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
             if (synthSettingsCallback)
             {
                 auto cb = synthSettingsCallback;
-                juce::MessageManager::callAsync([cb, settings]() { cb(settings); });
+                auto aliveFlag = alive;
+                juce::MessageManager::callAsync([cb, settings, aliveFlag]() {
+                    if (*aliveFlag) cb(settings);
+                });
             }
             return;
         }

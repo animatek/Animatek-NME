@@ -23,6 +23,9 @@ void NmProtocol::removeListener(Listener* listener)
 void NmProtocol::sendMessage(int cc, int slot, const std::vector<uint8_t>& payload,
                              bool expectsReply, bool addChecksum)
 {
+    if (!sendFn)
+        return;
+
     auto encoded = SysEx::encode(cc, slot, payload, addChecksum);
     sendQueue.push_back({ std::move(encoded), expectsReply });
 
@@ -34,6 +37,9 @@ void NmProtocol::sendMessage(int cc, int slot, const std::vector<uint8_t>& paylo
 
 void NmProtocol::processIncoming(const uint8_t* data, size_t length)
 {
+    if (!sendFn)
+        return;
+
     auto msg = SysEx::decode(data, length);
     if (msg.valid)
     {
@@ -54,7 +60,18 @@ void NmProtocol::processIncoming(const uint8_t* data, size_t length)
 
 void NmProtocol::setSendFunction(std::function<void(const std::vector<uint8_t>&)> fn)
 {
+    sendQueue.clear();
+    waitingForReply = false;
+    lastSendTime = 0;
     sendFn = std::move(fn);
+}
+
+void NmProtocol::sendRawSysEx(const std::vector<uint8_t>& data)
+{
+    // Keep the callable alive if a transport callback detaches itself.
+    const auto sender = sendFn;
+    if (sender)
+        sender(data);
 }
 
 void NmProtocol::timerCallback()
@@ -103,7 +120,7 @@ void NmProtocol::flushSendQueue()
             lastSendTime = juce::Time::getMillisecondCounter();
         }
 
-        sendFn(pending.encoded);
+        sendRawSysEx(pending.encoded);
     }
 }
 

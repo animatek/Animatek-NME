@@ -1,6 +1,5 @@
-# Unit tests for the pure layers: patch codec, SysEx framing, upload
-# packetization and module placement. Everything here runs without a GUI and
-# without a synth on the wire; the doctest single header is vendored in
+# Tests for the pure layers and MIDI connection lifetime. Everything here runs
+# without a window or a synth on the wire; the doctest single header is vendored in
 # libs/doctest so the tests build offline.
 juce_add_console_app(nme_tests PRODUCT_NAME "nme_tests")
 
@@ -20,6 +19,7 @@ target_sources(nme_tests PRIVATE
     test_seq_note_names.cpp
     test_module_naming.cpp
     test_dangling_assignments.cpp
+    test_midi_lifecycle.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
@@ -33,10 +33,21 @@ target_sources(nme_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/source/model/PchFileIO.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/SysExCodec.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/UploadPacketizer.cpp
+    ${CMAKE_SOURCE_DIR}/source/midi/NmMessages.cpp
+    ${CMAKE_SOURCE_DIR}/source/midi/NmProtocol.cpp
+    ${CMAKE_SOURCE_DIR}/source/midi/MidiMonitor.cpp
+    ${CMAKE_SOURCE_DIR}/source/midi/MidiDeviceManager.cpp
+    ${CMAKE_SOURCE_DIR}/source/midi/ConnectionManager.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/NewModuleMessage.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/ParameterEncoder.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/SysExMessage.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/SetPatchTitleMessage.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/SetModuleTitleMessage.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/StorePatchMessage.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/DeletePatchMessage.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/SendControllerSnapshotMessage.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/KnobAssignmentMessage.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/MidiCtrlAssignmentMessage.cpp
 )
 
 target_include_directories(nme_tests PRIVATE
@@ -50,10 +61,13 @@ target_compile_definitions(nme_tests PRIVATE
     NME_TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/data"
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
+    JUCE_MODAL_LOOPS_PERMITTED=1
 )
 
 target_link_libraries(nme_tests PRIVATE
     juce::juce_core
+    juce::juce_events
+    juce::juce_audio_devices
     juce::juce_graphics    # Descriptors carry juce::Colour
     juce::juce_recommended_config_flags
     juce::juce_recommended_warning_flags

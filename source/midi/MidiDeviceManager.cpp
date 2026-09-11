@@ -15,7 +15,6 @@ MidiDeviceManager::MidiDeviceManager(NmProtocol& proto)
 
 MidiDeviceManager::~MidiDeviceManager()
 {
-    *alive = false;   // Cancel any pending callAsync lambdas
     disconnect();
 }
 
@@ -42,6 +41,8 @@ bool MidiDeviceManager::connect(const juce::String& inputId, const juce::String&
         return false;
     }
 
+    alive = std::make_shared<std::atomic<bool>>(true);
+    protocol.setSendFunction([this](const std::vector<uint8_t>& data) { sendSysEx(data); });
     midiInput->start();
 
     DBG("MIDI connected: input=" + getInputDeviceName() + " output=" + getOutputDeviceName());
@@ -50,6 +51,8 @@ bool MidiDeviceManager::connect(const juce::String& inputId, const juce::String&
 
 void MidiDeviceManager::disconnect()
 {
+    *alive = false;  // Invalidate received messages already posted to the UI thread.
+    protocol.setSendFunction({});
     if (midiInput)
     {
         midiInput->stop();

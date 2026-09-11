@@ -43,8 +43,11 @@ public:
     // Feed incoming SysEx data (called from MIDI input handler)
     void processIncoming(const uint8_t* data, size_t length);
 
-    // Set the function used to actually send SysEx bytes out
+    // Replacing/detaching the transport discards its queue and outstanding reply.
     void setSendFunction(std::function<void(const std::vector<uint8_t>&)> fn);
+
+    // Send an already-framed message immediately, bypassing the reply queue.
+    void sendRawSysEx(const std::vector<uint8_t>& data);
 
     bool isWaitingForReply() const { return waitingForReply; }
 
