@@ -31,12 +31,85 @@ void BankTransferManager::reportProgress(const juce::String& itemName)
         progressCallback(progress);
 }
 
+void BankTransferManager::discardStagedMirror()
+{
+    if (stagingRoot != juce::File() && stagingRoot.exists())
+        stagingRoot.deleteRecursively();
+    stagingRoot = juce::File();
+    mirrorRoot = juce::File();
+}
+
+bool BankTransferManager::publishStagedMirror()
+{
+    bool allMoved = true;
+
+    for (int section = 0; section < 9; ++section)
+    {
+        const auto name = "Bank" + juce::String(section + 1);
+        const auto staged = stagingRoot.getChildFile(name);
+        const auto live = mirrorRoot.getChildFile(name);
+        live.createDirectory();
+
+        // Mirror semantics, applied here rather than before the download: the
+        // bank folder ends up holding exactly what this completed backup
+        // fetched, so patches deleted on the synth do not linger. Positions the
+        // synth no longer has were never staged.
+        for (const auto& old : live.findChildFiles(juce::File::findFiles, false, "*.pch"))
+            if (!old.deleteFile())
+                allMoved = false;
+
+        for (const auto& file : staged.findChildFiles(juce::File::findFiles, false, "*.pch"))
+            if (!file.moveFileTo(live.getChildFile(file.getFileName())))
+                allMoved = false;
+    }
+
+    if (allMoved)
+    {
+        discardStagedMirror();
+        return true;
+    }
+
+    // Publication is local file moves, so this is rare: a locked file, a full
+    // disk, permissions. Keep the staged copy rather than delete it — it is the
+    // complete backup, and the alternative is throwing it away.
+    std::cout << "[BANKXFER] Could not publish the backup. The complete copy is at "
+              << stagingRoot.getFullPathName() << std::endl;
+    stagingRoot = juce::File();
+    mirrorRoot = juce::File();
+    return false;
+}
+
 void BankTransferManager::finishTransfer(bool cancelled)
 {
     ++generation;
     busy = false;
     connection.setBankFetchCallback(nullptr);
     connection.setBankUploadResultCallback(nullptr);
+
+    if (savingToDisk && stagingRoot != juce::File())
+    {
+        // Every item fetched, parsed and written, nothing cancelled, and the
+        // run reached the end of the list. A disconnect stops saveNextItem()
+        // early without recording a failure, so the count is what catches it.
+        const bool everyItemDone = itemIndex >= static_cast<int>(saveItems.size());
+        const bool complete = !cancelled && progress.failures.isEmpty() && everyItemDone;
+
+        if (!complete)
+        {
+            const int missing = static_cast<int>(saveItems.size()) - itemIndex;
+            std::cout << "[BANKXFER] Incomplete backup ("
+                      << progress.failures.size() << " failures, "
+                      << juce::jmax(0, missing) << " never fetched"
+                      << (cancelled ? ", cancelled" : "")
+                      << "): keeping the previous backup untouched" << std::endl;
+            discardStagedMirror();
+            progress.failures.add("Backup incomplete: the previous one was kept");
+        }
+        else if (!publishStagedMirror())
+        {
+            progress.failures.add("Backup complete but could not replace the old files");
+        }
+    }
 
     progress.finished = true;
     progress.cancelled = cancelled;
@@ -80,6 +153,10 @@ void BankTransferManager::saveBankToDisk(int section, const juce::File& folder,
     bankSection = juce::jlimit(0, 8, section);
     tempSlot = juce::jlimit(0, 3, slot);
     progressCallback = std::move(cb);
+    // Saving one bank adds files to the folder the user picked and deletes
+    // nothing, so there is no staged mirror to publish or roll back.
+    mirrorRoot = juce::File();
+    stagingRoot = juce::File();
 
     saveItems.clear();
     const auto& list = connection.getPatchList();
@@ -108,21 +185,36 @@ void BankTransferManager::saveAllBanksToDisk(const juce::File& banksRoot, int sl
     if (busy || !connection.isConnected())
         return;
 
+    // Mirror semantics need to know which positions are genuinely empty. An
+    // unloaded list reads as all-empty, which would publish an empty backup
+    // over a good one.
+    if (!connection.isPatchListLoaded())
+    {
+        std::cout << "[BANKXFER] Refusing all-banks backup: patch list not loaded"
+                  << std::endl;
+        return;
+    }
+
     savingToDisk = true;
     tempSlot = juce::jlimit(0, 3, slot);
     progressCallback = std::move(cb);
+
+    // Download into a staging folder beside the mirror. Nothing under
+    // Bank1..Bank9 is touched until the whole backup is on disk: a backup that
+    // fails halfway used to delete the previous one on its way in, so a bad
+    // cable or a synth that stopped answering cost you the only copy you had.
+    mirrorRoot = banksRoot;
+    stagingRoot = banksRoot.getChildFile(".nme-backup-staging");
+    if (stagingRoot.exists())
+        stagingRoot.deleteRecursively();   // leftovers from an interrupted run
+    stagingRoot.createDirectory();
 
     saveItems.clear();
     const auto& list = connection.getPatchList();
     for (int section = 0; section < 9; ++section)
     {
-        const auto folder = banksRoot.getChildFile("Bank" + juce::String(section + 1));
+        const auto folder = stagingRoot.getChildFile("Bank" + juce::String(section + 1));
         folder.createDirectory();
-
-        // Mirror semantics: the folder must reflect the bank exactly, so
-        // patches deleted on the synth do not linger from older backups.
-        for (const auto& old : folder.findChildFiles(juce::File::findFiles, false, "*.pch"))
-            old.deleteFile();
 
         for (int pos = 0; pos < 99; ++pos)
         {
@@ -245,6 +337,8 @@ void BankTransferManager::sendBankToSynth(const juce::Array<juce::File>& files,
     bankSection = juce::jlimit(0, 8, section);
     tempSlot = juce::jlimit(0, 3, slot);
     progressCallback = std::move(cb);
+    mirrorRoot = juce::File();
+    stagingRoot = juce::File();
 
     sendFiles = files;
     sendFiles.sort();

@@ -4,6 +4,28 @@
 
 ### Fixed
 
+- **A failed backup no longer destroys the good one** (S2, 2026-09-12). Backing up
+  all banks deleted every `.pch` in `Bank1`-`Bank9` before fetching a single patch,
+  so a synth that stopped answering halfway through, a cancelled run or a
+  disconnect left you with neither the new backup nor the old one. The download
+  now goes to a staging folder beside the mirror, and the bank folders are
+  replaced only once every patch has been fetched, parsed and written. Anything
+  short of that (a failure, a timeout, a cancellation, a disconnect, or items
+  never reached) discards the staged copy and leaves the previous backup exactly
+  as it was, reporting that it was kept. If the move itself fails, the complete
+  staged copy is kept rather than thrown away and its path is logged.
+  Mirror semantics are unchanged but now applied at publication, so patches
+  deleted on the synth still drop out of a backup that completed. An all-banks
+  backup also refuses to start without a loaded patch list: every position would
+  read as empty, which is how an empty mirror could replace a good one. The
+  dialog's warning has been rewritten to say what now happens.
+  Verification: `tests/test_bank_backup_safety.cpp` covers the two refusals,
+  asserting the existing files and their contents survive untouched and no
+  staging is left behind. Cancellation, mid-download disconnect, a partial fetch
+  and a publication failure are **not** covered by tests: they need a patch list
+  on the connection, which needs the injectable seam T1 calls for. Those paths
+  rest on the staging design and still need hardware testing.
+
 - **A patch loaded from disk goes to the slot you chose, with its own contents**
   (S3, 2026-09-11). The upload was deliberately addressed to the destination slot,
   but 200 ms later it read `currentPatch()`, which follows the focused tab. Switch

@@ -44,9 +44,14 @@ public:
     void saveBankToDisk(int section, const juce::File& destFolder, int tempSlot,
                         ProgressCallback cb);
 
-    // Mirror-backup all 9 banks into banksRoot/Bank1..Bank9. Existing .pch
-    // files inside those subfolders are deleted first so each folder exactly
-    // reflects the synth bank, including positions deleted on the synth.
+    // Mirror-backup all 9 banks into banksRoot/Bank1..Bank9. The download goes
+    // to a staging folder and is published over the existing mirror only once
+    // every patch has been fetched, parsed and written. A backup that fails,
+    // times out, is cancelled or loses the connection leaves the previous
+    // mirror exactly as it was: it is the only copy the user still has.
+    // Mirror semantics (dropping patches deleted on the synth) therefore apply
+    // at publication, and only for a backup that completed against a loaded
+    // patch list.
     void saveAllBanksToDisk(const juce::File& banksRoot, int tempSlot,
                             ProgressCallback cb);
 
@@ -70,6 +75,10 @@ private:
     };
 
     void beginSaveTransfer();
+    // Move a complete staged mirror over the live one. Returns false and leaves
+    // both copies on disk if any bank could not be replaced.
+    bool publishStagedMirror();
+    void discardStagedMirror();
 
     void saveNextItem();
     void sendNextFile();
@@ -89,6 +98,11 @@ private:
     int itemIndex = 0;
     int generation = 0;   // invalidates stale fetch callbacks and watchdogs
     std::vector<SaveItem> saveItems;
+    // Set only for an all-banks backup: where the download is being written and
+    // where it belongs once complete. Empty for a single-bank save, which
+    // writes straight to the folder the user picked and adds nothing to delete.
+    juce::File mirrorRoot;
+    juce::File stagingRoot;
     juce::Array<juce::File> sendFiles;
     Progress progress;
     ProgressCallback progressCallback;

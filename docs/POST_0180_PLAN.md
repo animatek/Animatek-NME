@@ -93,15 +93,29 @@ Sources: [MidiDeviceManager.cpp](../source/midi/MidiDeviceManager.cpp),
 `saveAllBanksToDisk()` currently deletes the old mirror before fetching the new one.
 The UI warns about this, but a failed backup should not destroy a good backup.
 
-- [ ] Download to a separate staging generation, leaving the previous mirror intact.
-- [ ] Track missing sections, parse failures, write failures and cancellation as
+- [x] Download to a separate staging generation, leaving the previous mirror intact.
+  `.nme-backup-staging` beside the mirror; leftovers from an interrupted run are
+  cleared at the start of the next one.
+- [x] Track missing sections, parse failures, write failures and cancellation as
   incomplete results. A non-null parsed patch is not proof of a complete download.
-- [ ] Publish a new complete generation only after every required item is verified.
+  Parse and write failures and fetch timeouts were already recorded; the new
+  check also requires the run to have reached the end of the item list, which is
+  what catches a disconnect ending the loop without recording anything.
+- [x] Publish a new complete generation only after every required item is verified.
   Keep the last complete generation available if publication is interrupted.
+  A failed publication keeps the complete staged copy and logs its path.
 - [ ] Test cancellation after the first item, disconnect, partial downloads, full
   disk and publication failure. The previous complete backup must remain readable.
-- [ ] Preserve mirror semantics for genuinely deleted synth patches only after a
+  Partly done: `tests/test_bank_backup_safety.cpp` covers the two refusals (no
+  connection, no patch list) and asserts the previous backup survives byte for
+  byte. The rest needs a patch list on the connection, so it waits on T1's
+  injectable seam. Not verified on hardware.
+- [x] Preserve mirror semantics for genuinely deleted synth patches only after a
   complete bank list and successful new backup establish that they are absent.
+  Applied at publication, and the backup refuses to start without a loaded list.
+
+Implemented 2026-09-12, except the test row above. The UI warning was rewritten:
+it told the user the folders are emptied first, which is no longer what happens.
 
 Sources: [BankTransferManager.cpp](../source/sync/BankTransferManager.cpp),
 `ConnectionManager::finalizePatch()`, [PatchParser.cpp](../source/model/PatchParser.cpp).

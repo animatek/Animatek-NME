@@ -175,8 +175,9 @@ void BankTransferDialog::updateInfo()
             info = "Patch list not loaded yet - connect and let the Synth browser load it first.";
         else
             info = juce::String(count) + " patches across all 9 banks will be saved into "
-                 + "Bank1-Bank9 folders.\nWARNING: existing .pch files inside those folders"
-                 + " are deleted first (mirror backup).";
+                 + "Bank1-Bank9 folders.\nThe folders are replaced only once the whole "
+                 + "backup has been fetched, so a backup that fails or is cancelled "
+                 + "leaves the previous one intact.";
         infoLabel.setText(info, juce::dontSendNotification);
     }
     else if (mode_ == Mode::SaveToDisk)
