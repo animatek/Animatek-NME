@@ -203,8 +203,11 @@ Sources: `MainComponent::saveSlotPatchToFile()`,
   data; cover ordinary add and applicable import paths.
   OscA (one custom value) and NoteSeqB (two), both through `createModule`.
   Import paths do not go through the synchronizer and are not covered here.
-- [ ] Verify the G1 reread preserves the intended custom settings. Do not attribute
-  unrelated oscillator freezes to this fix without hardware evidence.
+- [ ] Verify the G1 reread preserves the intended custom settings.
+- [x] Do not attribute unrelated oscillator freezes to this fix without hardware
+  evidence. Settled: the freeze on adding an oscillator was the corrupt patch left
+  by an incremental `DeleteModule` naming a deleted module in the morph and knob
+  maps. Fixed and hardware-tested in 0.18.0, and unrelated to the CustomDump.
 
 Implemented 2026-09-11. Note for the record: this fix was written once before, on
 2026-09-10, and reported in the 0.18.0 changelog. The code was never committed and

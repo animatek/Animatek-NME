@@ -50,8 +50,11 @@
   Verification: `tests/test_synchronizer_new_module.cpp` drives the real
   synchronizer against a real patch and the real descriptors, recording the frames
   off the protocol instead of a MIDI port, and checks OscA (one custom value) and
-  NoteSeqB (two). Confirmed to fail without the fix. Hardware confirmation that
-  this is what froze an added OscA on the G1 is still pending.
+  NoteSeqB (two). Confirmed to fail without the fix. This has nothing to do with
+  the G1 freezing when an oscillator was added: that was the corrupt patch left
+  by an incremental `DeleteModule`, fixed and hardware-tested in 0.18.0. What
+  was missing here is simply that the synth chose its own defaults for a new
+  module's custom controls. Not yet exercised on hardware.
 
 - **Disconnecting cancels the old MIDI session, not just its ports** (S1,
   2026-09-11). The protocol's sender captured a destroyed `MidiDeviceManager`,
