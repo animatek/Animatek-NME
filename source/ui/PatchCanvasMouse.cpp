@@ -3,6 +3,7 @@
 #include "KnobDrag.h"
 #include "../model/ModulePlacement.h"
 #include "../model/ModuleReplacement.h"
+#include "../model/KeyQuantScales.h"
 #include "../protocol/KnobAssignmentMessage.h"
 #include <cmath>
 #include <set>
@@ -1426,7 +1427,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 menu.addItem(4, "Copy");
                 menu.addSeparator();
                 menu.addItem(6, "Initialize Module");
-                menu.addItem(7, "Exclude from Mutation", true, modPtr->isExcludedFromMutation());
+                menu.addItem(7, "Exclude from Random & Mutation", true, modPtr->isExcludedFromMutation());
 
                 // Replace with another module of the same family, keeping the
                 // cables, values and assignments that carry over
@@ -1469,37 +1470,65 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 menu.addSeparator();
                 menu.addItem(5, "Delete Module");
 
-                // KeyQuantizer (m98): scale presets. Module exposes 12 binary
-                // note toggles, but the param order is offset — params p3..p14
-                // map to E,F,F#,G,G#,A,Bb,B,C,C#,D,D#. The lambda below maps
-                // chromatic semitone (C=0..B=11) to the matching component-id.
-                // Result IDs >= 100 are reserved for scale presets.
+                // KeyQuantizer (m98): scale presets on any root (KeyQuantScales).
+                // What the switches spell now is shown on top and ticked in the
+                // lists. Result IDs are kScaleMenuBase + root * stride + scale.
+                static constexpr int kScaleMenuBase = 200000;
+                static constexpr int kScaleMenuStride = 64;
                 const bool isKeyQuant = (modPtr->getDescriptor()->index == 98);
                 if (isKeyQuant)
                 {
-                    juce::PopupMenu scales;
-                    scales.addItem(100, "Chromatic");
-                    scales.addSeparator();
-                    scales.addItem(101, "Major (Ionian)");
-                    scales.addItem(102, "Natural Minor (Aeolian)");
-                    scales.addItem(103, "Harmonic Minor");
-                    scales.addItem(104, "Melodic Minor");
-                    scales.addSeparator();
-                    scales.addItem(105, "Dorian");
-                    scales.addItem(106, "Phrygian");
-                    scales.addItem(107, "Lydian");
-                    scales.addItem(108, "Mixolydian");
-                    scales.addItem(109, "Locrian");
-                    scales.addSeparator();
-                    scales.addItem(110, "Pentatonic Major");
-                    scales.addItem(111, "Pentatonic Minor");
-                    scales.addItem(112, "Blues Major");
-                    scales.addItem(113, "Blues Minor");
-                    scales.addSeparator();
-                    scales.addItem(114, "Whole Tone");
-                    scales.addItem(115, "Diminished (W-H)");
+                    std::uint16_t current = 0;
+                    for (int pc = 0; pc < 12; ++pc)
+                        if (auto* p = findParameter(*modPtr, KeyQuantScales::pitchComponentId(pc)))
+                            if (p->getValue() != 0)
+                                current = static_cast<std::uint16_t>(current | (1u << pc));
+
+                    const auto& scales = KeyQuantScales::all();
+                    const auto found = KeyQuantScales::matches(current);
+                    const auto isCurrent = [&found](int scale, int root) {
+                        return std::find(found.begin(), found.end(), std::make_pair(scale, root)) != found.end();
+                    };
+
+                    juce::String now;
+                    if (found.empty())
+                        now = current == 0 ? "No notes" : "Custom notes";
+                    for (size_t i = 0; i < found.size() && i < 3; ++i)
+                    {
+                        const auto [scale, root] = found[i];
+                        if (now.isNotEmpty()) now << ", ";
+                        if (scale != KeyQuantScales::chromaticIndex())
+                            now << KeyQuantScales::rootName(root) << " ";
+                        now << scales[static_cast<size_t>(scale)].name;
+                    }
+                    if (found.size() > 3)
+                        now << " +" << static_cast<int>(found.size() - 3);
+
+                    juce::PopupMenu scaleMenu;
+                    scaleMenu.addSectionHeader("Now: " + now);
+                    const int chromatic = KeyQuantScales::chromaticIndex();
+                    scaleMenu.addItem(kScaleMenuBase + chromatic, "Chromatic (all notes)", true,
+                                      isCurrent(chromatic, 0));
+                    scaleMenu.addSeparator();
+                    for (int root = 0; root < 12; ++root)
+                    {
+                        juce::PopupMenu rootMenu;
+                        bool rootTicked = false;
+                        for (int i = 0; i < static_cast<int>(scales.size()); ++i)
+                        {
+                            if (i == chromatic)
+                                continue;
+                            const bool ticked = isCurrent(i, root);
+                            rootTicked = rootTicked || ticked;
+                            rootMenu.addItem(kScaleMenuBase + root * kScaleMenuStride + i,
+                                             juce::String(KeyQuantScales::rootName(root)) + " "
+                                                 + scales[static_cast<size_t>(i)].name,
+                                             true, ticked);
+                        }
+                        scaleMenu.addSubMenu(KeyQuantScales::rootName(root), rootMenu, true, nullptr, rootTicked);
+                    }
                     menu.addSeparator();
-                    menu.addSubMenu("Scales (root C)", scales);
+                    menu.addSubMenu("Scale", scaleMenu);
                 }
 
                 // DrumSynth (m58): the preset library. It used to be reachable
@@ -1589,45 +1618,21 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                             modPtr->setExcludedFromMutation(!modPtr->isExcludedFromMutation());
                             repaint();
                         }
-                        else if (result >= 100 && result < 200)
+                        else if (result >= kScaleMenuBase
+                                 && result < kScaleMenuBase + 12 * kScaleMenuStride)
                         {
-                            // KeyQuantizer scale presets. mask is a 12-bit
-                            // chromatic bitmap (bit0=C..bit11=B); each bit set
-                            // means "note enabled in scale".
-                            // Bit n set = semitone n enabled (n=0..11, 0=C, 11=B).
-                            // Masks mirror the VCV Fundamental Quantizer presets
-                            // (https://github.com/VCVRack/Fundamental/tree/v2/presets/Quantizer).
-                            int mask = 0;
-                            switch (result)
-                            {
-                                case 100: mask = 0xFFF; break; // Chromatic
-                                case 101: mask = 0xAB5; break; // Major (0,2,4,5,7,9,11)
-                                case 102: mask = 0x5AD; break; // Natural Minor (0,2,3,5,7,8,10)
-                                case 103: mask = 0x9AD; break; // Harmonic Minor (0,2,3,5,7,8,11)
-                                case 104: mask = 0xAAD; break; // Melodic Minor asc (0,2,3,5,7,9,11)
-                                case 105: mask = 0x6AD; break; // Dorian (0,2,3,5,7,9,10)
-                                case 106: mask = 0x5AB; break; // Phrygian (0,1,3,5,7,8,10)
-                                case 107: mask = 0xAD5; break; // Lydian (0,2,4,6,7,9,11)
-                                case 108: mask = 0x6B5; break; // Mixolydian (0,2,4,5,7,9,10)
-                                case 109: mask = 0x56B; break; // Locrian (0,1,3,5,6,8,10)
-                                case 110: mask = 0x295; break; // Pentatonic Major (0,2,4,7,9)
-                                case 111: mask = 0x4A9; break; // Pentatonic Minor (0,3,5,7,10)
-                                case 112: mask = 0x29D; break; // Blues Major (0,2,3,4,7,9)
-                                case 113: mask = 0x4E9; break; // Blues Minor (0,3,5,6,7,10)
-                                case 114: mask = 0x555; break; // Whole Tone (0,2,4,6,8,10)
-                                case 115: mask = 0xB6D; break; // Diminished W-H (0,2,3,5,6,8,9,11)
-                                default:  return;
-                            }
-                            // Chromatic semitone → KeyQuant component-id
-                            //   C(0)→p11, C#(1)→p12, D(2)→p13, D#(3)→p14,
-                            //   E(4)→p3,  F(5)→p4,   F#(6)→p5, G(7)→p6,
-                            //   G#(8)→p7, A(9)→p8,   Bb(10)→p9, B(11)→p10
-                            static const char* const SEMI_TO_PID[12] = {
-                                "p11","p12","p13","p14","p3","p4","p5","p6","p7","p8","p9","p10"
-                            };
+                            // Key Quantizer scale preset: scale and root come out
+                            // of the result ID, the switches out of KeyQuantScales.
+                            const int offset = result - kScaleMenuBase;
+                            const int root = offset / kScaleMenuStride;
+                            const int scaleIndex = offset % kScaleMenuStride;
+                            const auto& scales = KeyQuantScales::all();
+                            if (scaleIndex >= static_cast<int>(scales.size()))
+                                return;
+                            const int mask = KeyQuantScales::maskFor(scales[static_cast<size_t>(scaleIndex)], root);
                             for (int s = 0; s < 12; ++s)
                             {
-                                auto* p = findParameter(*modPtr, SEMI_TO_PID[s]);
+                                auto* p = findParameter(*modPtr, KeyQuantScales::pitchComponentId(s));
                                 if (p == nullptr) continue;
                                 int newVal = (mask >> s) & 1;
                                 if (p->getValue() == newVal) continue;

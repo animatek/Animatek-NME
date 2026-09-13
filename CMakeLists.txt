@@ -158,6 +158,9 @@ set(NME_SHARED_SOURCES
     # Swapping a module for another of its family, in place
     source/model/ModuleReplacement.cpp
 
+    # Key Quantizer scale presets, on any root
+    source/model/KeyQuantScales.cpp
+
     # What the synth did, kept for the MCP bridge. Plain data and no socket, so
     # it is shared: MainComponent records into it whether or not the bridge is built.
     source/mcp/McpEventLog.cpp

@@ -4,6 +4,55 @@
 
 ### Added
 
+- **Twelve original G1 patches and a private ABCD patch guide** (2026-09-13,
+  Javier's request; Codex). Bank 406–409 holds Mareas en Re with the user's
+  live tweaks preserved and slot-letter names. This includes A at 115 BPM
+  and B at 52 BPM with its clock stopped. Bank 410–413 adds Horizontes:
+  four continuous drones with independent smooth random sources, quantized
+  melody/countermelody, and no clocks, sequencers or triggered envelopes.
+  Bank 414–417 adds Fractura: kick/sub, FM metal/tom, digital hats and acid
+  voice, with 4:3, 8:3 and 3:2 internal clock ratios and 5/7/11-step cycles.
+  New parts start at 132 BPM with free phase between slots. Pitched voices
+  share D harmonic minor. All twelve have eight knobs and two morph groups.
+  The final working slots hold Horizontes. Later live A-drone and D-techno
+  performances are also preserved as separate snapshots; the latter was
+  reconstructed from the reported parameter/morph events before restoring
+  the drones. Files and limits: `patches/README.md` and
+  `patches/generative-collections/verification.json`.
+  Verification: all eight new patches parsed and loaded on G1 OS 3.03,
+  four enabled slots with one voice each, live generator/sequencer activity,
+  bank cache listing all twelve names at 406–417. Intermittent B upload
+  timeouts were recovered from disk; no synth errors after recovery through
+  event 464. Parameter ranges, morph endpoints, scale masks, eight knob
+  assignments per new patch and connected audio paths validated. Two short
+  stereo-mix captures through Komplete Audio 6 contain signal with no clipped
+  samples (techno peak −13.51 dBFS; drones −11.72 dBFS); these are not isolated
+  stems or a listening assessment. No power-cycle or memory-recall test.
+  Private guide: https://nord-modular-atlas.animatek.chatgpt.site — three
+  collections, 96 control labels and twelve native downloads in three ZIPs.
+  Build, lint and archive/download checks passed; deployment succeeded.
+  Browser handoff was unavailable. The separate Site repository is committed
+  as `34f65ed19102ae845eb036464c74588e1c041eed`; this Nomad2026 change remains
+  local, without a commit. Unrelated editor changes were left intact.
+
+- **Key Quantizer scales on any root, and the one it is on now** (2026-09-13,
+  Javier's request). The right-click menu already had sixteen scales, all on C and
+  undocumented, so A minor meant choosing C's natural minor and moving every switch
+  by hand. The **Scale** submenu now opens with what the switches spell at the
+  moment, then Chromatic, then one list per root from C to B, and the current scale
+  is ticked. Every scale with those notes is ticked, since the switches do not know
+  the root: the white keys are C Major, A Natural Minor and D Dorian at once. New
+  scales: Phrygian Dominant (Andalusian), Double Harmonic, Hungarian Minor,
+  Neapolitan Minor and Major, Hirajoshi, In-sen and Diminished (H-W). Scales are
+  written once as intervals in `source/model/KeyQuantScales.*` and moved onto the
+  switches for the root chosen.
+  Verification: `tests/test_keyquant_scales.cpp` checks that the sixteen scales on
+  C write exactly the switches the old menu did, the move to other roots (E
+  Andalusian is E F G# A B C D), recognition of every scale a set of switches
+  spells, and the switch ids against the module description; the suite passes, 97
+  test cases / 2,766 assertions, plain and under ASan/UBSan. **Not verified:** the menu on screen. Choosing a
+  scale is still one undo step per switch, as it was.
+
 - **Replace a module with another of its family, from its right-click menu**
   (2026-09-13, Javier's request). Turning a FilterE into a FilterD used to mean
   deleting it, adding the new one and wiring it all again. "Replace with" lists the
@@ -101,6 +150,20 @@
   overlapping notes plays the second note (330 Hz for note 64) and ends silent,
   where the raw overlap left a note at full level. Not yet tried from the editor
   against the real synth.
+- **`Ctrl+R` leaves modules excluded from mutation alone** (2026-09-13, reported by
+  Javier). The manual said locked parameters and excluded modules are never
+  touched, but `randomizeSlotParameters` only checked locks, so "Exclude from
+  Mutation" protected a module from the Patch Mutator and the MCP bridge and not from
+  `Ctrl+R` or `Ctrl+Shift+R`. Both now skip excluded modules, and the status bar says
+  how many were left alone, or that nothing was randomized because everything left
+  is excluded. To make the exclusion usable for this: the menu item is now **Exclude
+  from Random & Mutation**, it is also on the right-click menu of a selection (one
+  state for all of it: exclude them all, or include them all again when all already
+  are), and the red frame marking an excluded module is drawn always, not only in
+  Mutator mode. The manual also said `Ctrl+Shift+R` spreads values around the current
+  ones; the code centres them on the middle of each parameter's range, and the manual
+  now says so. Verification: built, full test suite passes (97 test cases); the
+  randomize path and the menus have no unit tests. **Not verified:** on screen.
 
 - **A store to a bank no longer gets lost when it follows an upload** (2026-09-13).
   Storing a patch uploads it first and sends the store as soon as the synth ACKs

@@ -478,6 +478,13 @@ void PatchCanvas::showSelectionContextMenu()
     menu.addItem(6, "Save as Snippet...");
     menu.addSeparator();
     menu.addItem(5, "Initialize");
+    // Left alone by Ctrl+R and the Mutator. Ticked when every selected module
+    // already is, which is also what choosing it would undo.
+    bool allExcluded = !selection.empty();
+    for (auto& sel : selection)
+        if (auto* m = resolve(sel))
+            allExcluded = allExcluded && m->isExcludedFromMutation();
+    menu.addItem(7, "Exclude from Random & Mutation", true, allExcluded);
     menu.addSeparator();
     menu.addItem(4, "Delete");
 
@@ -496,6 +503,19 @@ void PatchCanvas::showSelectionContextMenu()
             }
         }
         else if (result == 6) saveSelectionAsSnippet();
+        else if (result == 7) {
+            // One state for the whole selection: if all of it is excluded, include
+            // it all again; otherwise exclude it all. A mixed selection toggled
+            // module by module would just swap which ones are excluded.
+            bool allExcludedNow = true;
+            for (auto& sel : selection)
+                if (auto* m = resolve(sel))
+                    allExcludedNow = allExcludedNow && m->isExcludedFromMutation();
+            for (auto& sel : selection)
+                if (auto* m = resolve(sel))
+                    m->setExcludedFromMutation(!allExcludedNow);
+            repaint();
+        }
     });
 }
 

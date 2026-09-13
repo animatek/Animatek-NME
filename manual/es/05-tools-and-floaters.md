@@ -42,8 +42,8 @@ Un criador de sonidos interactivo al estilo del G2. Un sonido **Mother** y otro
 - **Cross**: cruce genético (en modo secuencial o independiente).
 
 Haz clic en un sonido para audicionarlo en el sintetizador. Los parámetros
-bloqueados, los módulos excluidos (clic derecho en un módulo → excluir de la
-mutación) y los módulos de salida no se tocan nunca. Una fila de almacenamiento
+bloqueados, los módulos excluidos (clic derecho en un módulo → Exclude from Random &
+Mutation) y los módulos de salida no se tocan nunca. Una fila de almacenamiento
 temporal guarda favoritos, y la fila de variaciones enlaza con las 8 variaciones
 por slot. El control por teclado es rápido; mira los
 [atajos](07-shortcuts.md#patch-mutator-con-la-ventana-enfocada).

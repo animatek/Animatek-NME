@@ -5005,11 +5005,15 @@ void MainComponent::randomizeSlotParameters(int slot, PatchCanvasComponent& canv
   for (auto& [mod, sec] : selected)
       selectedSet.insert(mod);
   bool hasSelection = !selectedSet.empty();
+  // Modules excluded from mutation are left alone here too: the manual always
+  // said so, but only the Mutator and the MCP bridge actually checked.
+  int excludedSkipped = 0;
 
   auto processContainer = [&](ModuleContainer& container, int section) {
       for (auto& modPtr : container.getModules()) {
           if (!modPtr) continue;
           if (hasSelection && selectedSet.count(modPtr.get()) == 0) continue;
+          if (modPtr->isExcludedFromMutation()) { ++excludedSkipped; continue; }
           for (auto& param : modPtr->getParameters()) {
               if (shouldExclude(param)) continue;
               auto* pd = param.getDescriptor();
@@ -5040,7 +5044,13 @@ void MainComponent::randomizeSlotParameters(int slot, PatchCanvasComponent& canv
   processContainer(p->getPolyVoiceArea(), 1);
   processContainer(p->getCommonArea(), 0);
 
-  if (changes.empty()) return;
+  if (changes.empty()) {
+    if (excludedSkipped > 0)
+      mainLayout->getStatusBar().showMessage(
+          "Nothing randomized: " + juce::String(excludedSkipped)
+          + (excludedSkipped == 1 ? " module is" : " modules are") + " excluded from randomization", 3000);
+    return;
+  }
 
   // Single undo transaction with batched synth upload. The RandomizeAction runs
   // against this slot's UndoContext, whose repaint callback already redraws
@@ -5052,7 +5062,11 @@ void MainComponent::randomizeSlotParameters(int slot, PatchCanvasComponent& canv
   juce::String scope = hasSelection ? " (selection)" : " (all)";
   mainLayout->getStatusBar().showMessage(
       "Randomized " + juce::String(numChanges) + " parameters" + scope
-      + (gaussian ? " (Gaussian)" : " (Simple)"), 3000);
+      + (gaussian ? " (Gaussian)" : " (Simple)")
+      + (excludedSkipped > 0 ? " - " + juce::String(excludedSkipped)
+                                   + (excludedSkipped == 1 ? " excluded module" : " excluded modules")
+                                   + " left alone"
+                             : juce::String()), 3000);
 }
 
 void MainComponent::updateDspLoadDisplay() {

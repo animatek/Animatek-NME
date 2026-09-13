@@ -208,6 +208,23 @@ sequencers, filters, the DrumSynth, anything. They live in a **Presets** folder
 in your patch library as one `.pchp` pack per module type; see
 [Files & Formats](06-files-and-formats.md#pchp-module-presets).
 
+### Key Quantizer scales
+
+The Key Quantizer's right-click menu has a **Scale** submenu. It opens with the
+scale its note switches spell right now, then **Chromatic**, then one list per
+root note, **C** to **B**. Pick **D > D Dorian** and the twelve switches are set
+for it. The switches do not say which note is the root, so every scale that
+uses the same notes is ticked: the white keys are C Major, A Natural Minor and
+D Dorian at once. Notes that match no scale read **Custom notes**.
+
+Besides the major and minor scales, the modes, pentatonics, blues and
+whole-tone scale, there are Phrygian Dominant (Andalusian), Double Harmonic,
+Hungarian Minor, Neapolitan Minor and Major, Hirajoshi, In-sen and both
+diminished scales.
+
+Choosing a scale sets the switches one by one, so `Ctrl+Z` takes it back one
+switch at a time.
+
 ## Morphs
 
 The four morph groups from the header bar work like the hardware's: assign
@@ -221,8 +238,15 @@ parameter's swept range.
 ## Randomize, initialize, locks
 
 - `Ctrl+R` randomizes parameters (uniform); `Ctrl+Shift+R` uses a gaussian
-  spread around current values.
-- Locked parameters and excluded modules are never touched.
+  spread around the middle of each parameter's range. With modules selected,
+  only those are randomized.
+- **Excluding modules.** Right-click a module and tick **Exclude from Random &
+  Mutation**, or select several and do it from the selection's right-click
+  menu. Excluded modules get a red frame, and `Ctrl+R`, `Ctrl+Shift+R`, the
+  Patch Mutator and the MCP bridge's `mutate_patch` all leave them alone. The
+  status bar says how many were skipped.
+- Locked parameters are never touched either, and neither are on/off switches,
+  mutes, levels or bypasses, so a randomize does not silence the patch.
 - Initialize resets a patch to a clean state.
 
 For evolutionary sound design with breeding and interpolation, see the

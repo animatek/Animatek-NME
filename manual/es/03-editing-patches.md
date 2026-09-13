@@ -124,6 +124,24 @@ lo que sea. Viven en una carpeta **Presets** de tu librería, como un paquete
 `.pchp` por tipo de módulo; mira
 [Archivos y formatos](06-files-and-formats.md#pchp-presets-de-módulo).
 
+### Escalas del Key Quantizer
+
+El menú contextual del Key Quantizer tiene un submenú **Scale**. Arriba dice
+qué escala forman ahora sus interruptores de nota; debajo están **Chromatic** y
+una lista por tónica, de **C** a **B**. Elige **D > D Dorian** y los doce
+interruptores quedan puestos para esa escala. Los interruptores no dicen cuál
+es la tónica, así que salen marcadas todas las escalas con esas mismas notas:
+las teclas blancas son a la vez Do mayor, La menor natural y Re dórico. Si las
+notas no forman ninguna escala, pone **Custom notes**.
+
+Además de las escalas mayores y menores, los modos, las pentatónicas, las de
+blues y la de tonos enteros, hay frigia dominante (andaluza), doble armónica,
+menor húngara, napolitanas menor y mayor, hirajoshi, in-sen y las dos
+disminuidas.
+
+Elegir una escala cambia los interruptores uno a uno, así que `Ctrl+Z` la
+deshace interruptor a interruptor.
+
 ## Morphs
 
 Los cuatro grupos de morph de la cabecera funcionan como los del hardware:
@@ -137,8 +155,15 @@ en todo el patch y `F5` muestra el recorrido que barre cada parámetro con morph
 ## Randomize, initialize y bloqueos
 
 - `Ctrl+R` randomiza parámetros (uniforme); `Ctrl+Shift+R` usa una dispersión
-  gaussiana alrededor de los valores actuales.
-- Los parámetros bloqueados y los módulos excluidos no se tocan nunca.
+  gaussiana alrededor del centro del rango de cada parámetro. Si hay módulos
+  seleccionados, solo randomiza esos.
+- **Excluir módulos.** Haz clic derecho en un módulo y marca **Exclude from
+  Random & Mutation**, o selecciona varios y hazlo desde el menú contextual de la
+  selección. Los módulos excluidos llevan un marco rojo, y `Ctrl+R`,
+  `Ctrl+Shift+R`, el Patch Mutator y `mutate_patch` del puente MCP no los
+  tocan. La barra de estado dice cuántos se han saltado.
+- Tampoco se tocan los parámetros bloqueados, ni los interruptores on/off, mutes,
+  niveles o bypass, para que randomizar no deje el patch en silencio.
 - Initialize devuelve el patch a un estado limpio.
 
 Para diseño de sonido evolutivo con cruce e interpolación, mira el

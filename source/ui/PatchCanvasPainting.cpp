@@ -736,8 +736,10 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
     g.setFont(juce::FontOptions("Fira Sans", 12.5f, juce::Font::bold));
     g.drawText(m.getTitle(), titleBar.reduced(4, 0), juce::Justification::centredLeft, true);
 
-    // Patch Mutator: red frame marks modules excluded from mutation (G2 behavior)
-    if (mutatorModeOn && m.isExcludedFromMutation())
+    // Red frame: excluded from randomize and mutation (G2 behaviour). Always
+    // drawn, not only in Mutator mode: Ctrl+R skips these modules as well, and
+    // an exclusion you cannot see is one you forget you made.
+    if (m.isExcludedFromMutation())
     {
         g.setColour(juce::Colour(0xffcc3333));
         g.drawRoundedRectangle(bounds.toFloat().reduced(1.0f), 3.0f, 2.0f);
