@@ -858,6 +858,9 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   mainLayout->getDiskPresetBrowser().onSnippetChosen = [this](const juce::File& file) {
     importSnippetFromFile(activeSlot, file);
   };
+  mainLayout->getDiskPresetBrowser().onSetChosen = [this](const juce::File& file) {
+    loadSlotSet(file);
+  };
   // Wire bug report button on header bar
   mainLayout->getHeaderBar().setReportBugCallback([this]() {
     openURL("https://github.com/animatek/Animatek-NME/issues");
@@ -992,6 +995,7 @@ MainComponent::~MainComponent() {
   connectionManager.setSynthErrorCallback(nullptr);
   connectionManager.setSlotChangedCallback(nullptr);
   connectionManager.setSlotsEnabledCallback(nullptr);
+  slotSetLoadTimer.reset();
   connectionManager.setUploadCompleteCallback(nullptr);
   connectionManager.setLightMeterCallback(nullptr);
   connectionManager.setPatchListCallback(nullptr);
@@ -1258,6 +1262,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     addShortcutItem(menu, 3, "Save", "Ctrl+S");
     addShortcutItem(menu, 4, "Save As...", "Ctrl+Shift+S");
     menu.addSeparator();
+    menu.addItem(13, "Open Slot Set...");
+    menu.addItem(12, "Save Slot Set...");
+    menu.addSeparator();
     menu.addItem(5, "Import Snippet...", currentPatch() != nullptr);
     addShortcutItem(menu, 6, "Preset Browser...", "Ctrl+B");
     menu.addSeparator();
@@ -1453,6 +1460,12 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 4:
     saveSlotPatchAs(activeSlot);
+    break;
+  case 12:
+    saveSlotSet();
+    break;
+  case 13:
+    openSlotSetWithChooser();
     break;
   case 5:
     importSnippet();
@@ -2828,6 +2841,9 @@ void MainComponent::showPresetBrowser() {
     };
     presetBrowserWindow->onSnippetChosen = [this](const juce::File& file) {
       importSnippetFromFile(activeSlot, file);
+    };
+    presetBrowserWindow->onSetChosen = [this](const juce::File& file) {
+      loadSlotSet(file);
     };
     presetBrowserWindow->onChooseLibraryFolder = [this]() {
       choosePresetLibraryFolder();

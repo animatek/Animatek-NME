@@ -620,6 +620,23 @@ void ConnectionManager::setSlotEnabled(int slot, bool enabled)
               << (enabled ? " pinned" : " unpinned") << ")" << std::endl;
 }
 
+bool ConnectionManager::setSlotPins(const std::array<bool, 4>& pinned)
+{
+    if (!isConnected())
+        return false;
+    if (!slotEnableMaskKnown)
+    {
+        requestSynthSettings();
+        return false;
+    }
+
+    slotPinned = pinned;
+    sendSlotMask();
+    std::cout << "[SLOT] Sent SlotsSelected (set pins "
+              << pinned[0] << pinned[1] << pinned[2] << pinned[3] << ")" << std::endl;
+    return true;
+}
+
 void ConnectionManager::loadPatchFromBank(int section, int position, int targetSlot)
 {
     if (!isConnected())

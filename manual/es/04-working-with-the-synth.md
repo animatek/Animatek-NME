@@ -113,6 +113,36 @@ sintetizador. Desde ahí puedes:
 Los archivos Nord Modular 2.10 antiguos se marcan como **PCH2** en el navegador
 de disco y se cargan de forma transparente.
 
+## Sets de slots
+
+Los patches por capas, uno en cada slot, solo suenan como deben juntos, y el G1
+no tiene manera de guardar el grupo: una posición de banco guarda un patch. Un
+**set de slots** guarda ese grupo en el editor.
+
+- **File > Save Slot Set...** pide un nombre y, para cada slot, si el set
+  **incluye su patch** (*Include patch*), **apaga el slot** (*Switch slot off*) o
+  **lo deja como está** (*Leave as is*). Un set de dos o tres patches es un set
+  con el resto de slots como están. Las notas, opcionales, se enseñan cada vez
+  que se carga el set.
+- El set se escribe en `Sets/<nombre>/` dentro de la librería: una copia de cada
+  patch incluido (con su `.var`), nombrada con la letra de su slot, y un
+  manifiesto `<nombre>.nmset`. Las copias son `.pch` normales, así que editar
+  después un patch no cambia el set: para actualizarlo, se vuelve a guardar.
+- **File > Open Slot Set...**, o doble clic en una entrada **SET** de la pestaña
+  Disk, enseña primero qué va a cada slot y qué sustituye. Después los patches
+  van al sintetizador de uno en uno, cada uno esperando a que se confirme la
+  subida anterior; los slots se encienden o apagan como se guardaron, y el foco
+  pasa al slot que estaba activo al guardar. El sintetizador nunca apaga el slot
+  enfocado, así que el foco siempre cae en un slot que el set deja encendido.
+- Sin conexión, los patches se cargan solo en el editor (**LOCAL**) y no se
+  enciende ni apaga ningún slot.
+- Si falla una subida, la carga sigue con el siguiente slot, ese slot queda
+  LOCAL y al final un mensaje explica qué ha fallado.
+
+El manifiesto apunta también la posición de banco de cada patch cuando el editor
+la conocía (`414`), solo como referencia: un set carga siempre sus propias
+copias, nunca el banco.
+
 ## Transferencia de bancos (menú Device)
 
 - **Save Bank to Disk**: vuelca un banco entero del sintetizador a una carpeta;

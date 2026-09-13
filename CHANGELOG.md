@@ -4,6 +4,32 @@
 
 ### Added
 
+- **Slot sets: save the four slots as one sound and load them back together**
+  (2026-09-13, Javier's request; Claude). Layered patches, one per slot, only
+  make their sound as a group, and the G1 cannot store that: a bank position
+  holds one patch and performances only arrived with the G2. **File > Save Slot
+  Set...** asks for a name, optional notes and, per slot, *Include patch*,
+  *Switch slot off* or *Leave as is*, so a set can be two or three patches. It
+  writes `Sets/<name>/` in the preset library: a copy of each patch with its
+  `.var`, named after the slot letter, and a `<name>.nmset` JSON manifest
+  (`source/model/SlotSet`). **File > Open Slot Set...** or a double click on the
+  new **SET** entries of the Disk tab (with their own filter) says what goes
+  where and what it replaces, then loads the patches one at a time, each
+  waiting for the previous upload's ACK, switches slots on/off as saved with a
+  single mask message (`ConnectionManager::setSlotPins`) and moves focus to a
+  slot the set leaves on, since the synth never disables its focused slot.
+  Disconnected, it loads LOCAL and touches no enable state; a failed upload
+  leaves that slot LOCAL and is reported at the end. Manifests naming files
+  outside their folder, unknown modes or a newer version are refused. The bank
+  location is recorded (`414`) but not used yet: loading always uses the set's
+  own copies. Manual: chapter 4 *Slot sets* and chapter 6 `.nmset`, English and
+  Spanish. Three starter sets (Mareas en Re, Horizontes, Fractura) were created
+  in the library from `patches/*-ABCD/`, bank numbers 406–417.
+  Verification: builds; 8 new test cases (manifest round trip, refusals, file
+  and folder names, bank numbers, enable mask and focus); full suite 105 cases,
+  2,859 assertions, also under ASan/UBSan. Javier tried it the same day and
+  reports that it works; polishing continues. On `feature/keyquant-scales`.
+
 - **Twelve original G1 patches and a private ABCD patch guide** (2026-09-13,
   Javier's request; Codex). Bank 406–409 holds Mareas en Re with the user's
   live tweaks preserved and slot-letter names. This includes A at 115 BPM

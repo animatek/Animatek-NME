@@ -154,6 +154,34 @@ In those cases the editor looks the patch name up in the bank list:
   one click stores again.
 - **no position** carries it: the button shows `--` and a click opens the dialog.
 
+## Slot sets
+
+Layered patches, one per slot, only make their sound together, and the G1 has
+no way to store the group: a bank position holds one patch. A **slot set**
+keeps the group in the editor instead.
+
+- **File > Save Slot Set...** asks for a name and, for each slot, whether the set
+  **includes its patch**, **switches the slot off** or **leaves it as is**. A set
+  of two or three patches is a set whose other slots are left as is. The
+  optional notes are shown again every time the set is loaded.
+- The set is written to `Sets/<name>/` in the preset library: a copy of each
+  included patch (with its `.var`), named after its slot letter, and a
+  `<name>.nmset` manifest. The copies are ordinary `.pch` files, so editing a
+  patch afterwards does not change the set: save the set again to update it.
+- **File > Open Slot Set...**, or a double click on a **SET** entry in the Disk
+  tab, first shows what goes into which slot and what it replaces. Then the
+  patches go to the synth one at a time, each waiting for the previous upload to
+  be acknowledged, the slots are switched on or off as saved, and focus moves to
+  the slot that was active when the set was saved. The synth never switches off
+  its focused slot, so focus always lands on a slot the set leaves on.
+- Disconnected, the patches load into the editor only (**LOCAL**) and no slot is
+  switched on or off.
+- If an upload fails, loading carries on with the next slot, that slot is marked
+  LOCAL, and a message at the end lists what went wrong.
+
+The manifest also records each patch's bank location when the editor knew it
+(`414`), for reference only: a set always loads its own copies, never the bank.
+
 ## Bank transfers (Device menu)
 
 - **Save Bank to Disk**: dump a whole synth bank to a folder; position

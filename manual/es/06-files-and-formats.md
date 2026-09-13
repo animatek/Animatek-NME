@@ -61,10 +61,38 @@ El navegador de disco escanea recursivamente una carpeta configurable de
   Snippets/   snippets exportados
   Presets/    un paquete .pchp de presets por tipo de módulo
   Banks/      carpetas espejo Bank1 … Bank9 de "Backup All Banks"
+  Sets/       sets de slots: una carpeta por set, con sus patches y un manifiesto .nmset
 ```
 
-La búsqueda cubre los nombres de archivo; los filtros acotan a patches, snippets
-o copias de banco. Las copias de banco se cargan como cualquier otro patch.
+La búsqueda cubre los nombres de archivo; los filtros acotan a patches, snippets,
+copias de banco o sets de slots. Las copias de banco se cargan como cualquier
+otro patch; un set se carga en todos los slots que nombra (ver *Sets de slots*
+en el capítulo 4).
+
+## Manifiesto de set `.nmset`
+
+JSON, en la carpeta del set junto a las copias de sus patches:
+
+```json
+{
+  "format": "animatek-nme-slot-set",
+  "version": 1,
+  "name": "Fractura",
+  "notes": "Empieza por A y C.",
+  "focus": "A",
+  "slots": {
+    "A": { "mode": "patch", "file": "A Nucleo Duro.pch",
+           "patchName": "A Nucleo Duro", "enabled": true, "bank": 414 },
+    "B": { "mode": "disable" },
+    "C": { "mode": "keep" }
+  }
+}
+```
+
+`mode` es `patch`, `disable` o `keep`, y un slot que no aparece se deja como
+está. `file` tiene que ser un `.pch` de la misma carpeta: un manifiesto que
+nombre otra cosa, un modo desconocido o una `version` más nueva se rechaza en
+vez de cargarse a medias. `bank` es solo informativo.
 
 ## Carpetas de banco
 

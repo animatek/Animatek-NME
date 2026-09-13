@@ -91,6 +91,10 @@ public:
     // Slot enable state (fixed LED on hardware; several slots can be enabled
     // at once, independent of which one has focus)
     void setSlotEnabled(int slot, bool enabled);  // Send full mask to synth
+    // Pin exactly these slots, in one message, for loading a slot set. The
+    // focused slot stays enabled whatever this says. Returns false, and asks the
+    // synth for its state, when the current mask is unknown rather than guess.
+    bool setSlotPins(const std::array<bool, 4>& pinned);
     bool isSlotEnabled(int slot) const
     {
         return slot >= 0 && slot < 4 && slotEnabled[static_cast<size_t>(slot)];

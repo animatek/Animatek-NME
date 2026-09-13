@@ -16,6 +16,7 @@ public:
 
     std::function<void(const juce::File&)> onPatchChosen;
     std::function<void(const juce::File&)> onSnippetChosen;
+    std::function<void(const juce::File&)> onSetChosen;   // a slot set manifest
 
 private:
     class RefreshIconButton : public juce::Button
@@ -43,7 +44,7 @@ private:
     class FilterIconButton : public juce::Button
     {
     public:
-        enum class Icon { All, Patch, Snippet, Bank, Legacy };
+        enum class Icon { All, Patch, Snippet, Bank, Set, Legacy };
         FilterIconButton(const juce::String& name, Icon iconType);
         void paintButton(juce::Graphics& g, bool highlighted, bool down) override;
 
@@ -51,11 +52,11 @@ private:
         Icon icon;
     };
 
-    enum class TypeFilter { All, Patches, Snippets, Banks };
+    enum class TypeFilter { All, Patches, Snippets, Banks, Sets };
 
     struct Entry
     {
-        enum class Type { Patch, Snippet, Bank };
+        enum class Type { Patch, Snippet, Bank, Set };
         Type type = Type::Patch;
         juce::File file;
         juce::String displayName;
@@ -93,6 +94,7 @@ private:
     FilterIconButton patchesButton { "Patches", FilterIconButton::Icon::Patch };
     FilterIconButton snippetsButton { "Snippets", FilterIconButton::Icon::Snippet };
     FilterIconButton banksButton { "Banks", FilterIconButton::Icon::Bank };
+    FilterIconButton setsButton { "Slot sets", FilterIconButton::Icon::Set };
     FilterIconButton hidePch2Button { "Hide PCH2", FilterIconButton::Icon::Legacy };
     RefreshIconButton refreshButton;
     StepIconButton prevButton { "Previous preset", -1 };
@@ -127,6 +129,7 @@ public:
 
     std::function<void(const juce::File&)> onPatchChosen;
     std::function<void(const juce::File&)> onSnippetChosen;
+    std::function<void(const juce::File&)> onSetChosen;   // a slot set manifest
     std::function<void()> onChooseLibraryFolder;
 
 private:

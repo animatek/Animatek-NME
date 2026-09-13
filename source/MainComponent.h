@@ -10,6 +10,7 @@
 #include "model/Patch.h"
 #include "model/PatchVariations.h"
 #include "model/PatchExtras.h"
+#include "model/SlotSet.h"
 #include "model/PchFileIO.h"
 #include "model/SnipFileIO.h"
 #include "model/SynthSettings.h"
@@ -145,6 +146,38 @@ private:
     bool replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
                             const juce::File& sourceFile, bool activate,
                             bool loadVariations, juce::String& error);
+
+    // ── Slot sets ──────────────────────────────────────────────────────────
+    // A named group of patches for the four slots, kept as a folder in the
+    // library's Sets/ (model/SlotSet.h). In MainComponentSlotSets.cpp.
+    void saveSlotSet();
+    void writeSlotSet(const juce::String& name, const juce::String& notes,
+                      const std::array<SlotSet::Mode, 4>& modes, bool overwrite);
+    void openSlotSetWithChooser();
+    void loadSlotSet(const juce::File& manifest);   // says what it will do, then loads
+    void startSlotSetLoad(const SlotSet& set, const juce::File& folder);
+    void slotSetLoadTick();
+    void finishSlotSetLoad();
+    struct SlotSetLoad
+    {
+        enum class Stage { Patches, Focus, Enable };
+        bool active = false;
+        Stage stage = Stage::Patches;
+        SlotSet set;
+        juce::File folder;
+        std::vector<int> pending;      // slots still to load, A to D
+        int current = -1;              // the slot whose load is in flight
+        bool uploading = false;        // that load went to the synth: wait for its ACK
+        bool uploadAcked = false;
+        int quietTicks = 0;            // ticks the upload has been over without an ACK
+        int stepTicks = 0;             // ticks spent on the current step
+        int settleTicks = 0;           // ticks to wait before the next step
+        std::array<bool, 4> mask {};   // the enable state to leave behind
+        juce::StringArray loaded;
+        juce::StringArray failed;
+    };
+    SlotSetLoad slotSetLoad;
+    std::unique_ptr<juce::Timer> slotSetLoadTimer;
     void importSnippet();
     void importSnippetFromFile(int slot, const juce::File& file);
     void importSnippetFromFile(int slot, const juce::File& file, int targetGridX, int targetGridY);

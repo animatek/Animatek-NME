@@ -64,6 +64,7 @@ endif()
 # --- Shared source files (used by both standalone and plugin) ---
 set(NME_SHARED_SOURCES
     source/MainComponent.cpp
+    source/MainComponentSlotSets.cpp
 
     # Data Model
     source/model/ModuleDescriptions.cpp
@@ -79,6 +80,7 @@ set(NME_SHARED_SOURCES
     source/model/MutationCategories.cpp
     source/model/PchFileIO.cpp
     source/model/SnipFileIO.cpp
+    source/model/SlotSet.cpp
     source/model/ThemeData.cpp
 
     # Value Formatters (ported from nmformat.js)
@@ -107,6 +109,7 @@ set(NME_SHARED_SOURCES
     source/ui/PatchLocationDialog.cpp
     source/ui/AboutDialog.cpp
     source/ui/SlotSelectDialog.cpp
+    source/ui/SaveSlotSetDialog.cpp
     source/ui/PatchSettingsDialog.cpp
     source/ui/MidiSettingsDialog.cpp
     source/ui/SynthSettingsDialog.cpp

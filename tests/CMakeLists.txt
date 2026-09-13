@@ -29,6 +29,7 @@ target_sources(nme_tests PRIVATE
     test_editor_key.cpp
     test_synth_settings_clock.cpp
     test_keyquant_scales.cpp
+    test_slot_set.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
@@ -68,6 +69,7 @@ target_sources(nme_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/source/mcp/McpEventLog.cpp
     ${CMAKE_SOURCE_DIR}/source/model/ModuleReplacement.cpp
     ${CMAKE_SOURCE_DIR}/source/model/KeyQuantScales.cpp
+    ${CMAKE_SOURCE_DIR}/source/model/SlotSet.cpp
 )
 
 target_include_directories(nme_tests PRIVATE

@@ -91,10 +91,37 @@ The disk browser scans a configurable **preset library** folder recursively:
   Snippets/   exported snippets
   Presets/    one .pchp pack of module presets per module type
   Banks/      Bank1 … Bank9 mirror folders from "Backup All Banks"
+  Sets/       slot sets: one folder per set, its patches and a .nmset manifest
 ```
 
-Search covers filenames; filters narrow to patches, snippets or bank backups.
-Bank backups load like any other patch.
+Search covers filenames; filters narrow to patches, snippets, bank backups or
+slot sets. Bank backups load like any other patch; a slot set loads into all
+the slots it names (see *Slot sets* in chapter 4).
+
+## `.nmset` slot set manifest
+
+JSON, in the set's folder next to its patch copies:
+
+```json
+{
+  "format": "animatek-nme-slot-set",
+  "version": 1,
+  "name": "Fractura",
+  "notes": "Start with A and C.",
+  "focus": "A",
+  "slots": {
+    "A": { "mode": "patch", "file": "A Nucleo Duro.pch",
+           "patchName": "A Nucleo Duro", "enabled": true, "bank": 414 },
+    "B": { "mode": "disable" },
+    "C": { "mode": "keep" }
+  }
+}
+```
+
+`mode` is `patch`, `disable` or `keep`, and a slot left out is kept. `file` must
+be a `.pch` in the same folder: a manifest naming anything else, an unknown
+mode or a newer `version` is refused rather than half loaded. `bank` is
+informational.
 
 ## Bank folders
 

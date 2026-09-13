@@ -112,6 +112,12 @@ juce::File EditorOptions::getBanksFolder() const
     return presetLibraryRoot == juce::File() ? juce::File() : presetLibraryRoot.getChildFile ("Banks");
 }
 
+// Slot sets: one folder per set, holding its patches and a .nmset manifest.
+juce::File EditorOptions::getSetsFolder() const
+{
+    return presetLibraryRoot == juce::File() ? juce::File() : presetLibraryRoot.getChildFile ("Sets");
+}
+
 // Module presets ("<Type>.pchp" packs) sit alongside patches, snippets and
 // banks so a preset library is shared the same way everything else is.
 juce::File EditorOptions::getPresetsFolder() const
@@ -129,7 +135,8 @@ bool EditorOptions::ensureLibraryFolders() const
     auto snippetsOk = getSnippetsFolder().createDirectory().wasOk();
     auto banksOk = getBanksFolder().createDirectory().wasOk();
     auto presetsOk = getPresetsFolder().createDirectory().wasOk();
-    return rootOk && patchesOk && snippetsOk && banksOk && presetsOk;
+    auto setsOk = getSetsFolder().createDirectory().wasOk();
+    return rootOk && patchesOk && snippetsOk && banksOk && presetsOk && setsOk;
 }
 
 // ─── EditorOptionsDialog ─────────────────────────────────────────────────────
