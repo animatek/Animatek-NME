@@ -89,79 +89,43 @@ void DiskPresetBrowserPanel::StepIconButton::paintButton(juce::Graphics& g, bool
     g.fillPath(p);
 }
 
-DiskPresetBrowserPanel::FilterIconButton::FilterIconButton(const juce::String& name, Icon iconType)
-    : juce::Button(name), icon(iconType)
+DiskPresetBrowserPanel::TypeChipButton::TypeChipButton(const juce::String& chipLabel, const juce::String& tooltip)
+    : juce::Button(chipLabel), label(chipLabel)
 {
     setClickingTogglesState(true);
-    setTooltip(name);
+    setTooltip(tooltip);
 }
 
-void DiskPresetBrowserPanel::FilterIconButton::paintButton(juce::Graphics& g, bool highlighted, bool down)
+static juce::Font chipFont()
+{
+    return juce::Font(AppTheme::uiFont(10.0f)).boldened();
+}
+
+int DiskPresetBrowserPanel::TypeChipButton::getIdealWidth(int padding) const
+{
+    juce::GlyphArrangement glyphs;
+    glyphs.addLineOfText(chipFont(), label, 0.0f, 0.0f);
+    return juce::roundToInt(std::ceil(glyphs.getBoundingBox(0, -1, true).getWidth())) + padding;
+}
+
+// Neutral like the rest of the toolbar: only the active chip stands out, so
+// the row tags in the list stay the one place where the kinds have colours.
+void DiskPresetBrowserPanel::TypeChipButton::paintButton(juce::Graphics& g, bool highlighted, bool down)
 {
     const bool selected = getToggleState();
-    auto area = getLocalBounds().toFloat().reduced(2.0f);
-    auto background = selected || down ? AppTheme::palette().buttonActive
-                                      : highlighted ? AppTheme::palette().buttonHover
-                                                    : AppTheme::palette().inputBackground;
-    g.setColour(background);
+    auto area = getLocalBounds().toFloat().reduced(0.5f, 3.0f);
+
+    auto fill = selected || down ? AppTheme::palette().buttonActive
+              : highlighted      ? AppTheme::palette().buttonHover
+                                 : AppTheme::palette().inputBackground;
+    g.setColour(fill);
     g.fillRoundedRectangle(area, 3.0f);
-    g.setColour(selected ? AppTheme::palette().buttonActive : AppTheme::palette().borderColor);
+    g.setColour(selected ? AppTheme::palette().accentActive : AppTheme::palette().borderColor);
     g.drawRoundedRectangle(area, 3.0f, 1.0f);
 
-    g.setColour(selected ? iconInkFor(background) : AppTheme::palette().textSecondary);
-    auto a = area.reduced(7.0f);
-    const float stroke = 1.5f;
-
-    if (icon == Icon::All)
-    {
-        const float cell = juce::jmin(a.getWidth(), a.getHeight()) * 0.34f;
-        const float gap = 2.0f;
-        const float x = a.getCentreX() - cell - gap * 0.5f;
-        const float y = a.getCentreY() - cell - gap * 0.5f;
-        for (int row = 0; row < 2; ++row)
-            for (int col = 0; col < 2; ++col)
-                g.drawRoundedRectangle(x + col * (cell + gap), y + row * (cell + gap), cell, cell, 1.0f, stroke);
-    }
-    else if (icon == Icon::Patch)
-    {
-        auto doc = a.withSizeKeepingCentre(12.0f, 15.0f);
-        g.drawRoundedRectangle(doc, 1.0f, stroke);
-        g.drawLine(doc.getX() + 3.0f, doc.getY() + 6.0f, doc.getRight() - 3.0f, doc.getY() + 6.0f, stroke);
-        g.drawLine(doc.getX() + 3.0f, doc.getY() + 10.0f, doc.getRight() - 3.0f, doc.getY() + 10.0f, stroke);
-    }
-    else if (icon == Icon::Snippet)
-    {
-        const float cx = a.getCentreX(), cy = a.getCentreY();
-        g.drawLine(cx - 7.0f, cy - 6.0f, cx - 7.0f, cy + 6.0f, stroke);
-        g.drawLine(cx - 7.0f, cy - 6.0f, cx - 3.0f, cy - 6.0f, stroke);
-        g.drawLine(cx - 7.0f, cy + 6.0f, cx - 3.0f, cy + 6.0f, stroke);
-        g.drawLine(cx + 7.0f, cy - 6.0f, cx + 7.0f, cy + 6.0f, stroke);
-        g.drawLine(cx + 3.0f, cy - 6.0f, cx + 7.0f, cy - 6.0f, stroke);
-        g.drawLine(cx + 3.0f, cy + 6.0f, cx + 7.0f, cy + 6.0f, stroke);
-        g.fillEllipse(cx - 2.0f, cy - 2.0f, 4.0f, 4.0f);
-    }
-    else if (icon == Icon::Bank)
-    {
-        for (int i = 0; i < 3; ++i)
-            g.drawRoundedRectangle(a.getCentreX() - 7.0f + i * 2.0f,
-                                   a.getCentreY() - 7.0f + i * 2.0f,
-                                   11.0f, 11.0f, 1.0f, stroke);
-    }
-    else if (icon == Icon::Set)
-    {
-        // Four stacked bars: the four slots, loaded together.
-        const float w = 14.0f, h = 2.5f, gap = 1.5f;
-        const float x = a.getCentreX() - w * 0.5f;
-        float y = a.getCentreY() - (h * 4.0f + gap * 3.0f) * 0.5f;
-        for (int i = 0; i < 4; ++i, y += h + gap)
-            g.fillRoundedRectangle(x, y, w, h, 1.0f);
-    }
-    else
-    {
-        g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
-        g.drawText("2", a.toNearestInt(), juce::Justification::centred, false);
-        g.drawLine(a.getX() + 2.0f, a.getBottom() - 2.0f, a.getRight() - 2.0f, a.getY() + 2.0f, stroke);
-    }
+    g.setColour(selected ? iconInkFor(fill) : AppTheme::palette().textSecondary);
+    g.setFont(chipFont());
+    g.drawText(label, area.toNearestInt(), juce::Justification::centred, false);
 }
 
 DiskPresetBrowserPanel::DiskPresetBrowserPanel()
@@ -192,7 +156,7 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     banksButton.onClick = [this]() { typeFilter = TypeFilter::Banks; rebuildVisibleEntries(); };
     setsButton.onClick = [this]() { typeFilter = TypeFilter::Sets; rebuildVisibleEntries(); };
 
-    hidePch2Button.setTooltip("Hide legacy 2.10 (.pch2) patches");
+    hidePch2Button.setTooltip("Hide legacy 2.10 patches (tagged PCH2 in the list)");
     hidePch2Button.onClick = [this]() {
         hidePch2 = hidePch2Button.getToggleState();
         rebuildVisibleEntries();
@@ -223,7 +187,7 @@ void DiskPresetBrowserPanel::applyTheme()
     listBox.setColour(juce::ListBox::backgroundColourId, kPanel);
     listBox.setColour(juce::ListBox::outlineColourId, kSep);
 
-    for (auto* b : { &allButton, &patchesButton, &snippetsButton, &banksButton, &setsButton, &hidePch2Button })
+    for (auto* b : std::initializer_list<juce::Component*> { &allButton, &patchesButton, &snippetsButton, &banksButton, &setsButton, &hidePch2Button })
         b->repaint();
     refreshButton.repaint();
     listBox.repaint();
@@ -295,22 +259,23 @@ void DiskPresetBrowserPanel::rebuildVisibleEntries()
     for (int i = 0; i < static_cast<int>(allEntries.size()); ++i)
     {
         auto& e = allEntries[static_cast<size_t>(i)];
-        if (!entryPassesTypeFilter(e))
-            continue;
-
         if (hidePch2 && isLegacyPatch210(e))
             continue;
 
         auto haystack = (e.displayName + " " + e.relativePath).toLowerCase();
-        if (search.isEmpty() || haystack.contains(search))
+        if (search.isNotEmpty() && !haystack.contains(search))
+            continue;
+
+        if (entryPassesTypeFilter(e))
             visibleEntryIndices.push_back(i);
     }
 
-    auto status = juce::String(visibleEntryIndices.size()) + " of "
-        + juce::String(allEntries.size()) + " files";
-    if (libraryRoot != juce::File())
-        status += " - " + libraryRoot.getFullPathName();
-    statusLabel.setText(status, juce::dontSendNotification);
+    // Just the count: the library path never fit beside it, so it moves to
+    // the tooltip for whoever needs to know which folder this is.
+    statusLabel.setText(juce::String(visibleEntryIndices.size()) + " of "
+                            + juce::String(allEntries.size()) + " files",
+                        juce::dontSendNotification);
+    statusLabel.setTooltip(libraryRoot != juce::File() ? libraryRoot.getFullPathName() : juce::String());
 
     listBox.updateContent();
     listBox.repaint();
@@ -326,17 +291,48 @@ void DiskPresetBrowserPanel::resized()
     refreshButton.setBounds(searchRow.removeFromRight(32).reduced(1));
     searchBox.setBounds(searchRow.reduced(2));
 
-    auto filterRow = area.removeFromTop(26);
-    const int filterWidth = filterRow.getWidth() / 6;
-    for (auto* button : { &allButton, &patchesButton, &snippetsButton, &banksButton, &setsButton, &hidePch2Button })
-        button->setBounds(filterRow.removeFromLeft(filterWidth).reduced(1));
+    filterRowArea = area.removeFromTop(26);
+    layoutFilterRow();
 
     auto statusRow = area.removeFromTop(24);
     nextButton.setBounds(statusRow.removeFromRight(26));
     prevButton.setBounds(statusRow.removeFromRight(26));
+    statusRow.removeFromRight(4);
+    hidePch2Button.setBounds(statusRow.removeFromRight(juce::jmin(84, statusRow.getWidth() / 2)));
     statusLabel.setBounds(statusRow);
     area.removeFromTop(4);
     listBox.setBounds(area);
+}
+
+// Chips take the width their word needs and share out any room left over.
+// On a narrow panel the padding tightens instead: the labels are never cut.
+void DiskPresetBrowserPanel::layoutFilterRow()
+{
+    auto row = filterRowArea;
+    if (row.isEmpty())
+        return;
+
+    TypeChipButton* chips[] = { &allButton, &patchesButton, &snippetsButton, &banksButton, &setsButton };
+    constexpr int numChips = static_cast<int>(std::size(chips));
+    const int gap = 3;
+    auto totalWidth = [&](int padding) {
+        int w = gap * (numChips - 1);
+        for (auto* c : chips)
+            w += c->getIdealWidth(padding);
+        return w;
+    };
+
+    int padding = 14;
+    while (padding > 6 && totalWidth(padding) > row.getWidth())
+        padding -= 2;
+
+    const int spare = juce::jmax(0, row.getWidth() - totalWidth(padding));
+    for (int i = 0; i < numChips; ++i)
+    {
+        const int extra = spare / numChips + (i < spare % numChips ? 1 : 0);
+        chips[i]->setBounds(row.removeFromLeft(chips[i]->getIdealWidth(padding) + extra));
+        row.removeFromLeft(gap);
+    }
 }
 
 int DiskPresetBrowserPanel::getNumRows()

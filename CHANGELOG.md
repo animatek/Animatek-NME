@@ -131,6 +131,19 @@
   voice-count change while notes played, so `voice_count` is not a way to tell a
   note sounded. LOCAL slots still receive edits while connected (S4).
 
+### Changed
+
+- **Disk tab type filters are text chips now, not icons** (2026-09-18,
+  Javier's request; Claude). The six abstract icons (grid, sheet, brackets,
+  stacked squares, bars, a struck-out "2") said nothing about what they kept.
+  Each filter is now a neutral chip with the word its rows carry (ALL, PATCH,
+  SNIP, BANK, SET); only the active one is highlighted, so the row tags stay
+  the one place with colours. Chips never cut their label: on a narrow panel
+  the padding tightens instead. *Hide PCH2* was drawn like one more filter though it
+  narrows whichever one is active; it is now a **Hide 2.10** checkbox next to
+  the file count. The count line no longer trails the library path, which
+  never fit; the path is its tooltip now.
+
 ### Fixed
 
 - **The Synth Settings dialog shows the master tune centred on 0** (2026-09-27). The

@@ -6,6 +6,8 @@ class DiskPresetBrowserPanel : public juce::Component,
                                private juce::ListBoxModel
 {
 public:
+    enum class TypeFilter { All, Patches, Snippets, Banks, Sets };
+
     DiskPresetBrowserPanel();
 
     void setLibraryRoot(const juce::File& root);
@@ -41,18 +43,20 @@ private:
         int step;   // -1 previous, +1 next
     };
 
-    class FilterIconButton : public juce::Button
+    // One type filter, labelled with the same word its rows carry (PATCH,
+    // SNIP, BANK, SET), so the filter reads as the thing it keeps instead of
+    // an icon to learn.
+    class TypeChipButton : public juce::Button
     {
     public:
-        enum class Icon { All, Patch, Snippet, Bank, Set, Legacy };
-        FilterIconButton(const juce::String& name, Icon iconType);
+        TypeChipButton(const juce::String& label, const juce::String& tooltip);
         void paintButton(juce::Graphics& g, bool highlighted, bool down) override;
 
-    private:
-        Icon icon;
-    };
+        int getIdealWidth(int padding) const;
 
-    enum class TypeFilter { All, Patches, Snippets, Banks, Sets };
+    private:
+        juce::String label;
+    };
 
     struct Entry
     {
@@ -80,6 +84,7 @@ private:
     juce::var getDragSourceDescription(const juce::SparseSet<int>& selectedRows) override;
 
     void rebuildVisibleEntries();
+    void layoutFilterRow();
     void scanFolder(const juce::File& folder, Entry::Type type);
     juce::String getTypeLabel(Entry::Type type) const;
     juce::String getTypeLabel(Entry& entry) const;
@@ -90,18 +95,21 @@ private:
 
     juce::Label searchLabel;
     juce::TextEditor searchBox;
-    FilterIconButton allButton { "All presets", FilterIconButton::Icon::All };
-    FilterIconButton patchesButton { "Patches", FilterIconButton::Icon::Patch };
-    FilterIconButton snippetsButton { "Snippets", FilterIconButton::Icon::Snippet };
-    FilterIconButton banksButton { "Banks", FilterIconButton::Icon::Bank };
-    FilterIconButton setsButton { "Slot sets", FilterIconButton::Icon::Set };
-    FilterIconButton hidePch2Button { "Hide PCH2", FilterIconButton::Icon::Legacy };
+    TypeChipButton allButton { "ALL", "Show every file" };
+    TypeChipButton patchesButton { "PATCH", "Patches (.pch)" };
+    TypeChipButton snippetsButton { "SNIP", "Snippets: module groups that merge into the open patch" };
+    TypeChipButton banksButton { "BANK", "Bank backups, one .pch per bank position" };
+    TypeChipButton setsButton { "SET", "Slot sets: four slots saved and loaded together (.nmset)" };
+    // Not one of the type filters: it narrows whichever one is active, so it
+    // is a checkbox on its own, next to the file count it changes.
+    juce::ToggleButton hidePch2Button { "Hide 2.10" };
     RefreshIconButton refreshButton;
     StepIconButton prevButton { "Previous preset", -1 };
     StepIconButton nextButton { "Next preset", 1 };
     juce::Label statusLabel;
     juce::ListBox listBox { "Disk Presets", this };
 
+    juce::Rectangle<int> filterRowArea;
     juce::File libraryRoot;
     TypeFilter typeFilter = TypeFilter::All;
     bool hidePch2 = false;   // when true, legacy 2.10 (.pch2) patches are hidden
