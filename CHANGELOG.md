@@ -58,6 +58,26 @@
 
 ### Fixed
 
+- **The keyboard floater no longer leaves notes stuck on the synth** (2026-09-26,
+  G1-Emu issue #4, "the keyboard floater stacks notes"). The G1's OS takes the
+  editor's note messages as one key, not a keyboard: a press stores its note and
+  sets the key down, a release sets it up without looking at the note, and only the
+  key's changes become note-on and note-off. Two editor notes that overlapped (the
+  floater's repeat and drone modes, or two `play_note` calls from the MCP) left one
+  sounding for ever. Checked on a real G1 with a gate-only test patch, whose gate
+  LED stayed lit after both notes were released; the G1-Emu emulator does the same
+  (G1-Emu `NOTES.md`, "The editor's keyboard is one key"). `ConnectionManager` now
+  sends every editor note through `EditorKey` (`source/midi/EditorKey.h`): a press
+  while another note is down releases that note first, and a release of a note that
+  is no longer down sends nothing. The editor's keyboard stays monophonic, as the
+  synth makes it; chords still need the regular MIDI input.
+  Verification: `tests/test_editor_key.cpp` covers a lone note, a second press,
+  releases in either order, a repeated press and a reset; the suite passes plain and
+  under ASan/UBSan. On the G1-Emu test bench, the sequence it produces for two
+  overlapping notes plays the second note (330 Hz for note 64) and ends silent,
+  where the raw overlap left a note at full level. Not yet tried from the editor
+  against the real synth.
+
 - **A store to a bank no longer gets lost when it follows an upload** (2026-09-13).
   Storing a patch uploads it first and sends the store as soon as the synth ACKs
   the upload, and that store went out raw, without waiting for an answer. Of four

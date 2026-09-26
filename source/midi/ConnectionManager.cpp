@@ -267,6 +267,7 @@ void ConnectionManager::disconnect()
 
     cancelHandshakeTimeout();
     invalidateParamQueue("disconnect");
+    editorKey.reset();
     waitingForPatchAck = false;
     collectingSections = false;
     ++patchTimeoutGeneration;
@@ -1178,12 +1179,24 @@ void ConnectionManager::sendRawSysEx(const std::vector<uint8_t>& sysex)
 
 void ConnectionManager::sendNoteOn(int note, int velocity)
 {
-    sendNoteEvent(note, velocity, true);
+    if (!isConnected())
+    {
+        sendNoteEvent(note, velocity, true);  // logs the skip
+        return;
+    }
+    for (const auto& e : editorKey.press(note))
+        sendNoteEvent(e.note, velocity, e.on);
 }
 
 void ConnectionManager::sendNoteOff(int note)
 {
-    sendNoteEvent(note, 0, false);
+    if (!isConnected())
+    {
+        sendNoteEvent(note, 0, false);  // logs the skip
+        return;
+    }
+    for (const auto& e : editorKey.release(note))
+        sendNoteEvent(e.note, 0, e.on);
 }
 
 void ConnectionManager::sendNoteEvent(int note, int velocity, bool on)

@@ -3,6 +3,7 @@
 #include "NmProtocol.h"
 #include "MidiDeviceManager.h"
 #include "UploadPacketizer.h"
+#include "EditorKey.h"
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -64,6 +65,8 @@ public:
     void sendControllerSnapshot();  // Ask synth to emit current values of assigned MIDI CCs (read-only)
     // Play notes on the current slot via the editor protocol (Note, cc=0x17 sc=0x56).
     // The editor talks to the synth's PC port, which ignores regular MIDI notes.
+    // The synth takes these as ONE key, so a press while another note is down
+    // releases that note first (see EditorKey.h).
     void sendNoteOn(int note, int velocity);
     void sendNoteOff(int note);
     void sendRawSysEx(const std::vector<uint8_t>& sysex);       // Fire-and-forget (no ACK needed)
@@ -238,6 +241,7 @@ private:
 
     void setStatus(State state, const juce::String& message);
     void sendNoteEvent(int note, int velocity, bool on);
+    EditorKey editorKey;           // the one editor key the synth has (EditorKey.h)
     void startHandshakeTimeout();
     void sendHandshake();          // IAm, sender=0: the editor introducing itself
     juce::uint32 lastHandshakeMs = 0;  // rate-limits the re-hello in onSynthMessage
