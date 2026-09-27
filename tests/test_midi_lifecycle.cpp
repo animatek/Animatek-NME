@@ -339,3 +339,42 @@ TEST_CASE("A front-panel load that announces two pids is fetched with the second
     CHECK(sent[0][0] == 0x0c);
     CHECK(sent[0][1] == 0x20);  // the first section: the header
 }
+
+TEST_CASE("A port that leaves the system disconnects the editor")
+{
+    // What closing G1-Emu does to the editor: its ports vanish. Needs a MIDI
+    // system that can make virtual ports (ALSA, CoreMIDI); skipped elsewhere.
+    auto synthOut = juce::MidiOutput::createNewDevice("NME test synth out");
+    auto synthIn = juce::MidiInput::createNewDevice("NME test synth in", nullptr);
+    if (synthOut == nullptr || synthIn == nullptr)
+        return;
+    dispatchFor(200);
+
+    const auto find = [](const juce::Array<juce::MidiDeviceInfo>& devices, const juce::String& name) {
+        for (const auto& d : devices)
+            if (d.name.contains(name))
+                return d.identifier;
+        return juce::String();
+    };
+    // Our virtual output is an input to everyone else, and the other way round.
+    const auto inputId = find(juce::MidiInput::getAvailableDevices(), "NME test synth out");
+    const auto outputId = find(juce::MidiOutput::getAvailableDevices(), "NME test synth in");
+    REQUIRE(inputId.isNotEmpty());
+    REQUIRE(outputId.isNotEmpty());
+
+    ConnectionManager connection;
+    juce::String lastStatus;
+    connection.setStatusCallback([&lastStatus](const ConnectionManager::Status& status) {
+        lastStatus = status.message;
+    });
+    REQUIRE(connection.connect(inputId, outputId));
+    receive(connection.getProtocol(), NmCmd::IAm, {1, 3, 3});
+    REQUIRE(connection.isConnected());
+
+    synthOut.reset();
+    for (int i = 0; i < 20 && connection.isConnected(); ++i)
+        dispatchFor(100);
+
+    CHECK_FALSE(connection.isConnected());
+    CHECK(lastStatus.startsWith("MIDI port gone"));
+}

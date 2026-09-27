@@ -28,12 +28,12 @@ juce::Array<juce::MidiDeviceInfo> MidiDeviceManager::getAvailableOutputDevices()
     return juce::MidiOutput::getAvailableDevices();
 }
 
-bool MidiDeviceManager::connect(const juce::String& inputId, const juce::String& outputId)
+bool MidiDeviceManager::connect(const juce::String& inputId_, const juce::String& outputId_)
 {
     disconnect();
 
-    midiInput = juce::MidiInput::openDevice(inputId, this);
-    midiOutput = juce::MidiOutput::openDevice(outputId);
+    midiInput = juce::MidiInput::openDevice(inputId_, this);
+    midiOutput = juce::MidiOutput::openDevice(outputId_);
 
     if (midiInput == nullptr || midiOutput == nullptr)
     {
@@ -45,6 +45,12 @@ bool MidiDeviceManager::connect(const juce::String& inputId, const juce::String&
     protocol.setSendFunction([this](const std::vector<uint8_t>& data) { sendSysEx(data); });
     midiInput->start();
 
+    inputId = inputId_;
+    outputId = outputId_;
+    inputName = midiInput->getName();
+    outputName = midiOutput->getName();
+    deviceListConnection = juce::MidiDeviceListConnection::make([this] { checkPortsStillThere(); });
+
     DBG("MIDI connected: input=" + getInputDeviceName() + " output=" + getOutputDeviceName());
     return true;
 }
@@ -52,6 +58,9 @@ bool MidiDeviceManager::connect(const juce::String& inputId, const juce::String&
 void MidiDeviceManager::disconnect()
 {
     *alive = false;  // Invalidate received messages already posted to the UI thread.
+    deviceListConnection = {};
+    inputId.clear();
+    outputId.clear();
     protocol.setSendFunction({});
     if (midiInput)
     {
@@ -78,6 +87,36 @@ void MidiDeviceManager::sendSysEx(const std::vector<uint8_t>& data)
     }
 }
 
+
+void MidiDeviceManager::checkPortsStillThere()
+{
+    if (!isConnected() || !portsGoneCallback)
+        return;
+
+    const auto present = [](const juce::Array<juce::MidiDeviceInfo>& devices, const juce::String& id) {
+        for (const auto& d : devices)
+            if (d.identifier == id)
+                return true;
+        return false;
+    };
+
+    juce::StringArray gone;
+    if (!present(getAvailableInputDevices(), inputId))
+        gone.add(inputName);
+    if (!present(getAvailableOutputDevices(), outputId))
+        gone.addIfNotAlreadyThere(outputName);
+    if (gone.isEmpty())
+        return;
+
+    // The callback tears this object down; run it after this one returns.
+    auto cb = portsGoneCallback;
+    auto aliveFlag = alive;
+    const auto names = gone.joinIntoString(", ");
+    juce::MessageManager::callAsync([cb, aliveFlag, names] {
+        if (*aliveFlag)
+            cb(names);
+    });
+}
 
 juce::String MidiDeviceManager::getInputDeviceName() const
 {

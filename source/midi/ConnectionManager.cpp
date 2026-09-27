@@ -210,6 +210,11 @@ bool ConnectionManager::connect(const juce::String& inputId, const juce::String&
         return false;
     }
 
+    midiDevice->setPortsGoneCallback([this](const juce::String& ports) {
+        std::cout << "[MIDI] Port gone: " << ports << " - disconnecting" << std::endl;
+        disconnect("MIDI port gone: " + ports);
+    });
+
     setStatus(State::Connecting, "Connecting...");
     sendHandshake();
     startHandshakeTimeout();
@@ -329,7 +334,7 @@ void ConnectionManager::forgetSynthState(const char* _why)
     uploadCompleteCallback = nullptr;
 }
 
-void ConnectionManager::disconnect()
+void ConnectionManager::disconnect(const juce::String& reason)
 {
     *alive = false;
     alive = std::make_shared<std::atomic<bool>>(true);
@@ -345,7 +350,7 @@ void ConnectionManager::disconnect()
         midiDevice.reset();
     }
 
-    setStatus(State::Disconnected, "Disconnected");
+    setStatus(State::Disconnected, reason);
     if (bankUploadAborted)
         bankUploadAborted(false);
 }

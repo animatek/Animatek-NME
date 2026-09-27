@@ -37,7 +37,7 @@ public:
 
     // Connection management
     bool connect(const juce::String& inputId, const juce::String& outputId);
-    void disconnect();
+    void disconnect(const juce::String& reason = "Disconnected");
 
     bool isConnected() const { return status.state == State::Connected; }
     const Status& getStatus() const { return status; }

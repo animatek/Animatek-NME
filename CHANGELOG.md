@@ -176,6 +176,18 @@
 
 ### Fixed
 
+- **Closing G1-Emu (or unplugging the MIDI interface) disconnects the editor**
+  (2026-09-27, found testing against G1-Emu; Claude). The ports vanished and the editor went on saying "Connected",
+  sending into nothing, until the user reconnected by hand; nothing reported
+  it, because a synth that is gone cannot time out a request nobody makes.
+  `MidiDeviceManager` now listens to JUCE's device-list changes
+  (`MidiDeviceListConnection`) and, when a port it has open leaves the system,
+  the connection drops with "MIDI port gone: <port>" (`ConnectionManager::
+  disconnect` takes the reason). Verification: a new test opens a virtual port
+  as the synth, connects, destroys it and expects the disconnect (fails without
+  the change; skipped where virtual ports cannot be made); the suite passes.
+  Live: Javier closed G1-Emu with NME connected and it showed "MIDI port gone".
+
 - **A patch loaded from the synth's front panel arrives whole** (2026-09-27,
   found testing against G1-Emu; Claude). Loading
   from the panel ended in "Incomplete Patch Load: 0 of 13 sections", and the
