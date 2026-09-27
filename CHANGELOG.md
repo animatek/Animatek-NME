@@ -58,6 +58,20 @@
 
 ### Fixed
 
+- **The Synth Settings dialog shows the MIDI clock source the right way round**
+  (2026-09-27). The bit is 1 for Internal and 0 for External, and NME read it the
+  other way: Javier's G1, set to Internal at 100 BPM on its own display, showed as
+  External, and choosing Internal in the dialog stopped the synth's master clock, so
+  every patch clocked by MIDIGlobal (sequencers, arpeggios) fell silent. Found in
+  G1-Emu, whose OS starts the internal clock only on 1 (G1-Emu `NOTES.md`, "The master
+  clock"). `SynthSettings` now says what the bit means (`clockIsInternal()`,
+  `setClockInternal()`), the dialog uses them, and settings not yet read from the
+  synth default to Internal.
+  Verification: `tests/test_synth_settings_clock.cpp` decodes a real settings reply
+  whose bit is 0 as External and round-trips both values through the encoder; the
+  suite passes plain and under ASan/UBSan and the app builds. The dialog itself is
+  still to be checked against the real synth with this build.
+
 - **The keyboard floater no longer leaves notes stuck on the synth** (2026-09-26,
   G1-Emu issue #4, "the keyboard floater stacks notes"). The G1's OS takes the
   editor's note messages as one key, not a keyboard: a press stores its note and

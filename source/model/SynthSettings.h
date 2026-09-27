@@ -7,7 +7,10 @@
 struct SynthSettings
 {
     // Core (always present)
-    int  midiClockSource     = 0;    // 1 bit  (0=internal, 1=external)
+    // 1 bit: 1 = internal, 0 = external (waits for MIDI clock). Checked on a real G1 set to
+    // Internal, which reports 1, and in G1-Emu, whose OS starts its internal clock only on 1.
+    // Use clockIsInternal()/setClockInternal() rather than comparing the raw bit.
+    int  midiClockSource     = 1;
     int  midiVelScaleMin     = 0;    // 7 bits (0-127)
     int  ledsActive          = 1;    // 1 bit
     int  midiVelScaleMax     = 127;  // 7 bits (0-127)
@@ -29,4 +32,7 @@ struct SynthSettings
     int  slotSelected[4]     = {1, 0, 0, 0};   // 1 bit each
     int  activeSlot          = 0;              // 2 bits
     int  slotVoiceCount[4]   = {4, 4, 4, 4};   // 8 bits each
+
+    bool clockIsInternal() const        { return midiClockSource != 0; }
+    void setClockInternal(bool internal) { midiClockSource = internal ? 1 : 0; }
 };

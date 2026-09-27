@@ -116,8 +116,8 @@ SynthSettingsDialog::SynthSettingsDialog (const SynthSettings& current, Callback
     // ── Clock ────────────────────────────────────────────────────────────────
     styleLabel (clockHdr, true);
     clockInt.setRadioGroupId (101);  clockExt.setRadioGroupId (101);
-    clockInt.setToggleState (working.midiClockSource == 0, juce::dontSendNotification);
-    clockExt.setToggleState (working.midiClockSource != 0, juce::dontSendNotification);
+    clockInt.setToggleState (working.clockIsInternal(), juce::dontSendNotification);
+    clockExt.setToggleState (! working.clockIsInternal(), juce::dontSendNotification);
     styleToggle (clockInt);  styleToggle (clockExt);
     styleLabel (bpmLbl);
     bpmSlider.setRange (24, 250, 1);
@@ -169,7 +169,7 @@ SynthSettingsDialog::SynthSettingsDialog (const SynthSettings& current, Callback
             r.ledsActive             = ledsActiveTgl.getToggleState() ? 1 : 0;
             r.programChangeReceive   = pgmRecvTgl   .getToggleState() ? 1 : 0;
             r.programChangeSend      = pgmSendTgl   .getToggleState() ? 1 : 0;
-            r.midiClockSource        = clockExt     .getToggleState() ? 1 : 0;
+            r.setClockInternal (clockInt.getToggleState());
             r.midiClockBpm           = static_cast<int> (bpmSlider.getValue());
             r.globalSync             = globalSyncTgl.getToggleState() ? 1 : 0;
             r.knobMode               = knobHook     .getToggleState() ? 1 : 0;
@@ -203,8 +203,8 @@ void SynthSettingsDialog::setSettings (const SynthSettings& settings)
     ledsActiveTgl.setToggleState (working.ledsActive != 0, juce::dontSendNotification);
     pgmRecvTgl.setToggleState (working.programChangeReceive != 0, juce::dontSendNotification);
     pgmSendTgl.setToggleState (working.programChangeSend != 0, juce::dontSendNotification);
-    clockInt.setToggleState (working.midiClockSource == 0, juce::dontSendNotification);
-    clockExt.setToggleState (working.midiClockSource != 0, juce::dontSendNotification);
+    clockInt.setToggleState (working.clockIsInternal(), juce::dontSendNotification);
+    clockExt.setToggleState (! working.clockIsInternal(), juce::dontSendNotification);
     bpmSlider.setValue (juce::jlimit (24, 250, working.midiClockBpm), juce::dontSendNotification);
     globalSyncTgl.setToggleState (working.globalSync != 0, juce::dontSendNotification);
     knobImm.setToggleState (working.knobMode == 0, juce::dontSendNotification);

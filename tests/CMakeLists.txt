@@ -27,6 +27,7 @@ target_sources(nme_tests PRIVATE
     test_morph_assign_action.cpp
     test_module_replacement.cpp
     test_editor_key.cpp
+    test_synth_settings_clock.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
