@@ -22,8 +22,9 @@ public:
     void mouseDown  (const juce::MouseEvent& e) override;
     void mouseDrag  (const juce::MouseEvent& e) override;
 
-    // Returns the dialog, so a caller can watch for it closing.
-    static juce::Component* show(juce::Component* parent,
+    // Returns the dialog, so a caller can watch for it closing and keep its
+    // connection state current.
+    static MidiSettingsDialog* show(juce::Component* parent,
                      const juce::String& currentInputId,
                      const juce::String& currentOutputId,
                      const ConnectionManager::Status& status,
@@ -33,6 +34,7 @@ public:
 private:
     void close();
     void updateButtonState();
+    void requestConnection();
 
     bool connected = false;
     juce::ComponentDragger dragger;
@@ -42,7 +44,10 @@ private:
     juce::ComboBox inputCombo;
     juce::Label    outputLabel   { {}, "MIDI OUTPUT" };
     juce::ComboBox outputCombo;
+    // Connect while disconnected, Reconnect while connected: the handshake runs
+    // again on the ports chosen above, which may be the same ones or another synth.
     juce::TextButton connectButton;
+    juce::TextButton disconnectButton { "Disconnect" };
     juce::Label    statusLabel;
 
     juce::StringArray inputIds;

@@ -2611,13 +2611,13 @@ void MainComponent::openSynthSettingsDialog() {
 }
 
 void MainComponent::showMidiSettingsDialog() {
-  announceDialogOnSynth(
-      MidiSettingsDialog::show(
-          this, lastInputId, lastOutputId, connectionManager.getStatus(),
-          [this](const juce::String &inputId, const juce::String &outputId) {
-            handleConnectionRequest(inputId, outputId);
-          },
-          [this]() { handleDisconnectionRequest(); }));
+  midiSettingsDialog = MidiSettingsDialog::show(
+      this, lastInputId, lastOutputId, connectionManager.getStatus(),
+      [this](const juce::String &inputId, const juce::String &outputId) {
+        handleConnectionRequest(inputId, outputId);
+      },
+      [this]() { handleDisconnectionRequest(); });
+  announceDialogOnSynth(midiSettingsDialog.getComponent());
 }
 
 void MainComponent::showEditorOptionsDialog() {
@@ -3752,6 +3752,10 @@ void MainComponent::onConnectionStatusChanged(
     info->setProperty("message", status.message);
     mcpEventLog.record("connection", -1, juce::var(info));
   }
+  // Without this the dialog kept the state it opened with: Connect stayed Connect
+  // after the handshake, and a lost connection still offered Disconnect.
+  if (midiSettingsDialog != nullptr)
+    midiSettingsDialog->setConnectedState(status);
   if (!connected) {
     // Reconciling with the synth is a once-per-connection thing, so losing the
     // connection arms it again for the next one.

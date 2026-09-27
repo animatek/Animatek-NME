@@ -53,29 +53,25 @@ MidiSettingsDialog::MidiSettingsDialog()
     statusLabel.setText ("Disconnected", juce::dontSendNotification);
     addAndMakeVisible (statusLabel);
 
-    connectButton.setButtonText ("Connect");
-    connectButton.setColour (juce::TextButton::buttonColourId,  kBtnBg);
-    connectButton.setColour (juce::TextButton::buttonOnColourId,kBtnOn);
-    connectButton.setColour (juce::TextButton::textColourOffId, kText);
-    connectButton.setColour (juce::TextButton::textColourOnId,  AppTheme::palette().textPrimary);
-    connectButton.onClick = [this]()
+    for (auto* b : { &connectButton, &disconnectButton })
     {
-        if (connected)
-        {
-            if (onDisconnectionRequest) onDisconnectionRequest();
-        }
-        else
-        {
-            auto inIdx  = inputCombo.getSelectedItemIndex();
-            auto outIdx = outputCombo.getSelectedItemIndex();
-            if (inIdx >= 0 && outIdx >= 0 && onConnectionRequest)
-                onConnectionRequest (inputIds[inIdx], outputIds[outIdx]);
-        }
+        b->setColour (juce::TextButton::buttonColourId,  kBtnBg);
+        b->setColour (juce::TextButton::buttonOnColourId,kBtnOn);
+        b->setColour (juce::TextButton::textColourOffId, kText);
+        b->setColour (juce::TextButton::textColourOnId,  AppTheme::palette().textPrimary);
+    }
+    connectButton.onClick = [this]() { requestConnection(); };
+    disconnectButton.onClick = [this]()
+    {
+        if (onDisconnectionRequest) onDisconnectionRequest();
     };
+    addChildComponent (disconnectButton);
     addAndMakeVisible (connectButton);
 
     refreshDeviceLists();
-    setSize (400, 210);
+    updateButtonState();
+    // Wide enough for "Connected: Nord Modular v3.3" beside two buttons.
+    setSize (440, 210);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -119,22 +115,18 @@ void MidiSettingsDialog::setConnectedState(const ConnectionManager::Status& stat
 
 void MidiSettingsDialog::updateButtonState()
 {
-    if (connected)
-    {
-        connectButton.setButtonText ("Disconnect");
-        connectButton.setColour (juce::TextButton::buttonColourId,  kBtnBg);
-        connectButton.setColour (juce::TextButton::buttonOnColourId,kBtnOn);
-        connectButton.setColour (juce::TextButton::textColourOffId, kText);
-        connectButton.setColour (juce::TextButton::textColourOnId,  AppTheme::palette().textPrimary);
-    }
-    else
-    {
-        connectButton.setButtonText ("Connect");
-        connectButton.setColour (juce::TextButton::buttonColourId,  kBtnBg);
-        connectButton.setColour (juce::TextButton::buttonOnColourId,kBtnOn);
-        connectButton.setColour (juce::TextButton::textColourOffId, kText);
-        connectButton.setColour (juce::TextButton::textColourOnId,  AppTheme::palette().textPrimary);
-    }
+    // ConnectionManager::connect drops the current connection before opening the
+    // new one, so reconnecting needs no Disconnect first.
+    connectButton.setButtonText (connected ? "Reconnect" : "Connect");
+    disconnectButton.setVisible (connected);
+}
+
+void MidiSettingsDialog::requestConnection()
+{
+    auto inIdx  = inputCombo.getSelectedItemIndex();
+    auto outIdx = outputCombo.getSelectedItemIndex();
+    if (inIdx >= 0 && outIdx >= 0 && onConnectionRequest)
+        onConnectionRequest (inputIds[inIdx], outputIds[outIdx]);
 }
 
 void MidiSettingsDialog::close() { removeFromDesktop(); delete this; }
@@ -185,14 +177,16 @@ void MidiSettingsDialog::resized()
     outputCombo.setBounds (pad, y, getWidth() - pad * 2, rowH);
     y += rowH + gap * 3; // → separator at 142
 
-    // Status + Connect button
+    // Status, then Disconnect (only while connected) and Connect/Reconnect
     y += gap;
-    statusLabel.setBounds (pad, y, getWidth() - pad * 2 - 110, 22);
-    connectButton.setBounds (getWidth() - pad - 100, y - 2, 100, 28);
+    constexpr int btnW = 96;
+    statusLabel.setBounds (pad, y, getWidth() - pad * 2 - btnW * 2 - gap - 8, 22);
+    connectButton.setBounds (getWidth() - pad - btnW, y - 2, btnW, 28);
+    disconnectButton.setBounds (connectButton.getX() - gap - btnW, y - 2, btnW, 28);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-juce::Component* MidiSettingsDialog::show(juce::Component* parent,
+MidiSettingsDialog* MidiSettingsDialog::show(juce::Component* parent,
                                const juce::String& currentInputId,
                                const juce::String& currentOutputId,
                                const ConnectionManager::Status& status,

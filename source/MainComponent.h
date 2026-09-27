@@ -33,6 +33,7 @@
 #endif
 
 class SynthSettingsDialog;
+class MidiSettingsDialog;
 
 class MainComponent : public juce::Component,
                       public juce::MenuBarModel
@@ -397,6 +398,8 @@ private:
     McpEventLog mcpEventLog;
     bool pendingSynthSettingsDialogOpen = false;
     juce::Component::SafePointer<SynthSettingsDialog> synthSettingsDialog;
+    // Open while the MIDI settings dialog is; told of every connection change.
+    juce::Component::SafePointer<MidiSettingsDialog> midiSettingsDialog;
 
     // Convenience accessors for current slot
     std::unique_ptr<Patch>& currentPatch() { return slotPatches[activeSlot]; }

@@ -4,6 +4,18 @@
 
 ### Added
 
+- **MIDI settings: Reconnect, and a dialog that follows the connection**
+  (2026-09-27, Javier's request; Claude). While connected the dialog offers
+  **Reconnect** beside **Disconnect**: the handshake again on the ports chosen
+  in it, so switching between a real G1 and G1-Emu is one click
+  (`ConnectionManager::connect` already drops the old connection first). Enter
+  presses Connect/Reconnect, never Disconnect. Also fixed: the dialog kept the
+  state it opened with, so Connect stayed Connect after the synth answered;
+  `MainComponent` now passes it every connection change while it is open. The
+  dialog is a little wider for the status text. Manual: chapter 1, English and
+  Spanish. Verification: builds; Javier tried Reconnect and the switch between
+  synths in the dialog.
+
 - **MCP: choose the MIDI ports and reload a slot from the synth** (2026-09-27,
   Javier's request; Claude). Four bridge tools: `list_midi_ports`,
   `connect_midi(input, output)`, `disconnect_midi` and `fetch_patch(slot?)`.

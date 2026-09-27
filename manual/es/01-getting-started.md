@@ -35,6 +35,9 @@ que autorizarlo en Ajustes del Sistema → Privacidad y seguridad.
    estado muestra la conexión y el editor descarga el patch del slot activo.
 3. Si tienes varias interfaces MIDI, elige los puertos correctos en las opciones
    del editor.
+   Con el sinte conectado, el diálogo de ajustes MIDI ofrece **Reconnect** (el
+   handshake otra vez, en los puertos elegidos ahí: el mismo sinte u otro, como
+   G1-Emu) y **Disconnect**. Para reconectar no hace falta desconectar antes.
 
 Una vez conectado todo va en vivo: mover un knob en el editor cambia el sonido
 al instante, y mover un knob en el panel frontal actualiza el editor.
