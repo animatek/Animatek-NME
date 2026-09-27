@@ -362,8 +362,8 @@ TEST_CASE("A port that leaves the system disconnects the editor")
     REQUIRE(inputId.isNotEmpty());
     REQUIRE(outputId.isNotEmpty());
 
+    juce::String lastStatus;  // before the connection: its destructor reports too
     ConnectionManager connection;
-    juce::String lastStatus;
     connection.setStatusCallback([&lastStatus](const ConnectionManager::Status& status) {
         lastStatus = status.message;
     });
