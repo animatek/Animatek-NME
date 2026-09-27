@@ -91,6 +91,8 @@ public:
     const std::array<bool, 4>& getLastEnabledSlots() const { return lastEnabledSlots; }
     const std::array<int, 4>& getSynthVoiceCounts() const { return synthVoiceCounts; }
     const SynthSettings& getCachedSynthSettings() const { return cachedSynthSettings; }
+    // False from a disconnect until the synth that answers next sends its settings.
+    bool areSynthSettingsFromThisConnection() const { return cachedSynthSettingsKnown; }
     const ThemeData& getThemeData() const { return themeData; }
     struct LightMeterFrame
     {
@@ -105,6 +107,16 @@ public:
     bool setSlotMorphValue(int slot, int group, int value, juce::String& error);
     // Sound a note on the synth's focused slot, released after durationMs.
     bool playNoteOnSynth(int note, int durationMs, juce::String& error);
+    // The MCP bridge's connection tools, by the same paths as the MIDI settings
+    // dialog (which also remembers the ports once the synth answers) and the
+    // "reload the patch from the synth" command.
+    void connectToPorts(const juce::String& inputId, const juce::String& outputId) { handleConnectionRequest(inputId, outputId); }
+    void disconnectFromSynth() { handleDisconnectionRequest(); }
+    const juce::String& getLastInputId() const { return lastInputId; }
+    const juce::String& getLastOutputId() const { return lastOutputId; }
+    // Ask the synth for the patch in a slot again; the editor's copy of that slot is
+    // replaced when it arrives, like any fetch.
+    bool refetchSlotFromSynth(int slot, juce::String& error);
 
 private:
     // The four slot canvases. There is deliberately no "the canvas" accessor:
@@ -377,6 +389,7 @@ private:
 
     // Last-known global synth settings.
     SynthSettings cachedSynthSettings;
+    bool cachedSynthSettingsKnown = false;
     // Last voice counts, light frame and synth-side events, kept for the MCP
     // bridge (see the accessors above). Written on the message thread.
     std::array<int, 4> synthVoiceCounts {};

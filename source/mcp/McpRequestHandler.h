@@ -40,6 +40,10 @@ private:
 
     // Reading the synth back: connection, slots, events, LEDs and meters.
     juce::var getSynthStatus(const juce::var& params);
+    juce::var listMidiPorts(const juce::var& params);
+    juce::var connectMidi(const juce::var& params);
+    juce::var disconnectMidi(const juce::var& params);
+    juce::var fetchPatch(const juce::var& params);
     juce::var getEvents(const juce::var& params);
     juce::var readLights(const juce::var& params);
 

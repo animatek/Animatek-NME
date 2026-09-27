@@ -311,6 +311,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   connectionManager.setSynthSettingsCallback([this](const SynthSettings& settings) {
     cachedSynthSettings = settings;
+    cachedSynthSettingsKnown = true;
     if (!settings.name.empty())
       mainLayout->getHeaderBar().setSynthName(juce::String(settings.name));
     if (synthSettingsDialog != nullptr)
@@ -3716,6 +3717,23 @@ void MainComponent::handleConnectionRequest(const juce::String &inputId,
   connectionManager.connect(inputId, outputId);
 }
 
+bool MainComponent::refetchSlotFromSynth(int slot, juce::String &error) {
+  if (!connectionManager.isConnected()) {
+    error = "No synth connected";
+    return false;
+  }
+  if (slot < 0 || slot >= numSlots) {
+    error = "slot must be 0-3";
+    return false;
+  }
+  if (connectionManager.isFetchingPatch() || connectionManager.isUploadingPatch()) {
+    error = "A patch transfer is already in flight; retry when get_synth_status says it is idle";
+    return false;
+  }
+  connectionManager.requestPatch(slot);
+  return true;
+}
+
 void MainComponent::handleDisconnectionRequest() {
   // Release any held virtual-keyboard notes while the port is still open
   if (keyboardFloaterWindow)
@@ -3738,6 +3756,9 @@ void MainComponent::onConnectionStatusChanged(
     // Reconciling with the synth is a once-per-connection thing, so losing the
     // connection arms it again for the next one.
     slotEnableStateKnown = false;
+    // The next synth to answer may be a different one (a real G1, then G1-Emu):
+    // its name must not be reported until its own settings arrive.
+    cachedSynthSettingsKnown = false;
     slotWindowsReconciled = false;
     slotWindowsReconcileScheduled = false;
   }

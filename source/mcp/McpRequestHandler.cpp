@@ -454,6 +454,10 @@ juce::var McpRequestHandler::handle(const juce::var& request)
         else if (method == "play_note")        result = playNote(params);
         else if (method == "list_bank")        result = listBank(params);
         else if (method == "replace_module")   result = replaceModule(params);
+        else if (method == "list_midi_ports")  result = listMidiPorts(params);
+        else if (method == "connect_midi")     result = connectMidi(params);
+        else if (method == "disconnect_midi")  result = disconnectMidi(params);
+        else if (method == "fetch_patch")      result = fetchPatch(params);
         else throw McpError{ "unknown_method", "Unknown method: " + method };
 
         obj->setProperty("ok", true);
@@ -1432,7 +1436,11 @@ juce::var McpRequestHandler::getSynthStatus(const juce::var& /*params*/)
     if (connected)
         result->setProperty("synthOsVersion", juce::String(status.synthVersionHigh) + "."
             + juce::String(status.synthVersionLow).paddedLeft('0', 2));
-    result->setProperty("synthName", juce::String(owner_.getCachedSynthSettings().name));
+    // null until the synth on this connection has sent its settings, so a client that
+    // just switched synths never reads the previous one's name.
+    result->setProperty("synthName", owner_.areSynthSettingsFromThisConnection()
+                                         ? juce::var(juce::String(owner_.getCachedSynthSettings().name))
+                                         : juce::var());
     result->setProperty("editorActiveSlot", owner_.getActiveSlot());
     result->setProperty("synthFocusedSlot", connected ? connection.getCurrentSlot() : -1);
     result->setProperty("patchListLoaded", connection.isPatchListLoaded());
@@ -1998,6 +2006,103 @@ juce::var McpRequestHandler::playNote(const juce::var& params)
     result->setProperty("note", note);
     result->setProperty("durationMs", durationMs);
     result->setProperty("synthFocusedSlot", connection.getCurrentSlot());
+    return juce::var(result);
+}
+
+// The MIDI ports the editor could connect to, and which pair it is on now. Lets a
+// client move the editor between a real synth and G1-Emu without the window.
+juce::var McpRequestHandler::listMidiPorts(const juce::var&)
+{
+    auto portList = [](const juce::Array<juce::MidiDeviceInfo>& devices)
+    {
+        juce::Array<juce::var> out;
+        for (const auto& d : devices)
+        {
+            auto* o = new juce::DynamicObject();
+            o->setProperty("id", d.identifier);
+            o->setProperty("name", d.name);
+            out.add(juce::var(o));
+        }
+        return out;
+    };
+    const auto& connection = owner_.getConnectionManager();
+    auto* result = new juce::DynamicObject();
+    result->setProperty("inputs", portList(ConnectionManager::getAvailableInputDevices()));
+    result->setProperty("outputs", portList(ConnectionManager::getAvailableOutputDevices()));
+    result->setProperty("connected", connection.isConnected());
+    result->setProperty("message", connection.getStatus().message);
+    result->setProperty("currentInputId", owner_.getLastInputId());
+    result->setProperty("currentOutputId", owner_.getLastOutputId());
+    return juce::var(result);
+}
+
+namespace
+{
+    // A port by its id, its exact name, or a unique part of its name (McpRules::matchPort).
+    juce::MidiDeviceInfo resolvePort(const juce::Array<juce::MidiDeviceInfo>& devices,
+                                     const juce::String& wanted, const char* what)
+    {
+        juce::StringArray ids, names;
+        for (const auto& d : devices)
+        {
+            ids.add(d.identifier);
+            names.add(d.name);
+        }
+        const auto matches = McpRules::matchPort(ids, names, wanted);
+        if (matches.size() == 1)
+            return devices[matches.getFirst()];
+        juce::StringArray listed;
+        if (matches.isEmpty())
+            listed = names;
+        else
+            for (const int i : matches)
+                listed.add(names[i]);
+        throw McpError{ matches.isEmpty() ? "not_found" : "ambiguous",
+                        juce::String(what) + " \"" + wanted + "\" "
+                            + (matches.isEmpty() ? "matches no port" : "matches several ports")
+                            + "; available: " + listed.joinIntoString(", ") };
+    }
+}
+
+// Connect the editor to an input and an output port (by id, name, or a unique part
+// of the name), the way the MIDI settings dialog does: the old connection is
+// dropped, the handshake runs, and the ports are remembered once the synth answers.
+juce::var McpRequestHandler::connectMidi(const juce::var& params)
+{
+    if (!params.hasProperty("input") || !params.hasProperty("output"))
+        throw McpError{ "missing_param", "input and output are required (a port id, name, or unique part of a name)" };
+    const auto in = resolvePort(ConnectionManager::getAvailableInputDevices(), params["input"].toString(), "input");
+    const auto out = resolvePort(ConnectionManager::getAvailableOutputDevices(), params["output"].toString(), "output");
+    owner_.connectToPorts(in.identifier, out.identifier);
+
+    auto* result = new juce::DynamicObject();
+    result->setProperty("input", in.name);
+    result->setProperty("output", out.name);
+    result->setProperty("note", "The handshake runs in the background: poll get_synth_status until connection is \"connected\" and check synthName");
+    return juce::var(result);
+}
+
+juce::var McpRequestHandler::disconnectMidi(const juce::var&)
+{
+    owner_.disconnectFromSynth();
+    auto* result = new juce::DynamicObject();
+    result->setProperty("connected", false);
+    return juce::var(result);
+}
+
+// Ask the synth for a slot's patch again. The editor's copy of that slot is
+// replaced when the patch arrives, so unsaved editor-only changes are lost; the
+// synth is not changed.
+juce::var McpRequestHandler::fetchPatch(const juce::var& params)
+{
+    const int slot = params.hasProperty("slot") ? static_cast<int>(params["slot"])
+                                                : owner_.getConnectionManager().getCurrentSlot();
+    juce::String error;
+    if (!owner_.refetchSlotFromSynth(slot, error))
+        throw McpError{ owner_.getConnectionManager().isConnected() ? "busy_or_invalid" : "not_connected", error };
+    auto* result = new juce::DynamicObject();
+    result->setProperty("slot", slot);
+    result->setProperty("note", "Fetching: poll get_synth_status until transfer.fetching is false, or get_events for patch_received");
     return juce::var(result);
 }
 

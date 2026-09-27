@@ -793,6 +793,61 @@ def set_morph_value(
     return _call("set_morph_value", params)
 
 
+# --- Connection -------------------------------------------------------------
+
+
+@mcp.tool()
+def list_midi_ports() -> Any:
+    """The MIDI ports the editor can connect to, and which pair it is on now.
+
+    Returns inputs and outputs (id and name each), whether a synth is connected,
+    the status message, and the current input/output ids. Sends nothing.
+    A real G1 usually sits behind a USB MIDI interface; the emulator publishes
+    "G1-Emu PC Port" (the editor port) and "G1-Emu MIDI".
+    """
+    return _call("list_midi_ports")
+
+
+@mcp.tool()
+def connect_midi(input: str, output: str) -> Any:
+    """Connect the editor to a MIDI input and output, as the MIDI settings dialog does.
+
+    input/output: a port id, its exact name, or a part of the name only one port
+    has, as list_midi_ports gives them. On Linux the names are the ALSA port's
+    alone ("PC Port" for G1-Emu, "UM-ONE MIDI 1" for a real G1 on that cable),
+    so "UM-ONE" works but "G1-Emu" does not. Ambiguous or unknown names are
+    refused with the list of ports. The previous connection is dropped first and
+    the handshake runs in the background: poll get_synth_status until connection
+    is "connected" and synthName is not null (it stays null until the synth that
+    answered sends its settings), and check that name before changing anything
+    on it. The ports are remembered for the next start.
+    """
+    return _call("connect_midi", {"input": input, "output": output})
+
+
+@mcp.tool()
+def disconnect_midi() -> Any:
+    """Disconnect the editor from the synth, as the MIDI settings dialog does."""
+    return _call("disconnect_midi")
+
+
+@mcp.tool()
+def fetch_patch(slot: Optional[int] = None) -> Any:
+    """Ask the synth for the patch in a slot again and load it into the editor.
+
+    slot: 0-3 (A-D); defaults to the slot the synth has focused.
+    The editor's copy of that slot is replaced when the patch arrives, so unsaved
+    editor-only changes to it are lost; the synth itself is not changed. Poll
+    get_synth_status until transfer.fetching is false, or read get_events for
+    patch_received / patch_incomplete. Refused while another transfer is running.
+    Pair it with save_patch to compare what the synth holds with what was sent.
+    """
+    params: dict[str, Any] = {}
+    if slot is not None:
+        params["slot"] = slot
+    return _call("fetch_patch", params)
+
+
 @mcp.tool()
 def play_note(note: int, duration_ms: int = 500) -> Any:
     """Play one note on the synth and release it after duration_ms (10-10000).

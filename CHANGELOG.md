@@ -4,6 +4,24 @@
 
 ### Added
 
+- **MCP: choose the MIDI ports and reload a slot from the synth** (2026-09-27,
+  Javier's request; Claude). Four bridge tools: `list_midi_ports`,
+  `connect_midi(input, output)`, `disconnect_midi` and `fetch_patch(slot?)`.
+  `connect_midi` does what the MIDI settings dialog does, naming a port by id,
+  exact name or a part only one port has (`McpRules::matchPort`); anything
+  ambiguous or unknown is refused with the list, because on a machine with
+  G1-Emu and a real G1 the wrong port is the wrong synth. `fetch_patch` asks the
+  synth for a slot again (`MainComponent::refetchSlotFromSynth`), refused while
+  another transfer runs. Also fixed: `get_synth_status` kept reporting the
+  previous synth's name for a second or two after switching; it is now null
+  from a disconnect until the new synth sends its settings.
+  Verification: builds; 4 new test cases (id, name, exact over partial,
+  ambiguous and empty names); full suite passes, also under ASan/UBSan. Live:
+  switched three times between G1-Emu (`PC Port`, "Modular") and the real G1
+  (`UM-ONE`, "animatek"), the name read null right after each switch and then
+  the right one; ButohDrone fetched back from both matched the file section by
+  section except the header's 3-bit `unknown4`, which the OS itself rewrites.
+
 - **Slot sets: save the four slots as one sound and load them back together**
   (2026-09-13, Javier's request; Claude). Layered patches, one per slot, only
   make their sound as a group, and the G1 cannot store that: a bank position

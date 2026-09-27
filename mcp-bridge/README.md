@@ -74,9 +74,21 @@ tools to work; they return a clear error if it isn't.
 - `set_parameter(section, container_index, parameter_name?, parameter_id?,
   value?, delta?, slot?)`
 
+Choosing the synth and reloading from it:
+
+- `list_midi_ports()` — the MIDI inputs and outputs with id and name, and which
+  ones the editor is on.
+- `connect_midi(input, output)` and `disconnect_midi()` — what the MIDI settings
+  dialog does. A port is named by id, exact name or a part only one port has;
+  anything ambiguous is refused. Then poll `get_synth_status` until `synthName`
+  is not null and check it: G1-Emu and a real G1 can both be on the machine.
+- `fetch_patch(slot?)` — ask the synth for a slot's patch again, replacing the
+  editor's copy. With `save_patch`, this compares what the synth holds with what
+  was sent.
+
 Reading the synth back (these send nothing):
 
-- `get_synth_status()` — connection and synth OS version, the slot the synth
+- `get_synth_status()` — connection, synth name (null until it has answered) and OS version, the slot the synth
   has focused versus the editor's active tab, transfers in flight, and per slot:
   patch name, LOCAL, enabled, voice count, bank location.
 - `get_events(after?, limit?, types?)` — what the synth and the connection did

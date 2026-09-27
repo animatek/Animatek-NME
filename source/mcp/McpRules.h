@@ -26,6 +26,29 @@ namespace McpRules
     inline bool isValidMorphRange(int range) { return range >= -kMaxMorphRange && range <= kMaxMorphRange; }
     inline bool isValidMidiCc(int cc) { return cc >= 0 && cc <= kMaxMidiCc; }
 
+    // The MIDI port a client means, among ports given as parallel id/name lists:
+    // its id, its exact name in any case, or a part of its name that only one port
+    // has. Returns every candidate, so exactly one is a match, none is "not found"
+    // and several is "ambiguous": the caller refuses both instead of guessing,
+    // because the wrong port can be the real G1 instead of G1-Emu.
+    inline juce::Array<int> matchPort(const juce::StringArray& ids, const juce::StringArray& names,
+                                      const juce::String& wanted)
+    {
+        if (wanted.trim().isEmpty())
+            return {};
+        for (int i = 0; i < ids.size(); ++i)
+            if (ids[i] == wanted)
+                return { i };
+        for (int i = 0; i < names.size(); ++i)
+            if (names[i].equalsIgnoreCase(wanted))
+                return { i };
+        juce::Array<int> partial;
+        for (int i = 0; i < names.size(); ++i)
+            if (names[i].containsIgnoreCase(wanted))
+                partial.add(i);
+        return partial;
+    }
+
     // A knob by its panel name, as list_assignments reports it: "Knob 7",
     // "Pedal", "After touch", "On/Off switch". Case, spaces, hyphens,
     // underscores and slashes are ignored, so "knob7" and "aftertouch" work.
