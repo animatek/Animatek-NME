@@ -556,7 +556,10 @@ def get_events(
     Types: connection, synth_error (code, description), synth_parameter (a value
     the synth reported by itself: a front-panel knob, a morph dial - section 2,
     containerIndex 1 - or a MIDI CC), slot_focus, slots_enabled, patch_received,
-    patch_incomplete, voice_count.
+    patch_incomplete, voice_count, upload_failed (slot, reason: the synth did not
+    take the patch, so the slot is LOCAL). A connection event with state
+    "disconnected" and "Synth not responding" means the synth stopped answering
+    after a timeout; the editor reconnects by itself when it speaks again.
     types: optional filter, e.g. ["synth_error", "connection"]. limit: 1-500.
     """
     params: dict[str, Any] = {"after": after, "limit": limit}

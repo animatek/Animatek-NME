@@ -309,6 +309,24 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     });
   });
 
+  // An upload the synth did not take leaves it holding whatever it had: the
+  // editor's patch is LOCAL from then on, and its edits must not be sent to a
+  // slot that has another patch, so its synchronizer goes as after a Local load.
+  connectionManager.setUploadFailedCallback([this](int slot, const juce::String& reason) {
+    if (slot < 0 || slot >= numSlots)
+      return;
+    connectionManager.setUploadCompleteCallback(nullptr);
+    slotSynchronizers[slot].reset();
+    setSlotLocal(slot, true);
+    const juce::String slotName = juce::String::charToString(static_cast<juce::juce_wchar>('A' + slot));
+    mainLayout->getStatusBar().showMessage(
+        "Upload to slot " + slotName + " failed (" + reason
+            + "): the synth does not have this patch, the slot is LOCAL", 0);
+    auto* info = new juce::DynamicObject();
+    info->setProperty("reason", reason);
+    mcpEventLog.record("upload_failed", slot, juce::var(info));
+  });
+
   connectionManager.setSynthSettingsCallback([this](const SynthSettings& settings) {
     cachedSynthSettings = settings;
     cachedSynthSettingsKnown = true;
@@ -998,6 +1016,7 @@ MainComponent::~MainComponent() {
   connectionManager.setSlotsEnabledCallback(nullptr);
   slotSetLoadTimer.reset();
   connectionManager.setUploadCompleteCallback(nullptr);
+  connectionManager.setUploadFailedCallback(nullptr);
   connectionManager.setLightMeterCallback(nullptr);
   connectionManager.setPatchListCallback(nullptr);
   connectionManager.setBankLocationCallback(nullptr);
@@ -3763,6 +3782,17 @@ void MainComponent::onConnectionStatusChanged(
     // The next synth to answer may be a different one (a real G1, then G1-Emu):
     // its name must not be reported until its own settings arrive.
     cachedSynthSettingsKnown = false;
+    // Nor can the slots be taken to match it. Until a slot is fetched again it
+    // is LOCAL and sends nothing: switching from G1-Emu to a real G1 left slot A
+    // showing the emulator's patch, not LOCAL and with its synchronizer on, for
+    // the seconds before the fetch, so an edit then went to the real synth's
+    // own patch in that slot.
+    for (int s = 0; s < numSlots; ++s) {
+      if (!slotPatches[s])
+        continue;
+      slotSynchronizers[s].reset();
+      setSlotLocal(s, true);
+    }
     slotWindowsReconciled = false;
     slotWindowsReconcileScheduled = false;
   }
@@ -3777,8 +3807,11 @@ void MainComponent::onConnectionStatusChanged(
     // Patch loading is triggered by SlotActivated (sc=0x09) from synth,
     // with a fallback timer in ConnectionManager if no slot message arrives.
 
-    // Enable synchronizer if we have a patch loaded
-    if (currentPatch() && !currentSynchronizer()) {
+    // Enable synchronizer if we have a patch loaded that the synth is known to
+    // hold. A LOCAL one is not (built or opened while disconnected, or left from
+    // the last connection): its edits would land on whatever that slot of the
+    // synth has, so it waits for the fetch that follows the connection.
+    if (currentPatch() && !currentSynchronizer() && !slotIsLocal[activeSlot]) {
       currentSynchronizer() = std::make_unique<PatchSynchronizer>(
           *currentPatch(), connectionManager, activeSlot);
       std::cout << "[SYNC] Patch synchronizer enabled on connection" << std::endl;

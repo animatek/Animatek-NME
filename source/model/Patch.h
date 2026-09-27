@@ -74,8 +74,14 @@ public:
 
     const ModuleDescriptor* getDescriptor() const { return descriptor; }
 
+    // The G1 keeps 16 characters of a module's name and drops the rest. Held to
+    // that here, where every path sets it (file load, rename, replace, undo), so
+    // the editor never shows a name the synth does not have: patches saved
+    // elsewhere with longer names came back from the synth cut, and no longer
+    // matched their own file.
+    static constexpr int kMaxTitleLength = 16;
     const juce::String& getTitle() const { return title; }
-    void setTitle(const juce::String& t) { title = t; }
+    void setTitle(const juce::String& t) { title = t.substring(0, kMaxTitleLength); }
 
     juce::Point<int> getPosition() const { return position; }
     void setPosition(juce::Point<int> p);

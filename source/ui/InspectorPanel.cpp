@@ -1507,7 +1507,7 @@ InspectorPanel::InspectorPanel()
     addAndMakeVisible(nameLabel);
 
     nameEditor.setFont(juce::Font(AppTheme::uiFont(13.0f)));
-    nameEditor.setInputRestrictions(16);
+    nameEditor.setInputRestrictions(Module::kMaxTitleLength);
     nameEditor.addListener(this);
     nameEditor.setEnabled(false);
     addAndMakeVisible(nameEditor);

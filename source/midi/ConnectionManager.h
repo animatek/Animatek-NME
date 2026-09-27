@@ -167,6 +167,12 @@ public:
     using UploadCompleteCallback = std::function<void()>;
     void setUploadCompleteCallback(UploadCompleteCallback cb) { uploadCompleteCallback = std::move(cb); }
 
+    // Called when an upload ends without the synth taking it (no ACK in time, or
+    // rejected), with the slot it was going to and why. Unlike the completion
+    // callback above it is not one-shot: whoever shows the slots listens for good.
+    using UploadFailedCallback = std::function<void(int slot, const juce::String& reason)>;
+    void setUploadFailedCallback(UploadFailedCallback cb) { uploadFailedCallback = std::move(cb); }
+
     // Called when synth sends real-time light/meter data (sc=0x39/0x3A)
     // lights: 128 LED values (0-3), meters: 128 meter values (0-127).
     // Like every listener callback here, it arrives on the message thread:
@@ -249,6 +255,12 @@ private:
     void startHandshakeTimeout();
     void sendHandshake();          // IAm, sender=0: the editor introducing itself
     juce::uint32 lastHandshakeMs = 0;  // rate-limits the re-hello in onSynthMessage
+    // When the synth last sent anything at all. After a timeout, checkSynthStillAnswers
+    // compares it with the moment it asked.
+    std::atomic<juce::uint32> lastHeardMs { 0 };
+    void checkSynthStillAnswers(const juce::String& after);
+    void forgetSynthState(const char* why);
+    void notifyUploadFailed(const juce::String& reason);
     void cancelHandshakeTimeout();
     void startSlotDetectionFallback();
     void sendGetPatchMessages(int patchId, int slot);
@@ -323,6 +335,7 @@ private:
     SlotChangedCallback slotChangedCallback;
     SlotsEnabledCallback slotsEnabledCallback;
     UploadCompleteCallback uploadCompleteCallback;
+    UploadFailedCallback uploadFailedCallback;
     BankFetchCallback bankFetchCallback;
     BankUploadResultCallback bankUploadResultCallback;
     LightMeterCallback lightMeterCallback;

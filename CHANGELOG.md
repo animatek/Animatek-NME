@@ -176,6 +176,38 @@
 
 ### Fixed
 
+- **A failed upload, a silent synth and a switch of synths no longer leave the
+  editor pretending** (2026-09-27, found testing against G1-Emu; Claude). Three
+  things the tests turned up, all about the editor believing a slot matched the
+  synth when it did not:
+  - An upload that timed out or was rejected only put a message in the status
+    bar: the slot stayed as if uploaded, with its synchronizer sending edits to a
+    synth slot holding another patch. Now the slot turns LOCAL, its synchronizer
+    goes, the status bar says so, and the MCP log gets an `upload_failed` event
+    (`ConnectionManager::setUploadFailedCallback`).
+  - After such a timeout, or an unanswered patch request, the editor stayed
+    "Connected" to a synth that answered nothing. It now says hello and, if
+    nothing at all comes back within the reply timeout, marks the synth "not
+    responding" (disconnected, port kept open, per-connection state forgotten
+    through the new `forgetSynthState`); it reconnects by itself as soon as the
+    synth speaks again.
+  - Losing the connection now turns every loaded slot LOCAL and drops its
+    synchronizer, and connecting no longer gives a LOCAL slot one. Switching
+    from G1-Emu to the real G1 left slot A showing the emulator's patch, not
+    LOCAL and synced, for the ~3.5 s before the new synth's patch arrived, so an
+    edit then went to the real synth's own patch.
+  - Module names are held to the G1's 16 characters in `Module::setTitle`, the
+    one place every path goes through; renames already were, but a `.pch` with
+    longer names loaded them whole and the synth gave them back cut, so two
+    patches in bank 9 no longer matched their own files.
+  Verification: builds; 2 new test cases (title limit, long name from a file);
+  full suite 121 cases, 2,935 assertions, also under ASan/UBSan. Live against
+  G1-Emu: with the emulator made to hang (G1-Emu's `G1_SINGLEOP_CACHE=1`) the
+  upload timeout gave `upload_failed`, slot A LOCAL and "Synth not responding"
+  3 s later; switching G1-Emu -> real G1 -> G1-Emu showed slot A LOCAL until
+  each synth's patch arrived (no writes to the real G1); the two bank 9 patches
+  now round-trip with no difference.
+
 - **The Synth Settings dialog shows the master tune centred on 0** (2026-09-27). The
   setting is a signed byte, 0 = in tune, -127 to 127 cents, as nmedit's editor reads
   it; NME took 64 as the centre, so Javier's G1, at 0 on its own display, showed as

@@ -245,6 +245,8 @@ void ConnectionManager::sendHandshake()
 // state.
 void ConnectionManager::onSynthMessage(int cc)
 {
+    lastHeardMs = juce::Time::getMillisecondCounter();
+
     if (cc == NmCmd::IAm || status.state == State::Connected || midiDevice == nullptr)
         return;
 
@@ -258,15 +260,13 @@ void ConnectionManager::onSynthMessage(int cc)
     startHandshakeTimeout();
 }
 
-void ConnectionManager::disconnect()
+// Everything learnt from, or pending with, the synth on this connection. A
+// disconnect forgets it, and so does a synth that stops answering (the port
+// stays open for it to come back), so a later connection starts clean either way.
+void ConnectionManager::forgetSynthState(const char* _why)
 {
-    *alive = false;
-    alive = std::make_shared<std::atomic<bool>>(true);
-    auto bankUploadAborted = std::move(bankUploadResultCallback);
-    bankUploadResultCallback = nullptr;
-
     cancelHandshakeTimeout();
-    invalidateParamQueue("disconnect");
+    invalidateParamQueue(_why);
     editorKey.reset();
     waitingForPatchAck = false;
     collectingSections = false;
@@ -318,7 +318,7 @@ void ConnectionManager::disconnect()
     // synth stays parked waiting for the rest of a transfer that will never
     // arrive and answers no MIDI at all afterwards (issue #40).
     if (waitingForUploadAck)
-        closeUploadTransfer("disconnect");
+        closeUploadTransfer(_why);
 
     ++uploadAckGeneration;
     waitingForUploadAck = false;
@@ -327,6 +327,16 @@ void ConnectionManager::disconnect()
     uploadKnobAssignments.clear();
     uploadCtrlAssignments.clear();
     uploadCompleteCallback = nullptr;
+}
+
+void ConnectionManager::disconnect()
+{
+    *alive = false;
+    alive = std::make_shared<std::atomic<bool>>(true);
+    auto bankUploadAborted = std::move(bankUploadResultCallback);
+    bankUploadResultCallback = nullptr;
+
+    forgetSynthState("disconnect");
 
     protocol.setSendFunction({});
     if (midiDevice)
@@ -513,6 +523,7 @@ void ConnectionManager::sendPatchRequest(int slot)
         setStatus(State::Connected,
                   "Synth did not answer the patch request for slot "
                       + juce::String::charToString(static_cast<juce::juce_wchar>('A' + (slot & 0x03))));
+        checkSynthStillAnswers("a patch request went unanswered");
     });
 
     DBG("Requesting patch from slot " + juce::String(slot));
@@ -847,11 +858,59 @@ void ConnectionManager::sendNextUploadPacket()
             closeUploadTransfer("ACK timeout");
             uploadPackets.clear();
             uploadPacketIndex = 0;
-            setStatus(State::Connected, "Upload timeout at packet " + juce::String(sentPacket));
+            const juce::String reason = "Upload timeout at packet " + juce::String(sentPacket);
+            setStatus(State::Connected, reason);
+            notifyUploadFailed(reason);
 
             if (bankUploadResultCallback)
                 notifyBankUploadResult(false);
+
+            checkSynthStillAnswers("the upload timed out");
         }
+    });
+}
+
+void ConnectionManager::notifyUploadFailed(const juce::String& reason)
+{
+    if (!uploadFailedCallback)
+        return;
+    auto cb = uploadFailedCallback;
+    const int slot = uploadSlot & 0x03;
+    auto aliveFlag = alive;
+    juce::MessageManager::callAsync([cb, slot, reason, aliveFlag]() {
+        if (*aliveFlag) cb(slot, reason);
+    });
+}
+
+// A timeout alone does not say whether the synth is gone or only missed one
+// message, and staying "Connected" to a synth that answers nothing hides it:
+// every later edit and request just times out in turn (seen when G1-Emu hung
+// after a run of uploads). So ask: a hello costs nothing on a synth that is
+// connected (its answer is ignored there, see onIAmReceived), and anything the
+// synth says within the reply timeout - the answer, a light frame, a voice
+// count - proves it is still there. Silence means it is not, and the state says
+// so; onSynthMessage reconnects on its own as soon as it speaks again.
+void ConnectionManager::checkSynthStillAnswers(const juce::String& after)
+{
+    if (!isConnected())
+        return;
+
+    const auto askedMs = juce::Time::getMillisecondCounter();
+    sendHandshake();
+
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(NmProtocol::timeoutMs, [this, askedMs, after, aliveFlag]() {
+        if (!*aliveFlag || !isConnected())
+            return;
+        if (static_cast<juce::int32>(lastHeardMs.load() - askedMs) >= 0)
+            return;
+
+        std::cout << "[SYNTH] No answer at all after " << after
+                  << ": marking the synth as not responding" << std::endl;
+        if (bankUploadResultCallback)
+            notifyBankUploadResult(false);
+        forgetSynthState("synth not responding");
+        setStatus(State::Disconnected, "Synth not responding (" + after + ")");
     });
 }
 
@@ -2031,9 +2090,10 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
             closeUploadTransfer("rejected by synth");
             uploadPackets.clear();
             uploadPacketIndex = 0;
-            setStatus(State::Connected,
-                      "Upload rejected by synth (code " + juce::String(errorCode)
-                          + ": " + juce::String(synthErrorName(errorCode)) + ")");
+            const juce::String reason = "Upload rejected by synth (code " + juce::String(errorCode)
+                                        + ": " + juce::String(synthErrorName(errorCode)) + ")";
+            setStatus(State::Connected, reason);
+            notifyUploadFailed(reason);
         }
 
         if (synthErrorCallback)

@@ -978,7 +978,7 @@ juce::var McpRequestHandler::renameModule(const juce::var& params)
     juce::String newName = params["name"].toString().trim();
     if (newName.isEmpty())
         throw McpError{ "invalid_name", "name must not be empty" };
-    if (newName.length() > 16)
+    if (newName.length() > Module::kMaxTitleLength)
         throw McpError{ "invalid_name", "name must be 16 characters or fewer (G1 module-name limit)" };
 
     auto& container = patch->getContainer(section);
