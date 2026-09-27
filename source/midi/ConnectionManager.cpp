@@ -478,8 +478,13 @@ void ConnectionManager::sendPatchRequest(int slot)
     sectionsReceived = 0;
     sectionSeen.fill(false);
     fetchPatchId = -1;
+    fetchSuperseded = false;
     sectionRetriesLeft = maxSectionRetries;
     patchTimeoutGeneration++;  // Invalidate any pending timeout
+
+    // Section requests of a fetch this one replaces would only be answered
+    // with bare ACKs (wrong pid), each one holding the wire for a round trip.
+    protocol.discardQueued(getPatchTag);
 
     RequestPatchMessage req;
     req.slot = slot;
@@ -1418,7 +1423,18 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
         return;
     }
 
-    if (waitingForPatchAck)
+    // Only the RequestPatch answer (type 0x36) starts the section fetch. A bare
+    // ACK arriving now answers something sent before - typically a GetPatch of
+    // the fetch this request superseded - and its pid is not this fetch's.
+    if (waitingForPatchAck && msg.type == 0x36 && fetchSuperseded)
+    {
+        std::cout << "[PATCH] Slot " << static_cast<char>('A' + (pendingPatchSlot & 0x03))
+                  << " got a newer pid while its request was pending - asking again" << std::endl;
+        sendPatchRequest(pendingPatchSlot);
+        return;
+    }
+
+    if (waitingForPatchAck && msg.type == 0x36)
     {
         waitingForPatchAck = false;
         collectingSections = true;
@@ -1737,7 +1753,7 @@ void ConnectionManager::sendGetPatchMessages(int patchId, int slot)
         // expectsreply=true: each section request must wait for its reply,
         // otherwise the burst overruns the synth and sections are dropped.
         protocol.sendMessage(NmCmd::PatchHandling, slot, payload,
-                             /*expectsReply=*/true, /*addChecksum=*/true);
+                             /*expectsReply=*/true, /*addChecksum=*/true, getPatchTag);
     }
 }
 
@@ -1796,6 +1812,18 @@ void ConnectionManager::retryMissingSections()
         return;
     }
 
+    // The synth has moved the slot on to another pid since the burst went out:
+    // asking again for the same sections would get the same bare ACKs.
+    const int slotPid = slotPatchIds[static_cast<size_t>(pendingPatchSlot & 0x03)];
+    if (slotPid >= 0 && slotPid != fetchPatchId && patchRequestAttemptsLeft > 0)
+    {
+        std::cout << "[PATCH] Fetch stalled with pid " << fetchPatchId << " but slot "
+                  << static_cast<char>('A' + (pendingPatchSlot & 0x03)) << " is now pid "
+                  << slotPid << " - requesting the patch again" << std::endl;
+        sendPatchRequest(pendingPatchSlot);
+        return;
+    }
+
     --sectionRetriesLeft;
     patchTimeoutGeneration++;  // invalidate the timers of the stalled attempt
 
@@ -1810,7 +1838,7 @@ void ConnectionManager::retryMissingSections()
         m.pid = fetchPatchId;
         m.section = static_cast<GetPatchMessage::Section>(s);
         protocol.sendMessage(NmCmd::PatchHandling, pendingPatchSlot, m.encode(),
-                             /*expectsReply=*/true, /*addChecksum=*/true);
+                             /*expectsReply=*/true, /*addChecksum=*/true, getPatchTag);
     }
 
     startPatchTimeout();
@@ -2054,6 +2082,24 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         else if (waitingForUploadAck)
         {
             std::cout << "[UPLOAD] Ignoring NewPatchInSlot during upload" << std::endl;
+        }
+        else if (isConnected() && msg.newPatchSlot == pendingPatchSlot && waitingForPatchAck)
+        {
+            // Front-panel loads announce two pids back to back. The request
+            // already sent may be answered with the first; ask again then.
+            fetchSuperseded = true;
+        }
+        else if (isConnected() && msg.newPatchSlot == pendingPatchSlot && collectingSections
+                 && msg.newPatchPid != fetchPatchId)
+        {
+            // The sections being fetched belong to a pid the slot no longer
+            // has: the synth answers each with a bare ACK and no data, and the
+            // fetch ended as an "Incomplete Patch Load" of 0 sections. Start
+            // over on the new pid instead of waiting that out.
+            std::cout << "[PATCH] Slot " << static_cast<char>('A' + msg.newPatchSlot)
+                      << " moved to pid " << msg.newPatchPid << " mid-fetch (was "
+                      << fetchPatchId << ") - restarting the fetch" << std::endl;
+            requestPatch(msg.newPatchSlot);
         }
         else if (isConnected() && msg.newPatchSlot >= 0)
         {

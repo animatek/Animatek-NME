@@ -427,6 +427,15 @@ private:
     // duplicate cables/parameters in the model).
     std::array<bool, 13> sectionSeen {};
     int fetchPatchId = -1;         // pid the in-flight GetPatch burst was sent with
+    // NmProtocol tag on the GetPatch requests, so a fetch that has gone stale
+    // can take the ones still queued back out.
+    static constexpr int getPatchTag = 1;
+    // A load from the synth's front panel announces two pids in a row: the
+    // first NewPatchInSlot is answered by the time the second arrives, and a
+    // GetPatch with the first pid gets a bare ACK and no section. Set when a
+    // newer pid lands on the slot being fetched while its RequestPatch is
+    // still unanswered, so the answer is used to ask again, not to fetch.
+    bool fetchSuperseded = false;
     int sectionRetriesLeft = 0;
     // A synth at 99-100% DSP load answers GetPatch slowly and can stall for
     // seconds mid-fetch (issue #15). Re-requesting the missing sections

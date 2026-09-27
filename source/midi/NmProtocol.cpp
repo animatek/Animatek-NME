@@ -1,5 +1,7 @@
 #include "NmProtocol.h"
 
+#include <algorithm>
+
 NmProtocol::NmProtocol()
 {
     startTimer(heartbeatIntervalMs);
@@ -21,18 +23,27 @@ void NmProtocol::removeListener(Listener* listener)
 }
 
 void NmProtocol::sendMessage(int cc, int slot, const std::vector<uint8_t>& payload,
-                             bool expectsReply, bool addChecksum)
+                             bool expectsReply, bool addChecksum, int tag)
 {
     if (!sendFn)
         return;
 
     auto encoded = SysEx::encode(cc, slot, payload, addChecksum);
-    sendQueue.push_back({ std::move(encoded), expectsReply });
+    sendQueue.push_back({ std::move(encoded), expectsReply, tag });
 
     // Send right away instead of waiting for the next timer tick. The original
     // editor's ProtocolRunner thread drains its queue as soon as a message is
     // enqueued; pacing knob moves at one message per tick adds audible lag.
     flushSendQueue();
+}
+
+int NmProtocol::discardQueued(int tag)
+{
+    const auto before = sendQueue.size();
+    sendQueue.erase(std::remove_if(sendQueue.begin(), sendQueue.end(),
+                                   [tag](const PendingMessage& m) { return m.tag == tag; }),
+                    sendQueue.end());
+    return static_cast<int>(before - sendQueue.size());
 }
 
 void NmProtocol::processIncoming(const uint8_t* data, size_t length)

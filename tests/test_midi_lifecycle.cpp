@@ -268,3 +268,74 @@ TEST_CASE("Disconnect cancels an upload completion already posted to the message
     CHECK(completions == 0);
     CHECK(bankFailures == (bankUpload ? 1 : 0));
 }
+
+// The patch-handling frames sent since `from`, as payloads without their
+// checksum (every one the editor sends carries it).
+static std::vector<std::vector<uint8_t>> patchRequestsSince(const Frames& frames, size_t from)
+{
+    std::vector<std::vector<uint8_t>> out;
+    for (size_t i = from; i < frames.size(); ++i)
+    {
+        auto decoded = SysEx::decode(frames[i].data(), frames[i].size());
+        if (decoded.cc != NmCmd::PatchHandling)
+            continue;
+        if (!decoded.payload.empty())
+            decoded.payload.pop_back();
+        out.push_back(decoded.payload);
+    }
+    return out;
+}
+
+TEST_CASE("A front-panel load that announces two pids is fetched with the second")
+{
+    // The exact exchange captured from G1-Emu (OS 3.03) when a patch is
+    // loaded from the panel: NewPatchInSlot pid 0x0b, and the second one
+    // (pid 0x0c) lands after the RequestPatch was answered with 0x0b. A
+    // GetPatch with 0x0b is then answered by a bare ACK and no section.
+    Frames frames;
+    ConnectionManager connection;
+    connectRecorder(connection, frames);
+    auto& protocol = connection.getProtocol();
+    const std::vector<uint8_t> requestPatch { 0x41, 0x35 };
+
+    size_t mark = frames.size();
+    receive(protocol, NmCmd::NMInfo, { 0x0b, 0x38, 0x00, 0x0b });
+    auto sent = patchRequestsSince(frames, mark);
+    REQUIRE(sent.size() == 1);
+    CHECK(sent[0] == requestPatch);
+
+    SUBCASE("second pid arrives after the request was answered")
+    {
+        mark = frames.size();
+        receive(protocol, NmCmd::ACK, { 0x0b, 0x36, 0x0b });
+        sent = patchRequestsSince(frames, mark);
+        REQUIRE(sent.size() == 1);
+        CHECK(sent[0][0] == 0x0b);  // first GetPatch, stale pid, already on the wire
+
+        receive(protocol, NmCmd::NMInfo, { 0x0c, 0x38, 0x00, 0x0c });
+    }
+    SUBCASE("second pid arrives while the request is still unanswered")
+    {
+        receive(protocol, NmCmd::NMInfo, { 0x0c, 0x38, 0x00, 0x0c });
+        mark = frames.size();
+        receive(protocol, NmCmd::ACK, { 0x0b, 0x36, 0x0b });
+        sent = patchRequestsSince(frames, mark);
+        REQUIRE(sent.size() == 1);
+        CHECK(sent[0] == requestPatch);  // asked again, nothing fetched with 0x0b
+    }
+
+    // Whatever is still in flight gets its bare ACK, and no GetPatch with
+    // the stale pid goes out after it.
+    mark = frames.size();
+    receive(protocol, NmCmd::ACK, { 0x0c, 0x7f, 0x0c });
+    for (const auto& p : patchRequestsSince(frames, mark))
+        CHECK(p == requestPatch);
+    CHECK(connection.isFetchingPatch());
+
+    mark = frames.size();
+    receive(protocol, NmCmd::ACK, { 0x0c, 0x36, 0x0c });
+    sent = patchRequestsSince(frames, mark);
+    REQUIRE_FALSE(sent.empty());
+    CHECK(sent[0][0] == 0x0c);
+    CHECK(sent[0][1] == 0x20);  // the first section: the header
+}

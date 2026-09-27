@@ -176,6 +176,23 @@
 
 ### Fixed
 
+- **A patch loaded from the synth's front panel arrives whole** (2026-09-27,
+  found testing against G1-Emu; Claude). Loading
+  from the panel ended in "Incomplete Patch Load: 0 of 13 sections", and the
+  editor looked disconnected until the deferred fetch caught up. The OS
+  announces such a load with two NewPatchInSlot in a row (pids `0b` then `0c`
+  in the capture); the editor's RequestPatch was answered with the first, the
+  second landed while the 13 GetPatch went out with the first, and the synth
+  answers a GetPatch with a pid the slot no longer has with a bare ACK and no
+  section. Now a newer pid on the slot being fetched restarts the fetch
+  (dropping the GetPatch still queued, `NmProtocol::discardQueued`), a newer
+  pid while the request is unanswered makes the answer ask again, only the
+  RequestPatch answer (ACK `0x36`) starts a fetch, and a stalled fetch whose
+  slot has moved to another pid asks for the patch again instead of the same
+  sections. Verification: a new test replays the captured exchange in both
+  orders (fails without the change); the suite passes. Live: Javier loaded
+  patches from G1-Emu's panel with NME connected and each one arrived.
+
 - **A failed upload, a silent synth and a switch of synths no longer leave the
   editor pretending** (2026-09-27, found testing against G1-Emu; Claude). Three
   things the tests turned up, all about the editor believing a slot matched the

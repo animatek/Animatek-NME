@@ -36,9 +36,14 @@ public:
     void addListener(Listener* listener);
     void removeListener(Listener* listener);
 
-    // Enqueue a message for sending
+    // Enqueue a message for sending. A non-zero tag lets discardQueued() take
+    // it back out while it is still waiting its turn.
     void sendMessage(int cc, int slot, const std::vector<uint8_t>& payload,
-                     bool expectsReply = false, bool addChecksum = true);
+                     bool expectsReply = false, bool addChecksum = true, int tag = 0);
+
+    // Drop every queued, not yet sent message carrying this tag. The one
+    // already on the wire (if any) still gets its reply.
+    int discardQueued(int tag);
 
     // Feed incoming SysEx data (called from MIDI input handler)
     void processIncoming(const uint8_t* data, size_t length);
@@ -63,6 +68,7 @@ private:
     {
         std::vector<uint8_t> encoded;
         bool expectsReply = false;
+        int tag = 0;
     };
 
     std::deque<PendingMessage> sendQueue;
