@@ -1,6 +1,6 @@
 # Animatek NME Status
 
-Current version: **0.18.0** (released 2026-09-10)
+Current version: **0.19.0** (released 2026-09-27)
 
 The project was renamed from **Nomad2026** to **Animatek NME — Nord Modular Editor G1** in 0.6.0.
 
@@ -44,6 +44,18 @@ This file tracks the current project state at a practical level. Detailed versio
 - `MODULE_CHECKLIST.md` remains the detailed source of truth for per-module visual/behavior review.
 
 ## Recent Milestones
+
+- **0.19.0**: the one that stops pretending. Tested for the first time against G1-Emu, the
+  emulated G1, which turned up every place the editor believed a slot matched the synth when
+  it did not: a failed upload left the slot looking uploaded, a synth that stopped answering
+  or whose MIDI port vanished still read "Connected", a switch of synths showed the previous
+  synth's patch as synced, and a patch loaded from the front panel came in as 0 of 13
+  sections because the OS announces such a load with two patch ids. All four now say what is
+  true. New: slot sets (the four slots saved and loaded as one sound), Key Quantizer scales
+  on any root, replacing a module with another of its family, Reconnect in the MIDI
+  settings, and an MCP bridge that reads the synth back, assigns knobs, morphs and CCs and
+  chooses its MIDI ports. Fixed against the real G1: the Synth Settings dialog's clock source
+  and master tune, and stuck notes from the keyboard floater.
 
 - **0.18.0**: the one that stopped corrupting patches. Deleting a module cleared its morph,
   knob and MIDI-CC assignments in the editor and told the synth nothing — nothing in the

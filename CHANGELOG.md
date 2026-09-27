@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.19.0 — 2026-09-27
+
 ### Added
 
 - **MIDI settings: Reconnect, and a dialog that follows the connection**
@@ -58,7 +60,7 @@
   Verification: builds; 8 new test cases (manifest round trip, refusals, file
   and folder names, bank numbers, enable mask and focus); full suite 105 cases,
   2,859 assertions, also under ASan/UBSan. Javier tried it the same day and
-  reports that it works; polishing continues. On `feature/keyquant-scales`.
+  reports that it works.
 
 - **Twelve original G1 patches and a private ABCD patch guide** (2026-09-13,
   Javier's request; Codex). Bank 406–409 holds Mareas en Re with the user's
@@ -84,12 +86,8 @@
   stereo-mix captures through Komplete Audio 6 contain signal with no clipped
   samples (techno peak −13.51 dBFS; drones −11.72 dBFS); these are not isolated
   stems or a listening assessment. No power-cycle or memory-recall test.
-  Private guide: https://nord-modular-atlas.animatek.chatgpt.site — three
-  collections, 96 control labels and twelve native downloads in three ZIPs.
-  Build, lint and archive/download checks passed; deployment succeeded.
-  Browser handoff was unavailable. The separate Site repository is committed
-  as `34f65ed19102ae845eb036464c74588e1c041eed`; this Nomad2026 change remains
-  local, without a commit. Unrelated editor changes were left intact.
+  The patches and their guide live outside the repository (`patches/` is not
+  tracked) and are not part of the release.
 
 - **Key Quantizer scales on any root, and the one it is on now** (2026-09-13,
   Javier's request). The right-click menu already had sixteen scales, all on C and
@@ -175,6 +173,11 @@
   never fit; the path is its tooltip now.
 
 ### Fixed
+
+- **The source builds again with the compilers CI uses** (2026-09-27; Claude).
+  `KeyQuantScales.cpp` used `size_t` without including `<cstddef>`, which this
+  machine's compiler forgave and CI's did not: every push since the Key
+  Quantizer scales failed to build there. Verification: CI green again.
 
 - **Closing G1-Emu (or unplugging the MIDI interface) disconnects the editor**
   (2026-09-27, found testing against G1-Emu; Claude). The ports vanished and the editor went on saying "Connected",
