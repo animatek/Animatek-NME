@@ -58,6 +58,15 @@
 
 ### Fixed
 
+- **The Synth Settings dialog shows the master tune centred on 0** (2026-09-27). The
+  setting is a signed byte, 0 = in tune, -127 to 127 cents, as nmedit's editor reads
+  it; NME took 64 as the centre, so Javier's G1, at 0 on its own display, showed as
+  -64 cents, and saving the dialog would have detuned it. `SynthSettings` gets
+  `masterTuneCents()`/`setMasterTuneCents()`, the dialog's slider now runs -127..127.
+  Verification: `tests/test_synth_settings_clock.cpp` reads 0 cents from a real reply
+  and round-trips -127, -10, 0, 25 and 127 through the encoder; suite green plain and
+  under ASan/UBSan, the app builds. Still to be checked in the dialog against the synth.
+
 - **The Synth Settings dialog shows the MIDI clock source the right way round**
   (2026-09-27). The bit is 1 for Internal and 0 for External, and NME read it the
   other way: Javier's G1, set to Internal at 100 BPM on its own display, showed as

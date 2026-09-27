@@ -49,3 +49,27 @@ TEST_CASE("settings not yet read from the synth default to Internal")
 {
     CHECK(SynthSettings{}.clockIsInternal());
 }
+
+// The master tune is a signed byte, 0 = in tune (nmedit reads it the same way); NME
+// used to take 64 as the centre and showed a G1 at 0 as -64 cents.
+TEST_CASE("the master tune is a signed byte centred on 0")
+{
+    SynthSettings s;
+    REQUIRE(SynthSettingsMessage::decode(kExternalReply, s));
+    CHECK(s.masterTuneCents() == 0);
+
+    for (const int cents : { -127, -10, 0, 25, 127 })
+    {
+        s.setMasterTuneCents(cents);
+        SynthSettingsMessage m;
+        m.settings = s;
+        const auto payload = m.encode(0);
+        const std::vector<uint8_t> packed(payload.begin() + 1, payload.end());
+        SynthSettings back;
+        REQUIRE(SynthSettingsMessage::decode(packed, back));
+        CHECK(back.masterTuneCents() == cents);
+    }
+    s.setMasterTuneCents(-500);
+    CHECK(s.masterTuneCents() == -127);
+    CHECK(SynthSettings{}.masterTuneCents() == 0);
+}

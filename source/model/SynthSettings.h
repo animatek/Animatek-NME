@@ -19,7 +19,9 @@ struct SynthSettings
     int  keyboardMode        = 0;    // 1 bit  (0=Active slot, 1=Selected slots)
     int  pedalPolarity       = 0;    // 1 bit
     int  globalSync          = 0;    // 5 bits
-    int  masterTune          = 64;   // 8 bits (raw, 64=center)
+    // 8 bits, a signed byte: 0 = in tune, one step per cent, -127..127 (as nmedit's
+    // editor reads it). A real G1 at 0 on its own display sends 0. Use masterTuneCents().
+    int  masterTune          = 0;
     int  programChangeReceive= 1;    // 1 bit
     int  programChangeSend   = 1;    // 1 bit
     int  knobMode            = 0;    // 1 bit  (0=Immediate, 1=Hook)
@@ -35,4 +37,7 @@ struct SynthSettings
 
     bool clockIsInternal() const        { return midiClockSource != 0; }
     void setClockInternal(bool internal) { midiClockSource = internal ? 1 : 0; }
+
+    int  masterTuneCents() const          { return static_cast<signed char> (masterTune & 0xff); }
+    void setMasterTuneCents(int cents)    { masterTune = (cents < -127 ? -127 : cents > 127 ? 127 : cents) & 0xff; }
 };

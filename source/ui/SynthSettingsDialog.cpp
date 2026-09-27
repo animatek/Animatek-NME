@@ -68,8 +68,8 @@ SynthSettingsDialog::SynthSettingsDialog (const SynthSettings& current, Callback
     nameEditor.setColour (juce::TextEditor::focusedOutlineColourId, kGold);
 
     styleLabel (tuneLbl);
-    masterTuneSlider.setRange (0, 127, 1);
-    masterTuneSlider.setValue (working.masterTune, juce::dontSendNotification);
+    masterTuneSlider.setRange (-127, 127, 1);
+    masterTuneSlider.setValue (working.masterTuneCents(), juce::dontSendNotification);
     masterTuneSlider.onValueChange = [this]() { updateMasterTuneLabel(); };
     styleSlider (masterTuneSlider, 44);
     styleLabel (tuneCentsLbl);
@@ -160,7 +160,7 @@ SynthSettingsDialog::SynthSettingsDialog (const SynthSettings& current, Callback
         {
             SynthSettings r = working;
             r.name               = nameEditor.getText().toStdString();
-            r.masterTune         = static_cast<int> (masterTuneSlider.getValue());
+            r.setMasterTuneCents (static_cast<int> (masterTuneSlider.getValue()));
             for (int i = 0; i < 4; ++i)
                 r.midiChannelSlot[i] = static_cast<int> (chanSliders[i].getValue()) - 1;
             r.midiVelScaleMin        = static_cast<int> (velMinSlider.getValue());
@@ -191,7 +191,7 @@ void SynthSettingsDialog::setSettings (const SynthSettings& settings)
     working = settings;
 
     nameEditor.setText (working.name, juce::dontSendNotification);
-    masterTuneSlider.setValue (working.masterTune, juce::dontSendNotification);
+    masterTuneSlider.setValue (working.masterTuneCents(), juce::dontSendNotification);
     updateMasterTuneLabel();
 
     for (int i = 0; i < 4; ++i)
@@ -218,7 +218,7 @@ void SynthSettingsDialog::setSettings (const SynthSettings& settings)
 // ─────────────────────────────────────────────────────────────────────────────
 void SynthSettingsDialog::updateMasterTuneLabel()
 {
-    int cents = static_cast<int> (masterTuneSlider.getValue()) - 64;
+    int cents = static_cast<int> (masterTuneSlider.getValue());
     juce::String s;
     s << (cents >= 0 ? "+" : "") << cents << " cents";
     tuneCentsLbl.setText (s, juce::dontSendNotification);
