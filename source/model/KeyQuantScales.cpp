@@ -1,5 +1,8 @@
 #include "KeyQuantScales.h"
 
+#include <cstddef>
+#include <initializer_list>
+
 namespace KeyQuantScales
 {
 namespace
@@ -86,7 +89,7 @@ std::vector<std::pair<int, int>> matches(std::uint16_t mask)
             continue;
         }
         for (int root = 0; root < 12; ++root)
-            if (maskFor(scales[static_cast<size_t>(i)], root) == mask)
+            if (maskFor(scales[static_cast<std::size_t>(i)], root) == mask)
                 found.push_back({ i, root });
     }
     return found;
