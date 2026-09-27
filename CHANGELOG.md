@@ -65,7 +65,8 @@
   `masterTuneCents()`/`setMasterTuneCents()`, the dialog's slider now runs -127..127.
   Verification: `tests/test_synth_settings_clock.cpp` reads 0 cents from a real reply
   and round-trips -127, -10, 0, 25 and 127 through the encoder; suite green plain and
-  under ASan/UBSan, the app builds. Still to be checked in the dialog against the synth.
+  under ASan/UBSan, the app builds. Javier opened the dialog against his G1 with this
+  build: Master Tune 0, +0 cents, as on the synth's own display.
 
 - **The Synth Settings dialog shows the MIDI clock source the right way round**
   (2026-09-27). The bit is 1 for Internal and 0 for External, and NME read it the
@@ -78,8 +79,8 @@
   synth default to Internal.
   Verification: `tests/test_synth_settings_clock.cpp` decodes a real settings reply
   whose bit is 0 as External and round-trips both values through the encoder; the
-  suite passes plain and under ASan/UBSan and the app builds. The dialog itself is
-  still to be checked against the real synth with this build.
+  suite passes plain and under ASan/UBSan and the app builds. Javier opened the
+  dialog against his G1 with this build: Internal, 100 BPM, as on the synth's display.
 
 - **The keyboard floater no longer leaves notes stuck on the synth** (2026-09-26,
   G1-Emu issue #4, "the keyboard floater stacks notes"). The G1's OS takes the
