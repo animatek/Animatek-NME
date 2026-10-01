@@ -98,3 +98,25 @@ target_link_libraries(nme_tests PRIVATE
 )
 
 add_test(NAME nme_tests COMMAND nme_tests)
+
+# nme_pch_dump: what PchFileIO understands of each .pch, as JSON lines, to compare
+# against a reference reader over a whole patch archive (see the file header).
+juce_add_console_app(nme_pch_dump PRODUCT_NAME "nme_pch_dump")
+target_sources(nme_pch_dump PRIVATE
+    pch_dump.cpp
+    ${CMAKE_SOURCE_DIR}/source/model/Patch.cpp
+    ${CMAKE_SOURCE_DIR}/source/model/ModuleDescriptions.cpp
+    ${CMAKE_SOURCE_DIR}/source/model/ModuleTags.cpp
+    ${CMAKE_SOURCE_DIR}/source/model/PchFileIO.cpp
+    ${CMAKE_SOURCE_DIR}/source/format/ValueFormatters.cpp
+)
+target_include_directories(nme_pch_dump PRIVATE ${CMAKE_SOURCE_DIR}/source)
+target_compile_definitions(nme_pch_dump PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+target_link_libraries(nme_pch_dump PRIVATE
+    juce::juce_core
+    juce::juce_events
+    juce::juce_data_structures
+    juce::juce_graphics
+    juce::juce_recommended_config_flags
+    juce::juce_recommended_warning_flags
+)

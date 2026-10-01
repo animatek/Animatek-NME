@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Added
+
+- **`nme_pch_dump`: a reading battery for the patch loader** (2026-10-01,
+  Javier's request; Claude). A console target next to the tests
+  (`tests/pch_dump.cpp`): it reads every `.pch` path on stdin with `PchFileIO`
+  and prints, one JSON line per patch, what NME understood (modules with
+  their parameter, custom and title values; cables as pairs of ends). The
+  `g1-taller` repo compares that with its own reader over the 29,639 readable
+  patches of the community archive: 26,478 match, 1,784 differ only by editor
+  decisions (empty titles filled with the module name, titles cut to 16,
+  out-of-range values clamped), and the rest are real reading bugs: #85 (area
+  number on the first row: 1,344 patches lose a module and its cables), files
+  with `\r\r\n` line endings (9 patches: everything lands in the common area)
+  and MacBinary-wrapped files NME cannot open (10). Verification: builds; ran
+  over the whole archive in ~45 s.
+
 ## 0.19.0 — 2026-09-27
 
 ### Added
