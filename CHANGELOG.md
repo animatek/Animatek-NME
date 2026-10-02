@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Patches lost a module and a cable, or put everything in the common area**
+  (2026-10-02, Javier's request; Claude; #85, #86). The per-area sections of a
+  `.pch` open with the area number, and the reader took it from the first line
+  and the rows from the second on. Files that glue the first row to the area
+  (`1 1 18 1 10`) lost that module or cable without a warning (1,344 patches
+  of the community archive), and files with `\r\r\n` line endings read the
+  area from an empty line as 0, so every module went to the common area (9).
+  `PchFileIO::splitAreaRows` now skips empty lines and keeps whatever follows
+  the area as the first row, for `[ModuleDump]`, `[CableDump]`,
+  `[ParameterDump]`, `[CustomDump]` and `[NameDump]`. Verification: two new
+  test cases (`test_pch_area_rows.cpp`) that fail without the fix; full suite
+  passes, also under ASan/UBSan; `nme_pch_dump` over the 29,639 readable
+  archive patches against g1-taller's reader: 27,763 identical (26,478
+  before), none left with #85 or #86, the rest only editor decisions (empty
+  titles filled in, titles cut to 16, clamped values) or odd files.
+
 ### Added
 
 - **`nme_pch_dump`: a reading battery for the patch loader** (2026-10-01,

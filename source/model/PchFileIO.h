@@ -65,6 +65,7 @@ private:
     void writeComments(juce::String& out, const Patch& patch);
 
     static juce::StringArray tokenize(const juce::String& line);
+    static int splitAreaRows(const juce::StringArray& lines, juce::StringArray& rows);
     static juce::String getLegacyValue(const juce::StringArray& lines, const juce::String& key);
 
     const ModuleDescriptions& descs;

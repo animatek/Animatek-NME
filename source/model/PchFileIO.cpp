@@ -13,6 +13,38 @@ juce::StringArray PchFileIO::tokenize(const juce::String& line)
     return tokens;
 }
 
+// The per-area sections ([ModuleDump], [CableDump], [ParameterDump],
+// [CustomDump], [NameDump]) open with the area number: 1 poly, 0 common.
+// Most files put it on a line of its own, but some glue the first row to it
+// ("1 1 18 1 10" is area 1, then module 1 of type 18), and files that went
+// through a text-mode transfer twice end lines in "\r\r\n", which reads as
+// an empty line after every row. Reading the area from lines[0] and the rows
+// from lines[1] on lost that glued first row (#85), and took an empty
+// line's 0 for the area, putting every module in common (#86). Returns the
+// area, or -1 if the section is empty, and fills `rows` without empty lines.
+int PchFileIO::splitAreaRows(const juce::StringArray& lines, juce::StringArray& rows)
+{
+    rows.clear();
+    int area = -1;
+    for (const auto& raw : lines)
+    {
+        auto line = raw.trim();
+        if (line.isEmpty())
+            continue;
+        if (area >= 0)
+        {
+            rows.add(line);
+            continue;
+        }
+        const int firstEnd = line.indexOfAnyOf(" \t");
+        area = (firstEnd < 0 ? line : line.substring(0, firstEnd)).getIntValue();
+        auto rest = firstEnd < 0 ? juce::String() : line.substring(firstEnd).trim();
+        if (rest.isNotEmpty())
+            rows.add(rest);
+    }
+    return area;
+}
+
 struct LegacyCableEntry
 {
     int sourceModule = 0;
@@ -444,14 +476,14 @@ void PchFileIO::parseHeader(const juce::StringArray& lines, Patch& patch)
 // --- ModuleDump ---
 void PchFileIO::parseModuleDump(const juce::StringArray& lines, Patch& patch)
 {
-    if (lines.size() < 1) return;
-
-    int voiceAreaId = tokenize(lines[0])[0].getIntValue();
+    juce::StringArray rows;
+    const int voiceAreaId = splitAreaRows(lines, rows);
+    if (voiceAreaId < 0) return;
     auto& container = patch.getContainer(voiceAreaId == 1 ? 1 : 0);
 
-    for (int i = 1; i < lines.size(); ++i)
+    for (const auto& row : rows)
     {
-        auto tokens = tokenize(lines[i]);
+        auto tokens = tokenize(row);
         if (tokens.size() < 4) continue;
 
         int index = tokens[0].getIntValue();
@@ -494,14 +526,14 @@ void PchFileIO::parseCurrentNoteDump(const juce::StringArray& lines, Patch& patc
 // --- CableDump ---
 void PchFileIO::parseCableDump(const juce::StringArray& lines, Patch& patch)
 {
-    if (lines.size() < 1) return;
-
-    int voiceAreaId = tokenize(lines[0])[0].getIntValue();
+    juce::StringArray rows;
+    const int voiceAreaId = splitAreaRows(lines, rows);
+    if (voiceAreaId < 0) return;
     auto& container = patch.getContainer(voiceAreaId == 1 ? 1 : 0);
 
-    for (int i = 1; i < lines.size(); ++i)
+    for (const auto& row : rows)
     {
-        auto tokens = tokenize(lines[i]);
+        auto tokens = tokenize(row);
         if (tokens.size() < 7) continue;
 
         int color    = tokens[0].getIntValue();
@@ -542,14 +574,14 @@ void PchFileIO::parseCableDump(const juce::StringArray& lines, Patch& patch)
 // --- ParameterDump ---
 void PchFileIO::parseParameterDump(const juce::StringArray& lines, Patch& patch)
 {
-    if (lines.size() < 1) return;
-
-    int voiceAreaId = tokenize(lines[0])[0].getIntValue();
+    juce::StringArray rows;
+    const int voiceAreaId = splitAreaRows(lines, rows);
+    if (voiceAreaId < 0) return;
     auto& container = patch.getContainer(voiceAreaId == 1 ? 1 : 0);
 
-    for (int i = 1; i < lines.size(); ++i)
+    for (const auto& row : rows)
     {
-        auto tokens = tokenize(lines[i]);
+        auto tokens = tokenize(row);
         if (tokens.size() < 3) continue;
 
         int index = tokens[0].getIntValue();
@@ -664,14 +696,14 @@ void PchFileIO::parseCtrlMapDump(const juce::StringArray& lines, Patch& patch)
 // --- CustomDump ---
 void PchFileIO::parseCustomDump(const juce::StringArray& lines, Patch& patch)
 {
-    if (lines.size() < 1) return;
-
-    int voiceAreaId = tokenize(lines[0])[0].getIntValue();
+    juce::StringArray rows;
+    const int voiceAreaId = splitAreaRows(lines, rows);
+    if (voiceAreaId < 0) return;
     auto& dumpVec = (voiceAreaId == 1) ? patch.polyCustomDump : patch.commonCustomDump;
 
-    for (int i = 1; i < lines.size(); ++i)
+    for (const auto& row : rows)
     {
-        auto tokens = tokenize(lines[i]);
+        auto tokens = tokenize(row);
         if (tokens.size() < 2) continue;
 
         Patch::CustomDumpEntry entry;
@@ -690,15 +722,13 @@ void PchFileIO::parseCustomDump(const juce::StringArray& lines, Patch& patch)
 // --- NameDump ---
 void PchFileIO::parseNameDump(const juce::StringArray& lines, Patch& patch)
 {
-    if (lines.size() < 1) return;
-
-    int voiceAreaId = tokenize(lines[0])[0].getIntValue();
+    juce::StringArray rows;
+    const int voiceAreaId = splitAreaRows(lines, rows);
+    if (voiceAreaId < 0) return;
     auto& container = patch.getContainer(voiceAreaId == 1 ? 1 : 0);
 
-    for (int i = 1; i < lines.size(); ++i)
+    for (const auto& line : rows)
     {
-        auto line = lines[i].trim();
-        if (line.isEmpty()) continue;
 
         // First token is module index, rest is the name (may contain spaces)
         auto spaceIdx = line.indexOfChar(' ');
