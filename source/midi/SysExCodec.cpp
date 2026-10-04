@@ -53,6 +53,13 @@ DecodedMessage decode(const uint8_t* data, size_t length)
     size_t payloadStart = 4;
     size_t payloadEnd   = length - 1;  // before F7
 
+    // Checksum covers F0 up to the last payload byte, as in encode()
+    if ((data[2] & 0x10) != 0 && length >= 6)
+    {
+        result.checksumPresent = true;
+        result.checksumValid = checksum(data, length - 2) == data[length - 2];
+    }
+
     if (payloadEnd > payloadStart)
         result.payload.assign(data + payloadStart, data + payloadEnd);
 

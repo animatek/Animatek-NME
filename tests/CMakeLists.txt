@@ -7,6 +7,7 @@ target_sources(nme_tests PRIVATE
     test_main.cpp
     test_new_module_message.cpp
     test_sysex_codec.cpp
+    test_recolor_cable_message.cpp
     test_upload_packetizer.cpp
     test_patch_roundtrip.cpp
     test_module_placement.cpp
@@ -32,8 +33,8 @@ target_sources(nme_tests PRIVATE
     test_keyquant_scales.cpp
     test_slot_set.cpp
     test_pch_area_rows.cpp
-
     test_pch_macbinary.cpp
+
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
     ${CMAKE_SOURCE_DIR}/source/model/ThemeData.cpp
@@ -55,6 +56,7 @@ target_sources(nme_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/source/sync/BankTransferManager.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/NewCableMessage.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/DeleteCableMessage.cpp
+    ${CMAKE_SOURCE_DIR}/source/protocol/RecolorCableMessage.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/MoveModuleMessage.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/DeleteModuleMessage.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/NewModuleMessage.cpp

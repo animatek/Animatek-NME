@@ -81,3 +81,69 @@ TEST_CASE("decode rejects what is not a Clavia frame")
     const uint8_t unterminated[] = { 0xF0, 0x33, 0x00, 0x06, 0x00 };
     CHECK_FALSE(SysEx::decode(unterminated, sizeof(unterminated)).valid);
 }
+
+TEST_CASE("decode reports whether the checksum byte is there and matches")
+{
+    // PatchHandling (cc 0x17) carries a checksum: header bit 4 is set
+    auto framed = SysEx::encode(0x17, 2, { 0x40, 0x56, 0x01 }, true);
+    auto good = SysEx::decode(framed.data(), framed.size());
+    CHECK(good.checksumPresent);
+    CHECK(good.checksumValid);
+
+    // One payload byte damaged in transit: still decoded, flagged as bad
+    auto damaged = framed;
+    damaged[5] ^= 0x01;
+    auto bad = SysEx::decode(damaged.data(), damaged.size());
+    CHECK(bad.valid);
+    CHECK(bad.checksumPresent);
+    CHECK_FALSE(bad.checksumValid);
+
+    // cc 0x13 (ParameterChange, ParamFocus) has header bit 4 clear: the
+    // original editor sends these without a checksum, so decode must not take
+    // the last payload byte for one
+    auto param = SysEx::encode(0x13, 0, { 0x01, 0x02, 0x03, 0x04 }, false);
+    auto plain = SysEx::decode(param.data(), param.size());
+    CHECK_FALSE(plain.checksumPresent);
+    CHECK(plain.checksumValid);
+
+    // The checksum-carrying cc values have the flag set; IAm and cc 0x13 do not
+    for (int cc : { 0x14, 0x16, 0x17, 0x1c, 0x1d, 0x1e, 0x1f })
+        CHECK((SysEx::encode(cc, 0, {}, true)[2] & 0x10) != 0);
+    for (int cc : { 0x00, 0x13 })
+        CHECK((SysEx::encode(cc, 0, {}, false)[2] & 0x10) == 0);
+}
+
+#include "midi/ConnectionManager.h"
+
+TEST_CASE("synth error codes read as the original editor words them")
+{
+    CHECK(std::string(synthErrorName(4)) == "Down link checksum error");
+    // 5 is not "no slot focused": the original tells the user to power-cycle
+    CHECK(std::string(synthErrorName(5)).find("turn it off and on") != std::string::npos);
+    CHECK(std::string(synthErrorName(3)) == "Error in synth");
+    CHECK(std::string(synthErrorName(6)) == "Unfinished bubble error");
+    CHECK(std::string(synthErrorName(42)) == "unknown");
+}
+
+#include "midi/NmMessages.h"
+
+TEST_CASE("ParamFocus is byte for byte the frame the original editor sends")
+{
+    // Captured from NME303.exe grabbing a knob (pid 1, slot A, section 0,
+    // module 2, parameter 0): F0 33 4C 06 01 2F 00 00 02 00 F7
+    ParameterFocusMessage focus;
+    focus.pid = 1;
+    focus.section = 0;
+    focus.module = 2;
+    focus.parameter = 0;
+    const auto frame = SysEx::encode(0x13, 0, focus.encode(), false);
+    const std::vector<uint8_t> captured = { 0xF0, 0x33, 0x4C, 0x06, 0x01, 0x2F, 0x00, 0x00, 0x02, 0x00, 0xF7 };
+    CHECK(frame == captured);
+
+    // A morph knob: section 2, module 1, as captured (2F 00 02 01 00)
+    focus.section = 2; focus.module = 1; focus.parameter = 0;
+    const auto morph = SysEx::encode(0x13, 0, focus.encode(), false);
+    CHECK(morph[6] == 0x00);
+    CHECK(morph[7] == 0x02);
+    CHECK(morph[8] == 0x01);
+}

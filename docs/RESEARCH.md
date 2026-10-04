@@ -144,11 +144,11 @@ plugins/
 
 ### SysEx Envelope
 ```
-0xF0  0x33  0x06  [cc:5][slot:2]  [payload...]  0xF7
+0xF0  0x33  [0:1 cc:5 slot:2]  0x06  [payload...]  [checksum]  0xF7
 ```
 - Manufacturer ID: `0x33` (Clavia)
-- Device type: `0x06`
-- `cc`: 5-bit command code
+- Device type: `0x06`, **after** the cc/slot byte (the order the original editor writes and the one NME sends; `SysExCodec::encode`)
+- `cc`: 5-bit command code. The original editor reads the same byte as `0x40 | flags | slot`: bit 5 = payload is 7-bit packed, bit 4 = a checksum precedes `F7`, bit 3 = last packet, bit 2 = first packet. Wire-identical to the cc values below (`G1originaleditor/notes/04`, `06`)
 - `slot`: 2-bit slot selector (0-3)
 - All data fields use **7-bit encoding** (MSB always 0) for MIDI compatibility
 - Checksums: `sum_of_bytes % 128`
@@ -254,7 +254,7 @@ does not have.
 
 Hardware-tested dead ends (2026-06-11), do not retry:
 - `NoteEvent` (sc=0x41, vel/onoff/note) is **incoming-only** — the synth reports keyboard
-  notes with it but refuses it as input with error 5 ("no slot focused"), even right after
+  notes with it but refuses it as input with error 5 (which the original editor words as "Stream execute error. Synth may be corrupted. Please turn it off and on.", not the "no slot focused" guessed here before), even right after
   an `ActivateSlot` (PatchCommand 0x41/0x09); that attempt left the synth in an error state.
 - CC 120/123 (all sound/notes off) on any channel are ignored by the PC port.
 - The front-panel panic is internal: it emits nothing on the PC port and has no protocol

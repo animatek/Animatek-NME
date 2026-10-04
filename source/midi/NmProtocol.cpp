@@ -52,6 +52,16 @@ void NmProtocol::processIncoming(const uint8_t* data, size_t length)
         return;
 
     auto msg = SysEx::decode(data, length);
+    if (msg.valid && msg.checksumPresent && !msg.checksumValid)
+    {
+        // The original editor counts these as failures (three in a row is
+        // "Lost contact"). Here it is only logged: dropping them on a
+        // misread flag would cut the link, and nothing is known to fail yet.
+        ++badChecksumCount;
+        DBG("NmProtocol: bad checksum on cc=0x" + juce::String::toHexString(msg.cc)
+            + " (" + juce::String(static_cast<int>(length)) + " bytes, "
+            + juce::String(badChecksumCount) + " so far)");
+    }
     if (msg.valid)
     {
         // Only genuine replies unblock the queue (jnmprotocol isReply()):

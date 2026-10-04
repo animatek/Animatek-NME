@@ -54,6 +54,18 @@ std::vector<uint8_t> ParameterChangeMessage::encode() const
     };
 }
 
+std::vector<uint8_t> ParameterFocusMessage::encode() const
+{
+    return {
+        static_cast<uint8_t>(pid & 0x7F),
+        static_cast<uint8_t>(0x2F),               // sc = ParamFocus
+        static_cast<uint8_t>(0x00),
+        static_cast<uint8_t>(section & 0x7F),
+        static_cast<uint8_t>(module & 0x7F),
+        static_cast<uint8_t>(parameter & 0x7F)
+    };
+}
+
 ParameterChangeMessage ParameterChangeMessage::decode(const uint8_t* data, size_t length)
 {
     ParameterChangeMessage msg;

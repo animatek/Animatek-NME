@@ -14,6 +14,9 @@
 
 class Patch;
 
+// Text for an error code the synth returns (sc 0x7e); see ConnectionManager.cpp
+const char* synthErrorName(int code);
+
 class ConnectionManager : public NmProtocol::Listener
 {
 public:
@@ -53,6 +56,14 @@ public:
     // a slot other than the one with front-panel focus, which is what makes
     // simultaneous multi-window editing viable (see the multi-window plan).
     void sendParameter(int slot, int section, int moduleId, int parameterId, int value);
+
+    // A value the user is setting by hand (knob, slider, inspector, floater).
+    // Sends a ParamFocus first when this is a different parameter from the last
+    // one touched in that slot, so the synth's display follows the editor the
+    // way it does with the original editor, then the value itself. Bulk and
+    // programmatic changes (undo, morph sweeps, randomize) keep using
+    // sendParameter/queueParameter and never move the synth's focus.
+    void sendParameterFromUser(int slot, int section, int moduleId, int parameterId, int value);
 
     // Throttled + coalesced parameter delivery. Use this for bulk changes
     // (Mutator/Randomize snapshots) so a large patch does not flood the synth
@@ -305,6 +316,11 @@ private:
         ConnectionManager& owner;
     };
     ParamQueueTimer paramQueueTimer_ { *this };
+
+    // Last parameter given focus per slot, with the patch id it was sent under:
+    // a new patch in the slot means the synth's focus is gone, so resend.
+    struct FocusedParam { int pid = -1, section = -1, module = -1, param = -1; };
+    std::array<FocusedParam, 4> focusedParam_ {};
     void drainParamQueue();
     void clearParamQueue();
     // slot < 0 (default) discards the whole queue, for the truly global cases

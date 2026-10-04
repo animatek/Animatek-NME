@@ -43,6 +43,21 @@ struct ParameterChangeMessage
     static ParameterChangeMessage decode(const uint8_t* data, size_t length);
 };
 
+// ParamFocus (cc=0x13, sc=0x2F): tells the synth which parameter the editor is
+// working on, so its display shows it. Captured from the original editor (it
+// sends one each time a different knob is grabbed, before the value changes;
+// G1originaleditor/notes/12). No checksum and no reply, like the original.
+// Section 2, module 1 addresses the four morph knobs, as in ParameterChange.
+struct ParameterFocusMessage
+{
+    int pid = 0;
+    int section = 0;
+    int module = 0;
+    int parameter = 0;
+
+    std::vector<uint8_t> encode() const;
+};
+
 struct AckMessage
 {
     int pid1 = 0;

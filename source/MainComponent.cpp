@@ -217,8 +217,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   mainLayout->getInspector().onParameterChanged =
       [this](int section, Module* module, int paramIndex, int value) {
     if (!module) return;
-    connectionManager.sendParameter(activeSlot, section, module->getContainerIndex(),
-                                    paramIndex, value);
+    connectionManager.sendParameterFromUser(activeSlot, section, module->getContainerIndex(),
+                                            paramIndex, value);
     canvasFor(activeSlot).repaintCanvas();
     if (knobFloaterWindow && knobFloaterWindow->isVisible())
       knobFloaterWindow->refresh();
@@ -630,7 +630,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // parameter=0-3
   mainLayout->getHeaderBar().setMorphChangeCallback(
       [this](int morphIndex, int value) {
-        connectionManager.sendParameter(activeSlot, 2, 1, morphIndex, value);
+        connectionManager.sendParameterFromUser(activeSlot, 2, 1, morphIndex, value);
         // A knob assigned to this morph group has a cell in the floater showing
         // the value it drives, so dragging the dial has to move it there too
         // (issue #64). The header bar has already written the patch.
@@ -841,13 +841,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   });
 
   connectionManager.setSynthErrorCallback([this](int errorCode) {
-    juce::String description;
-    if (errorCode == 4)
-      description = "checksum error";
-    else if (errorCode == 5)
-      description = "no slot focused";
-    else
-      description = "unknown";
+    const juce::String description(synthErrorName(errorCode));
 
     {
       auto* info = new juce::DynamicObject();
@@ -3180,7 +3174,7 @@ void MainComponent::toggleKnobFloater() {
     // Same path as the canvas parameter callbacks (live change + undo on drag end)
     knobFloaterWindow->onParameterChanged =
         [this](int section, int moduleId, int parameterId, int value) {
-          connectionManager.sendParameter(activeSlot, section, moduleId, parameterId, value);
+          connectionManager.sendParameterFromUser(activeSlot, section, moduleId, parameterId, value);
           canvasFor(activeSlot).repaintCanvas();
         };
     knobFloaterWindow->onParameterDragComplete =
@@ -3191,7 +3185,7 @@ void MainComponent::toggleKnobFloater() {
               *undoContext(), section, moduleId, parameterId, oldValue, newValue));
         };
     knobFloaterWindow->onMorphChanged = [this](int morphIndex, int value) {
-      connectionManager.sendParameter(activeSlot, 2, 1, morphIndex, value);
+      connectionManager.sendParameterFromUser(activeSlot, 2, 1, morphIndex, value);
       mainLayout->getHeaderBar().repaint();
     };
     knobFloaterWindow->onReassignRequested = [this](int fromKnob, int toKnob) {
@@ -3469,7 +3463,7 @@ void MainComponent::wireSlotView(int slot) {
 
   // Canvas -> synth (live parameter changes)
   canvas.setParameterChangeCallback([this, slot](int section, int moduleId, int parameterId, int value) {
-    connectionManager.sendParameter(slot, section, moduleId, parameterId, value);
+    connectionManager.sendParameterFromUser(slot, section, moduleId, parameterId, value);
     if (slot == activeSlot) {
       // The inspector lists the selected module's values, so a knob turned on
       // the canvas has to read true there as it moves.

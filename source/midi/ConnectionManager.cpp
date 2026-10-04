@@ -63,18 +63,6 @@ const char* pdlSectionName(int type)
     }
 }
 
-const char* synthErrorName(int code)
-{
-    switch (code)
-    {
-        case 3:  return "non-fatal patch message warning";
-        case 4:  return "checksum error";
-        case 5:  return "no slot focused";
-        case 6:  return "non-fatal patch message warning";
-        default: return "unknown";
-    }
-}
-
 std::string describePdlSection(const std::vector<uint8_t>& section)
 {
     Midi7BitReader reader(section);
@@ -1101,6 +1089,33 @@ void ConnectionManager::sendParameter(int slot, int section, int moduleId, int p
     // Addressed to the owning slot, not necessarily the hardware-focused one
     // (confirmed on real hardware that the G1 applies it regardless).
     protocol.sendMessage(NmCmd::ParameterChange, slot, payload, /*expectsReply=*/false, /*addChecksum=*/true);
+}
+
+void ConnectionManager::sendParameterFromUser(int slot, int section, int moduleId, int parameterId, int value)
+{
+    const bool blocked = !isConnected()
+                      || (waitingForUploadAck && slot == uploadSlot)
+                      || ((waitingForPatchAck || collectingSections) && slot == pendingPatchSlot);
+
+    if (!blocked)
+    {
+        auto& last = focusedParam_[static_cast<size_t>(slot & 0x03)];
+        const int pid = getPatchId(slot);
+        if (last.pid != pid || last.section != section || last.module != moduleId || last.param != parameterId)
+        {
+            ParameterFocusMessage focus;
+            focus.pid = pid;
+            focus.section = section;
+            focus.module = moduleId;
+            focus.parameter = parameterId;
+            // Exactly the original's frame: cc 0x13, no checksum, no reply
+            protocol.sendMessage(NmCmd::ParameterChange, slot, focus.encode(),
+                                 /*expectsReply=*/false, /*addChecksum=*/false);
+            last = { pid, section, moduleId, parameterId };
+        }
+    }
+
+    sendParameter(slot, section, moduleId, parameterId, value);
 }
 
 void ConnectionManager::queueParameter(int slot, int section, int moduleId, int parameterId, int value)
@@ -2524,4 +2539,20 @@ void ConnectionManager::storeLoadedSlotToBank(int slot, int section, int positio
 
     if (afterStoreQueued)
         afterStoreQueued();
+}
+
+// Texts of the error codes the synth returns in sc 0x7e, as the original
+// editor words them (NME303.exe, FUN_004e4480; G1originaleditor/notes/11).
+// The numbering is confirmed on G1-Emu: a bad checksum comes back as 4.
+// 5 is the one that matters: the original tells the user to power-cycle.
+const char* synthErrorName(int code)
+{
+    switch (code)
+    {
+        case 3:  return "Error in synth";
+        case 4:  return "Down link checksum error";
+        case 5:  return "Stream execute error. Synth may be corrupted, turn it off and on";
+        case 6:  return "Unfinished bubble error";
+        default: return "unknown";
+    }
 }

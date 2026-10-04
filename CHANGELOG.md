@@ -19,6 +19,14 @@
   now taken off (`PchFileIO::patchTextFromBytes`). Tried on all six of them in the
   community archive; unit test added.
 
+- **Synth error codes 3, 5 and 6 were mislabelled** (2026-10-04; Claude, from the original
+  editor). NME called 5 "no slot focused" and 3/6 "non-fatal warnings". The original editor's
+  own table says 3 = "Error in synth", 5 = "Stream execute error. Synth may be corrupted.
+  Please turn it off and on." and 6 = "Unfinished bubble error". The numbering was checked on
+  G1-Emu (a bad checksum comes back as 4, as in that table); 3, 5 and 6 were not provoked.
+  One function, `synthErrorName`, now serves both the console and the status bar, which had
+  their own copy. The MCP `synth_error` event carries the new description text. Unit test added.
+
 - **The module bar listed modules in modules.xml order, not the original's**
   (2026-10-04, #81 by Nocticore; Claude). Each category now follows the order of
   the original editor's icon bar (read off its screenshots in
@@ -53,6 +61,25 @@
   titles filled in, titles cut to 16, clamped values) or odd files.
 
 ### Added
+
+- **The synth's display follows the knob you grab** (2026-10-04; Claude, from a capture of the
+  original editor against G1-Emu). Like the original, NME now sends a `ParamFocus` (cc 0x13, sc
+  0x2F, no checksum) the first time a different parameter is moved in a slot, from the canvas, the
+  inspector, the knob floater or the morph knobs, and then the value. The frame is byte for byte the
+  captured one (unit test). Undo, morph sweeps and randomize still send values only, so they never
+  move the synth's focus. The emulator does not answer a focus, so **what the G1's display does
+  with it has not been seen yet**: check on hardware.
+
+- **Incoming checksums are checked, and a `CableRecolor` message exists** (2026-10-04;
+  Claude, from reading the original editor with Ghidra, see `../G1originaleditor`).
+  `SysEx::decode` now reports whether a frame carries a checksum (header bit 4, the
+  bit the original reads) and whether it matches; `NmProtocol` counts and logs a
+  mismatch but still dispatches the frame, because nothing is known to fail yet and
+  dropping on a misread flag would cut the link. `RecolorCableMessage` (sc 0x54) is the
+  original's way of recolouring a cable on the synth; nothing calls it, so cable colour
+  still changes only in the editor. Unit tests added (3 cases). **Neither has been tried
+  on a synth.** Docs: the envelope is `F0 33 [cc|slot] 06`, not `F0 33 06 [cc|slot]`
+  as `CLAUDE.md`, `AGENTS.md` and `RESEARCH.md` said.
 
 - **`nme_pch_dump`: a reading battery for the patch loader** (2026-10-01,
   Javier's request; Claude). A console target next to the tests

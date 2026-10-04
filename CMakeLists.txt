@@ -139,6 +139,7 @@ set(NME_SHARED_SOURCES
     source/protocol/SysExMessage.cpp
     source/protocol/NewCableMessage.cpp
     source/protocol/DeleteCableMessage.cpp
+    source/protocol/RecolorCableMessage.cpp
     source/protocol/MoveModuleMessage.cpp
     source/protocol/NewModuleMessage.cpp
     source/protocol/DeleteModuleMessage.cpp

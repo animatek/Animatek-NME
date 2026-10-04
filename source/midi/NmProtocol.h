@@ -55,6 +55,8 @@ public:
     void sendRawSysEx(const std::vector<uint8_t>& data);
 
     bool isWaitingForReply() const { return waitingForReply; }
+    // Incoming frames whose checksum byte did not match (logged, not dropped)
+    int getBadChecksumCount() const { return badChecksumCount; }
 
     static constexpr int timeoutMs = 3000;
     static constexpr int heartbeatIntervalMs = 50;
@@ -73,6 +75,7 @@ private:
 
     std::deque<PendingMessage> sendQueue;
     bool waitingForReply = false;
+    int badChecksumCount = 0;
     juce::int64 lastSendTime = 0;
 
     std::function<void(const std::vector<uint8_t>&)> sendFn;

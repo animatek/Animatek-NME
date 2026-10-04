@@ -78,7 +78,7 @@ All reverse-engineering docs live in `docs/RESEARCH.md` — protocol spec, patch
 | `nmedit/libs/libnmprotocol/` | C/C++ protocol implementation |
 
 ### Protocol essentials
-- SysEx envelope: `F0 33 06 [cc:5][slot:2] [payload] F7`
+- SysEx envelope: `F0 33 [0:1 cc:5 slot:2] 06 [payload] F7` (the device byte `06` comes after the cc/slot byte)
 - All data 7-bit encoded, checksums = `sum % 128`
 - 3-second request/response timeout
 - Key commands: IAm(0x00), Parameter(0x13), NMInfo(0x14), ACK(0x16), PatchHandling(0x17)

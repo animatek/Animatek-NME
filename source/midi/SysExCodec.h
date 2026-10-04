@@ -43,7 +43,11 @@ namespace SysEx
         int cc = 0;
         int slot = 0;
         std::vector<uint8_t> payload;
+        // Header bit 4 (0x10) says a checksum byte precedes F7; the original
+        // Nord Modular editor reads the same bit. decode() only reports it:
+        // checksumValid is false when the byte is there and does not match.
         bool checksumPresent = false;
+        bool checksumValid = true;
         bool valid = false;
     };
 
