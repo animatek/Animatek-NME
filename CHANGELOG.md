@@ -9,9 +9,7 @@
   the original editor's icon bar (read off its screenshots in
   `Implementaciones/Icon Bar Icons`): Keyboard, Keyboard Patch, MIDI Global, ...
   in In/Out, Master Osc first among the oscillators, and so on. Also applies to
-  the module tree. A module missing from the list goes last. Ten of the lists
-  were read off icons alone; Mixer, Audio, Logic and Seq hold a few guesses
-  (X-Fade, 1to2/2to1Fade, ClkDiv/ClkDivFix, the Seq order).
+  the module tree. A module missing from the list goes last. Mixer, Audio and Logic were first read off icons and then corrected against the original exe's own menu builder (`G1originaleditor/notes/02-orden-real-barra-modulos.md`).
 
 - **Oscillator note names jumped an octave at F#** (2026-10-04, #80 by
   Nocticore; Claude). `fmtNote` rounded the octave instead of flooring it, so
