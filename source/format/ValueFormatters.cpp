@@ -218,10 +218,11 @@ static juce::String fmtLogicDelay (int value)
 static const char* const NOTE_NOTES[]  = { "C","C","D","D","E","F","F","G","G","A","A","B" };
 static const char* const NOTE_SHARPS[] = { " ","#"," ","#"," "," ","#"," ","#"," ","#"," " };
 
+// The octave floors: rounding it, as nmformat.js does, bumped it at F# (issue #80).
 static juce::String fmtNote (int value)
 {
     int v12 = ((value % 12) + 12) % 12;
-    int oct = static_cast<int> (std::round (value / 12.0)) - 1;
+    int oct = static_cast<int> (std::floor (value / 12.0)) - 1;
     return juce::String (NOTE_NOTES[v12]) + juce::String (oct) + NOTE_SHARPS[v12];
 }
 

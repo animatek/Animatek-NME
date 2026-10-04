@@ -42,6 +42,16 @@ TEST_CASE("NoteSeqB steps name absolute pitches around 60 = C4")
     CHECK(ValueFormatters::format("fmtSeqNote", 127) == "G9");
 }
 
+TEST_CASE("Oscillator note names change octave at C, not at F# (issue #80)")
+{
+    CHECK(ValueFormatters::format("fmtNote", 60) == "C4 ");
+    CHECK(ValueFormatters::format("fmtNote", 65) == "F4 ");
+    CHECK(ValueFormatters::format("fmtNote", 66) == "F4#");
+    CHECK(ValueFormatters::format("fmtNote", 71) == "B4 ");
+    CHECK(ValueFormatters::format("fmtNote", 72) == "C5 ");
+    CHECK(ValueFormatters::format("fmtNote", 0)  == "C-1 ");
+}
+
 TEST_CASE("NoteSeqA steps name the interval they transpose by")
 {
     CHECK(ValueFormatters::format("fmtSeqInterval", 64) == "0");

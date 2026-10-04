@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Oscillator note names jumped an octave at F#** (2026-10-04, #80 by
+  Nocticore; Claude). `fmtNote` rounded the octave instead of flooring it, so
+  every note from F# up read an octave high. Same cause as NoteSeqB's #76.
+  Unit test added.
+
 - **Sine Bank: the ratio arrows reset an oscillator's level** (2026-10-04,
   reported by Grant on Patreon; Claude). The arrows reset the fine detune as a
   hard-coded `p3`, which on `OscSineBank` is osc 1's level, not any fine. The
