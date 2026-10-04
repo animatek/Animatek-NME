@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Changed
+
+- **A patch fetch skips the common area's parameters and names when it has no
+  modules** (2026-10-04; Claude, from the original editor, see
+  `../G1originaleditor/notes/12`). The original asks for the common area's
+  `4C 00` and `4E 00` only when its module list is not empty. NME asked for
+  both always, two round trips for nothing on most patches. Once the common
+  module list comes back empty those two requests are dropped from the queue
+  and counted as received, so the patch does not read as incomplete. The poly
+  area is never skipped. Tried on G1-Emu with a patch with an empty common
+  area (the synth answered 11 sections instead of 13, patch received complete,
+  34 poly modules as in the `.pch`) and one with common modules (13 sections as
+  before). Not tried on a G1. Unit test for `moduleDumpCount` added.
+
 ### Fixed
 
 - **Buttons sometimes needed two clicks** (2026-10-04, #82 by Nocticore; Claude).

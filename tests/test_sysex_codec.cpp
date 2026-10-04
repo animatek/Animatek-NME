@@ -147,3 +147,14 @@ TEST_CASE("ParamFocus is byte for byte the frame the original editor sends")
     CHECK(morph[7] == 0x02);
     CHECK(morph[8] == 0x01);
 }
+
+TEST_CASE("moduleDumpCount reads how many modules a ModuleDump entry lists")
+{
+    // type 74 (8 bits), area (1), count (7), packed 7 bits to a byte, MSB first
+    CHECK(moduleDumpCount({ 0x25, 0x00, 0x00 }) == 0);   // common area, no modules
+    CHECK(moduleDumpCount({ 0x25, 0x20, 0x40 }) == 2);   // poly area, two modules
+
+    // Not a ModuleDump (type 77 is a ParameterDump), and too short to be anything
+    CHECK(moduleDumpCount({ 0x26, 0x20, 0x40 }) == -1);
+    CHECK(moduleDumpCount({}) == -1);
+}

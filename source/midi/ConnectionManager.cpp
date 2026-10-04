@@ -478,6 +478,7 @@ void ConnectionManager::sendPatchRequest(int slot)
     // Section requests of a fetch this one replaces would only be answered
     // with bare ACKs (wrong pid), each one holding the wire for a round trip.
     protocol.discardQueued(getPatchTag);
+    protocol.discardQueued(getPatchCommonTag);
 
     RequestPatchMessage req;
     req.slot = slot;
@@ -1772,8 +1773,11 @@ void ConnectionManager::sendGetPatchMessages(int patchId, int slot)
         // come as PatchPacket (cc=0x1c-0x1f). Java GetPatchMessage sets
         // expectsreply=true: each section request must wait for its reply,
         // otherwise the burst overruns the synth and sections are dropped.
+        const bool skippable = m.section == GetPatchMessage::CommonParameter
+                            || m.section == GetPatchMessage::CommonNameDump;
         protocol.sendMessage(NmCmd::PatchHandling, slot, payload,
-                             /*expectsReply=*/true, /*addChecksum=*/true, getPatchTag);
+                             /*expectsReply=*/true, /*addChecksum=*/true,
+                             skippable ? getPatchCommonTag : getPatchTag);
     }
 }
 
@@ -2355,11 +2359,16 @@ void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
             }
             sectionSeen[static_cast<size_t>(sectionKind)] = true;
         }
+        const bool emptyCommonArea = sectionKind == GetPatchMessage::CommonModule
+                                  && moduleDumpCount(sectionAccumulator) == 0;
 
         // Store completed section separately (each has independent 7-bit encoding)
         patchSections.push_back(std::move(sectionAccumulator));
         sectionAccumulator.clear();
         sectionsReceived++;
+
+        if (emptyCommonArea)
+            skipEmptyCommonSections();
 
         if (patchLoadProgressCallback)
             patchLoadProgressCallback(sectionsReceived, totalSections);
@@ -2555,4 +2564,33 @@ const char* synthErrorName(int code)
         case 6:  return "Unfinished bubble error";
         default: return "unknown";
     }
+}
+
+int moduleDumpCount(const std::vector<uint8_t>& entry)
+{
+    Midi7BitReader reader(entry);
+    int type = -1, area = 0, count = 0;
+    if (!reader.readBits(8, type) || type != 74
+        || !reader.readBits(1, area) || !reader.readBits(7, count))
+        return -1;
+    return count;
+}
+
+// The common area had no modules, so asking the synth for its parameters and
+// names would only fetch two empty sections, a round trip each. Drop those
+// requests and count the sections as received, the way the original editor
+// skips them (G1originaleditor/notes/12).
+void ConnectionManager::skipEmptyCommonSections()
+{
+    protocol.discardQueued(getPatchCommonTag);
+
+    for (auto section : { GetPatchMessage::CommonParameter, GetPatchMessage::CommonNameDump })
+    {
+        if (sectionSeen[static_cast<size_t>(section)])
+            continue;
+        sectionSeen[static_cast<size_t>(section)] = true;
+        ++sectionsReceived;
+    }
+
+    std::cout << "[PATCH] Common area has no modules - skipped its parameter and name requests" << std::endl;
 }

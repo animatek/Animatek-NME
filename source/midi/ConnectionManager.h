@@ -17,6 +17,10 @@ class Patch;
 // Text for an error code the synth returns (sc 0x7e); see ConnectionManager.cpp
 const char* synthErrorName(int code);
 
+// How many modules a ModuleDump entry of a patch fetch lists (type 74: the type,
+// then 1 bit of area and 7 of count), or -1 if the entry is not one.
+int moduleDumpCount(const std::vector<uint8_t>& entry);
+
 class ConnectionManager : public NmProtocol::Listener
 {
 public:
@@ -446,6 +450,11 @@ private:
     // NmProtocol tag on the GetPatch requests, so a fetch that has gone stale
     // can take the ones still queued back out.
     static constexpr int getPatchTag = 1;
+    // The two requests an area with no modules does not need (its parameters and
+    // its names), tagged apart so they can be dropped from the queue once the
+    // module list says the area is empty. The original editor does the same.
+    static constexpr int getPatchCommonTag = 2;
+    void skipEmptyCommonSections();
     // A load from the synth's front panel announces two pids in a row: the
     // first NewPatchInSlot is answered by the time the second arrives, and a
     // GetPatch with the first pid gets a bare ACK and no section. Set when a
