@@ -1309,7 +1309,12 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 if (!arrowRect.contains(relPos.toFloat())) continue;
 
                 auto* param     = findParameter(m, td.componentId);   // p2
-                auto* fineParam = findParameter(m, "p3");              // fine detune
+                // Fine detune: p3 on the slave oscillators, but the SineBank lays out
+                // coarse/fine/level in threes, so its fine is the param after coarse.
+                juce::String fineId = "p3";
+                if (m.getDescriptor()->index == 106 && td.componentId.startsWith("p"))
+                    fineId = "p" + juce::String(td.componentId.substring(1).getIntValue() + 1);
+                auto* fineParam = findParameter(m, fineId);
                 if (param == nullptr) continue;
 
                 static const int kSnaps[]  = {4, 16, 28, 40, 52, 64, 76, 88, 100, 112, 124};

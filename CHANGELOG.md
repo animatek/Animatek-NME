@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Sine Bank: the ratio arrows reset an oscillator's level** (2026-10-04,
+  reported by Grant on Patreon; Claude). The arrows reset the fine detune as a
+  hard-coded `p3`, which on `OscSineBank` is osc 1's level, not any fine. The
+  fine is now the parameter after the coarse. Builds; not tried by ear.
+
 - **Patches lost a module and a cable, or put everything in the common area**
   (2026-10-02, Javier's request; Claude; #85, #86). The per-area sections of a
   `.pch` open with the area number, and the reader took it from the first line
