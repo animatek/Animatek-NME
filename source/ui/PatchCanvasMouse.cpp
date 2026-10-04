@@ -1983,6 +1983,14 @@ void PatchCanvas::mouseDrag(const juce::MouseEvent& e)
     if (dragState.type == DragState::None)
         return;
 
+    // A button acts on the press and has nothing to drag. Left to fall through,
+    // the pointer drifting a pixel during the click (a trackpad does it all the
+    // time) took the generic path below, which resets the parameter to the value
+    // it had when the press began and sends that to the synth: the new value
+    // went out, then the old one a few milliseconds behind it (issue #82).
+    if (dragState.type == DragState::Button)
+        return;
+
     auto currentPos = screenToCanvas(e.getPosition());
 
     if (dragState.type == DragState::CanvasPan)

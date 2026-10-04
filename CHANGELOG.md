@@ -4,6 +4,15 @@
 
 ### Fixed
 
+- **Buttons sometimes needed two clicks** (2026-10-04, #82 by Nocticore; Claude).
+  `mouseDrag` had no case for a button, so the pointer drifting a pixel during a
+  click fell into the generic path, which puts the parameter back to the value it
+  had when the press began and sends it: the new value went out, then the old one
+  a few ms behind it, exactly as in Nocticore's SysEx dumps (`04 03` then `04 00`;
+  mute `01` then `00`). A button now ignores drags. Found by reading the code and
+  matched against the dumps; **not reproduced or tried on a synth or with a
+  trackpad.**
+
 - **Patches wrapped in a MacBinary header open** (2026-10-04, #87; Claude). Old
   Mac patches carry 128 binary bytes (name, type `PCH `, creator `NORD`) before
   the text, and its leading 0 made the reader see an empty file. The header is
