@@ -4,6 +4,15 @@
 
 ### Fixed
 
+- **The module bar listed modules in modules.xml order, not the original's**
+  (2026-10-04, #81 by Nocticore; Claude). Each category now follows the order of
+  the original editor's icon bar (read off its screenshots in
+  `Implementaciones/Icon Bar Icons`): Keyboard, Keyboard Patch, MIDI Global, ...
+  in In/Out, Master Osc first among the oscillators, and so on. Also applies to
+  the module tree. A module missing from the list goes last. Ten of the lists
+  were read off icons alone; Mixer, Audio, Logic and Seq hold a few guesses
+  (X-Fade, 1to2/2to1Fade, ClkDiv/ClkDivFix, the Seq order).
+
 - **Oscillator note names jumped an octave at F#** (2026-10-04, #80 by
   Nocticore; Claude). `fmtNote` rounded the octave instead of flooring it, so
   every note from F# up read an octave high. Same cause as NoteSeqB's #76.

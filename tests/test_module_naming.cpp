@@ -57,3 +57,31 @@ TEST_CASE("Both note sequencers call their Loop button Loop, and start it on")
         CHECK(loop->maxValue == 1);
     }
 }
+
+// Issue #81: the module bar follows the original editor's order, not modules.xml's.
+TEST_CASE("Each category lists its modules in the original editor's order")
+{
+    ModuleDescriptions descs;
+    REQUIRE(descs.loadFromFile(juce::File(NME_TEST_DATA_DIR).getChildFile("modules.xml")));
+
+    const auto names = [&descs](const char* category) {
+        juce::StringArray n;
+        for (auto* d : descs.getModulesInCategory(category))
+            n.add(d->name);
+        return n.joinIntoString(",");
+    };
+
+    CHECK(names("In/Out") == "Keyboard,KeyboardPatch,MIDIGlobal,AudioIn,PolyAreaIn,1Output,"
+                             "2Output,4Output,NoteDetect,KeybSplit");
+    CHECK(names("Oscillator").startsWith("MasterOsc,OscA,OscB,OscC"));
+
+    // Nothing is lost or doubled by the reordering.
+    for (const auto& cat : descs.getCategories())
+    {
+        int inFile = 0;
+        for (const auto& m : descs.getAllModules())
+            if (m.instantiable && m.category == cat)
+                ++inFile;
+        CHECK((int) descs.getModulesInCategory(cat).size() == inFile);
+    }
+}

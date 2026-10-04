@@ -1,5 +1,6 @@
 #include "ModuleDescriptions.h"
 #include "ModuleTags.h"
+#include <algorithm>
 
 ModuleDescriptions::ModuleDescriptions() = default;
 
@@ -145,12 +146,61 @@ juce::StringArray ModuleDescriptions::getCategories() const
     return cats;
 }
 
+// The order the original editor lays each category's modules out in (issue
+// #81). modules.xml runs by module id, which is nothing a user would expect to
+// find. A module missing from its list, as a new one in modules.xml would be,
+// goes after the listed ones in the file's own order.
+static const std::map<juce::String, std::vector<const char*>>& originalModuleOrder()
+{
+    static const std::map<juce::String, std::vector<const char*>> order {
+        { "In/Out",     { "Keyboard", "KeyboardPatch", "MIDIGlobal", "AudioIn", "PolyAreaIn",
+                          "1Output", "2Output", "4Output", "NoteDetect", "KeybSplit" } },
+        { "Oscillator", { "MasterOsc", "OscA", "OscB", "OscC", "SpectralOsc", "FormantOsc",
+                          "OscSlvA", "OscSlvB", "OscSlvC", "OscSlvD", "OscSlvE",
+                          "OscSineBank", "OscSlvFM", "Noise", "PercOsc", "DrumSynth" } },
+        { "LFO",        { "LFOA", "LFOB", "LFOC", "LFOSlvA", "LFOSlvB", "LFOSlvC", "LFOSlvD",
+                          "LFOSlvE", "ClkGen", "ClkRndGen", "RndStepGen", "RandomGen",
+                          "RndPulsGen", "PatternGen" } },
+        { "Envelope",   { "ADSR", "AD-Env", "Mod-Env", "AHD", "Multi-Env", "EnvFollower" } },
+        { "Filter",     { "FilterA", "FilterB", "FilterC", "FilterD", "FilterE", "FilterF",
+                          "VocalFilter", "Vocoder", "FilterBank", "EqMid", "EqShelving" } },
+        { "Mixer",      { "Mixer (3)", "Mixer (8)", "Amplifier", "X-Fade", "Pan", "1to2Fade",
+                          "2to1Fade", "LevMult", "LevAdd", "OnOff", "4-1Switch", "1-4Switch",
+                          "GainControl" } },
+        { "Audio",      { "Clip", "Overdrive", "WaveWrap", "Quantizer", "InvLevShift",
+                          "Sample&Hold", "Diode", "StereoChorus", "Phaser", "Delay", "Shaper",
+                          "Compressor", "Expander", "RingMod", "Digitizer" } },
+        { "Control",    { "Constant", "Smooth", "PortamentoA", "PortamentoB", "NoteScaler",
+                          "NoteQuant", "KeyQuant", "PartialGen", "ControlMixer", "NoteVelScal" } },
+        { "Logic",      { "Pulse", "PosEdgeDelay", "NegEdgeDelay", "LogicDelay", "LogicInv",
+                          "LogicProc", "CompareLev", "CompareAB", "ClkDiv", "ClkDivFix" } },
+        { "Seqencer",   { "EventSeq", "CtrlSeq", "NoteSeqA", "NoteSeqB" } },
+    };
+    return order;
+}
+
 std::vector<const ModuleDescriptor*> ModuleDescriptions::getModulesInCategory(const juce::String& category) const
 {
     std::vector<const ModuleDescriptor*> result;
     for (auto& m : modules)
         if (m.instantiable && m.category == category)
             result.push_back(&m);
+
+    const auto found = originalModuleOrder().find(category);
+    if (found != originalModuleOrder().end())
+    {
+        const auto& names = found->second;
+        const auto rank = [&names](const ModuleDescriptor* d) {
+            for (size_t i = 0; i < names.size(); ++i)
+                if (d->name == names[i])
+                    return i;
+            return names.size();
+        };
+        std::stable_sort(result.begin(), result.end(),
+                         [&rank](const ModuleDescriptor* a, const ModuleDescriptor* b) {
+                             return rank(a) < rank(b);
+                         });
+    }
     return result;
 }
 
