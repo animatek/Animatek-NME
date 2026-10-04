@@ -1,4 +1,5 @@
 #include "PchFileIO.h"
+#include <cstring>
 
 PchFileIO::PchFileIO(const ModuleDescriptions& moduleDescs)
     : descs(moduleDescs)
@@ -185,9 +186,36 @@ bool PchFileIO::isLegacyPatch210(const juce::StringArray& lines)
 // Reader
 // =============================================================================
 
+juce::String PchFileIO::patchTextFromBytes(const juce::MemoryBlock& bytes)
+{
+    const auto* b = static_cast<const juce::uint8*>(bytes.getData());
+    const size_t size = bytes.getSize();
+
+    // MacBinary I: byte 0 is 0, byte 1 the length of the file name (at most
+    // 63), the type and creator sit at 65-72 and byte 74 is 0. The data fork
+    // starts at 128 and its length is a big-endian 32-bit number at 83. Without
+    // the 0 the text reads as empty, which is how these used to fail to open.
+    constexpr size_t kMacBinaryHeader = 128;
+    if (size > kMacBinaryHeader && b[0] == 0 && b[1] >= 1 && b[1] <= 63 && b[74] == 0
+        && std::memcmp(b + 65, "PCH NORD", 8) == 0)
+    {
+        const size_t forkLength = (size_t) b[83] << 24 | (size_t) b[84] << 16
+                                | (size_t) b[85] << 8  | (size_t) b[86];
+        const size_t available = size - kMacBinaryHeader;
+        const size_t length = (forkLength > 0 && forkLength <= available) ? forkLength : available;
+        return juce::String::createStringFromData(b + kMacBinaryHeader, (int) length);
+    }
+
+    return juce::String::createStringFromData(b, (int) size);
+}
+
 std::unique_ptr<Patch> PchFileIO::readFile(const juce::File& file)
 {
-    auto text = file.loadFileAsString();
+    juce::MemoryBlock bytes;
+    if (!file.loadFileAsData(bytes))
+        return nullptr;
+
+    auto text = patchTextFromBytes(bytes);
     if (text.isEmpty())
         return nullptr;
 

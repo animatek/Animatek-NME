@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- **Patches wrapped in a MacBinary header open** (2026-10-04, #87; Claude). Old
+  Mac patches carry 128 binary bytes (name, type `PCH `, creator `NORD`) before
+  the text, and its leading 0 made the reader see an empty file. The header is
+  now taken off (`PchFileIO::patchTextFromBytes`). Tried on all six of them in the
+  community archive; unit test added.
+
 - **The module bar listed modules in modules.xml order, not the original's**
   (2026-10-04, #81 by Nocticore; Claude). Each category now follows the order of
   the original editor's icon bar (read off its screenshots in

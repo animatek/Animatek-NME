@@ -19,6 +19,11 @@ public:
     static bool isLegacyPatch210(const juce::File& file);
     static bool isLegacyPatch210(const juce::StringArray& lines);
 
+    // The text of a patch file. Old patches from Mac users come wrapped in a
+    // 128-byte MacBinary header (file name, type "PCH ", creator "NORD") before
+    // the text; this takes that off. Anything else is returned as it is.
+    static juce::String patchTextFromBytes(const juce::MemoryBlock& bytes);
+
     // The name a patch takes from its file when the file itself carries none,
     // which a classic .pch never does.
     //

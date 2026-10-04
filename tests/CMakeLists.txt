@@ -33,6 +33,7 @@ target_sources(nme_tests PRIVATE
     test_slot_set.cpp
     test_pch_area_rows.cpp
 
+    test_pch_macbinary.cpp
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
     ${CMAKE_SOURCE_DIR}/source/model/ThemeData.cpp
