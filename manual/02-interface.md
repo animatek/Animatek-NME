@@ -124,6 +124,9 @@ stays legible on light and dark themes alike. A very light procedural grain over
 the canvas gives it a paper feel instead of a flat fill, most visible on Nord
 Classic.
 
-`Ctrl+W` (macOS: `Cmd+Shift+W`) toggles a wireframe module style that works with every theme. Both
+`Ctrl+W` (macOS: `Cmd+Shift+W`) toggles a wireframe module style that works with every theme. `Ctrl+H` (macOS: `Cmd+Shift+H`)
+toggles the **hardware look**, which draws knobs, jacks, panels, displays and cables as physical
+hardware; Editor Options lets you pick the knob style (domed cap, black knurled, aluminium
+knurled). It also works with every theme. These
 settings persist across sessions, as do the window size/position and floater
 layouts.

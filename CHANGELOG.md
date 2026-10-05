@@ -2,7 +2,28 @@
 
 ## Unreleased
 
+### Added
+
+- **Hardware look: an optional skeuomorphic way to draw the canvas** (2026-10-05, #89;
+  code by Grant (teezdalien), a Patreon supporter, integrated by Claude). Knobs, jacks,
+  module faceplates, displays, sliders, LEDs, meters and cables are drawn as physical
+  hardware instead of flat shapes. It is a render style, not a theme: it works over every
+  theme, like Wireframe, is off by default and is ignored while Wireframe is on. `Ctrl+H`
+  (macOS: `Cmd+Shift+H`), View menu, or Editor Options > Appearance, where a knob style
+  can be picked: Domed cap, Black knurled, Aluminium knurled (renamed from Grant's
+  original names to avoid a trademark). All the drawing is in the new header
+  `source/ui/SkeuoDraw.h`, in canvas coordinates, so hit testing and cable anchors are
+  untouched. Builds and the unit tests pass; Javier looked at it with the Release build and
+  it runs smoothly (the Debug build is visibly slower). Not measured on a very large patch,
+  and **Grant has not yet confirmed the licence of his contribution.**
+
 ### Changed
+
+- **Sine Bank: the ratio arrows sit beside the tune knob** (2026-10-05, #89; Grant,
+  integrated by Claude). The two-halves bar under each ratio window hid the "Tune" label.
+  Drawing and hit test now take the arrow rectangles from one helper
+  (`source/ui/PartialArrows.h`) so they cannot drift apart, and the first column is moved
+  3 px in from the module's left edge.
 
 - **A patch fetch skips the common area's parameters and names when it has no
   modules** (2026-10-04; Claude, from the original editor, see
