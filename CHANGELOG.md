@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.20.0 — 2026-10-05
+
 ### Added
 
 - **The slot panel is now a synth row, like the original editor's** (2026-10-05, #88, first step). The four `A : PatchName` rows are one line: the `A B C D` buttons, the synth's name in a box (dark, as the synth being edited) and its DSP load as a green-to-red bar, which is what its slots add up to, with a marker at the value and the percentage under it; it refreshes with the LED blink, so edits reach it without every call site saying so. The slot LED is a bar under each letter (blinking = focused, fixed = enabled, off = disabled), LOCAL is an orange dot on the button; click, Ctrl+click, right-click and dropping a patch on a button work as before. The patch names per slot are no longer listed here (they are in the header bar and the sub-window titles). The `MIDI`, `Library` and `Store` buttons are gone from the panel: MIDI Settings opens with **Ctrl+M** (also in the Device menu), the library folder is in Editor Options and Store to Bank in the Device menu. One synth for now; the row is meant to repeat up to four (#84).
