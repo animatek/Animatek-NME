@@ -14,7 +14,7 @@
 #include "model/PchFileIO.h"
 #include "model/SnipFileIO.h"
 #include "model/SynthSettings.h"
-#include "midi/ConnectionManager.h"
+#include "midi/SynthHub.h"
 #include "sync/BankTransferManager.h"
 #include "sync/PatchSynchronizer.h"
 #include "undo/PatchActions.h"
@@ -74,7 +74,7 @@ public:
     UndoContext* getSlotUndoContext(int slot) const { return slotUndoContexts[slot].get(); }
     bool isPatchTransferInProgress() const
     {
-        return connectionManager.isUploadingPatch() || connectionManager.isFetchingPatch();
+        return synthHub.active().isUploadingPatch() || synthHub.active().isFetchingPatch();
     }
     const juce::File& getPresetLibraryRoot() const { return editorOptions.presetLibraryRoot; }
     bool createEmptyPatchInSlot(int slot, const juce::String& name, bool activate,
@@ -87,7 +87,7 @@ public:
     // read-back tools (get_synth_status, read_lights, get_events). Nothing here
     // asks the synth anything: it is the state the UI was already drawing from,
     // made visible to a client that cannot see the screen.
-    const ConnectionManager& getConnectionManager() const { return connectionManager; }
+    const ConnectionManager& getConnectionManager() const { return synthHub.active(); }
     bool isSlotLocal(int slot) const { return slot >= 0 && slot < numSlots && slotIsLocal[slot]; }
     bool isSlotEnableStateKnown() const { return slotEnableStateKnown; }
     const std::array<bool, 4>& getLastEnabledSlots() const { return lastEnabledSlots; }
@@ -343,8 +343,8 @@ private:
     ModuleDescriptions moduleDescs;
     ModulePresetLibrary modulePresets;
     ThemeData themeData;
-    ConnectionManager connectionManager;
-    BankTransferManager bankTransfer { connectionManager, moduleDescs };
+    SynthHub synthHub;
+    BankTransferManager bankTransfer { synthHub.active(), moduleDescs };
     std::unique_ptr<MainLayout> mainLayout;
     std::unique_ptr<juce::MenuBarComponent> menuBar;
 

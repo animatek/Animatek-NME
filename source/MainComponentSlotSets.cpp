@@ -33,7 +33,7 @@ void MainComponent::saveSlotSet() {
     return;
   }
 
-  const bool maskKnown = connectionManager.isConnected() && slotEnableStateKnown;
+  const bool maskKnown = synthHub.active().isConnected() && slotEnableStateKnown;
   std::array<SaveSlotSetDialog::SlotInfo, 4> info;
   for (int i = 0; i < numSlots; ++i) {
     auto& s = info[static_cast<size_t>(i)];
@@ -101,7 +101,7 @@ void MainComponent::writeSlotSet(const juce::String& name, const juce::String& n
   SlotSet set;
   set.name = name.trim();
   set.notes = notes;
-  const bool maskKnown = connectionManager.isConnected() && slotEnableStateKnown;
+  const bool maskKnown = synthHub.active().isConnected() && slotEnableStateKnown;
   juce::StringArray failed;
   for (int i = 0; i < numSlots; ++i) {
     auto& s = set.slots[static_cast<size_t>(i)];
@@ -116,8 +116,8 @@ void MainComponent::writeSlotSet(const juce::String& name, const juce::String& n
     s.patchName = slotPatches[i]->getName();
     s.file = slotSetPatchFileName(i, s.patchName);
     s.enabled = maskKnown ? lastEnabledSlots[static_cast<size_t>(i)] : true;
-    s.bankSection = connectionManager.getSlotBankSection(i);
-    s.bankPosition = connectionManager.getSlotBankPosition(i);
+    s.bankSection = synthHub.getSlotBankSection(i);
+    s.bankPosition = synthHub.getSlotBankPosition(i);
 
     const auto file = folder.getChildFile(s.file);
     // saveSlotPatchToFile only writes a .var when there is something in it, so
@@ -252,7 +252,7 @@ void MainComponent::loadSlotSet(const juce::File& manifest) {
     return;
   }
 
-  if (!connectionManager.isConnected())
+  if (!synthHub.active().isConnected())
     plan << "\nNot connected: the patches load into the editor only (LOCAL), and no slot is "
             "switched on or off.\n";
   if (set.notes.isNotEmpty())
@@ -304,7 +304,7 @@ void MainComponent::slotSetLoadTick() {
       slotSetLoadTimer->stopTimer();
     return;
   }
-  const bool connected = connectionManager.isConnected();
+  const bool connected = synthHub.active().isConnected();
 
   switch (load.stage) {
   case SlotSetLoad::Stage::Patches: {
@@ -318,7 +318,7 @@ void MainComponent::slotSetLoadTick() {
       } else if (!connected) {
         load.failed.add(letter + ": the connection dropped during the upload");
         load.current = -1;
-      } else if (!connectionManager.isUploadingPatch()) {
+      } else if (!synthHub.active().isUploadingPatch()) {
         // The ACK callback is posted after the upload flag drops, so give it a
         // moment before calling the upload lost.
         if (++load.quietTicks >= kQuietTicks) {
@@ -331,7 +331,7 @@ void MainComponent::slotSetLoadTick() {
       }
 
       if (load.current < 0 && load.uploading) {
-        connectionManager.setUploadCompleteCallback(nullptr);
+        synthHub.active().setUploadCompleteCallback(nullptr);
         load.settleTicks = kSettleTicks;
         if (!load.uploadAcked)
           setSlotLocal(slot, true);   // the editor has it, the synth does not
@@ -347,7 +347,7 @@ void MainComponent::slotSetLoadTick() {
       load.stage = SlotSetLoad::Stage::Focus;
       return;
     }
-    if (connected && (isPatchTransferInProgress() || !connectionManager.isAckedQueueIdle())) {
+    if (connected && (isPatchTransferInProgress() || !synthHub.active().isAckedQueueIdle())) {
       if (++load.stepTicks >= kStepTimeoutTicks) {
         for (int slot : load.pending)
           load.failed.add(juce::String(kSlotLetters[slot]) + ": the synth stayed busy");
@@ -368,7 +368,7 @@ void MainComponent::slotSetLoadTick() {
 
     if (connected) {
       juce::Component::SafePointer<MainComponent> safeThis(this);
-      connectionManager.setUploadCompleteCallback([safeThis, slot]() {
+      synthHub.active().setUploadCompleteCallback([safeThis, slot]() {
         if (safeThis && safeThis->slotSetLoad.active && safeThis->slotSetLoad.current == slot)
           safeThis->slotSetLoad.uploadAcked = true;
       });
@@ -383,7 +383,7 @@ void MainComponent::slotSetLoadTick() {
       load.failed.add(juce::String(kSlotLetters[slot]) + ": " + error);
       load.current = -1;
       if (connected)
-        connectionManager.setUploadCompleteCallback(nullptr);
+        synthHub.active().setUploadCompleteCallback(nullptr);
     }
     return;
   }
@@ -391,13 +391,13 @@ void MainComponent::slotSetLoadTick() {
   case SlotSetLoad::Stage::Focus: {
     // Worked out before focus moves: moving it changes what the synth reports.
     load.mask = slotSetEnableMask(load.set, lastEnabledSlots);
-    const int currentFocus = connected ? connectionManager.getCurrentSlot() : activeSlot;
+    const int currentFocus = connected ? synthHub.getCurrentSlot() : activeSlot;
     const int focus = slotSetFocusAfterLoad(load.set, load.mask, currentFocus);
     if (focus >= 0 && focus < numSlots) {
       if (focus != activeSlot)
         switchToSlot(focus, /*notifySynth=*/false);
-      if (connected && connectionManager.getCurrentSlot() != focus)
-        connectionManager.selectSlot(focus);
+      if (connected && synthHub.getCurrentSlot() != focus)
+        synthHub.selectSlot(focus);
     }
     load.stage = SlotSetLoad::Stage::Enable;
     load.settleTicks = kSettleTicks;
@@ -409,7 +409,7 @@ void MainComponent::slotSetLoadTick() {
       --load.settleTicks;
       return;
     }
-    if (connected && !connectionManager.setSlotPins(load.mask))
+    if (connected && !synthHub.active().setSlotPins(load.mask))
       load.failed.add("No slot was switched on or off: the synth has not reported which "
                       "slots are enabled yet");
     finishSlotSetLoad();
