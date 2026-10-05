@@ -122,7 +122,7 @@ struct ColorScheme
     bool skeuomorphic = false;
 
     // Knob look when skeuomorphic is on: 0 = domed cap in the theme's knob
-    // colour, 1 = Moog black, 2 = Moog modular aluminium.
+    // colour, 1 = black knurled, 2 = aluminium knurled.
     int knobStyle = 2;   // set from EditorOptions by MainComponent
 };
 

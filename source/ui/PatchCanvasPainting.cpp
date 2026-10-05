@@ -1146,7 +1146,7 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
                 float fromAngle = (sweepRad >= 0.0f) ? knobAngle : knobAngle + sweepRad;
                 float toAngle   = (sweepRad >= 0.0f) ? knobAngle + sweepRad : knobAngle;
 
-                // Moog knobs have a smaller top, so the sweep stays on it.
+                // Knurled knobs have a smaller top, so the sweep stays on it.
                 float r = radius * ((skeuoOn && activeScheme_.knobStyle > 0) ? 0.66f : 0.82f);
                 juce::Path wedge;
                 wedge.addPieSegment(centerX - r, centerY - r, r * 2.0f, r * 2.0f,
@@ -1194,7 +1194,7 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         // unfilled wireframe knob, so use the bright module text colour there.
         if (skeuoOn && activeScheme_.knobStyle > 0)
         {
-            skeuo::drawMoogPointer(g, centerX, centerY, radius, knobAngle, activeScheme_.knobStyle);
+            skeuo::drawKnurledPointer(g, centerX, centerY, radius, knobAngle, activeScheme_.knobStyle);
         }
         else if (skeuoOn)
         {

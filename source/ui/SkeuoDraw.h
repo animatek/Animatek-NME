@@ -290,8 +290,8 @@ namespace skeuo
 
     // Knob styles (ColorScheme::knobStyle):
     //   0  domed cap: a recessed well and a shaded dome in the theme's knob colour
-    //   1  Moog black: satin black skirt and top, knurled edge, white pointer
-    //   2  Moog modular aluminium: brushed silver, knurled edge, dark pointer
+    //   1  black knurled: satin black skirt and top, knurled edge, white pointer
+    //   2  aluminium knurled: brushed silver, knurled edge, dark pointer
     //
     //   radius       the radius the flat knob uses (rSz * 0.5)
     //   pixelRadius  radius * zoom: knurling is only drawn when it can be seen
@@ -402,9 +402,9 @@ namespace skeuo
         }
     }
 
-    // Moog-style pointer: a bold line from near the centre out across the skirt.
+    // Knurled-knob pointer: a bold line from near the centre out across the skirt.
     // White on the black knob, dark on the aluminium one.
-    inline void drawMoogPointer(juce::Graphics& g, float cx, float cy, float radius,
+    inline void drawKnurledPointer(juce::Graphics& g, float cx, float cy, float radius,
                                 float angleRad, int style)
     {
         const float s = std::sin(angleRad), c = std::cos(angleRad);

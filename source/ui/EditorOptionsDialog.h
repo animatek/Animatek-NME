@@ -23,7 +23,7 @@ struct EditorOptions
     // hardware instead of flat shapes. Theme-independent, like wireframe, and
     // off by default so the canvas looks the way it always has until asked.
     bool        hardwareLook   = false;
-    int         hardwareKnobStyle = 2;  // 0 domed cap, 1 Moog black, 2 Moog aluminium
+    int         hardwareKnobStyle = 2;  // 0 domed cap, 1 black knurled, 2 aluminium knurled
     bool        animateTiling  = true;  // slide slot sub-windows to their new tiles
     // Borrow the synth's own display to name the dialog that is on screen, and
     // give the patch name back when it closes. Off by default: it writes to the

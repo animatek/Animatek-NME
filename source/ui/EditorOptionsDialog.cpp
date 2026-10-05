@@ -175,8 +175,8 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
 
     styleLabel (knobStyleLabel);
     knobStyleSelector.addItem ("Domed cap",       1);
-    knobStyleSelector.addItem ("Moog black",      2);
-    knobStyleSelector.addItem ("Moog aluminium",  3);
+    knobStyleSelector.addItem ("Black knurled",      2);
+    knobStyleSelector.addItem ("Aluminium knurled",  3);
     knobStyleSelector.setSelectedId (options.hardwareKnobStyle + 1, juce::dontSendNotification);
     knobStyleSelector.setEnabled (options.hardwareLook);
     knobStyleSelector.setColour (juce::ComboBox::backgroundColourId, p().inputBackground);
