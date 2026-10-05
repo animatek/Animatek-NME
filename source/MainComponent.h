@@ -58,6 +58,7 @@ public:
     // needs to reach a specific slot's model/undo state without duplicating
     // MainComponent's own slot-lookup logic or requiring friend access.
     int getActiveSlot() const { return activeSlot; }
+    int getActiveSynth() const { return synthHub.activeSynth(); }
     Patch* getSlotPatch(int slot) const { return slotPatches[slot].get(); }
     const juce::File& getSlotPatchFile(int slot) const { return slotPatchFiles[slot]; }
     juce::File getPatchesFolder() const { return editorOptions.getPatchesFolder(); }

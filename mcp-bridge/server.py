@@ -107,6 +107,7 @@ def describe_module_type(
 @mcp.tool()
 def list_modules(
     slot: Optional[int] = None,
+    port: Optional[int] = None,
     section: Optional[int] = None,
     container_index: Optional[int | list[int]] = None,
     include_parameters: bool = True,
@@ -117,6 +118,7 @@ def list_modules(
     """List the modules and cables currently in a patch slot.
 
     slot: 0-3 (A-D); defaults to whichever slot's tab is currently active
+    port: 1-2, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     in the editor.
     section: 0=common, 1=poly; omit to list both.
     container_index: one index or a list of them - return only those modules,
@@ -134,6 +136,8 @@ def list_modules(
     params: dict[str, Any] = {}
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     if section is not None:
         params["section"] = section
     if container_index is not None:
@@ -151,6 +155,7 @@ def mutate_patch(
     probability: float = 0.5,
     range: float = 0.25,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Mutate or randomize a patch's parameters using the editor's own engine.
 
@@ -166,6 +171,7 @@ def mutate_patch(
     only - small values (0.1-0.2) explore around the current sound, large ones
     depart from it.
     slot: 0-3 (A-D); defaults to the currently active slot.
+    port: 1-2, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
 
     Parameters that are locked, in a module excluded from mutation, or in an
     Output module are never touched. Interpolate and cross are not exposed:
@@ -180,6 +186,8 @@ def mutate_patch(
     }
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("mutate_patch", params)
 
 
@@ -206,6 +214,7 @@ def add_module(
     type_name: Optional[str] = None,
     name: Optional[str] = None,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Add a module to a patch - it appears immediately on the editor's canvas.
 
@@ -219,6 +228,7 @@ def add_module(
     type_id or type_name: identifies the module type - get these from
     list_module_types first (typeId is the more reliable of the two).
     slot: 0-3 (A-D); defaults to the currently active slot.
+    port: 1-2, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
 
     Returns the new module's containerIndex and actual position.
     """
@@ -235,6 +245,8 @@ def add_module(
         params["name"] = name
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("add_module", params)
 
 
@@ -245,6 +257,7 @@ def move_module(
     grid_x: int,
     grid_y: int,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Move an existing module to a new grid position.
 
@@ -253,6 +266,7 @@ def move_module(
     grid_x/grid_y: non-negative grid coordinates. Account for each module's
     height when stacking modules vertically so they do not overlap.
     slot: 0-3 (A-D); defaults to the currently active slot.
+    port: 1-2, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     """
     params: dict[str, Any] = {
         "section": section,
@@ -262,6 +276,8 @@ def move_module(
     }
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("move_module", params)
 
 
@@ -271,6 +287,7 @@ def rename_module(
     container_index: int,
     name: str,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Rename an existing module (undoable).
 
@@ -279,6 +296,7 @@ def rename_module(
     name: new title, 1-16 characters (the G1 module-name limit). The name lives
     in the patch/editor and reaches the synth on the next full patch upload.
     slot: 0-3 (A-D); defaults to the currently active slot.
+    port: 1-2, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     Returns the new name and the previous one.
     """
     params: dict[str, Any] = {
@@ -288,6 +306,8 @@ def rename_module(
     }
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("rename_module", params)
 
 
@@ -296,6 +316,7 @@ def delete_module(
     section: int,
     container_index: int,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Delete a module and its attached cables as one undoable operation."""
     params: dict[str, Any] = {
@@ -304,6 +325,8 @@ def delete_module(
     }
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("delete_module", params)
 
 
@@ -314,6 +337,7 @@ def replace_module(
     type_name: Optional[str] = None,
     type_id: Optional[int] = None,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Swap a module for another of its family in place, as one undoable step.
 
@@ -334,6 +358,8 @@ def replace_module(
         params["typeId"] = type_id
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("replace_module", params)
 
 
@@ -347,6 +373,7 @@ def connect_cable(
     out_is_output: Optional[bool] = None,
     in_is_output: Optional[bool] = None,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Connect a cable between two modules' connectors in a patch.
 
@@ -363,6 +390,7 @@ def connect_cable(
     ambiguous (a handful of module types reuse the same name for an input
     and an output) - the error message says so if this is required.
     slot: 0-3 (A-D); defaults to the currently active slot.
+    port: 1-2, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     """
     params: dict[str, Any] = {
         "section": section,
@@ -375,6 +403,8 @@ def connect_cable(
         params["in"]["isOutput"] = in_is_output
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("connect_cable", params)
 
 
@@ -388,6 +418,7 @@ def delete_cable(
     out_is_output: Optional[bool] = None,
     in_is_output: Optional[bool] = None,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Delete one direct cable identified by the endpoint module/connectors."""
     params: dict[str, Any] = {
@@ -401,6 +432,8 @@ def delete_cable(
         params["in"]["isOutput"] = in_is_output
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("delete_cable", params)
 
 
@@ -413,6 +446,7 @@ def set_parameter(
     value: Optional[int] = None,
     delta: Optional[int] = None,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Set or adjust one editable module parameter.
 
@@ -435,12 +469,15 @@ def set_parameter(
         params["delta"] = delta
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("set_parameter", params)
 
 
 @mcp.tool()
 def create_patch(
     slot: Optional[int] = None,
+    port: Optional[int] = None,
     name: Optional[str] = None,
     activate: bool = True,
 ) -> Any:
@@ -452,6 +489,8 @@ def create_patch(
     params: dict[str, Any] = {"activate": activate}
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     if name is not None:
         params["name"] = name
     return _call("create_patch", params)
@@ -460,6 +499,7 @@ def create_patch(
 @mcp.tool()
 def open_patch(
     slot: Optional[int] = None,
+    port: Optional[int] = None,
     name: Optional[str] = None,
     path: Optional[str] = None,
     activate: bool = True,
@@ -473,6 +513,8 @@ def open_patch(
     params: dict[str, Any] = {"activate": activate}
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     if name is not None:
         params["name"] = name
     if path is not None:
@@ -484,6 +526,7 @@ def open_patch(
 def save_patch(
     path: str,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Save a slot's patch to a .pch file on disk.
 
@@ -492,11 +535,14 @@ def save_patch(
     extension defaults to .pch. Parent folders are created as needed. This lets a
     patch built through the bridge be persisted instead of living only in memory.
     slot: 0-3 (A-D); defaults to the currently active slot.
+    port: 1-2, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     Returns the full saved path and the patch name.
     """
     params: dict[str, Any] = {"path": path}
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("save_patch", params)
 
 
@@ -505,11 +551,13 @@ def store_to_bank(
     bank: int,
     position: int,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Store a slot's patch into a synth bank location (requires a connected synth).
 
     bank: 1-9. position: 1-99 (bank location = bank*100 + position, e.g. 101).
     slot: 0-3 (A-D); defaults to the currently active slot.
+    port: 1-2, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     The patch is uploaded to the synth working slot and then written to the bank,
     so this overwrites that working slot. The patch list must have finished
     loading. Returns the target bank/position/location.
@@ -517,6 +565,8 @@ def store_to_bank(
     params: dict[str, Any] = {"bank": bank, "position": position}
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("store_to_bank", params)
 
 
@@ -573,6 +623,7 @@ def read_lights(
     section: Optional[int] = None,
     container_index: Optional[int | list[int]] = None,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Read the LEDs and meters the synth is streaming, per module.
 
@@ -593,6 +644,8 @@ def read_lights(
         params["containerIndex"] = container_index
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("read_lights", params)
 
 
@@ -646,10 +699,13 @@ def list_assignments(slot: Optional[int] = None) -> Any:
     A target is either a module parameter (section, containerIndex, parameterId,
     moduleName, parameterName) or a morph group's dial (morphGroup).
     slot: 0-3 (A-D); defaults to the currently active slot.
+    port: 1-2, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     """
     params: dict[str, Any] = {}
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("list_assignments", params)
 
 
@@ -663,6 +719,7 @@ def assign_knob(
     morph_group: Optional[int] = None,
     replace: bool = False,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Put a parameter, or a morph group's dial, under a front-panel knob. Undoable.
 
@@ -680,6 +737,8 @@ def assign_knob(
                             container_index, parameter_name, parameter_id, morph_group)
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("assign_knob", params)
 
 
@@ -692,6 +751,8 @@ def unassign_knob(knob: int | str, slot: Optional[int] = None) -> Any:
     params: dict[str, Any] = {"knob": knob}
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("unassign_knob", params)
 
 
@@ -704,6 +765,7 @@ def assign_morph(
     parameter_name: Optional[str] = None,
     parameter_id: Optional[int] = None,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Put a module parameter in a morph group, with a signed range. Undoable.
 
@@ -718,6 +780,8 @@ def assign_morph(
                             container_index, parameter_name, parameter_id)
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("assign_morph", params)
 
 
@@ -728,11 +792,14 @@ def unassign_morph(
     parameter_name: Optional[str] = None,
     parameter_id: Optional[int] = None,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Take a module parameter out of its morph group. Undoable."""
     params = _assign_target({}, section, container_index, parameter_name, parameter_id)
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("unassign_morph", params)
 
 
@@ -746,6 +813,7 @@ def assign_midi_cc(
     morph_group: Optional[int] = None,
     replace: bool = False,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Put a parameter, or a morph group's dial, under a MIDI CC. Undoable.
 
@@ -758,6 +826,8 @@ def assign_midi_cc(
                             container_index, parameter_name, parameter_id, morph_group)
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("assign_midi_cc", params)
 
 
@@ -767,6 +837,8 @@ def unassign_midi_cc(cc: int, slot: Optional[int] = None) -> Any:
     params: dict[str, Any] = {"cc": cc}
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("unassign_midi_cc", params)
 
 
@@ -779,6 +851,7 @@ def set_morph_value(
     value: Optional[int] = None,
     delta: Optional[int] = None,
     slot: Optional[int] = None,
+    port: Optional[int] = None,
 ) -> Any:
     """Turn a morph group's dial, as dragging it in the editor's header bar does.
 
@@ -793,6 +866,8 @@ def set_morph_value(
         params["delta"] = delta
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("set_morph_value", params)
 
 
@@ -839,6 +914,7 @@ def fetch_patch(slot: Optional[int] = None) -> Any:
     """Ask the synth for the patch in a slot again and load it into the editor.
 
     slot: 0-3 (A-D); defaults to the slot the synth has focused.
+    port: 1-2, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     The editor's copy of that slot is replaced when the patch arrives, so unsaved
     editor-only changes to it are lost; the synth itself is not changed. Poll
     get_synth_status until transfer.fetching is false, or read get_events for
@@ -848,6 +924,8 @@ def fetch_patch(slot: Optional[int] = None) -> Any:
     params: dict[str, Any] = {}
     if slot is not None:
         params["slot"] = slot
+    if port is not None:
+        params["port"] = port
     return _call("fetch_patch", params)
 
 
