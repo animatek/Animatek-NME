@@ -1,3 +1,6 @@
+// Hardware look drawing code: Grant Atkinson (teezdalien), 2026. Written with an AI
+// assistant from general 2D-drawing techniques; no third-party code or assets.
+// Contributed to Animatek NME under the project licence (GPL).
 #pragma once
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <algorithm>
