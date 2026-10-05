@@ -176,6 +176,7 @@ private:
     {
         enum class Stage { Patches, Focus, Enable };
         bool active = false;
+        int synth = 0;                 // the synth the whole load is for
         Stage stage = Stage::Patches;
         SlotSet set;
         juce::File folder;
@@ -434,6 +435,7 @@ private:
     // Telling the synth which slot to focus is debounced: walking focus across
     // four sub-windows must not spray SlotActivated messages down the wire.
     void notifySynthOfSlot(int slot);
+    void refreshForActiveSynth();
     // Zero a canvas's LEDs and meters. The synth streams them for one slot at a
     // time, so the slot being left has to be blanked or it freezes lit.
     void clearLightMeterData(int slot);

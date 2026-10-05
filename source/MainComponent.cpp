@@ -633,14 +633,14 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       [this](int morphIndex, int keyboard) {
         if (!currentPatch()) return;
         currentPatch()->morphKeyboard[static_cast<size_t>(morphIndex)] = keyboard;
-        if (synthHub.active().isConnected()) {
+        if (synthHub.isConnectedSlot(activeSlot)) {
           // Must address activeSlot, not the hardware-focused slot — every
           // sibling callback here was already updated to do this; this one
           // was missed (found in code review).
           MorphKeyboardAssignmentMessage msg(
               synthHub.getPatchId(activeSlot), morphIndex, keyboard);
-          auto sysex = msg.toSysEx(activeSlot);
-          synthHub.active().sendAckedSysEx(sysex);
+          auto sysex = msg.toSysEx(SynthHub::local(activeSlot));
+          synthHub.sendAckedSysEx(activeSlot, sysex);
         }
       });
 
@@ -1848,8 +1848,8 @@ void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen)
 
   if (slot == activeSlot) {
     mainLayout->getSlotBar().setCurrentTab(slot);
-    if (notifySynth && synthHub.active().isConnected()
-        && synthHub.getCurrentSlot() != slot) {
+    if (notifySynth && synthHub.isConnectedSlot(slot)
+        && synthHub.synth(SynthSlot::synthOf(slot)).getCurrentSlot() != SynthSlot::localOf(slot)) {
       stopInterpolation("synth slot realignment");
       notifySynthOfSlot(slot);
     }
@@ -1867,6 +1867,13 @@ void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen)
 
   activeSlot = slot;
   mainLayout->getSlotBar().setCurrentTab(slot);
+
+  // Moving to a slot of another synth makes that synth the one being edited: the
+  // browser, the status bar and the header follow it.
+  if (SynthSlot::synthOf(slot) != synthHub.activeSynth()) {
+    synthHub.setActiveSynth(SynthSlot::synthOf(slot));
+    refreshForActiveSynth();
+  }
 
   // Tell synth to switch active slot (skip when the synth itself initiated the change)
   if (notifySynth)
@@ -1902,7 +1909,7 @@ void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen)
 
     mainLayout->getStatusBar().setConnectionStatus(
         juce::String("Slot ") + SynthSlot::label(slot) + " - " + currentPatch()->getName(),
-        synthHub.active().isConnected());
+        synthHub.isConnectedSlot(slot));
   } else {
     mainLayout->getHeaderBar().setPatch(nullptr);
     mainLayout->getInspector().setPatch(nullptr);
@@ -1910,7 +1917,7 @@ void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen)
 
     mainLayout->getStatusBar().setConnectionStatus(
         juce::String("Slot ") + SynthSlot::label(slot) + " - empty",
-        synthHub.active().isConnected());
+        synthHub.isConnectedSlot(slot));
 
     // If connected, the synth echoes our SlotActivated command as a
     // notification, whose handler auto-requests the patch with clean
@@ -1918,14 +1925,14 @@ void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen)
     // immediately raced the slot-command ACKs: the first ACK back (for
     // SlotsSelected) was mistaken for the patch-request ACK and the fetch
     // derailed. Keep only a delayed fallback in case the echo never comes.
-    if (synthHub.active().isConnected()) {
+    if (synthHub.isConnectedSlot(slot)) {
       juce::Component::SafePointer<MainComponent> safeThis(this);
       juce::Timer::callAfterDelay(500, [safeThis, slot]() {
         if (!safeThis) return;
         if (safeThis->activeSlot != slot) return;
         if (safeThis->currentPatch() != nullptr) return;
-        if (!safeThis->synthHub.active().isConnected()) return;
-        if (safeThis->synthHub.active().isFetchingPatch()) return;
+        if (!safeThis->synthHub.isConnectedSlot(slot)) return;
+        if (safeThis->synthHub.isFetchingPatch(slot)) return;
         std::cout << "[SLOT] No SlotActivated echo - fallback patch request for slot "
                   << slot << std::endl;
         safeThis->synthHub.requestPatch(slot);
@@ -1939,12 +1946,39 @@ void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen)
   std::cout << "[SLOT] Switched to slot " << slot << std::endl;
 }
 
+// The surfaces that show one synth's state follow the synth being edited: the status
+// bar, the header, the bank in the patch browser and the store button.
+void MainComponent::refreshForActiveSynth() {
+  const int synth = synthHub.activeSynth();
+  auto& cm = synthHub.synth(synth);
+  const auto& state = synthState[static_cast<size_t>(synth)];
+  const bool connected = cm.isConnected();
+
+  mainLayout->getStatusBar().setSynthLink(SynthLink::describe(connected, cm.getConnectedPortName()));
+  if (!connected) {
+    mainLayout->getHeaderBar().setSynthName({});
+    mainLayout->getHeaderBar().setSynthDspLoad(-1, -1, -1, -1);
+    mainLayout->getStatusBar().setVoiceCount(0);
+  } else {
+    mainLayout->getHeaderBar().setSynthName(state.settingsKnown && !state.settings.name.empty()
+                                                ? juce::String(state.settings.name)
+                                                : juce::String("Nord Modular"));
+    const auto& v = state.voiceCounts;
+    mainLayout->getHeaderBar().setSynthDspLoad(v[0], v[1], v[2], v[3]);
+    mainLayout->getStatusBar().setVoiceCount(v[0] + v[1] + v[2] + v[3]);
+  }
+  mainLayout->getPatchBrowser().setPatchList(cm.getPatchList());
+  mainLayout->getPatchBrowser().setLoadingState(cm.isConnected() && !cm.isPatchListLoaded());
+  menuItemsChanged();
+  updateStoreLocationDisplay();
+}
+
 // Walking focus across four sub-windows must not spray SlotActivated messages
 // down the wire, so the send is coalesced: only the last slot asked for within
 // the window is actually told to the synth, and only if the synth is not
 // already there.
 void MainComponent::notifySynthOfSlot(int slot) {
-  if (!synthHub.active().isConnected())
+  if (!synthHub.isConnectedSlot(slot))
     return;
 
   pendingSynthSlot = slot;
@@ -1954,9 +1988,9 @@ void MainComponent::notifySynthOfSlot(int slot) {
     if (!safeThis || safeThis->synthSlotGeneration != generation)
       return;  // superseded by a later focus change
     const int target = safeThis->pendingSynthSlot;
-    if (target < 0 || !safeThis->synthHub.active().isConnected())
+    if (target < 0 || !safeThis->synthHub.isConnectedSlot(target))
       return;
-    if (safeThis->synthHub.getCurrentSlot() == target)
+    if (safeThis->synthHub.synth(SynthSlot::synthOf(target)).getCurrentSlot() == SynthSlot::localOf(target))
       return;  // the synth is already there
     safeThis->synthHub.selectSlot(target);
   });
@@ -2002,18 +2036,18 @@ bool MainComponent::replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
                                        const juce::File& sourceFile, bool activate,
                                        bool loadVariations, juce::String& error) {
   if (slot < 0 || slot >= numSlots) {
-    error = "slot must be 0-3 (A-D)";
+    error = "slot out of range";
     return false;
   }
   if (!patch) {
     error = "The replacement patch is invalid";
     return false;
   }
-  if (synthHub.active().isUploadingPatch() || synthHub.active().isFetchingPatch()) {
+  if (synthHub.isUploadingPatch(slot) || synthHub.isFetchingPatch(slot)) {
     error = "A patch transfer is already in progress; retry when it completes";
     return false;
   }
-  if (!synthHub.active().isAckedQueueIdle()) {
+  if (!synthHub.isAckedQueueIdle(slot)) {
     error = "A structural edit is still waiting for acknowledgement; retry when it completes";
     return false;
   }
@@ -2087,12 +2121,11 @@ bool MainComponent::replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
   }
 
   slotUndoManagers[slot].clearUndoHistory();
-  if (synthHub.active().isConnected()) {
+  if (synthHub.isConnectedSlot(slot)) {
     // Upload messages carry their destination slot in the SysEx envelope, so
     // changing hardware focus first is unnecessary and introduces competing ACKs.
     synthHub.uploadPatch(slot, *slotPatches[slot]);
-    slotSynchronizers[slot] = std::make_unique<PatchSynchronizer>(
-        *slotPatches[slot], synthHub.active(), slot);
+    slotSynchronizers[slot] = std::make_unique<PatchSynchronizer>(*slotPatches[slot], synthHub.forSlot(slot), SynthHub::local(slot));
   }
   rebuildUndoContext(slot);
 
@@ -2113,7 +2146,7 @@ bool MainComponent::replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
 
   mainLayout->getSlotBar().setSlotName(slot, slotPatches[slot]->getName());
   // Synced when we just uploaded it; otherwise it lives in the editor only.
-  setSlotLocal(slot, !synthHub.active().isConnected());
+  setSlotLocal(slot, !synthHub.isConnectedSlot(slot));
   mainLayout->getStatusBar().showMessage(
       (sourceFile.existsAsFile() ? "Loaded: " + sourceFile.getFileName()
                                  : "New patch: " + slotPatches[slot]->getName()),
@@ -2193,10 +2226,10 @@ void MainComponent::newPatch() {
   mainLayout->getStatusBar().setConnectionStatus("New Patch", false);
   updateDspLoadDisplay();
 
-  if (synthHub.active().isConnected()) {
+  if (synthHub.isConnectedSlot(activeSlot)) {
     // Upload empty patch to synth so it resets too
     synthHub.uploadPatch(activeSlot, *currentPatch());
-    currentSynchronizer() = std::make_unique<PatchSynchronizer>(*currentPatch(), synthHub.active(), activeSlot);
+    currentSynchronizer() = std::make_unique<PatchSynchronizer>(*currentPatch(), synthHub.forSlot(activeSlot), SynthHub::local(activeSlot));
   }
 
   undoManager().clearUndoHistory();
@@ -2339,7 +2372,7 @@ void MainComponent::loadPatchFromFile(const juce::File &file, int targetSlot, bo
   // Local load (issue #21): keep the patch in the editor only — no upload, no
   // synchronizer that would push edits onto a synth slot holding a different
   // patch. Mark the slot LOCAL so the divergence from the synth is visible.
-  if (!localOnly && synthHub.active().isConnected()) {
+  if (!localOnly && synthHub.isConnectedSlot(activeSlot)) {
     // Send loaded patch to synth so it plays immediately. Must be activeSlot
     // (the tab that just received this file), not getCurrentSlot() (whatever
     // slot happens to have hardware focus) — those can differ since slot
@@ -2354,11 +2387,11 @@ void MainComponent::loadPatchFromFile(const juce::File &file, int targetSlot, bo
         "Uploading " + file.getFileName() + " to synth...", 0);
 
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    synthHub.active().setUploadCompleteCallback([safeThis, slot, fileName = file.getFileName()]() {
+    synthHub.setUploadCompleteCallback(slot, [safeThis, slot, fileName = file.getFileName()]() {
       if (!safeThis)
         return;
 
-      safeThis->synthHub.active().setUploadCompleteCallback(nullptr);
+      safeThis->synthHub.setUploadCompleteCallback(slot, nullptr);
 
       juce::String slotName = SynthSlot::valid(slot) ? SynthSlot::label(slot) : juce::String(slot);
       safeThis->mainLayout->getStatusBar().showMessage(
@@ -2372,7 +2405,7 @@ void MainComponent::loadPatchFromFile(const juce::File &file, int targetSlot, bo
     // patch was replaced again in the meantime (a second load, or New Patch).
     const int loadGeneration = slotPatchGeneration[slot];
     juce::Timer::callAfterDelay(200, [safeThis, slot, loadGeneration]() {
-      if (!safeThis || !safeThis->synthHub.active().isConnected())
+      if (!safeThis || !safeThis->synthHub.isConnectedSlot(slot))
         return;
       if (!safeThis->slotPatches[slot]
           || safeThis->slotPatchGeneration[slot] != loadGeneration) {
@@ -2385,12 +2418,11 @@ void MainComponent::loadPatchFromFile(const juce::File &file, int targetSlot, bo
       std::cout << "[FILE] Uploading loaded patch to synth slot " << slot << std::endl;
     });
 
-    currentSynchronizer() = std::make_unique<PatchSynchronizer>(
-        *currentPatch(), synthHub.active(), activeSlot);
+    currentSynchronizer() = std::make_unique<PatchSynchronizer>(*currentPatch(), synthHub.forSlot(activeSlot), SynthHub::local(activeSlot));
     std::cout << "[SYNC] Patch synchronizer enabled after file load" << std::endl;
   }
 
-  setSlotLocal(activeSlot, localOnly || !synthHub.active().isConnected());
+  setSlotLocal(activeSlot, localOnly || !synthHub.isConnectedSlot(activeSlot));
 
   undoManager().clearUndoHistory();
   rebuildUndoContext(activeSlot);
@@ -2533,12 +2565,12 @@ void MainComponent::sendStoreToBank(int slot, int section, int position) {
     return;
 
   const int location = (section + 1) * 100 + position + 1;
-  StorePatchMessage msg(slot, section, position);
+  StorePatchMessage msg(SynthHub::local(slot), section, position);
   // Through the ACK queue, like ConnectionManager::storeLoadedSlotToBank. Sent
   // raw, a store fired straight off an upload's last ACK could reach a synth
   // still busy with that upload and be dropped without a word: of four stores
   // in a row on 2026-09-13, one never reached the bank.
-  synthHub.active().sendAckedSysEx(msg.toSysEx(slot));
+  synthHub.sendAckedSysEx(slot, msg.toSysEx(SynthHub::local(slot)));
 
   // The patch now lives here, which is what the next store offers by default,
   // and the shortlist of same-named positions stops mattering.
@@ -2548,12 +2580,14 @@ void MainComponent::sendStoreToBank(int slot, int section, int position) {
   // into it: otherwise the position keeps its old name (or reads as empty)
   // until the editor reconnects.
   if (slotPatches[slot] != nullptr)
-    synthHub.active().setPatchListName(section, position,
-                                       slotPatches[slot]->getName().toStdString());
+    synthHub.forSlot(slot).setPatchListName(section, position,
+                                            slotPatches[slot]->getName().toStdString());
   if (slot == activeSlot)
     updateStoreLocationDisplay();
-  mainLayout->getPatchBrowser().setPatchList(synthHub.active().getPatchList());
-  mainLayout->getPatchBrowser().setLoadedPatch(section, position);
+  if (SynthSlot::synthOf(slot) == synthHub.activeSynth()) {
+    mainLayout->getPatchBrowser().setPatchList(synthHub.active().getPatchList());
+    mainLayout->getPatchBrowser().setLoadedPatch(section, position);
+  }
 
   mainLayout->getStatusBar().showMessage(
       "Stored slot " + SynthSlot::label(slot)
@@ -2571,13 +2605,13 @@ void MainComponent::inferSlotBankLocation(int slot) {
     return;  // the synth already told us, and it is the better answer
 
   const auto name = slotPatches[slot]->getName();
-  auto matches = synthHub.active().findPatchLocations(name);
+  auto matches = synthHub.forSlot(slot).findPatchLocations(name);
   slotBankCandidates[slot] = matches;
 
   if (matches.size() != 1) {
     std::cout << "[STORE] Slot " << SynthSlot::label(slot).toStdString() << " patch \""
               << name.toStdString() << "\": "
-              << (synthHub.active().isPatchListLoaded()
+              << (synthHub.forSlot(slot).isPatchListLoaded()
                       ? (matches.empty()
                              ? std::string("no bank position carries that name")
                              : "the name is in " + std::to_string(matches.size())
@@ -2608,15 +2642,15 @@ void MainComponent::updateStoreLocationDisplay() {
 
 bool MainComponent::storeSlotPatchToBank(int slot, int bankSection, int position,
                                          juce::String &error) {
-  if (!synthHub.active().isConnected()) {
-    error = "Not connected to a Nord Modular";
-    return false;
-  }
   if (slot < 0 || slot >= numSlots || slotPatches[slot] == nullptr) {
     error = "No patch loaded in slot " + juce::String(slot);
     return false;
   }
-  if (!synthHub.active().isPatchListLoaded()) {
+  if (!synthHub.isConnectedSlot(slot)) {
+    error = "Not connected to a Nord Modular";
+    return false;
+  }
+  if (!synthHub.forSlot(slot).isPatchListLoaded()) {
     error = "Patch list not loaded yet";
     return false;
   }
@@ -2628,10 +2662,10 @@ bool MainComponent::storeSlotPatchToBank(int slot, int bankSection, int position
   // Upload the editor patch to the synth slot first so the bank stores exactly
   // this patch, then send the store once the synth ACKs the upload.
   juce::Component::SafePointer<MainComponent> safeThis(this);
-  synthHub.active().setUploadCompleteCallback(
+  synthHub.setUploadCompleteCallback(slot,
       [safeThis, slot, bankSection, position]() {
         if (!safeThis) return;
-        safeThis->synthHub.active().setUploadCompleteCallback(nullptr);
+        safeThis->synthHub.setUploadCompleteCallback(slot, nullptr);
         safeThis->sendStoreToBank(slot, bankSection, position);
       });
   synthHub.uploadPatch(slot, *slotPatches[slot]);
@@ -2696,7 +2730,7 @@ void MainComponent::showPatchSettingsDialog() {
         mainLayout->getStatusBar().showMessage("Patch settings updated", 2000);
 
         // Upload full patch to synth if connected
-        if (synthHub.active().isConnected())
+        if (synthHub.isConnectedSlot(slot))
           synthHub.uploadPatch(slot, *slotPatches[slot]);
       }));
 }
@@ -2723,14 +2757,18 @@ void MainComponent::showSynthSettingsDialog() {
 }
 
 void MainComponent::openSynthSettingsDialog() {
+  // Bound to the synth it was opened on, whichever one is being edited when it closes.
+  const int synth = synthHub.activeSynth();
   synthSettingsDialog = SynthSettingsDialog::show(this, activeState().settings,
-      [this](const SynthSettings& s)
+      [this, synth](const SynthSettings& s)
       {
-        activeState().settings = s;
-        mainLayout->getHeaderBar().setSynthName(juce::String(s.name));
+        synthState[static_cast<size_t>(synth)].settings = s;
+        if (synth == synthHub.activeSynth())
+          mainLayout->getHeaderBar().setSynthName(juce::String(s.name));
+        mainLayout->getSlotBar().setSynthName(synth, juce::String(s.name));
         mainLayout->getStatusBar().showMessage("Synth settings updated", 2000);
-        if (synthHub.active().isConnected())
-          synthHub.active().sendSynthSettings(s);
+        if (synthHub.synth(synth).isConnected())
+          synthHub.synth(synth).sendSynthSettings(s);
       });
   announceDialogOnSynth(synthSettingsDialog);
 }
@@ -4406,7 +4444,7 @@ void MainComponent::clearSynthCaption()
     // doing and whatever the option now says, a borrowed name has to go back.
     // The one case with nothing to do is a synth that is no longer there, whose
     // edit buffer went with it.
-    if (!synthHub.active().isConnected())
+    if (!synthHub.isConnectedSlot(slot))
         return;
 
     if (slotPatches[slot])
@@ -4452,13 +4490,13 @@ void MainComponent::clearDroppedPanelAssignments(int slot)
     if (dropped.knobs.empty() && dropped.ctrls.empty())
         return;
 
-    if (synthHub.active().isConnected())
+    if (synthHub.isConnectedSlot(slot))
     {
         const int pid = synthHub.getPatchId(slot);
         for (int knob : dropped.knobs)
-            synthHub.active().sendRawSysEx(KnobAssignmentMessage::deassign(pid, knob, slot));
+            synthHub.sendRawSysEx(slot, KnobAssignmentMessage::deassign(pid, knob, SynthHub::local(slot)));
         for (int ctrl : dropped.ctrls)
-            synthHub.active().sendRawSysEx(MidiCtrlAssignmentMessage::deassign(pid, ctrl, slot));
+            synthHub.sendRawSysEx(slot, MidiCtrlAssignmentMessage::deassign(pid, ctrl, SynthHub::local(slot)));
 
         std::cout << "[SYNC] Panel cleared of " << dropped.knobs.size()
                   << " orphaned knob assignment(s) and " << dropped.ctrls.size()
@@ -4472,7 +4510,7 @@ void MainComponent::rebuildUndoContext(int slot)
 {
     if (!slotPatches[slot]) { slotUndoContexts[slot].reset(); return; }
     slotUndoContexts[slot] = std::make_unique<UndoContext>(UndoContext{
-        *slotPatches[slot], synthHub.active(), slotSynchronizers[slot],
+        *slotPatches[slot], synthHub.forSlot(slot), slotSynchronizers[slot],   // the context speaks to its own synth, in its local slot numbers
         moduleDescs,
         // An edit to this slot always redraws this slot's own canvas, whether
         // or not it is the slot the shared surfaces are bound to. Those follow
@@ -4507,17 +4545,17 @@ void MainComponent::rebuildUndoContext(int slot)
             }
         },
         [this, slot, syncGen = std::make_shared<int>(0)]() {
-            if (!synthHub.active().isConnected() || !slotPatches[slot]) return;
+            if (!synthHub.isConnectedSlot(slot) || !slotPatches[slot]) return;
             int gen = ++(*syncGen);
             auto capturedGen = syncGen;
             juce::Component::SafePointer<MainComponent> safeThis(this);
             juce::Timer::callAfterDelay(80, [safeThis, capturedGen, gen, slot]() {
                 if (!safeThis || *capturedGen != gen) return;
-                if (!safeThis->synthHub.active().isConnected() || !safeThis->slotPatches[slot]) return;
+                if (!safeThis->synthHub.isConnectedSlot(slot) || !safeThis->slotPatches[slot]) return;
                 if (safeThis->slotSynchronizers[slot]) safeThis->slotSynchronizers[slot]->setSuppressed(true);
-                safeThis->synthHub.active().setUploadCompleteCallback([safeThis, slot]() {
+                safeThis->synthHub.setUploadCompleteCallback(slot, [safeThis, slot]() {
                     if (!safeThis) return;
-                    safeThis->synthHub.active().setUploadCompleteCallback(nullptr);
+                    safeThis->synthHub.setUploadCompleteCallback(slot, nullptr);
                     if (safeThis->slotSynchronizers[slot])
                         safeThis->slotSynchronizers[slot]->setSuppressed(false);
                     safeThis->mainLayout->getStatusBar().showMessage("Patch synced to synth", 2000);
@@ -4535,7 +4573,7 @@ void MainComponent::rebuildUndoContext(int slot)
         [this](int section, int containerIndex) {
             restoredModules.push_back({ section, containerIndex });
         },
-        slot
+        SynthHub::local(slot)
     });
 }
 
