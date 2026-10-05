@@ -1127,8 +1127,19 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
             if (param != nullptr)
             {
                 auto* pd = param->getDescriptor();
-                if (pd->minValue < 0 && pd->maxValue > 0)
-                    origin = static_cast<float>(-pd->minValue) / static_cast<float>(pd->maxValue - pd->minValue);
+                const int range = pd->maxValue - pd->minValue;
+                if (range > 0)
+                {
+                    // Bipolar: a negative minimum, or (the usual case, 0..127 on the
+                    // wire) a default at the centre of the range: fine tune, pulse
+                    // width, KBT. The arc then grows from the centre.
+                    const float def = static_cast<float>(pd->defaultValue - pd->minValue)
+                                      / static_cast<float>(range);
+                    if (pd->minValue < 0 && pd->maxValue > 0)
+                        origin = static_cast<float>(-pd->minValue) / static_cast<float>(range);
+                    else if (std::abs(def - 0.5f) < 0.03f)
+                        origin = def;
+                }
             }
             const auto flatCol = skeuo::flatKnobColours(activeScheme_.knobBase, activeScheme_.knobBorder,
                                                         activeScheme_.knobGrip, activeScheme_.moduleText,
