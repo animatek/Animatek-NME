@@ -73,16 +73,28 @@ void SlotView::setLocal(bool isLocal)
     refreshTitle();
 }
 
+void SlotView::setSynthName(const juce::String& synthName)
+{
+    if (synthName_ == synthName)
+        return;
+    synthName_ = synthName;
+    refreshTitle();
+}
+
 void SlotView::refreshTitle()
 {
+    // "Slot A - Bella - animatek": with up to four synths there are sixteen windows,
+    // so each one says whose slot it is. Before the synth has said its name, the
+    // port stands in for it.
     // juce::String has no char constructor — String(char) silently picks the
     // int overload and prints the ASCII code. Always charToString.
-    // As the original editor titles its patch windows: the port and the slot.
-    const auto letter = juce::String::charToString(static_cast<char>('A' + SynthSlot::localOf(slot_)));
-    auto title = kMaxSynths == 1 ? "Slot " + letter
-                                 : "Port " + juce::String(SynthSlot::synthOf(slot_) + 1) + ", Slot " + letter;
+    auto title = "Slot " + juce::String::charToString(static_cast<char>('A' + SynthSlot::localOf(slot_)));
     if (patchName_.isNotEmpty())
         title += " - " + patchName_;
+    if (synthName_.isNotEmpty())
+        title += " - " + synthName_;
+    else if (kMaxSynths > 1)
+        title += " - Port " + juce::String(SynthSlot::synthOf(slot_) + 1);
     if (local_)
         title += "  [LOCAL]";
     setName(title);

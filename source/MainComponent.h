@@ -437,6 +437,8 @@ private:
     // four sub-windows must not spray SlotActivated messages down the wire.
     void notifySynthOfSlot(int slot);
     void refreshForActiveSynth();
+    // A synth's name where the user sees it: its row in the slot bar and its slot windows.
+    void setSynthDisplayName(int synth, const juce::String& name);
     // Zero a canvas's LEDs and meters. The synth streams them for one slot at a
     // time, so the slot being left has to be blanked or it freezes lit.
     void clearLightMeterData(int slot);

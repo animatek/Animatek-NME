@@ -10,7 +10,7 @@
   four slots. Slots are numbered globally (synth * 4 + slot), so patches, windows, undo and snapshots keep
   working with a bigger range; `SynthHub` (`source/midi/SynthHub.h`) turns a global slot into its synth and
   its local slot, and the calls that carry a slot are routed by it. The slot panel has one row per synth
-  (click its name to edit that synth), the patch windows are titled "Port 2, Slot C", the tiling is a grid
+  (click its name to edit that synth), each patch window is titled with its slot, patch and synth ("Slot A - Bella - animatek", or the port until the synth says its name), the tiling is a grid
   from four windows up, and the saved ports of the first synth keep their old settings keys. The MCP bridge
   takes an optional `port` (1-based) on every slot tool. Slot sets, the bank browser and the bank transfers
   follow the synth being edited. Four ports, as in the original editor: the number is `kMaxSynths` in

@@ -352,8 +352,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   forEachSynth([this](int s, ConnectionManager& cm) { cm.setSynthSettingsCallback([this, s](const SynthSettings& settings) {
     synthState[static_cast<size_t>(s)].settings = settings;
     synthState[static_cast<size_t>(s)].settingsKnown = true;
-    mainLayout->getSlotBar().setSynthName(s, settings.name.empty() ? juce::String("Modular")
-                                                                    : juce::String(settings.name));
+    setSynthDisplayName(s, settings.name.empty() ? juce::String("Modular")
+                                                  : juce::String(settings.name));
     if (s != synthHub.activeSynth())
       return;
     if (!settings.name.empty())
@@ -1968,6 +1968,12 @@ void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen)
 
 // The surfaces that show one synth's state follow the synth being edited: the status
 // bar, the header, the bank in the patch browser and the store button.
+void MainComponent::setSynthDisplayName(int synth, const juce::String& name) {
+  mainLayout->getSlotBar().setSynthName(synth, name);
+  for (int l = 0; l < kSlotsPerSynth; ++l)
+    mainLayout->getPatchArea().getView(SynthSlot::global(synth, l)).setSynthName(name);
+}
+
 void MainComponent::refreshForActiveSynth() {
   const int synth = synthHub.activeSynth();
   auto& cm = synthHub.synth(synth);
@@ -2795,7 +2801,7 @@ void MainComponent::openSynthSettingsDialog() {
         synthState[static_cast<size_t>(synth)].settings = s;
         if (synth == synthHub.activeSynth())
           mainLayout->getHeaderBar().setSynthName(juce::String(s.name));
-        mainLayout->getSlotBar().setSynthName(synth, juce::String(s.name));
+        setSynthDisplayName(synth, juce::String(s.name));
         mainLayout->getStatusBar().showMessage("Synth settings updated", 2000);
         if (synthHub.synth(synth).isConnected())
           synthHub.synth(synth).sendSynthSettings(s);
@@ -4041,17 +4047,18 @@ void MainComponent::onConnectionStatusChanged(
     state.windowsReconciled = false;
     state.windowsReconcileScheduled = false;
   }
+  // Every synth's name, in the slot bar and on its windows, whether or not it is the one being edited.
+  if (!connected)
+    setSynthDisplayName(synth, {});
+  else if (state.settingsKnown && !state.settings.name.empty())
+    setSynthDisplayName(synth, juce::String(state.settings.name));
+  else
+    setSynthDisplayName(synth, "Modular");
+
   if (!isActive)
     return;   // what follows is the editor's own display: it shows the synth being edited
 
   mainLayout->getStatusBar().setConnectionStatus(status.message, connected);
-  // The slot bar's name box is the synth's own name once its settings arrive.
-  if (!connected)
-    mainLayout->getSlotBar().setSynthName(synth, {});
-  else if (state.settingsKnown && !state.settings.name.empty())
-    mainLayout->getSlotBar().setSynthName(synth, juce::String(state.settings.name));
-  else
-    mainLayout->getSlotBar().setSynthName(synth, "Modular");
   mainLayout->getStatusBar().setSynthLink(
       SynthLink::describe(connected, synthHub.synth(synth).getConnectedPortName()));
   menuItemsChanged(); // rebuild native macOS menu bar to update enabled states
