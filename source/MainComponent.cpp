@@ -102,6 +102,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   {
     auto canvasScheme = ThemeRegistry::get(editorOptions.uiThemeIndex).makeCanvas();
     canvasScheme.wireframe = editorOptions.wireframe;
+    canvasScheme.skeuomorphic = editorOptions.hardwareLook;
+    canvasScheme.knobStyle = editorOptions.hardwareKnobStyle;
     mainLayout->setTheme(canvasScheme);
   }
   addAndMakeVisible(mainLayout.get());
@@ -1129,6 +1131,24 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
     toggleWireframe();
     return true;
   }
+  // Hardware look rides the same modifier pattern as wireframe (Shift on macOS).
+  // Both cases of the key code are matched: the shifted variant reports the
+  // upper-case one on some platforms.
+  if (key.getModifiers().isCommandDown()
+      && (key.getKeyCode() == 'h' || key.getKeyCode() == 'H')
+ #if JUCE_MAC
+      && key.getModifiers().isShiftDown()
+ #endif
+      )
+  {
+    editorOptions.hardwareLook = !editorOptions.hardwareLook;
+    // Re-apply the current theme so the canvas rebuilds with the new flag; persist.
+    applyUiTheme(editorOptions.uiThemeIndex, true);
+    if (mainLayout)
+      mainLayout->getStatusBar().showMessage(
+          editorOptions.hardwareLook ? "Hardware look: on" : "Hardware look: off", 2000);
+    return true;
+  }
   // Ctrl+I hides the left panel, Ctrl+Shift+I the right one (issue #38).
   // Both cases of the key code are matched: the shifted variant reports the
   // upper-case one on some platforms.
@@ -1340,8 +1360,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     // wireframe rides with Shift there (issue #55).
    #if JUCE_MAC
     addShortcutItem(menu, 66, "Wireframe Modules", "Cmd+Shift+W", true, editorOptions.wireframe);
+    addShortcutItem(menu, 65, "Hardware Look", "Cmd+Shift+H", true, editorOptions.hardwareLook);
    #else
     addShortcutItem(menu, 66, "Wireframe Modules", "Ctrl+W", true, editorOptions.wireframe);
+    addShortcutItem(menu, 65, "Hardware Look", "Ctrl+H", true, editorOptions.hardwareLook);
    #endif
     menu.addSeparator();
 
@@ -1619,6 +1641,14 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 66:  // Wireframe Modules
     toggleWireframe();
+    break;
+  case 65:  // Hardware Look
+    editorOptions.hardwareLook = !editorOptions.hardwareLook;
+    // Re-apply the current theme so the canvas rebuilds with the new flag; persist.
+    applyUiTheme(editorOptions.uiThemeIndex, true);
+    if (mainLayout)
+      mainLayout->getStatusBar().showMessage(
+          editorOptions.hardwareLook ? "Hardware look: on" : "Hardware look: off", 2000);
     break;
   // Overlays: same toggles as F5 and F7-F10, so picking the mode that is
   // already showing turns it off again.
@@ -2741,6 +2771,8 @@ void MainComponent::applyUiTheme(int index, bool persist) {
   AppTheme::setPalette(theme.app);
   auto canvasScheme = theme.makeCanvas();
   canvasScheme.wireframe = editorOptions.wireframe;
+  canvasScheme.skeuomorphic = editorOptions.hardwareLook;
+  canvasScheme.knobStyle = editorOptions.hardwareKnobStyle;
   mainLayout->setTheme(canvasScheme);
   mainLayout->applyTheme();
   if (presetBrowserWindow)
@@ -4086,8 +4118,10 @@ void MainComponent::showKeyboardShortcutsDialog() {
       "  Ctrl+T              Cycle color theme\n"
      #if JUCE_MAC
       "  Cmd+Shift+W         Toggle wireframe modules\n"
+      "  Cmd+Shift+H         Toggle hardware look\n"
      #else
       "  Ctrl+W              Toggle wireframe modules\n"
+      "  Ctrl+H              Toggle hardware look\n"
      #endif
       "  Ctrl+I              Toggle inspector panel (left)\n"
       "  Ctrl+Shift+I        Toggle patch browser (right)\n"

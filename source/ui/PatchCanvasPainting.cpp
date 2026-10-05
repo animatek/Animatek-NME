@@ -2,6 +2,8 @@
 #include "../format/ValueFormatters.h"
 #include "../protocol/KnobAssignmentMessage.h"
 #include "BinaryData.h"
+#include "SkeuoDraw.h"
+#include "PartialArrows.h"
 #include <cmath>
 #include <unordered_map>
 
@@ -212,6 +214,32 @@ void PatchCanvas::paint(juce::Graphics& g)
     paintComments(g);
     paintModules(g, container, 0);
     paintCables(g, container, 0);
+
+    // Hardware look: module labels go on top of the cables. A cord has real
+    // thickness and a shadow, so across a label it hides the text; drawn after,
+    // the text stays readable. Same visibility test and theme lookup as the
+    // module pass, so exactly the modules that skipped their labels get them here.
+    if (activeScheme_.skeuomorphic && !activeScheme_.wireframe && themeData != nullptr)
+    {
+        for (auto& modulePtr : container.getModules())
+        {
+            auto& m = *modulePtr;
+            auto rect = getModuleBounds(m, 0);
+            if (!g.getClipBounds().intersects(rect))
+                continue;
+
+            if (const auto* theme = themeData->getModuleTheme(m.getDescriptor()->componentId))
+            {
+                auto titleBar = juce::Rectangle<int>(rect.getX(), rect.getY() + 2, rect.getWidth(), 12);
+                g.setColour(activeScheme_.moduleText);
+                g.setFont(juce::FontOptions("Fira Sans", 12.5f, juce::Font::bold));
+                g.drawText(m.getTitle(), titleBar.reduced(4, 0), juce::Justification::centredLeft, true);
+
+                paintLabels(g, m, rect, *theme);
+            }
+        }
+    }
+
     paintOverlays(g, container, 0);
     spinner.paint(g, { activeScheme_.resetBg, activeScheme_.resetBorder, activeScheme_.resetText });
     paintHoverBadge(g);
@@ -361,13 +389,29 @@ void PatchCanvas::paintModules(juce::Graphics& g, const ModuleContainer& contain
     // paint is running, and checking per module made the check itself the cost.
     const auto& lightSlots = lightRangeTable();
 
+    // Skeuomorphic modules cast a shadow a few pixels outside their bounds. The
+    // visibility test is widened to match, so a repaint that covers only the
+    // shadow still redraws it, and every shadow goes down before any body.
+    const bool skeuoOn = activeScheme_.skeuomorphic && !activeScheme_.wireframe;
+    const int  reach   = skeuoOn ? 6 : 0;
+
+    if (skeuoOn)
+    {
+        for (auto& modulePtr : container.getModules())
+        {
+            auto rect = getModuleBounds(*modulePtr, yOffset);
+            if (g.getClipBounds().intersects(rect.expanded(reach)))
+                skeuo::drawModuleShadow(g, rect.toFloat());
+        }
+    }
+
     for (auto& modulePtr : container.getModules())
     {
         auto& m = *modulePtr;
         auto rect = getModuleBounds(m, yOffset);
 
         // Check if module is visible in clip region
-        if (!g.getClipBounds().intersects(rect))
+        if (!g.getClipBounds().intersects(rect.expanded(reach)))
             continue;
 
         const ModuleTheme* theme = nullptr;
@@ -414,7 +458,10 @@ void PatchCanvas::paintModuleThemed(juce::Graphics& g, const Module& m, int sect
 {
     paintModuleBackground(g, m, bounds, theme);
     paintCustomDisplays(g, m, bounds, theme);
-    paintLabels(g, m, bounds, theme);
+    // With the hardware look the labels are painted later, after the cables, so
+    // a cord passes under the text instead of over it (see PatchCanvas::paint).
+    if (!(activeScheme_.skeuomorphic && !activeScheme_.wireframe))
+        paintLabels(g, m, bounds, theme);
     paintTextDisplays(g, m, bounds, theme);
     paintSliders(g, m, bounds, theme);
     // Decorations (signal-flow lines/symbols) sit beneath knobs and buttons so
@@ -704,13 +751,21 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
         : m.getDescriptor()->background;
 
     const bool wire = activeScheme_.wireframe;
+    const bool skeuoOn = activeScheme_.skeuomorphic && !wire;
 
     // Module body (flat background, no title band). Wireframe: no fill — the
     // canvas grid shows through and the edge lines below form the outline.
     if (!wire)
     {
-        g.setColour(bgColour);
-        g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
+        if (skeuoOn)
+        {
+            skeuo::drawFaceplate(g, bounds.toFloat(), bgColour);
+        }
+        else
+        {
+            g.setColour(bgColour);
+            g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
+        }
     }
 
     // GroupBoxes — rounded rect section borders (e.g. PWidth in OscA)
@@ -721,6 +776,11 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
             static_cast<float>(bounds.getY() + gb.y),
             static_cast<float>(gb.width),
             static_cast<float>(gb.height));
+        if (skeuoOn)
+        {
+            skeuo::drawInsetPanel(g, gbRect, bgColour);
+            continue;
+        }
         if (!wire)
         {
             g.setColour(bgColour.darker(0.25f));
@@ -730,11 +790,15 @@ void PatchCanvas::paintModuleBackground(juce::Graphics& g, const Module& m, juce
         g.drawRoundedRectangle(gbRect, 3.0f, 1.0f);
     }
 
-    // Module name (no band, text directly on background)
-    auto titleBar = juce::Rectangle<int>(bounds.getX(), bounds.getY() + 2, bounds.getWidth(), 12);
-    g.setColour(wire ? wireframeInk(m) : activeScheme_.moduleText);
-    g.setFont(juce::FontOptions("Fira Sans", 12.5f, juce::Font::bold));
-    g.drawText(m.getTitle(), titleBar.reduced(4, 0), juce::Justification::centredLeft, true);
+    // Module name (no band, text directly on background). With the hardware
+    // look the title is drawn later, after the cables, together with the labels.
+    if (!skeuoOn)
+    {
+        auto titleBar = juce::Rectangle<int>(bounds.getX(), bounds.getY() + 2, bounds.getWidth(), 12);
+        g.setColour(wire ? wireframeInk(m) : activeScheme_.moduleText);
+        g.setFont(juce::FontOptions("Fira Sans", 12.5f, juce::Font::bold));
+        g.drawText(m.getTitle(), titleBar.reduced(4, 0), juce::Justification::centredLeft, true);
+    }
 
     // Red frame: excluded from randomize and mutation (G2 behaviour). Always
     // drawn, not only in Mutator mode: Ctrl+R skips these modules as well, and
@@ -858,6 +922,12 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
         const float innerOffset = (sz - innerSz) * 0.5f;
         const juce::Colour darkHole = activeScheme_.connHole;
         const juce::Colour outline  = activeScheme_.connOutline;
+
+        if (activeScheme_.skeuomorphic && !activeScheme_.wireframe)
+        {
+            skeuo::drawJack(g, cx, cy, sz, isOutput, connColour, darkHole, capped);
+            continue;
+        }
 
         if (isOutput)
         {
@@ -1049,7 +1119,16 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         // Background circle — morph group color if assigned, grey otherwise.
         // Wireframe: no fill — the ring (drawn below in baseColor) carries the
         // morph-group color so assignments stay readable.
-        if (!activeScheme_.wireframe)
+        const bool skeuoOn = activeScheme_.skeuomorphic && !activeScheme_.wireframe;
+        if (skeuoOn)
+        {
+            // The cap keeps the theme's knob colour; the morph group colours
+            // the collar round it, so assignments stay as readable as before.
+            skeuo::drawKnobBody(g, centerX, centerY, radius,
+                                activeScheme_.knobStyle, radius * zoomLevel,
+                                activeScheme_.knobBase, hasMorph, baseColor);
+        }
+        else if (!activeScheme_.wireframe)
         {
             g.setColour(baseColor);
             g.fillEllipse(rcx, rcy, rSz, rSz);
@@ -1067,11 +1146,14 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
                 float fromAngle = (sweepRad >= 0.0f) ? knobAngle : knobAngle + sweepRad;
                 float toAngle   = (sweepRad >= 0.0f) ? knobAngle + sweepRad : knobAngle;
 
-                float r = radius * 0.82f;
+                // Moog knobs have a smaller top, so the sweep stays on it.
+                float r = radius * ((skeuoOn && activeScheme_.knobStyle > 0) ? 0.66f : 0.82f);
                 juce::Path wedge;
                 wedge.addPieSegment(centerX - r, centerY - r, r * 2.0f, r * 2.0f,
                                     fromAngle, toAngle, 0.0f);
-                g.setColour(baseColor.darker(0.55f));
+                // Over a shaded cap the flat version's dark wedge would hide the
+                // dome, so the skeuomorphic one is a translucent morph colour.
+                g.setColour(skeuoOn ? baseColor.withAlpha(0.65f) : baseColor.darker(0.55f));
                 g.fillPath(wedge);
             }
         }
@@ -1079,9 +1161,12 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         // Outline — in wireframe a morph knob keeps its group hue, but a plain
         // knob uses the dark module ink (knobBase would vanish on a light-grey
         // canvas like Nord Classic); non-wireframe keeps the normal knob border.
-        g.setColour(activeScheme_.wireframe ? (hasMorph ? baseColor : wireframeInk(m))
-                                            : (hasMorph ? baseColor.darker(0.4f) : activeScheme_.knobBorder));
-        g.drawEllipse(rcx, rcy, rSz, rSz, 1.0f);
+        if (!skeuoOn)
+        {
+            g.setColour(activeScheme_.wireframe ? (hasMorph ? baseColor : wireframeInk(m))
+                                                : (hasMorph ? baseColor.darker(0.4f) : activeScheme_.knobBorder));
+            g.drawEllipse(rcx, rcy, rSz, rSz, 1.0f);
+        }
 
         // Travel-limit tick marks at -135° (7 o'clock) and +135° (5 o'clock)
         // Drawn OUTSIDE the knob circle, on the module background
@@ -1107,11 +1192,30 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
 
         // Grip indicator: knobGrip is a dark fill detail that disappears on an
         // unfilled wireframe knob, so use the bright module text colour there.
-        g.setColour(activeScheme_.wireframe ? wireframeInk(m)
-                                            : hasMorph ? contrastingInk(baseColor)
-                                                       : activeScheme_.knobGrip);
-        g.drawLine(centerX + sinA * innerR, centerY - cosA * innerR,
-                   centerX + sinA * outerR, centerY - cosA * outerR, 1.5f);
+        if (skeuoOn && activeScheme_.knobStyle > 0)
+        {
+            skeuo::drawMoogPointer(g, centerX, centerY, radius, knobAngle, activeScheme_.knobStyle);
+        }
+        else if (skeuoOn)
+        {
+            // Pointer on a shaded cap: ink chosen against the cap, over a soft
+            // shadow so it still reads on the bright side of the dome.
+            const auto ink = contrastingInk(activeScheme_.knobBase);
+            g.setColour(juce::Colours::black.withAlpha(0.25f));
+            g.drawLine(centerX + sinA * innerR + 0.6f, centerY - cosA * innerR + 0.8f,
+                       centerX + sinA * outerR + 0.6f, centerY - cosA * outerR + 0.8f, 2.0f);
+            g.setColour(ink);
+            g.drawLine(centerX + sinA * innerR, centerY - cosA * innerR,
+                       centerX + sinA * outerR, centerY - cosA * outerR, 1.8f);
+        }
+        else
+        {
+            g.setColour(activeScheme_.wireframe ? wireframeInk(m)
+                                                : hasMorph ? contrastingInk(baseColor)
+                                                           : activeScheme_.knobGrip);
+            g.drawLine(centerX + sinA * innerR, centerY - cosA * innerR,
+                       centerX + sinA * outerR, centerY - cosA * outerR, 1.5f);
+        }
 
         // Lock indicator — small padlock icon at bottom-right of knob
         if (param != nullptr && param->isLocked())
@@ -1901,6 +2005,8 @@ static void drawButtonIcon(juce::Graphics& g, const juce::String& iconName,
 
 void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme, juce::Colour moduleBg)
 {
+    const bool skeuoOn = activeScheme_.skeuomorphic && !activeScheme_.wireframe;
+
     for (auto& tb : theme.buttons)
     {
         float bx = static_cast<float>(bounds.getX() + tb.x);
@@ -1922,10 +2028,22 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
         // --- Increment buttons: draw arrow pairs ---
         if (tb.isIncrement)
         {
-            g.setColour(activeScheme_.incrementBg);
-            g.fillRect(bx, by, bw, bh);
-            g.setColour(hasMorph ? morphCol : activeScheme_.incrementBorder);
-            g.drawRect(bx, by, bw, bh, hasMorph ? 2.0f : 1.0f);
+            if (skeuoOn)
+            {
+                skeuo::drawRaisedPad(g, juce::Rectangle<float>(bx, by, bw, bh), activeScheme_.incrementBg);
+                if (hasMorph)
+                {
+                    g.setColour(morphCol);
+                    g.drawRect(bx, by, bw, bh, 2.0f);
+                }
+            }
+            else
+            {
+                g.setColour(activeScheme_.incrementBg);
+                g.fillRect(bx, by, bw, bh);
+                g.setColour(hasMorph ? morphCol : activeScheme_.incrementBorder);
+                g.drawRect(bx, by, bw, bh, hasMorph ? 2.0f : 1.0f);
+            }
 
             g.setColour(activeScheme_.incrementFg);
             float cx = bx + bw * 0.5f;
@@ -2003,8 +2121,18 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
                                     const juce::String& label, juce::Colour labelColour,
                                     const juce::String& iconRef = juce::String())
         {
-            // Fill
-            g.setColour(baseFill);
+            // Fill. Skeuomorphic: a soft vertical gradient, lit at the top when
+            // raised and shaded at the top when pressed in.
+            if (skeuoOn)
+            {
+                juce::ColourGradient face(pressed ? baseFill.darker(0.18f)   : baseFill.brighter(0.18f), sx, sy,
+                                          pressed ? baseFill.brighter(0.05f) : baseFill.darker(0.18f),   sx, sy + sh, false);
+                g.setGradientFill(face);
+            }
+            else
+            {
+                g.setColour(baseFill);
+            }
             g.fillRect(sx, sy, sw, sh);
 
             // Bevel edges: raised = light top/left, dark bottom/right; pressed = inverted
@@ -2172,6 +2300,8 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
 
 void PatchCanvas::paintSliders(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds, const ModuleTheme& theme)
 {
+    const bool skeuoOn = activeScheme_.skeuomorphic && !activeScheme_.wireframe;
+
     for (auto& ts : theme.sliders)
     {
         float sx = static_cast<float>(bounds.getX() + ts.x);
@@ -2179,13 +2309,21 @@ void PatchCanvas::paintSliders(juce::Graphics& g, const Module& m, juce::Rectang
         float sw = static_cast<float>(ts.width);
         float sh = static_cast<float>(ts.height);
 
-        // Track background
-        g.setColour(activeScheme_.resetBg);
-        g.fillRect(sx, sy, sw, sh);
+        if (skeuoOn)
+        {
+            skeuo::drawSliderTrack(g, juce::Rectangle<float>(sx, sy, sw, sh),
+                                   activeScheme_.resetBg, ts.orientation != "horizontal");
+        }
+        else
+        {
+            // Track background
+            g.setColour(activeScheme_.resetBg);
+            g.fillRect(sx, sy, sw, sh);
 
-        // Track border
-        g.setColour(activeScheme_.resetBorder);
-        g.drawRect(sx, sy, sw, sh, 1.0f);
+            // Track border
+            g.setColour(activeScheme_.resetBorder);
+            g.drawRect(sx, sy, sw, sh, 1.0f);
+        }
 
         // Get parameter value for grip position
         float normalized = 0.5f;
@@ -2201,20 +2339,27 @@ void PatchCanvas::paintSliders(juce::Graphics& g, const Module& m, juce::Rectang
         // Draw grip — morph-assigned sliders show the group color, like knobs
         int morphGroup = (param != nullptr) ? param->getMorphGroup() : -1;
         bool hasMorph = (morphGroup >= 0 && morphGroup < 4);
-        g.setColour(hasMorph ? activeScheme_.morphColor[morphGroup] : activeScheme_.resetText);
+        const juce::Colour gripCol = hasMorph ? activeScheme_.morphColor[morphGroup] : activeScheme_.resetText;
+        g.setColour(gripCol);
         bool vertical = (ts.orientation != "horizontal");
         if (vertical)
         {
             // Grip moves from bottom (0) to top (1)
             float gripH = 4.0f;
             float gripY = sy + sh - gripH - (sh - gripH) * normalized;
-            g.fillRect(sx + 1.0f, gripY, sw - 2.0f, gripH);
+            if (skeuoOn)
+                skeuo::drawSliderGrip(g, juce::Rectangle<float>(sx + 1.0f, gripY, sw - 2.0f, gripH), true, gripCol);
+            else
+                g.fillRect(sx + 1.0f, gripY, sw - 2.0f, gripH);
         }
         else
         {
             float gripW = 4.0f;
             float gripX = sx + (sw - gripW) * normalized;
-            g.fillRect(gripX, sy + 1.0f, gripW, sh - 2.0f);
+            if (skeuoOn)
+                skeuo::drawSliderGrip(g, juce::Rectangle<float>(gripX, sy + 1.0f, gripW, sh - 2.0f), false, gripCol);
+            else
+                g.fillRect(gripX, sy + 1.0f, gripW, sh - 2.0f);
         }
 
         // Lock indicator — small yellow dot at bottom-right corner
@@ -2239,19 +2384,36 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
         float renderH = juce::jmin(dh, 13.0f);
         float renderY = dy + (dh - renderH) * 0.5f;
 
-        if (!activeScheme_.wireframe)
-        {
-            g.setColour(activeScheme_.displayBg);
-            g.fillRect(dx, renderY, dw, renderH);
-        }
+        const bool glass = activeScheme_.skeuomorphic && !activeScheme_.wireframe;
 
-        // Inner-bevel border: darker on top/left, slightly lighter on bottom/right
-        g.setColour(activeScheme_.displayBorder);
-        g.drawLine(dx, renderY,           dx + dw, renderY,           1.0f);
-        g.drawLine(dx, renderY,           dx,       renderY + renderH, 1.0f);
-        g.setColour(activeScheme_.displayText);
-        g.drawLine(dx,       renderY + renderH, dx + dw, renderY + renderH, 1.0f);
-        g.drawLine(dx + dw,  renderY,           dx + dw, renderY + renderH, 1.0f);
+        if (glass)
+        {
+            // Recessed glass window; its bezel replaces the flat bevel lines.
+            // The bezel is drawn a pixel and a half outside the window, so it is
+            // clipped to the module: a window set against the edge must not
+            // spill over it.
+            g.saveState();
+            g.reduceClipRegion(bounds);
+            skeuo::drawDisplayGlass(g, juce::Rectangle<float>(dx, renderY, dw, renderH),
+                                    activeScheme_.displayBg);
+            g.restoreState();
+        }
+        else
+        {
+            if (!activeScheme_.wireframe)
+            {
+                g.setColour(activeScheme_.displayBg);
+                g.fillRect(dx, renderY, dw, renderH);
+            }
+
+            // Inner-bevel border: darker on top/left, slightly lighter on bottom/right
+            g.setColour(activeScheme_.displayBorder);
+            g.drawLine(dx, renderY,           dx + dw, renderY,           1.0f);
+            g.drawLine(dx, renderY,           dx,       renderY + renderH, 1.0f);
+            g.setColour(activeScheme_.displayText);
+            g.drawLine(dx,       renderY + renderH, dx + dw, renderY + renderH, 1.0f);
+            g.drawLine(dx + dw,  renderY,           dx + dw, renderY + renderH, 1.0f);
+        }
 
         // Value text
         auto* param = findParameter(m, td.componentId);
@@ -2292,7 +2454,35 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
         }
 
         // Partial format: draw ◄ ► arrow buttons below the display box
-        if (td.partialArrows)
+        const auto partial = td.partialArrows ? partialArrowRects(theme, td) : PartialArrowRects{};
+        if (td.partialArrows && partial.besideKnob)
+        {
+            // Two separate buttons either side of the tune knob (OscSineBank).
+            for (int side = 0; side < 2; ++side)
+            {
+                const auto r = (side == 0 ? partial.left : partial.right)
+                                   .translated(static_cast<float>(bounds.getX()), static_cast<float>(bounds.getY()));
+                if (glass)
+                {
+                    skeuo::drawRaisedPad(g, r, activeScheme_.resetBg);
+                }
+                else
+                {
+                    g.setColour(activeScheme_.resetBg);
+                    g.fillRect(r);
+                    g.setColour(activeScheme_.resetBorder);
+                    g.drawRect(r, 1.0f);
+                }
+
+                const float acx = r.getCentreX(), acy = r.getCentreY();
+                juce::Path tri;
+                if (side == 0) tri.addTriangle(acx - 2.5f, acy, acx + 2.0f, acy - 3.0f, acx + 2.0f, acy + 3.0f);
+                else           tri.addTriangle(acx + 2.5f, acy, acx - 2.0f, acy - 3.0f, acx - 2.0f, acy + 3.0f);
+                g.setColour(activeScheme_.resetText);
+                g.fillPath(tri);
+            }
+        }
+        else if (td.partialArrows)
         {
             float arrowY = renderY + renderH + 1.0f;
             float arrowH = 8.0f;
@@ -2420,6 +2610,13 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
     // added to remove, only cheaper per unit.
     const int ledBase   = slots != nullptr ? slots->lightBase : 0;
     const int meterBase = slots != nullptr ? slots->meterBase : 0;
+    const bool skeuoOn  = activeScheme_.skeuomorphic && !activeScheme_.wireframe;
+
+    // Hardware-look LEDs light green, as on the original editor's panels. A LED
+    // paired with a level meter (ledOnValue >= 0) is an overload indicator and
+    // keeps the theme's red.
+    const juce::Colour ledGreen    (0xff3fe64a);
+    const juce::Colour ledGreenOff = ledGreen.darker(0.85f);
 
     // Build map of meter vertical centers (for LED alignment) and meter index
     // per component-id. NOMAD's LightProcessor gives every meter/led-array
@@ -2489,6 +2686,12 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
                 float dx = lx + spacing * static_cast<float>(i) + (spacing - dotSize) * 0.5f;
                 float dy = ly + (lh - dotSize) * 0.5f;
                 bool on = (i == activeStep);
+                if (skeuoOn)
+                {
+                    skeuo::drawLed(g, juce::Rectangle<float>(dx, dy, dotSize, dotSize), on,
+                                   ledGreen, ledGreenOff);
+                    continue;
+                }
                 if (on)
                 {
                     g.setColour(activeScheme_.ledOn);
@@ -2533,6 +2736,15 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
                 ledOn = (ledIdx < 128) && (globalLightValues[ledIdx] > 0);
             }
 
+            if (skeuoOn)
+            {
+                const bool overload = (tl.ledOnValue >= 0);
+                skeuo::drawLed(g, juce::Rectangle<float>(lx, ly, lw, lh), ledOn,
+                               overload ? activeScheme_.ledOn  : ledGreen,
+                               overload ? activeScheme_.ledOff : ledGreenOff);
+                continue;
+            }
+
             if (ledOn)
             {
                 // On: bright red (clipping indicator)
@@ -2554,27 +2766,36 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
         {
             float ly = static_cast<float>(bounds.getY() + tl.y);
 
-            // Background
-            g.setColour(activeScheme_.meterBg);
-            g.fillRect(lx, ly, lw, lh);
-
             // Get meter value (0-127)
             int mIdx = meterGlobalIdx.count(tl.componentId) ? meterGlobalIdx[tl.componentId] : meterBase;
             int mVal = (mIdx < 128) ? globalMeterValues[mIdx] : 0;
 
-            if (mVal > 0)
+            if (skeuoOn)
             {
-                float fill = static_cast<float>(mVal) / 127.0f;
-                float barW = lw * fill;
+                // LED ladder instead of a solid bar.
+                skeuo::drawMeterLadder(g, juce::Rectangle<float>(lx, ly, lw, lh),
+                                       static_cast<float>(mVal) / 127.0f, activeScheme_.meterBg,
+                                       activeScheme_.meterLow, activeScheme_.meterMid, activeScheme_.meterHigh);
+            }
+            else
+            {
+                g.setColour(activeScheme_.meterBg);
+                g.fillRect(lx, ly, lw, lh);
 
-                // Colour: green → yellow → red based on level
-                juce::Colour barColour;
-                if (fill < 0.6f)       barColour = activeScheme_.meterLow;
-                else if (fill < 0.85f) barColour = activeScheme_.meterMid;
-                else                   barColour = activeScheme_.meterHigh;
+                if (mVal > 0)
+                {
+                    float fill = static_cast<float>(mVal) / 127.0f;
+                    float barW = lw * fill;
 
-                g.setColour(barColour);
-                g.fillRect(lx, ly, barW, lh);
+                    // Colour: green → yellow → red based on level
+                    juce::Colour barColour;
+                    if (fill < 0.6f)       barColour = activeScheme_.meterLow;
+                    else if (fill < 0.85f) barColour = activeScheme_.meterMid;
+                    else                   barColour = activeScheme_.meterHigh;
+
+                    g.setColour(barColour);
+                    g.fillRect(lx, ly, barW, lh);
+                }
             }
 
             // dB scale below meter bar — only between meters (not after the last one)
@@ -4130,6 +4351,7 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
     };
 
     const auto clip = g.getClipBounds();
+    const bool skeuoOn = activeScheme_.skeuomorphic && !activeScheme_.wireframe;
 
     for (auto& conn : container.getConnections())
     {
@@ -4223,6 +4445,20 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
         else
         {
             path.lineTo(static_cast<float>(dstPos.x), static_cast<float>(dstPos.y));
+        }
+
+        if (skeuoOn)
+        {
+            // A rounded cord with a plug head at each end. Thick and thin still
+            // follow the cable style setting.
+            // The cord takes its colour from the signal type, the same source the
+            // jack rings use, so a cable always matches the jack it plugs into.
+            // (The theme's own cable colours stay in use for the flat look.)
+            const auto cordCol = getSignalColour(conn.output->getDescriptor()->signalType);
+            skeuo::drawCord(g, path, cordCol, isThick ? 2.6f : 1.6f, cableOpacity);
+            skeuo::drawPlug(g, static_cast<float>(srcPos.x), static_cast<float>(srcPos.y), cableOpacity);
+            skeuo::drawPlug(g, static_cast<float>(dstPos.x), static_cast<float>(dstPos.y), cableOpacity);
+            continue;
         }
 
         // Dark outline for contrast, then colored cable on top

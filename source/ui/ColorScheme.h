@@ -115,6 +115,15 @@ struct ColorScheme
     // bodies, displays, icon boxes) are drawn as outlines only — set independently
     // of the theme palette (Editor Options toggle), not by the theme factories.
     bool wireframe = false;
+    // Skeuomorphic rendering: knobs and jacks drawn as hardware (recessed wells,
+    // domed caps, metal nuts) instead of flat discs. Like wireframe, a render
+    // style rather than a palette, so the theme factories leave it alone.
+    // Ignored while wireframe is on.
+    bool skeuomorphic = false;
+
+    // Knob look when skeuomorphic is on: 0 = domed cap in the theme's knob
+    // colour, 1 = Moog black, 2 = Moog modular aluminium.
+    int knobStyle = 2;   // set from EditorOptions by MainComponent
 };
 
 extern const ColorScheme kClassicTheme;

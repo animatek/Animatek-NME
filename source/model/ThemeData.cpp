@@ -246,6 +246,25 @@ void ThemeData::parseModule(const juce::XmlElement& moduleElem)
         // Silently skip: image
     }
 
+    // OscSineBank (m106): the layout puts the first column's ratio window and
+    // mute button flush against the module's left edge (x = 0), so they sit on
+    // the border. Bring them in a few pixels; the window gives up the same width
+    // on its left, so its right edge, and the gap to the next window, stay put.
+    if (theme.componentId == "m106")
+    {
+        constexpr int kEdge = 3;
+        for (auto& td : theme.textDisplays)
+            if (td.x < kEdge)
+            {
+                const int d = kEdge - td.x;
+                td.x += d;
+                td.width -= d;
+            }
+        for (auto& tb : theme.buttons)
+            if (tb.x < kEdge)
+                tb.x += kEdge - tb.x;
+    }
+
     themes[theme.componentId] = std::move(theme);
 }
 

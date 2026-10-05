@@ -1,6 +1,7 @@
 #include "PatchCanvasComponent.h"
 #include "QuickAddPopup.h"
 #include "KnobDrag.h"
+#include "PartialArrows.h"
 #include "../model/ModulePlacement.h"
 #include "../model/ModuleReplacement.h"
 #include "../model/KeyQuantScales.h"
@@ -1162,13 +1163,17 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 if (cd.type == "note-seq-editor")
                 {
                     constexpr int kSteps = 16;
-                    constexpr int kKeyWidth = 16;
-                    int rollX = cd.x + kKeyWidth;
-                    int rollW = juce::jmax(1, cd.width - kKeyWidth);
+                    // The 16 steps fill the display edge to edge, exactly as
+                    // paintCustomDisplays draws them (rollX = display left, rollW
+                    // = display width). A 16px piano-key strip used to sit on the
+                    // left of the roll; the drawing dropped it (issue #76) but
+                    // this hit test kept reserving it, so every step was picked
+                    // up to a full step to the left of where it is drawn, with
+                    // the error shrinking towards the right-hand end.
+                    int rollX = cd.x;
+                    int rollW = juce::jmax(1, cd.width);
                     int localX = juce::jlimit(0, rollW - 1, relPos.x - rollX);
                     int step = juce::jlimit(0, kSteps - 1, localX * kSteps / rollW);
-                    if (relPos.x < rollX)
-                        step = 0;
 
                     if (cd.noteStepIds[step].isEmpty())
                         return;
@@ -1297,16 +1302,12 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             {
                 if (!td.partialArrows) continue;
 
-                // Arrow row geometry (mirrors paintTextDisplays)
-                float dh      = static_cast<float>(td.height);
-                float renderH = juce::jmin(dh, 13.0f);
-                float renderY = td.y + (dh - renderH) * 0.5f;
-                float arrowY  = renderY + renderH + 1.0f;
-                float arrowH  = 8.0f;
-
-                juce::Rectangle<float> arrowRect(static_cast<float>(td.x), arrowY,
-                                                 static_cast<float>(td.width), arrowH);
-                if (!arrowRect.contains(relPos.toFloat())) continue;
+                // Arrow geometry comes from the helper the drawing uses, so what
+                // is drawn and what is clickable cannot drift apart.
+                const auto pa = partialArrowRects(*theme, td);
+                const bool onLeft  = pa.left.contains(relPos.toFloat());
+                const bool onRight = pa.right.contains(relPos.toFloat());
+                if (!onLeft && !onRight) continue;
 
                 auto* param     = findParameter(m, td.componentId);   // p2
                 // Fine detune: p3 on the slave oscillators, but the SineBank lays out
@@ -1321,7 +1322,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 static const int kNumSnaps = 11;
                 int val    = param->getValue();
                 int newVal = val;
-                bool goUp  = (relPos.x > td.x + td.width / 2);
+                bool goUp  = onRight;
 
                 if (goUp)
                 {

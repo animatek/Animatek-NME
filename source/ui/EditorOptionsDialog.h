@@ -19,6 +19,11 @@ struct EditorOptions
     // always work in one slot asked for (issue #59).
     bool        askSlotOnOpen  = true;
     bool        wireframe      = false; // outline-only module rendering (theme-independent)
+    // Hardware look: knobs, jacks, panels, displays and cables drawn as physical
+    // hardware instead of flat shapes. Theme-independent, like wireframe, and
+    // off by default so the canvas looks the way it always has until asked.
+    bool        hardwareLook   = false;
+    int         hardwareKnobStyle = 2;  // 0 domed cap, 1 Moog black, 2 Moog aluminium
     bool        animateTiling  = true;  // slide slot sub-windows to their new tiles
     // Borrow the synth's own display to name the dialog that is on screen, and
     // give the patch name back when it closes. Off by default: it writes to the
@@ -110,6 +115,9 @@ private:
     juce::Label    appearanceLabel { {}, "APPEARANCE" };
     juce::Label    themeLabel      { {}, "Theme" };
     juce::ComboBox themeSelector;
+    juce::ToggleButton hardwareLookToggle { "Hardware look  (skeuomorphic knobs, jacks, panels and cables)" };
+    juce::Label    knobStyleLabel { {}, "Knob style" };
+    juce::ComboBox knobStyleSelector;
 
     // Cable Style
     juce::Label    cableStyleLabel   { {}, "CABLE STYLE" };
