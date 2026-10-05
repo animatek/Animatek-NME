@@ -335,8 +335,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   connectionManager.setSynthSettingsCallback([this](const SynthSettings& settings) {
     cachedSynthSettings = settings;
     cachedSynthSettingsKnown = true;
-    if (!settings.name.empty())
+    if (!settings.name.empty()) {
       mainLayout->getHeaderBar().setSynthName(juce::String(settings.name));
+      mainLayout->getSlotBar().setSynthName(juce::String(settings.name));
+    }
     if (synthSettingsDialog != nullptr)
       synthSettingsDialog->setSettings(settings);
     if (pendingSynthSettingsDialogOpen)
@@ -3904,6 +3906,13 @@ void MainComponent::onConnectionStatusChanged(
     slotWindowsReconcileScheduled = false;
   }
   mainLayout->getStatusBar().setConnectionStatus(status.message, connected);
+  // The slot bar's name box is the synth's own name once its settings arrive.
+  if (!connected)
+    mainLayout->getSlotBar().setSynthName({});
+  else if (cachedSynthSettingsKnown && !cachedSynthSettings.name.empty())
+    mainLayout->getSlotBar().setSynthName(juce::String(cachedSynthSettings.name));
+  else
+    mainLayout->getSlotBar().setSynthName("Modular");
   mainLayout->getStatusBar().setSynthLink(
       SynthLink::describe(connected, connectionManager.getConnectedPortName()));
   menuItemsChanged(); // rebuild native macOS menu bar to update enabled states
@@ -5255,6 +5264,22 @@ void MainComponent::randomizeSlotParameters(int slot, PatchCanvasComponent& canv
 }
 
 void MainComponent::updateDspLoadDisplay() {
+  // The slot bar's bar is the whole synth's load: what its slots add up to.
+  {
+    double synthTotal = 0.0;
+    bool any = false;
+    for (int s = 0; s < numSlots; ++s) {
+      if (!slotPatches[s])
+        continue;
+      any = true;
+      for (auto* area : {&slotPatches[s]->getPolyVoiceArea(), &slotPatches[s]->getCommonArea()})
+        for (auto& mod : area->getModules())
+          if (mod && mod->getDescriptor())
+            synthTotal += mod->getDescriptor()->cycles;
+    }
+    mainLayout->getSlotBar().setLoad(any ? static_cast<float>(synthTotal / 100.0) : -1.0f);
+  }
+
   if (currentPatch() == nullptr) {
     mainLayout->getHeaderBar().setLoadValues(-1.0f, -1.0f);
     return;

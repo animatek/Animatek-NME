@@ -22,7 +22,7 @@ void SlotBar::timerCallback()
 {
     blinkPhase = !blinkPhase;
     for (int i = 0; i < numSlots; ++i)
-        repaint(ledBounds(i));
+        repaint(slotBounds[i]);
 }
 
 void SlotBar::setCurrentTab(int index)
@@ -67,131 +67,111 @@ void SlotBar::setSlotsEnabled(const std::array<bool, 4>& enabled)
         repaint();
 }
 
-juce::Rectangle<int> SlotBar::ledBounds(int slot) const
+void SlotBar::setSynthName(const juce::String& name)
 {
-    // Small round LED at the right edge of the slot row
-    auto bounds = slotBounds[slot];
-    return { bounds.getRight() - 16, bounds.getCentreY() - 5, 10, 10 };
+    if (synthName == name)
+        return;
+    synthName = name;
+    repaint(nameBounds);
+}
+
+void SlotBar::setLoad(float fraction)
+{
+    fraction = fraction < 0.0f ? -1.0f : juce::jlimit(0.0f, 1.0f, fraction);
+    if (juce::approximatelyEqual(loadFraction, fraction))
+        return;
+    loadFraction = fraction;
+    repaint(loadBounds);
 }
 
 void SlotBar::resized()
 {
-    auto area = getLocalBounds();
-    static constexpr int rowH = 24;
+    auto area = getLocalBounds().reduced(4, 4);
+    static constexpr int buttonW = 20;
     for (int i = 0; i < numSlots; ++i)
-        slotBounds[i] = area.removeFromTop(rowH);
-}
-
-void SlotBar::drawSlotIcon(juce::Graphics& g, juce::Rectangle<int> area, bool active)
-{
-    // Simple synth/keyboard icon
-    auto iconArea = area.toFloat().reduced(1.0f);
-    float x = iconArea.getX(), y = iconArea.getY();
-    float w = iconArea.getWidth(), h = iconArea.getHeight();
-
-    // Body
-    g.setColour(active ? juce::Colour(0xffcc3333) : AppTheme::palette().borderColor);
-    g.fillRoundedRectangle(x, y, w, h, 2.0f);
-
-    // Keys (bottom half)
-    float keyY = y + h * 0.55f;
-    float keyH = h * 0.35f;
-    int nKeys = 5;
-    float keyW = (w - 4.0f) / nKeys;
-    g.setColour(juce::Colours::white.withAlpha(active ? 0.9f : 0.5f));
-    for (int k = 0; k < nKeys; ++k)
-    {
-        float kx = x + 2.0f + k * keyW;
-        g.fillRect(kx + 0.5f, keyY, keyW - 1.0f, keyH);
-    }
-
-    // Knobs (top half)
-    float knobY = y + h * 0.15f;
-    float knobR = juce::jmin(keyW * 0.3f, h * 0.12f);
-    g.setColour(juce::Colours::white.withAlpha(active ? 0.7f : 0.35f));
-    for (int k = 0; k < 3; ++k)
-    {
-        float kx = x + w * 0.2f + k * w * 0.25f;
-        g.fillEllipse(kx - knobR, knobY - knobR, knobR * 2, knobR * 2);
-    }
+        slotBounds[i] = area.removeFromLeft(buttonW).withTrimmedRight(2);
+    area.removeFromLeft(2);
+    // The name takes about half of what is left, the load bar the rest.
+    nameBounds = area.removeFromLeft(juce::jmax(40, area.getWidth() * 11 / 20));
+    area.removeFromLeft(6);
+    loadBounds = area;
 }
 
 void SlotBar::paint(juce::Graphics& g)
 {
-    g.fillAll(AppTheme::palette().backgroundPanel);
+    const auto& pal = AppTheme::palette();
+    g.fillAll(pal.backgroundPanel);
 
     for (int i = 0; i < numSlots; ++i)
     {
-        auto bounds = slotBounds[i];
-        bool active = (i == activeIndex);
+        auto b = slotBounds[i].toFloat();
+        const bool active = (i == activeIndex);
 
-        // Background
-        if (active)
-            g.setColour(juce::Colour(0xff3a3a3a));
-        else
-            g.setColour(AppTheme::palette().backgroundPanel);
-        g.fillRect(bounds);
-
-        // Left border highlight for active
-        if (active)
-        {
-            g.setColour(AppTheme::palette().borderColor);
-            g.fillRect(bounds.getX(), bounds.getY(), 3, bounds.getHeight());
-        }
-
-        // A patch is being dragged over this row and would land here. Drawn over
-        // the row's own background and under everything else, so the letter and
-        // the name stay readable.
+        // A patch is being dragged over this button and would land in this slot.
         if (i == dropTargetSlot)
         {
-            g.setColour(AppTheme::palette().accentActive.withAlpha(0.25f));
-            g.fillRect(bounds);
-            g.setColour(AppTheme::palette().accentActive);
-            g.drawRect(bounds, 2);
+            g.setColour(pal.accentActive.withAlpha(0.35f));
+            g.fillRoundedRectangle(b.expanded(1.0f), 3.0f);
         }
 
-        // Icon (small fixed-size synth)
-        auto iconArea = bounds.removeFromLeft(20).reduced(2);
-        drawSlotIcon(g, iconArea, active);
+        g.setColour(active ? pal.buttonActive : pal.inputBackground);
+        g.fillRoundedRectangle(b, 3.0f);
+        g.setColour(i == dropTargetSlot ? pal.accentActive : pal.borderColor);
+        g.drawRoundedRectangle(b, 3.0f, 1.0f);
 
-        // Text: "A : PatchName" (leave room for the LED on the right, and for
-        // the LOCAL badge when this slot is not synced to the synth)
-        auto textArea = bounds.reduced(4, 0).withTrimmedRight(slotLocalFlags[i] ? 62 : 16);
-        juce::String label = juce::String(slotLetters[i]) + " : ";
-        if (slotNames[i].isNotEmpty())
-            label += slotNames[i];
+        g.setColour(active ? juce::Colours::white
+                           : slotEnabledFlags[i] ? pal.textPrimary : pal.textSecondary.withAlpha(0.5f));
+        g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
+        g.drawText(slotLetters[i], slotBounds[i], juce::Justification::centred);
 
-        g.setColour(active ? juce::Colours::white : AppTheme::palette().textSecondary);
-        g.setFont(AppTheme::uiFont(12.0f));
-        g.drawText(label, textArea, juce::Justification::centredLeft, true);
+        // The slot LED, as a bar under the letter: blinking = focused, fixed =
+        // enabled, off = disabled. Ctrl+click the button to toggle enable.
+        const bool ledOn = active ? blinkPhase : slotEnabledFlags[i];
+        g.setColour(ledOn ? juce::Colour(0xff44cc44) : juce::Colour(0xff2a3a2a));
+        g.fillRect(b.getX() + 3.0f, b.getBottom() - 4.0f, b.getWidth() - 6.0f, 2.0f);
 
-        // "LOCAL" badge: this slot's editor patch is not known to match the
-        // synth (loaded Local, or edited/loaded while disconnected).
+        // "LOCAL": this slot's editor patch is not known to match the synth
+        // (loaded Local, or edited/loaded while disconnected).
         if (slotLocalFlags[i])
         {
-            auto row = slotBounds[i];
-            juce::Rectangle<int> badge(row.getRight() - 16 - 44, row.getCentreY() - 8, 42, 16);
             g.setColour(juce::Colour(0xffd08a2c));
-            g.fillRoundedRectangle(badge.toFloat(), 3.0f);
-            g.setColour(juce::Colours::black);
-            g.setFont(AppTheme::uiFont(9.0f).withStyle("Bold"));
-            g.drawText("LOCAL", badge, juce::Justification::centred);
+            g.fillEllipse(b.getRight() - 6.0f, b.getY() + 1.0f, 5.0f, 5.0f);
         }
+    }
 
-        // Slot LED, mirroring the hardware: blinking = focused, fixed =
-        // enabled, off = disabled. Ctrl+click the row to toggle enable.
-        auto led = ledBounds(i).toFloat();
-        bool ledOn = active ? blinkPhase : slotEnabledFlags[i];
-        g.setColour(ledOn ? juce::Colour(0xff44cc44) : juce::Colour(0xff2a3a2a));
-        g.fillEllipse(led);
-        g.setColour(AppTheme::palette().borderColor);
-        g.drawEllipse(led, 1.0f);
+    // The synth's name: dark when it is the synth being edited, as in the original.
+    auto name = nameBounds.toFloat();
+    const bool hasSynth = synthName.isNotEmpty();
+    g.setColour(hasSynth ? juce::Colour(0xff3a2f7a) : pal.inputBackground);
+    g.fillRoundedRectangle(name, 2.0f);
+    g.setColour(pal.borderColor);
+    g.drawRoundedRectangle(name, 2.0f, 1.0f);
+    g.setColour(hasSynth ? juce::Colours::white : pal.textSecondary);
+    g.setFont(AppTheme::uiFont(12.0f));
+    g.drawText(hasSynth ? synthName : "No synth", nameBounds.reduced(3, 0),
+               juce::Justification::centred, true);
 
-        // Bottom separator
-        g.setColour(AppTheme::palette().buttonActive);
-        g.drawHorizontalLine(slotBounds[i].getBottom() - 1,
-                             static_cast<float>(slotBounds[i].getX()),
-                             static_cast<float>(slotBounds[i].getRight()));
+    // The load: a green-to-red track, darkened past the current value.
+    if (loadBounds.getWidth() > 8)
+    {
+        auto bar = loadBounds.toFloat().withSizeKeepingCentre(static_cast<float>(loadBounds.getWidth()), 7.0f);
+        g.setGradientFill(juce::ColourGradient(juce::Colour(0xff2fae3f), bar.getX(), 0.0f,
+                                               juce::Colour(0xffc8352b), bar.getRight(), 0.0f, false));
+        g.fillRoundedRectangle(bar, 2.0f);
+        if (loadFraction >= 0.0f)
+        {
+            auto rest = bar;
+            rest.removeFromLeft(bar.getWidth() * loadFraction);
+            g.setColour(pal.backgroundPanel.darker(0.6f).withAlpha(0.85f));
+            g.fillRect(rest);
+        }
+        else
+        {
+            g.setColour(pal.backgroundPanel.withAlpha(0.7f));
+            g.fillRoundedRectangle(bar, 2.0f);
+        }
+        g.setColour(pal.borderColor);
+        g.drawRoundedRectangle(bar, 2.0f, 1.0f);
     }
 }
 

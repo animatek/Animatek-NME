@@ -12,10 +12,13 @@
 #include "ModuleIconBar.h"
 #include "../model/ModuleDescriptions.h"
 
-// Custom slot selector panel — shows 4 slot buttons with patch names.
-// Mirrors the hardware slot LEDs: fixed = enabled, blinking = focused,
-// off = disabled. Ctrl+click a row to toggle that slot's enable state
-// (like the original 3.3 editor); plain click moves focus.
+// Slot selector panel, laid out like a row of the original editor's toolbar: the
+// A B C D buttons of the synth, its name in a box (dark when it is the one being
+// edited) and its DSP load as a bar. One synth for now; the row is built to be
+// repeated for up to four (#88). Mirrors the hardware slot LEDs on the buttons:
+// fixed = enabled, blinking = focused, off = disabled. Ctrl+click a button to
+// toggle that slot's enable state (like the original 3.3 editor); plain click
+// moves focus.
 class SlotBar : public juce::Component,
                 public juce::DragAndDropTarget,
                 private juce::Timer
@@ -45,6 +48,8 @@ public:
     void setSlotName(int slot, const juce::String& patchName);
     void setSlotsEnabled(const std::array<bool, 4>& enabled);
     void setSlotLocal(int slot, bool local);  // show a "LOCAL" (not-synced) badge
+    void setSynthName(const juce::String& name);  // the name box; empty = no synth
+    void setLoad(float fraction);                 // the DSP bar, 0..1; negative = unknown
 
     std::function<void(int)> onSlotChanged;
     std::function<void(int)> onSlotEnableToggled;  // Ctrl+click on this slot
@@ -60,7 +65,10 @@ private:
     bool slotLocalFlags[numSlots] = {};
     bool blinkPhase = false;
     juce::String slotNames[numSlots];  // patch names per slot
-    juce::Rectangle<int> slotBounds[numSlots];
+    juce::Rectangle<int> slotBounds[numSlots];   // the A B C D buttons
+    juce::Rectangle<int> nameBounds, loadBounds;
+    juce::String synthName;
+    float loadFraction = -1.0f;
     // Row a patch is currently being dragged over, -1 when none. Painted so the
     // drop says where it is going before it happens.
     int dropTargetSlot = -1;
@@ -69,8 +77,6 @@ private:
 
     static constexpr const char* slotLetters[] = { "A", "B", "C", "D" };
 
-    // Keyboard icon SVG path (simplified synth icon)
-    void drawSlotIcon(juce::Graphics& g, juce::Rectangle<int> area, bool active);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SlotBar)
 };
@@ -192,7 +198,7 @@ private:
     int  savedRightWidth   = 220;
 
     static constexpr int statusBarHeight = 24;
-    static constexpr int slotBarHeight   = 100;  // 4 rows × 25px
+    static constexpr int slotBarHeight   = 30;   // one synth row
     static constexpr int toolbarHeight   = 28;
     static constexpr int headerBarHeight = 48;
 
