@@ -236,8 +236,8 @@ private:
     // After that the windows are the user's to open and close; the enable mask
     // is a single slot most of the time and changes on every slot press, so
     // following it live would keep closing everything but one.
-    void scheduleSlotWindowReconcile();
-    void reconcileSlotWindowsWithSynth(const std::array<bool, 4>& enabled);
+    void scheduleSlotWindowReconcile(int synth);
+    void reconcileSlotWindowsWithSynth(int synth, const std::array<bool, 4>& enabled);
     // Starts true: the constructor opens a slot before restoreMdiLayout() runs,
     // and that fires onLayoutChanged, which would save the default layout over
     // the stored one before it was ever read. Cleared when restore finishes.
@@ -441,7 +441,7 @@ private:
     int  synthSlotGeneration = 0;
     bool inSlotFocusChange = false;   // switchToSlot -> focusSlot -> onSlotFocused
     void updateDspLoadDisplay();
-  float synthDspLoad() const;
+  float synthDspLoad(int synth) const;
 
     // Module presets. wirePresetCallbacks() serves both the main window's
     // inspector and a slot window's, since the two are the same class driving

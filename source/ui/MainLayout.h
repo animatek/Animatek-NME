@@ -11,6 +11,7 @@
 #include "PresetBrowserWindow.h"
 #include "ModuleIconBar.h"
 #include "../model/ModuleDescriptions.h"
+#include "../midi/SynthHub.h"
 
 // Slot selector panel, laid out like a row of the original editor's toolbar: the
 // A B C D buttons of the synth, its name in a box (dark when it is the one being
@@ -46,13 +47,13 @@ public:
     void setCurrentTab(int index);
     int  getCurrentTabIndex() const { return activeIndex; }
     void setSlotName(int slot, const juce::String& patchName);
-    void setSlotsEnabled(const std::array<bool, 4>& enabled);
+    void setSlotsEnabled(int synth, const std::array<bool, 4>& enabled);
     void setSlotLocal(int slot, bool local);  // show a "LOCAL" (not-synced) badge
-    void setSynthName(const juce::String& name);  // the name box; empty = no synth
-    void setLoad(float fraction);                 // the DSP bar, 0..1; negative = unknown
+    void setSynthName(int synth, const juce::String& name);  // the name box; empty = no synth
+    void setLoad(int synth, float fraction);                 // the DSP bar, 0..1; negative = unknown
     // Asked for the load on every blink of the LEDs, so the bar follows edits
     // without every place that changes a patch having to say so.
-    std::function<float()> loadProvider;
+    std::function<float(int synth)> loadProvider;
 
     std::function<void(int)> onSlotChanged;
     std::function<void(int)> onSlotEnableToggled;  // Ctrl+click on this slot
@@ -62,23 +63,25 @@ private:
     void timerCallback() override;
     juce::Rectangle<int> ledBounds(int slot) const;
 
-    static constexpr int numSlots = 4;
+    // One row per synth, each with its own four slot buttons: slots are numbered
+    // globally (synth * 4 + slot), as everywhere else in the editor.
+    static constexpr int numSlots = kTotalSlots;
     int activeIndex = 0;
     bool slotEnabledFlags[numSlots] = {};
     bool slotLocalFlags[numSlots] = {};
     bool blinkPhase = false;
     juce::String slotNames[numSlots];  // patch names per slot
     juce::Rectangle<int> slotBounds[numSlots];   // the A B C D buttons
-    juce::Rectangle<int> nameBounds, loadBounds;
-    juce::String synthName;
-    float loadFraction = -1.0f;
+    juce::Rectangle<int> nameBounds[kMaxSynths], loadBounds[kMaxSynths];
+    juce::String synthName[kMaxSynths];
+    float loadFraction[kMaxSynths];
     // Row a patch is currently being dragged over, -1 when none. Painted so the
     // drop says where it is going before it happens.
     int dropTargetSlot = -1;
     void updateDropTarget(int slot);
     int slotAt(juce::Point<int> pos) const;
 
-    static constexpr const char* slotLetters[] = { "A", "B", "C", "D" };
+    static constexpr const char* slotLetters[] = { "A", "B", "C", "D" };   // the letters of the buttons of every row
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SlotBar)
@@ -194,7 +197,7 @@ private:
     int  savedRightWidth   = 220;
 
     static constexpr int statusBarHeight = 24;
-    static constexpr int slotBarHeight   = 30;   // one synth row
+    static constexpr int slotBarHeight   = 30 * kMaxSynths;   // one row per synth
     static constexpr int headerBarHeight = 48;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainLayout)

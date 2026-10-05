@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 #include "SlotView.h"
+#include "../midi/SynthHub.h"
 
 // The main window's central work area: the four slots as internal sub-windows,
 // the way the original Clavia editor and Nomad arranged patches (docs/MDI_PLAN.md).
@@ -16,7 +17,8 @@
 class SlotMdiArea : public juce::MultiDocumentPanel
 {
 public:
-    static constexpr int numSlots = 4;
+    // Every slot of every synth, numbered globally (synth * 4 + slot).
+    static constexpr int numSlots = kTotalSlots;
 
     SlotMdiArea();
     ~SlotMdiArea() override;
@@ -188,7 +190,16 @@ private:
     static constexpr int animationMs = 120;
     juce::Rectangle<int> lastArea;
     // A permutation of slot indices: tileOrder[i] is the slot in tile i.
-    std::array<int, numSlots> tileOrder { { 0, 1, 2, 3 } };
+    std::array<int, numSlots> tileOrder = makeIdentityOrder();
+    static std::array<int, numSlots> makeIdentityOrder()
+    {
+        std::array<int, numSlots> o {};
+        for (int i = 0; i < numSlots; ++i) o[(size_t) i] = i;
+        return o;
+    }
+    // Columns of the tile grid for n open windows: side by side up to three, then a
+    // square-ish grid (four is 2x2, as it always was).
+    static int gridColumns(int n);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SlotMdiArea)
 };

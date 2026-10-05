@@ -27,6 +27,22 @@ namespace SynthSlot
     constexpr int localOf (int slot)  { return slot % kSlotsPerSynth; }
     constexpr int global (int synth, int local) { return synth * kSlotsPerSynth + local; }
     constexpr bool valid (int slot)   { return slot >= 0 && slot < kTotalSlots; }
+
+    // How a slot is named to the user: "A" with one synth, "1A" .. "2D" with several
+    // (the original editor says "Port 2, Slot C").
+    inline juce::String label (int slot)
+    {
+        const auto letter = juce::String::charToString (static_cast<juce::juce_wchar> ('A' + localOf (slot)));
+        return kMaxSynths == 1 ? letter : juce::String (synthOf (slot) + 1) + letter;
+    }
+
+    // The same, for settings keys: the first synth keeps the bare letter, so the layout
+    // saved before there were several synths is still found.
+    inline juce::String key (int slot)
+    {
+        const auto letter = juce::String::charToString (static_cast<juce::juce_wchar> ('A' + localOf (slot)));
+        return synthOf (slot) == 0 ? letter : juce::String (synthOf (slot) + 1) + letter;
+    }
 }
 
 class SynthHub
