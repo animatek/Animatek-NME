@@ -2845,8 +2845,10 @@ void MainComponent::showThemeEditor() {
       applyUiTheme(idx, true);
   };
   themeEditorWindow->onClosed = [this] {
-    // Closing without saving puts the chosen theme back.
-    juce::MessageManager::callAsync([safe = juce::Component::SafePointer<MainComponent>(this)] {
+    // Closing without saving puts the chosen theme back. The pointer is made out
+    // here: MSVC reads `this` inside an init-capture as the lambda itself.
+    juce::Component::SafePointer<MainComponent> safe(this);
+    juce::MessageManager::callAsync([safe] {
       if (safe == nullptr) return;
       safe->themeEditorWindow.reset();
       safe->applyUiTheme(safe->editorOptions.uiThemeIndex, false);
