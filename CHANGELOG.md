@@ -13,8 +13,9 @@
   (click its name to edit that synth), the patch windows are titled "Port 2, Slot C", the tiling is a grid
   from four windows up, and the saved ports of the first synth keep their old settings keys. The MCP bridge
   takes an optional `port` (1-based) on every slot tool. Slot sets, the bank browser and the bank transfers
-  follow the synth being edited. Constants: `kMaxSynths` (2 for now; the structure is meant for more, the
-  emulator allows many) in `source/midi/SynthHub.h`.
+  follow the synth being edited. Four ports, as in the original editor: the number is `kMaxSynths` in
+  `source/midi/SynthHub.h`. The "show/hide slot" menu ids moved to 1000+ (they overlapped the theme
+  list's 200+), and the window order is saved in hexadecimal so sixteen slots fit.
 
 ## 0.20.0 — 2026-10-05
 

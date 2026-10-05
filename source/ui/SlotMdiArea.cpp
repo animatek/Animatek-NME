@@ -669,7 +669,7 @@ juce::String SlotMdiArea::getTileOrderString() const
 {
     juce::String out;
     for (int slot : tileOrder)
-        out += juce::String(slot);
+        out += juce::String::toHexString(slot);   // one character each, up to 16 slots
     return out;
 }
 
@@ -684,7 +684,7 @@ void SlotMdiArea::setTileOrderString(const juce::String& order)
     bool seen[numSlots] = {};
     for (int i = 0; i < numSlots; ++i)
     {
-        const int slot = order[i] - '0';
+        const int slot = juce::CharacterFunctions::getHexDigitValue(order[i]);
         if (slot < 0 || slot >= numSlots || seen[slot])
             return;
         seen[slot] = true;

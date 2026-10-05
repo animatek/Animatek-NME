@@ -26,6 +26,9 @@
 #include <set>
 #include <climits>
 
+// Menu ids for "show/hide slot": clear of the 200+ range the theme list takes.
+static constexpr int kSlotMenuIdBase = 1000;
+
 // Port 1 keeps the settings keys it always had, so an upgrade finds its saved ports;
 // the others carry their number.
 static juce::String portKey(const char* base, int synth) {
@@ -1431,7 +1434,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
         auto letter = SynthSlot::label(i);
         auto name = slotPatches[i] ? slotPatches[i]->getName() : juce::String("empty");
         // Ctrl+Shift+1..4 are the active synth's four slots; the others have the menu.
-        addShortcutItem(slotMenu, 200 + i, "Slot " + letter + " - " + name,
+        addShortcutItem(slotMenu, kSlotMenuIdBase + i, "Slot " + letter + " - " + name,
                         SynthSlot::synthOf(i) == synthHub.activeSynth()
                             ? NME_SLOT_TOGGLE_CHORD + juce::String(SynthSlot::localOf(i) + 1)
                             : juce::String(),
@@ -1754,9 +1757,6 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 84:  // SysEx Monitor
     toggleSysexMonitor();
     break;
-  case 200: case 201: case 202: case 203: case 204: case 205: case 206: case 207:  // show/hide a slot
-    toggleSlotOpen(menuItemID - 200);
-    break;
   case 94:  // Tile Slots
     mainLayout->getPatchArea().retile();
     mainLayout->getStatusBar().showMessage("Slots tiled", 2000);
@@ -1830,7 +1830,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
 
   default:
-    if (menuItemID >= 200 && menuItemID < 200 + ThemeRegistry::count())
+    if (menuItemID >= kSlotMenuIdBase && menuItemID < kSlotMenuIdBase + numSlots)
+      toggleSlotOpen(menuItemID - kSlotMenuIdBase);   // show/hide a slot
+    else if (menuItemID >= 200 && menuItemID < 200 + ThemeRegistry::count())
       applyUiTheme(menuItemID - 200, true);
     break;
   }
@@ -3208,7 +3210,7 @@ void MainComponent::restoreMdiLayout() {
   {
     juce::String identity;
     for (int i = 0; i < numSlots; ++i)
-      identity += juce::String(i);
+      identity += juce::String::toHexString(i);
     area.setTileOrderString(settings->getValue("mdiTileOrder", identity));
   }
 

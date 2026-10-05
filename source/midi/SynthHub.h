@@ -18,7 +18,7 @@
 // patch list, the keyboard). There is deliberately no slot-less isConnected() or
 // sendRawSysEx(): with two synths those are the calls that would reach the wrong one.
 constexpr int kSlotsPerSynth = 4;
-constexpr int kMaxSynths = 2;   // 2, then 4 or more (G1-Emu allows many instances)
+constexpr int kMaxSynths = 4;   // 2, then 4 or more (G1-Emu allows many instances)
 constexpr int kTotalSlots = kSlotsPerSynth * kMaxSynths;
 
 namespace SynthSlot
