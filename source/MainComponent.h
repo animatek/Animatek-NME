@@ -425,6 +425,7 @@ private:
     int  synthSlotGeneration = 0;
     bool inSlotFocusChange = false;   // switchToSlot -> focusSlot -> onSlotFocused
     void updateDspLoadDisplay();
+  float synthDspLoad() const;
 
     // Module presets. wirePresetCallbacks() serves both the main window's
     // inspector and a slot window's, since the two are the same class driving

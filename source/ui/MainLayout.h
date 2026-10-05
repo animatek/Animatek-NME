@@ -50,6 +50,9 @@ public:
     void setSlotLocal(int slot, bool local);  // show a "LOCAL" (not-synced) badge
     void setSynthName(const juce::String& name);  // the name box; empty = no synth
     void setLoad(float fraction);                 // the DSP bar, 0..1; negative = unknown
+    // Asked for the load on every blink of the LEDs, so the bar follows edits
+    // without every place that changes a patch having to say so.
+    std::function<float()> loadProvider;
 
     std::function<void(int)> onSlotChanged;
     std::function<void(int)> onSlotEnableToggled;  // Ctrl+click on this slot

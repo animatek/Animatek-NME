@@ -21,6 +21,8 @@ SlotBar::~SlotBar()
 void SlotBar::timerCallback()
 {
     blinkPhase = !blinkPhase;
+    if (loadProvider)
+        setLoad(loadProvider());
     for (int i = 0; i < numSlots; ++i)
         repaint(slotBounds[i]);
 }
@@ -170,8 +172,19 @@ void SlotBar::paint(juce::Graphics& g)
             g.setColour(pal.backgroundPanel.withAlpha(0.7f));
             g.fillRoundedRectangle(bar, 2.0f);
         }
+        if (loadFraction >= 0.0f)
+        {
+            const float x = bar.getX() + bar.getWidth() * loadFraction;
+            g.setColour(juce::Colours::white);
+            g.fillRect(juce::jlimit(bar.getX(), bar.getRight() - 2.0f, x - 1.0f), bar.getY() - 2.0f, 2.0f, bar.getHeight() + 4.0f);
+        }
         g.setColour(pal.borderColor);
         g.drawRoundedRectangle(bar, 2.0f, 1.0f);
+        g.setColour(pal.textSecondary);
+        g.setFont(AppTheme::uiFont(9.0f));
+        g.drawText(loadFraction >= 0.0f ? juce::String(juce::roundToInt(loadFraction * 100.0f)) + "%" : "--",
+                   loadBounds.withTrimmedTop(loadBounds.getCentreY() + 5 - loadBounds.getY()),
+                   juce::Justification::centred, false);
     }
 }
 

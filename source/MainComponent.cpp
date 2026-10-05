@@ -364,6 +364,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // The Disk browser's patches drop the same way, and land in the same places.
   // No slot chooser on this path, unlike File > Open: the drop already named the
   // slot, and asking again would be asking twice.
+  mainLayout->getSlotBar().loadProvider = [this] { return synthDspLoad(); };
   mainLayout->getSlotBar().onPatchDroppedOnSlot =
       [this](int section, int position, int slot) {
     loadBankPatchIntoSlot(section, position, slot);
@@ -5263,22 +5264,25 @@ void MainComponent::randomizeSlotParameters(int slot, PatchCanvasComponent& canv
                              : juce::String()), 3000);
 }
 
-void MainComponent::updateDspLoadDisplay() {
-  // The slot bar's bar is the whole synth's load: what its slots add up to.
-  {
-    double synthTotal = 0.0;
-    bool any = false;
-    for (int s = 0; s < numSlots; ++s) {
-      if (!slotPatches[s])
-        continue;
-      any = true;
-      for (auto* area : {&slotPatches[s]->getPolyVoiceArea(), &slotPatches[s]->getCommonArea()})
-        for (auto& mod : area->getModules())
-          if (mod && mod->getDescriptor())
-            synthTotal += mod->getDescriptor()->cycles;
-    }
-    mainLayout->getSlotBar().setLoad(any ? static_cast<float>(synthTotal / 100.0) : -1.0f);
+// What the slots add up to, as a fraction of one DSP (module cycles are percentages);
+// negative when no slot holds a patch.
+float MainComponent::synthDspLoad() const {
+  double total = 0.0;
+  bool any = false;
+  for (int s = 0; s < numSlots; ++s) {
+    if (!slotPatches[s])
+      continue;
+    any = true;
+    for (auto* area : {&slotPatches[s]->getPolyVoiceArea(), &slotPatches[s]->getCommonArea()})
+      for (auto& mod : area->getModules())
+        if (mod && mod->getDescriptor())
+          total += mod->getDescriptor()->cycles;
   }
+  return any ? static_cast<float>(total / 100.0) : -1.0f;
+}
+
+void MainComponent::updateDspLoadDisplay() {
+  mainLayout->getSlotBar().setLoad(synthDspLoad());
 
   if (currentPatch() == nullptr) {
     mainLayout->getHeaderBar().setLoadValues(-1.0f, -1.0f);
