@@ -116,7 +116,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       [this, s](const ConnectionManager::Status &status) {
         juce::Component::SafePointer<MainComponent> safeThis(this);
         juce::MessageManager::callAsync(
-            [safeThis, status]() { if (safeThis) safeThis->onConnectionStatusChanged(status); });
+            [safeThis, s, status]() { if (safeThis) safeThis->onConnectionStatusChanged(s, status); });
       }); });
 
   forEachSynth([this](int s, ConnectionManager& cm) { cm.setVoiceCountCallback([this, s](const int voiceCounts[4]) {
@@ -2715,9 +2715,9 @@ void MainComponent::showMidiSettingsDialog() {
   midiSettingsDialog = MidiSettingsDialog::show(
       this, activeState().lastInputId, activeState().lastOutputId, synthHub.active().getStatus(),
       [this](const juce::String &inputId, const juce::String &outputId) {
-        handleConnectionRequest(inputId, outputId);
+        handleConnectionRequest(synthHub.activeSynth(), inputId, outputId);
       },
-      [this]() { handleDisconnectionRequest(); });
+      [this]() { handleDisconnectionRequest(synthHub.activeSynth()); });
   announceDialogOnSynth(midiSettingsDialog.getComponent());
 }
 
@@ -3843,11 +3843,11 @@ void MainComponent::handleSlotFileCommand(int slot, const juce::String& cmd) {
     }
   }
 }
-void MainComponent::handleConnectionRequest(const juce::String &inputId,
+void MainComponent::handleConnectionRequest(int synth, const juce::String &inputId,
                                             const juce::String &outputId) {
-  activeState().lastInputId = inputId;
-  activeState().lastOutputId = outputId;
-  synthHub.active().connect(inputId, outputId);
+  synthState[static_cast<size_t>(synth)].lastInputId = inputId;
+  synthState[static_cast<size_t>(synth)].lastOutputId = outputId;
+  synthHub.synth(synth).connect(inputId, outputId);
 }
 
 bool MainComponent::refetchSlotFromSynth(int slot, juce::String &error) {
@@ -3867,22 +3867,25 @@ bool MainComponent::refetchSlotFromSynth(int slot, juce::String &error) {
   return true;
 }
 
-void MainComponent::handleDisconnectionRequest() {
+void MainComponent::handleDisconnectionRequest(int synth) {
   // Release any held virtual-keyboard notes while the port is still open
   if (keyboardFloaterWindow)
     keyboardFloaterWindow->allNotesOff();
-  synthHub.active().disconnect();
+  synthHub.synth(synth).disconnect();
 }
 
 void MainComponent::onConnectionStatusChanged(
-    const ConnectionManager::Status &status) {
+    int synth, const ConnectionManager::Status &status) {
   bool connected = (status.state == ConnectionManager::State::Connected);
+  auto& state = synthState[static_cast<size_t>(synth)];
+  const bool isActive = (synth == synthHub.activeSynth());
   {
     auto* info = new juce::DynamicObject();
     info->setProperty("state", connected ? "connected"
                                : status.state == ConnectionManager::State::Connecting ? "connecting"
                                                                                       : "disconnected");
     info->setProperty("message", status.message);
+    info->setProperty("synth", synth);
     mcpEventLog.record("connection", -1, juce::var(info));
   }
   // Without this the dialog kept the state it opened with: Connect stayed Connect
@@ -3892,40 +3895,44 @@ void MainComponent::onConnectionStatusChanged(
   if (!connected) {
     // Reconciling with the synth is a once-per-connection thing, so losing the
     // connection arms it again for the next one.
-    activeState().enableStateKnown = false;
+    state.enableStateKnown = false;
     // The next synth to answer may be a different one (a real G1, then G1-Emu):
     // its name must not be reported until its own settings arrive.
-    activeState().settingsKnown = false;
+    state.settingsKnown = false;
     // Nor can the slots be taken to match it. Until a slot is fetched again it
     // is LOCAL and sends nothing: switching from G1-Emu to a real G1 left slot A
     // showing the emulator's patch, not LOCAL and with its synchronizer on, for
     // the seconds before the fetch, so an edit then went to the real synth's
-    // own patch in that slot.
-    for (int s = 0; s < numSlots; ++s) {
+    // own patch in that slot. Only this synth's slots: the others are still talking.
+    for (int l = 0; l < kSlotsPerSynth; ++l) {
+      const int s = SynthSlot::global(synth, l);
       if (!slotPatches[s])
         continue;
       slotSynchronizers[s].reset();
       setSlotLocal(s, true);
     }
-    activeState().windowsReconciled = false;
-    activeState().windowsReconcileScheduled = false;
+    state.windowsReconciled = false;
+    state.windowsReconcileScheduled = false;
   }
+  if (!isActive)
+    return;   // what follows is the editor's own display: it shows the synth being edited
+
   mainLayout->getStatusBar().setConnectionStatus(status.message, connected);
   // The slot bar's name box is the synth's own name once its settings arrive.
   if (!connected)
     mainLayout->getSlotBar().setSynthName({});
-  else if (activeState().settingsKnown && !activeState().settings.name.empty())
-    mainLayout->getSlotBar().setSynthName(juce::String(activeState().settings.name));
+  else if (state.settingsKnown && !state.settings.name.empty())
+    mainLayout->getSlotBar().setSynthName(juce::String(state.settings.name));
   else
     mainLayout->getSlotBar().setSynthName("Modular");
   mainLayout->getStatusBar().setSynthLink(
-      SynthLink::describe(connected, synthHub.active().getConnectedPortName()));
+      SynthLink::describe(connected, synthHub.synth(synth).getConnectedPortName()));
   menuItemsChanged(); // rebuild native macOS menu bar to update enabled states
   updateStoreLocationDisplay();  // storing needs a synth to store into
 
   if (connected) {
     // Save settings on successful connection
-    saveMidiSettings(activeState().lastInputId, activeState().lastOutputId);
+    saveMidiSettings(synth, state.lastInputId, state.lastOutputId);
 
     // Patch loading is triggered by SlotActivated (sc=0x09) from synth,
     // with a fallback timer in ConnectionManager if no slot message arrives.
@@ -3936,37 +3943,51 @@ void MainComponent::onConnectionStatusChanged(
     // synth has, so it waits for the fetch that follows the connection.
     if (currentPatch() && !currentSynchronizer() && !slotIsLocal[activeSlot]) {
       currentSynchronizer() = std::make_unique<PatchSynchronizer>(
-          *currentPatch(), synthHub.active(), activeSlot);
+          *currentPatch(), synthHub.forSlot(activeSlot), SynthHub::local(activeSlot));
       std::cout << "[SYNC] Patch synchronizer enabled on connection" << std::endl;
     }
 
     // Show synth name in header bar (will be replaced by real name from SynthSettings later)
     mainLayout->getHeaderBar().setSynthName("Nord Modular");
 
-    synthHub.active().requestPatchList();
-    synthHub.active().requestSynthSettings();
+    synthHub.synth(synth).requestPatchList();
+    synthHub.synth(synth).requestSynthSettings();
   } else {
-    // Disable all synchronizers on disconnect
-    for (int s = 0; s < numSlots; ++s)
-      slotSynchronizers[s].reset();
-    // Visual reset of the virtual keyboard (sends are no-ops while disconnected)
+    // Disable the synchronizers of this synth's slots (done above); the keyboard
+    // and the header belong to the synth being edited.
     if (keyboardFloaterWindow)
       keyboardFloaterWindow->allNotesOff();
     mainLayout->getHeaderBar().setSynthName({});
     mainLayout->getHeaderBar().setSynthDspLoad(-1, -1, -1, -1);
-    std::cout << "[SYNC] All slot synchronizers disabled on disconnect" << std::endl;
+    std::cout << "[SYNC] Slot synchronizers of synth " << synth << " disabled on disconnect" << std::endl;
   }
 }
 
+// Port 1 keeps the settings keys it always had, so an upgrade finds its saved ports;
+// the others carry their number.
+static juce::String portKey(const char* base, int synth) {
+  return synth == 0 ? juce::String(base) : juce::String(base) + "_" + juce::String(synth + 1);
+}
+
 void MainComponent::attemptAutoConnect() {
+  for (int synth = 0; synth < kMaxSynths; ++synth)
+    attemptAutoConnect(synth);
+}
+
+void MainComponent::attemptAutoConnect(int synth) {
   auto *settings = appProperties.getUserSettings();
   if (settings == nullptr)
     return;
 
-  auto savedInputId = settings->getValue("midiInputDevice", "");
-  auto savedOutputId = settings->getValue("midiOutputDevice", "");
-  auto savedInputName = settings->getValue("midiInputName", "");
-  auto savedOutputName = settings->getValue("midiOutputName", "");
+  // A port the user switched off in MIDI Setup is not opened.
+  if (!settings->getBoolValue(portKey("midiEnabled", synth), true))
+    return;
+  auto& state = synthState[static_cast<size_t>(synth)];
+
+  auto savedInputId = settings->getValue(portKey("midiInputDevice", synth), "");
+  auto savedOutputId = settings->getValue(portKey("midiOutputDevice", synth), "");
+  auto savedInputName = settings->getValue(portKey("midiInputName", synth), "");
+  auto savedOutputName = settings->getValue(portKey("midiOutputName", synth), "");
 
   if (savedInputId.isEmpty() && savedInputName.isEmpty())
     return;
@@ -4014,19 +4035,19 @@ void MainComponent::attemptAutoConnect() {
   }
 
   if (resolvedInputId.isNotEmpty() && resolvedOutputId.isNotEmpty()) {
-    DBG("Auto-connecting: input=" + resolvedInputId +
+    DBG("Auto-connecting synth " + juce::String(synth + 1) + ": input=" + resolvedInputId +
         " output=" + resolvedOutputId);
-    activeState().lastInputId = resolvedInputId;
-    activeState().lastOutputId = resolvedOutputId;
-    synthHub.active().connect(resolvedInputId, resolvedOutputId);
+    state.lastInputId = resolvedInputId;
+    state.lastOutputId = resolvedOutputId;
+    synthHub.synth(synth).connect(resolvedInputId, resolvedOutputId);
   } else {
     // ALSA may not have enumerated devices yet — retry a few times
-    if (activeState().autoConnectRetries > 0 && (inputs.isEmpty() || outputs.isEmpty())) {
-      activeState().autoConnectRetries--;
+    if (state.autoConnectRetries > 0 && (inputs.isEmpty() || outputs.isEmpty())) {
+      state.autoConnectRetries--;
       DBG("No MIDI devices found yet, retrying in 500ms (" +
-          juce::String(activeState().autoConnectRetries) + " left)");
+          juce::String(state.autoConnectRetries) + " left)");
       juce::Component::SafePointer<MainComponent> safeThis(this);
-      juce::Timer::callAfterDelay(500, [safeThis]() { if (safeThis) safeThis->attemptAutoConnect(); });
+      juce::Timer::callAfterDelay(500, [safeThis, synth]() { if (safeThis) safeThis->attemptAutoConnect(synth); });
     } else {
       DBG("Saved MIDI ports not found (id=" + savedInputId + "/" +
           savedOutputId + " name=" + savedInputName + "/" + savedOutputName +
@@ -4035,30 +4056,30 @@ void MainComponent::attemptAutoConnect() {
   }
 }
 
-void MainComponent::saveMidiSettings(const juce::String &inputId,
+void MainComponent::saveMidiSettings(int synth, const juce::String &inputId,
                                      const juce::String &outputId) {
   auto *settings = appProperties.getUserSettings();
   if (settings == nullptr)
     return;
 
-  settings->setValue("midiInputDevice", inputId);
-  settings->setValue("midiOutputDevice", outputId);
+  settings->setValue(portKey("midiInputDevice", synth), inputId);
+  settings->setValue(portKey("midiOutputDevice", synth), outputId);
 
   // Also save device names for robust matching (ALSA identifiers can change
   // between reboots)
   for (auto &dev : ConnectionManager::getAvailableInputDevices())
     if (dev.identifier == inputId) {
-      settings->setValue("midiInputName", dev.name);
+      settings->setValue(portKey("midiInputName", synth), dev.name);
       break;
     }
   for (auto &dev : ConnectionManager::getAvailableOutputDevices())
     if (dev.identifier == outputId) {
-      settings->setValue("midiOutputName", dev.name);
+      settings->setValue(portKey("midiOutputName", synth), dev.name);
       break;
     }
 
   settings->saveIfNeeded();
-  DBG("Saved MIDI settings: input=" + inputId + " output=" + outputId);
+  DBG("Saved MIDI settings for synth " + juce::String(synth + 1) + ": input=" + inputId + " output=" + outputId);
 }
 
 // Self-owning beta warning popup using the same style as ModuleHelpPopup

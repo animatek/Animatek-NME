@@ -112,8 +112,8 @@ public:
     // The MCP bridge's connection tools, by the same paths as the MIDI settings
     // dialog (which also remembers the ports once the synth answers) and the
     // "reload the patch from the synth" command.
-    void connectToPorts(const juce::String& inputId, const juce::String& outputId) { handleConnectionRequest(inputId, outputId); }
-    void disconnectFromSynth() { handleDisconnectionRequest(); }
+    void connectToPorts(const juce::String& inputId, const juce::String& outputId) { handleConnectionRequest(synthHub.activeSynth(), inputId, outputId); }
+    void disconnectFromSynth() { handleDisconnectionRequest(synthHub.activeSynth()); }
     const juce::String& getLastInputId() const { return activeState().lastInputId; }
     const juce::String& getLastOutputId() const { return activeState().lastOutputId; }
     // Ask the synth for the patch in a slot again; the editor's copy of that slot is
@@ -328,11 +328,12 @@ private:
         parameters, so anything that moves a morph value has to say so here or
         those cells sit at whatever they last read (issue #64). */
     void refreshKnobFloater();
-    void handleConnectionRequest(const juce::String& inputId, const juce::String& outputId);
-    void handleDisconnectionRequest();
-    void onConnectionStatusChanged(const ConnectionManager::Status& status);
-    void attemptAutoConnect();
-    void saveMidiSettings(const juce::String& inputId, const juce::String& outputId);
+    void handleConnectionRequest(int synth, const juce::String& inputId, const juce::String& outputId);
+    void handleDisconnectionRequest(int synth);
+    void onConnectionStatusChanged(int synth, const ConnectionManager::Status& status);
+    void attemptAutoConnect();            // every port saved as enabled
+    void attemptAutoConnect(int synth);
+    void saveMidiSettings(int synth, const juce::String& inputId, const juce::String& outputId);
     void openURL(const juce::String& url);
 
     juce::ApplicationProperties& appProperties;
