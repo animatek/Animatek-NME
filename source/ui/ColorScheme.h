@@ -124,6 +124,11 @@ struct ColorScheme
     // Knob look when skeuomorphic is on: 0 = domed cap in the theme's knob
     // colour, 1 = black knurled, 2 = aluminium knurled.
     int knobStyle = 2;   // set from EditorOptions by MainComponent
+
+    // Flat knobs, as on the Animatek Rack modules (dark disc, value arc on the rim).
+    // A render style like the two above; ignored with skeuomorphic or wireframe on.
+    bool flatKnobs = false;
+    juce::Colour knobArc { 0xff2c7fff };   // the value arc of a flat knob: the theme's secondary colour
 };
 
 extern const ColorScheme kClassicTheme;

@@ -1120,7 +1120,22 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         // Wireframe: no fill — the ring (drawn below in baseColor) carries the
         // morph-group color so assignments stay readable.
         const bool skeuoOn = activeScheme_.skeuomorphic && !activeScheme_.wireframe;
-        if (skeuoOn)
+        const bool flatKnob = activeScheme_.flatKnobs && !skeuoOn && !activeScheme_.wireframe;
+        if (flatKnob)
+        {
+            float origin = 0.0f;
+            if (param != nullptr)
+            {
+                auto* pd = param->getDescriptor();
+                if (pd->minValue < 0 && pd->maxValue > 0)
+                    origin = static_cast<float>(-pd->minValue) / static_cast<float>(pd->maxValue - pd->minValue);
+            }
+            const auto flatCol = skeuo::flatKnobColours(activeScheme_.knobBase, activeScheme_.knobBorder,
+                                                        activeScheme_.knobGrip, activeScheme_.moduleText,
+                                                        activeScheme_.gridBackground, activeScheme_.knobArc);
+            skeuo::drawFlatKnob(g, centerX, centerY, radius, normalized, origin, hasMorph, baseColor, flatCol);
+        }
+        else if (skeuoOn)
         {
             // The cap keeps the theme's knob colour; the morph group colours
             // the collar round it, so assignments stay as readable as before.
@@ -1147,7 +1162,7 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
                 float toAngle   = (sweepRad >= 0.0f) ? knobAngle + sweepRad : knobAngle;
 
                 // Knurled knobs have a smaller top, so the sweep stays on it.
-                float r = radius * ((skeuoOn && activeScheme_.knobStyle > 0) ? 0.66f : 0.82f);
+                float r = radius * (flatKnob ? 0.78f : (skeuoOn && activeScheme_.knobStyle > 0) ? 0.66f : 0.82f);
                 juce::Path wedge;
                 wedge.addPieSegment(centerX - r, centerY - r, r * 2.0f, r * 2.0f,
                                     fromAngle, toAngle, 0.0f);
@@ -1161,7 +1176,7 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         // Outline — in wireframe a morph knob keeps its group hue, but a plain
         // knob uses the dark module ink (knobBase would vanish on a light-grey
         // canvas like Nord Classic); non-wireframe keeps the normal knob border.
-        if (!skeuoOn)
+        if (!skeuoOn && !flatKnob)
         {
             g.setColour(activeScheme_.wireframe ? (hasMorph ? baseColor : wireframeInk(m))
                                                 : (hasMorph ? baseColor.darker(0.4f) : activeScheme_.knobBorder));
@@ -1192,7 +1207,11 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
 
         // Grip indicator: knobGrip is a dark fill detail that disappears on an
         // unfilled wireframe knob, so use the bright module text colour there.
-        if (skeuoOn && activeScheme_.knobStyle > 0)
+        if (flatKnob)
+        {
+            // drawFlatKnob already drew its pointer.
+        }
+        else if (skeuoOn && activeScheme_.knobStyle > 0)
         {
             skeuo::drawKnurledPointer(g, centerX, centerY, radius, knobAngle, activeScheme_.knobStyle);
         }

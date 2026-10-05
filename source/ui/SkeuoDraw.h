@@ -402,6 +402,78 @@ namespace skeuo
         }
     }
 
+    // Flat knob, as on the Animatek Rack modules: a disc with a thin rim, a
+    // slightly different face and a pointer, with the value painted over the rim
+    // in the theme's secondary colour (bipolar ranges fill from the centre). A
+    // morph group colours the rim instead, so assignments stay readable.
+    struct FlatKnobColours { juce::Colour rimFill, rim, face, pointer, arc; };
+
+    // Colours from the theme: a dark disc on dark themes, a light one on light
+    // themes (told by the module text, which is dark on a light panel).
+    inline FlatKnobColours flatKnobColours(juce::Colour knobBase, juce::Colour knobBorder,
+                                           juce::Colour knobGrip, juce::Colour moduleText,
+                                           juce::Colour gridBackground, juce::Colour arc)
+    {
+        FlatKnobColours c;
+        c.arc = arc;
+        if (moduleText.getBrightness() < 0.5f)       // light theme
+        {
+            c.rimFill = knobBase.brighter(0.25f);
+            c.rim     = knobBorder;
+            c.face    = knobBase.brighter(0.55f);
+            c.pointer = knobGrip;
+        }
+        else                                         // dark theme
+        {
+            c.rimFill = gridBackground.darker(0.4f);
+            c.rim     = knobBase.interpolatedWith(c.rimFill, 0.55f);
+            c.face    = c.rimFill.interpolatedWith(knobBase, 0.16f);
+            c.pointer = juce::Colours::white.interpolatedWith(knobBase, 0.2f);
+        }
+        return c;
+    }
+
+    //   normalized  0 at the left stop, 1 at the right
+    //   origin      where the arc starts: 0, or the centre for a bipolar range
+    inline void drawFlatKnob(juce::Graphics& g, float cx, float cy, float radius,
+                             float normalized, float origin,
+                             bool hasMorph, juce::Colour morph, const FlatKnobColours& col)
+    {
+        const float pi = juce::MathConstants<float>::pi;
+        const float rimW = juce::jmax(1.2f, radius * 2.0f * 0.045f);
+        const float rimR = radius - rimW * 0.5f;
+
+        g.setColour(col.rimFill);
+        g.fillEllipse(cx - rimR, cy - rimR, rimR * 2.0f, rimR * 2.0f);
+        g.setColour(hasMorph ? morph : col.rim);
+        g.drawEllipse(cx - rimR, cy - rimR, rimR * 2.0f, rimR * 2.0f, rimW);
+        g.setColour(col.face);
+        g.fillEllipse(cx - radius * 0.8f, cy - radius * 0.8f, radius * 1.6f, radius * 1.6f);
+
+        // Value arc, clockwise from 12 o'clock: the stops sit at -135 and +135 degrees.
+        const float a0 = -0.75f * pi, sweep = 1.5f * pi;
+        const float t  = juce::jlimit(0.0f, 1.0f, normalized);
+        const float o  = juce::jlimit(0.0f, 1.0f, origin);
+        const float t0 = juce::jmin(o, t), t1 = juce::jmax(o, t);
+        if (t1 > t0 + 1.0e-4f)
+        {
+            juce::Path arc;
+            arc.addCentredArc(cx, cy, rimR, rimR, 0.0f, a0 + t0 * sweep, a0 + t1 * sweep, true);
+            g.setColour(col.arc);
+            g.strokePath(arc, juce::PathStrokeType(rimW + 0.6f, juce::PathStrokeType::curved,
+                                                   juce::PathStrokeType::butt));
+        }
+
+        // Pointer, wholly inside the face, round end included.
+        const float a  = a0 + t * sweep;
+        const float pw = juce::jmax(1.2f, radius * 2.0f * 0.055f);
+        const float pOut = radius * 0.8f - pw * 0.5f - juce::jmax(0.8f, radius * 2.0f * 0.04f);
+        const float pIn  = radius * 0.15f;
+        g.setColour(col.pointer);
+        g.drawLine(cx + std::sin(a) * pIn,  cy - std::cos(a) * pIn,
+                   cx + std::sin(a) * pOut, cy - std::cos(a) * pOut, pw);
+    }
+
     // Knurled-knob pointer: a bold line from near the centre out across the skirt.
     // White on the black knob, dark on the aluminium one.
     inline void drawKnurledPointer(juce::Graphics& g, float cx, float cy, float radius,

@@ -63,6 +63,7 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.wireframe      = props->getBoolValue  ("wireframe",      false);
     o.hardwareLook   = props->getBoolValue  ("hardwareLook",   false);
     o.hardwareKnobStyle = juce::jlimit (0, 2, props->getIntValue ("hardwareKnobStyle", 2));
+    o.flatKnobs      = props->getBoolValue  ("flatKnobs",      false);
     o.animateTiling  = props->getBoolValue  ("animateTiling",  true);
     o.synthDisplayCaptions = props->getBoolValue ("synthDisplayCaptions", false);
     o.seqNoteNames   = props->getBoolValue  ("seqNoteNames",   false);
@@ -89,6 +90,7 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("wireframe",       wireframe);
     props->setValue ("hardwareLook",    hardwareLook);
     props->setValue ("hardwareKnobStyle", hardwareKnobStyle);
+    props->setValue ("flatKnobs",       flatKnobs);
     props->setValue ("animateTiling",   animateTiling);
     props->setValue ("synthDisplayCaptions", synthDisplayCaptions);
     props->setValue ("seqNoteNames",    seqNoteNames);
@@ -170,6 +172,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
                                    "physical hardware. Works with any theme.");
     hardwareLookToggle.onClick = [this]() {
         knobStyleSelector.setEnabled (hardwareLookToggle.getToggleState());
+        flatKnobsToggle.setEnabled (! hardwareLookToggle.getToggleState());
     };
     addAndMakeVisible (hardwareLookToggle);
 
@@ -185,6 +188,14 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     knobStyleSelector.setColour (juce::ComboBox::arrowColourId,      p().textSecondary);
     addAndMakeVisible (knobStyleLabel);
     addAndMakeVisible (knobStyleSelector);
+
+    styleToggle (flatKnobsToggle);
+    flatKnobsToggle.setToggleState (options.flatKnobs, juce::dontSendNotification);
+    flatKnobsToggle.setEnabled (! options.hardwareLook);
+    flatKnobsToggle.setTooltip ("Knobs drawn like the ones on the Animatek modules for VCV Rack: "
+                                "a dark disc with a thin rim, a white pointer and the value "
+                                "painted in blue on the rim. Works with any theme.");
+    addAndMakeVisible (flatKnobsToggle);
     addAndMakeVisible (themeLabel);
     addAndMakeVisible (themeSelector);
 
@@ -414,6 +425,8 @@ int EditorOptionsDialog::layoutComponents (bool apply)
     y += rowH;
     place (knobStyleLabel,    pad + 8,  y, 80, rowH);
     place (knobStyleSelector, pad + 92, y, w - pad * 2 - 100, rowH);
+    y += rowH;
+    place (flatKnobsToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH + secGap;
 
     // ── Cable Style ──────────────────────────────────────────
@@ -557,6 +570,7 @@ void EditorOptionsDialog::apply()
     options.wireframe      = wireframeToggle  .getToggleState();
     options.hardwareLook   = hardwareLookToggle.getToggleState();
     options.hardwareKnobStyle = juce::jmax (0, knobStyleSelector.getSelectedId() - 1);
+    options.flatKnobs      = flatKnobsToggle.getToggleState();
     options.animateTiling  = animateTilingToggle.getToggleState();
     options.askSlotOnOpen  = askSlotToggle.getToggleState();
     options.synthDisplayCaptions = synthCaptionToggle.getToggleState();

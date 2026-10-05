@@ -127,6 +127,8 @@ Classic.
 `Ctrl+W` (macOS: `Cmd+Shift+W`) toggles a wireframe module style that works with every theme. `Ctrl+H` (macOS: `Cmd+Shift+H`)
 toggles the **hardware look**, which draws knobs, jacks, panels, displays and cables as physical
 hardware; Editor Options lets you pick the knob style (domed cap, black knurled, aluminium
-knurled). It also works with every theme. These
+knurled). It also works with every theme. Editor Options also has **Flat knobs**, a flatter knob (dark or light disc
+following the theme, with the value drawn as an arc on its rim) for when the hardware look is off. The **Animatek Rack**
+theme uses the colours of the Animatek modules for VCV Rack. These
 settings persist across sessions, as do the window size/position and floater
 layouts.
