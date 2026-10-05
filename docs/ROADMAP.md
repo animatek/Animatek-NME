@@ -24,6 +24,12 @@ definition; the new plan supplies its delivery and verification context.
 
 ## High Priority
 
+- [ ] **Community themes in the editor, planned for 0.21.0** (https://github.com/animatek/Animatek-NME/issues/91) — themes are
+  JSON files and now live in a public repo, [animatek/nme-themes](https://github.com/animatek/nme-themes)
+  (README, CC0, template; people add theirs by pull request). 0.21.0: View > Theme > Browse
+  community themes, from an `index.json` in that repo, on request only (never an automatic
+  network call), colours only, size capped.
+
 - [x] **Module Icon Bar** ([#17](https://github.com/animatek/Animatek-NME/issues/17)) —
   shipped as the module bar under the header: category tabs with the modules of the chosen
   category, dragged or clicked onto a patch area, hideable via View. Issue closed
