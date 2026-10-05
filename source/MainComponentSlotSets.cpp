@@ -33,7 +33,7 @@ void MainComponent::saveSlotSet() {
     return;
   }
 
-  const bool maskKnown = synthHub.active().isConnected() && slotEnableStateKnown;
+  const bool maskKnown = synthHub.active().isConnected() && activeState().enableStateKnown;
   std::array<SaveSlotSetDialog::SlotInfo, 4> info;
   for (int i = 0; i < numSlots; ++i) {
     auto& s = info[static_cast<size_t>(i)];
@@ -41,7 +41,7 @@ void MainComponent::saveSlotSet() {
     if (s.hasPatch)
       s.patchName = slotPatches[i]->getName();
     s.enabledKnown = maskKnown;
-    s.enabled = lastEnabledSlots[static_cast<size_t>(i)];
+    s.enabled = activeState().lastEnabled[static_cast<size_t>(i)];
   }
 
   juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -101,7 +101,7 @@ void MainComponent::writeSlotSet(const juce::String& name, const juce::String& n
   SlotSet set;
   set.name = name.trim();
   set.notes = notes;
-  const bool maskKnown = synthHub.active().isConnected() && slotEnableStateKnown;
+  const bool maskKnown = synthHub.active().isConnected() && activeState().enableStateKnown;
   juce::StringArray failed;
   for (int i = 0; i < numSlots; ++i) {
     auto& s = set.slots[static_cast<size_t>(i)];
@@ -115,7 +115,7 @@ void MainComponent::writeSlotSet(const juce::String& name, const juce::String& n
 
     s.patchName = slotPatches[i]->getName();
     s.file = slotSetPatchFileName(i, s.patchName);
-    s.enabled = maskKnown ? lastEnabledSlots[static_cast<size_t>(i)] : true;
+    s.enabled = maskKnown ? activeState().lastEnabled[static_cast<size_t>(i)] : true;
     s.bankSection = synthHub.getSlotBankSection(i);
     s.bankPosition = synthHub.getSlotBankPosition(i);
 
@@ -390,7 +390,7 @@ void MainComponent::slotSetLoadTick() {
 
   case SlotSetLoad::Stage::Focus: {
     // Worked out before focus moves: moving it changes what the synth reports.
-    load.mask = slotSetEnableMask(load.set, lastEnabledSlots);
+    load.mask = slotSetEnableMask(load.set, activeState().lastEnabled);
     const int currentFocus = connected ? synthHub.getCurrentSlot() : activeSlot;
     const int focus = slotSetFocusAfterLoad(load.set, load.mask, currentFocus);
     if (focus >= 0 && focus < numSlots) {

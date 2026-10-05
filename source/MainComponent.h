@@ -89,12 +89,12 @@ public:
     // made visible to a client that cannot see the screen.
     const ConnectionManager& getConnectionManager() const { return synthHub.active(); }
     bool isSlotLocal(int slot) const { return slot >= 0 && slot < numSlots && slotIsLocal[slot]; }
-    bool isSlotEnableStateKnown() const { return slotEnableStateKnown; }
-    const std::array<bool, 4>& getLastEnabledSlots() const { return lastEnabledSlots; }
-    const std::array<int, 4>& getSynthVoiceCounts() const { return synthVoiceCounts; }
-    const SynthSettings& getCachedSynthSettings() const { return cachedSynthSettings; }
+    bool isSlotEnableStateKnown() const { return activeState().enableStateKnown; }
+    const std::array<bool, 4>& getLastEnabledSlots() const { return activeState().lastEnabled; }
+    const std::array<int, 4>& getSynthVoiceCounts() const { return activeState().voiceCounts; }
+    const SynthSettings& getCachedSynthSettings() const { return activeState().settings; }
     // False from a disconnect until the synth that answers next sends its settings.
-    bool areSynthSettingsFromThisConnection() const { return cachedSynthSettingsKnown; }
+    bool areSynthSettingsFromThisConnection() const { return activeState().settingsKnown; }
     const ThemeData& getThemeData() const { return themeData; }
     struct LightMeterFrame
     {
@@ -103,7 +103,7 @@ public:
         int slot = -1;              // the slot that had synth focus when it arrived
         juce::int64 timeMs = 0;     // 0 = no frame since the editor started
     };
-    const LightMeterFrame& getLastLightMeterFrame() const { return lastLightMeterFrame; }
+    const LightMeterFrame& getLastLightMeterFrame() const { return activeState().lastLightFrame; }
     McpEventLog& getMcpEventLog() { return mcpEventLog; }
     // A morph group's dial, by the same path as dragging it in the header bar.
     bool setSlotMorphValue(int slot, int group, int value, juce::String& error);
@@ -114,8 +114,8 @@ public:
     // "reload the patch from the synth" command.
     void connectToPorts(const juce::String& inputId, const juce::String& outputId) { handleConnectionRequest(inputId, outputId); }
     void disconnectFromSynth() { handleDisconnectionRequest(); }
-    const juce::String& getLastInputId() const { return lastInputId; }
-    const juce::String& getLastOutputId() const { return lastOutputId; }
+    const juce::String& getLastInputId() const { return activeState().lastInputId; }
+    const juce::String& getLastOutputId() const { return activeState().lastOutputId; }
     // Ask the synth for the patch in a slot again; the editor's copy of that slot is
     // replaced when it arrives, like any fetch.
     bool refetchSlotFromSynth(int slot, juce::String& error);
@@ -243,10 +243,6 @@ private:
     // the stored one before it was ever read. Cleared when restore finishes.
     bool restoringMdiLayout = true;
     bool syncingSlotWindows = false;
-    std::array<bool, 4> lastEnabledSlots {};
-    bool slotEnableStateKnown = false;
-    bool slotWindowsReconciled = false;
-    bool slotWindowsReconcileScheduled = false;
 
     void showMidiSettingsDialog();
     void showPatchSettingsDialog();
@@ -349,7 +345,7 @@ private:
     std::unique_ptr<juce::MenuBarComponent> menuBar;
 
     // Multi-slot state (4 slots: A/B/C/D)
-    static constexpr int numSlots = 4;
+    static constexpr int numSlots = kTotalSlots;   // global slots: synth * 4 + slot
     std::unique_ptr<Patch> slotPatches[numSlots];
     // Bumped every time a slot's patch object is replaced, so deferred work
     // scheduled for the old one (a delayed upload, say) can tell that it is
@@ -392,13 +388,32 @@ private:
     std::unique_ptr<McpBridgeServer> mcpBridgeServer;
 #endif
 
-    // Last-known global synth settings.
-    SynthSettings cachedSynthSettings;
-    bool cachedSynthSettingsKnown = false;
-    // Last voice counts, light frame and synth-side events, kept for the MCP
-    // bridge (see the accessors above). Written on the message thread.
-    std::array<int, 4> synthVoiceCounts {};
-    LightMeterFrame lastLightMeterFrame;
+    // What the editor knows about each synth, one entry per port. The accessors above
+    // and the dialogs read the active synth's; a synth's own callbacks write theirs.
+    struct SynthState
+    {
+        SynthSettings settings;              // its last-known global settings
+        bool settingsKnown = false;          // false from a disconnect until it sends them again
+        // Last voice counts, light frame and slot enable state, kept for the MCP
+        // bridge. Written on the message thread.
+        std::array<int, 4> voiceCounts {};
+        LightMeterFrame lastLightFrame;
+        std::array<bool, 4> lastEnabled {};
+        bool enableStateKnown = false;
+        bool windowsReconciled = false;
+        bool windowsReconcileScheduled = false;
+        juce::String lastInputId, lastOutputId;   // ports of its last good connection
+        int autoConnectRetries = 5;
+    };
+    std::array<SynthState, kMaxSynths> synthState;
+    SynthState& activeState() { return synthState[static_cast<size_t>(synthHub.activeSynth())]; }
+    const SynthState& activeState() const { return synthState[static_cast<size_t>(synthHub.activeSynth())]; }
+    template <typename F> void forEachSynth(F&& f)
+    {
+        for (int s = 0; s < kMaxSynths; ++s)
+            f(s, synthHub.synth(s));
+    }
+
     McpEventLog mcpEventLog;
     bool pendingSynthSettingsDialogOpen = false;
     juce::Component::SafePointer<SynthSettingsDialog> synthSettingsDialog;
@@ -503,9 +518,6 @@ private:
     int morphKnobIndex = -1;    // physical knob (0..22) assigned as the fader carrier, -1 = none
     int morphKnobMin = 0, morphKnobMax = 127;   // range of the learned knob's param
 
-    juce::String lastInputId;
-    juce::String lastOutputId;
-    int autoConnectRetries = 5;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

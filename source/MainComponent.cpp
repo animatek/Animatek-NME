@@ -112,14 +112,14 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   addAndMakeVisible(mainLayout.get());
 
   // Wire connection manager status updates to UI
-  synthHub.active().setStatusCallback(
-      [this](const ConnectionManager::Status &status) {
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setStatusCallback(
+      [this, s](const ConnectionManager::Status &status) {
         juce::Component::SafePointer<MainComponent> safeThis(this);
         juce::MessageManager::callAsync(
             [safeThis, status]() { if (safeThis) safeThis->onConnectionStatusChanged(status); });
-      });
+      }); });
 
-  synthHub.active().setVoiceCountCallback([this](const int voiceCounts[4]) {
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setVoiceCountCallback([this, s](const int voiceCounts[4]) {
     int total =
         voiceCounts[0] + voiceCounts[1] + voiceCounts[2] + voiceCounts[3];
     int c0 = voiceCounts[0], c1 = voiceCounts[1], c2 = voiceCounts[2], c3 = voiceCounts[3];
@@ -130,8 +130,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         [safeThis, total, c0, c1, c2, c3]() {
           if (!safeThis) return;
           const std::array<int, 4> counts { c0, c1, c2, c3 };
-          if (counts != safeThis->synthVoiceCounts) {
-            safeThis->synthVoiceCounts = counts;
+          if (counts != safeThis->activeState().voiceCounts) {
+            safeThis->activeState().voiceCounts = counts;
             juce::Array<juce::var> perSlot;
             for (int c : counts)
               perSlot.add(c);
@@ -142,7 +142,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
           safeThis->mainLayout->getStatusBar().setVoiceCount(total);
           safeThis->mainLayout->getHeaderBar().setSynthDspLoad(c0, c1, c2, c3);
         });
-  });
+  }); });
 
   mainLayout->getPatchArea().setAnimated(editorOptions.animateTiling);
   mainLayout->setModuleIconBarVisible(editorOptions.moduleIconBar);
@@ -292,16 +292,16 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // Wire patch list updates to patch browser panel
   // The synth answers a bank load with the location it loaded, whether the load
   // came from here or from the front panel. Arrives on the MIDI thread.
-  synthHub.active().setBankLocationCallback([this](int slot) {
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setBankLocationCallback([this, s](int slot) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::MessageManager::callAsync([safeThis, slot]() {
       if (!safeThis) return;
       if (slot == safeThis->activeSlot)
         safeThis->updateStoreLocationDisplay();
     });
-  });
+  }); });
 
-  synthHub.active().setPatchListCallback([this](const std::vector<std::string>& names) {
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setPatchListCallback([this, s](const std::vector<std::string>& names) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::MessageManager::callAsync([safeThis, names]() {
       if (!safeThis) return;
@@ -312,12 +312,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       for (int s = 0; s < numSlots; ++s)
         safeThis->inferSlotBankLocation(s);
     });
-  });
+  }); });
 
   // An upload the synth did not take leaves it holding whatever it had: the
   // editor's patch is LOCAL from then on, and its edits must not be sent to a
   // slot that has another patch, so its synchronizer goes as after a Local load.
-  synthHub.active().setUploadFailedCallback([this](int slot, const juce::String& reason) {
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setUploadFailedCallback([this, s](int slot, const juce::String& reason) {
     if (slot < 0 || slot >= numSlots)
       return;
     synthHub.active().setUploadCompleteCallback(nullptr);
@@ -330,11 +330,11 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     auto* info = new juce::DynamicObject();
     info->setProperty("reason", reason);
     mcpEventLog.record("upload_failed", slot, juce::var(info));
-  });
+  }); });
 
-  synthHub.active().setSynthSettingsCallback([this](const SynthSettings& settings) {
-    cachedSynthSettings = settings;
-    cachedSynthSettingsKnown = true;
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setSynthSettingsCallback([this, s](const SynthSettings& settings) {
+    activeState().settings = settings;
+    activeState().settingsKnown = true;
     if (!settings.name.empty()) {
       mainLayout->getHeaderBar().setSynthName(juce::String(settings.name));
       mainLayout->getSlotBar().setSynthName(juce::String(settings.name));
@@ -346,7 +346,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       pendingSynthSettingsDialogOpen = false;
       openSynthSettingsDialog();
     }
-  });
+  }); });
 
   // Wire patch browser callbacks
   mainLayout->getPatchBrowser().onPatchDoubleClicked = [this](int section, int position) {
@@ -425,8 +425,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       });
   };
 
-  synthHub.active().setPatchDataCallback(
-      [this](const std::vector<std::vector<uint8_t>> &sections, int targetSlot) {
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setPatchDataCallback(
+      [this, s](const std::vector<std::vector<uint8_t>> &sections, int targetSlot) {
         DBG("Patch data received: " + juce::String(sections.size()) +
             " sections, parsing...");
 
@@ -549,11 +549,11 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
           if (safeThis->pendingBrowserLoadSlot == targetSlot)
             safeThis->pendingBrowserLoadSlot = -1;
         });
-      });
+      }); });
 
   // Patch fetch progress in the status bar — some patches take a few seconds
   // to stream from the synth and the UI should show something is happening.
-  synthHub.active().setPatchLoadProgressCallback([this](int done, int total) {
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setPatchLoadProgressCallback([this, s](int done, int total) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::MessageManager::callAsync([safeThis, done, total]() {
       if (!safeThis) return;
@@ -564,12 +564,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         statusBar.setProgress(total > 0 ? static_cast<double>(done) / total : 0.0,
                               "Loading patch " + juce::String(done) + "/" + juce::String(total));
     });
-  });
+  }); });
 
   // A fetch that still misses sections after the automatic retries delivers a
   // patch without cables/parameters — editing or saving it would silently
   // corrupt the user's work, so warn loudly (issue #15).
-  synthHub.active().setPatchLoadIncompleteCallback([this](int slot, int received, int total) {
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setPatchLoadIncompleteCallback([this, s](int slot, int received, int total) {
     {
       auto* info = new juce::DynamicObject();
       info->setProperty("sectionsReceived", received);
@@ -588,7 +588,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
           "Cables or parameters may be missing. Reload the patch from the synth "
           "before editing or saving it.");
     });
-  });
+  }); });
 
   // Wire morph knob assignments from header bar (same logic as canvas params)
   mainLayout->getHeaderBar().setKnobAssignCallback(
@@ -713,8 +713,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // protocol ever sees it (MidiDeviceManager::handleIncomingMidiMessage), so
   // the extra callAsync only bought a copy of two 128-int arrays and a frame
   // of latency, on the one callback the synth sends many times a second.
-  synthHub.active().setLightMeterCallback(
-      [this](const int lights[128], const int meters[128]) {
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setLightMeterCallback(
+      [this, s](const int lights[128], const int meters[128]) {
           JUCE_ASSERT_MESSAGE_THREAD
           // The synth streams lights/meters for the slot it has focused,
           // which the editor keeps in sync with activeSlot, so they belong
@@ -722,11 +722,11 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
           canvasFor(activeSlot).setLightMeterData(lights, meters);
           // Kept for the MCP bridge's read_lights. The callback only fires when
           // a value changed, so the time is of the last change, not the last frame.
-          std::copy(lights, lights + 128, lastLightMeterFrame.lights.begin());
-          std::copy(meters, meters + 128, lastLightMeterFrame.meters.begin());
-          lastLightMeterFrame.slot = activeSlot;
-          lastLightMeterFrame.timeMs = juce::Time::currentTimeMillis();
-      });
+          std::copy(lights, lights + 128, activeState().lastLightFrame.lights.begin());
+          std::copy(meters, meters + 128, activeState().lastLightFrame.meters.begin());
+          activeState().lastLightFrame.slot = activeSlot;
+          activeState().lastLightFrame.timeMs = juce::Time::currentTimeMillis();
+      }); });
 
   // Wire shake cables button
   mainLayout->getHeaderBar().setShakeCablesCallback(
@@ -761,7 +761,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       [this]() { clearMorphKnobAssignment(); };
 
   // Wire parameter changes from synth to editor (user turns knob on hardware)
-  synthHub.active().setParameterChangeCallback([this](int section, int moduleId,
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setParameterChangeCallback([this, s](int section, int moduleId,
                                                       int parameterId,
                                                       int value) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -846,9 +846,9 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
           safeThis->knobFloaterWindow->refresh();
       }
     });
-  });
+  }); });
 
-  synthHub.active().setSynthErrorCallback([this](int errorCode) {
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setSynthErrorCallback([this, s](int errorCode) {
     const juce::String description(synthErrorName(errorCode));
 
     {
@@ -860,7 +860,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     mainLayout->getStatusBar().showMessage(
         "ERROR: Synth error code " + juce::String(errorCode)
         + " (" + description + "): check console for details", 8000);
-  });
+  }); });
 
   // Wire toolbar buttons
 
@@ -895,13 +895,13 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   };
 
   // Wire slot enable state (fixed LEDs on hardware; several can be on at once)
-  synthHub.active().setSlotsEnabledCallback([this](const std::array<bool, 4>& enabled) {
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setSlotsEnabledCallback([this, s](const std::array<bool, 4>& enabled) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::MessageManager::callAsync([safeThis, enabled]() {
       if (!safeThis) return;
       safeThis->mainLayout->getSlotBar().setSlotsEnabled(enabled);
-      safeThis->lastEnabledSlots = enabled;
-      safeThis->slotEnableStateKnown = true;
+      safeThis->activeState().lastEnabled = enabled;
+      safeThis->activeState().enableStateKnown = true;
       {
         juce::Array<juce::var> mask;
         for (bool on : enabled)
@@ -913,7 +913,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       // Only the first mask of a connection touches the sub-windows.
       safeThis->scheduleSlotWindowReconcile();
     });
-  });
+  }); });
 
   // Clicking a slot's LED toggles its enable state on the synth (like holding
   // the slot button on the hardware). The LED updates when the synth confirms.
@@ -923,7 +923,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   };
 
   // Wire synth slot changes (user presses slot button on hardware)
-  synthHub.active().setSlotChangedCallback([this](int slot) {
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setSlotChangedCallback([this, s](int slot) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::MessageManager::callAsync([safeThis, slot]() {
       if (!safeThis) return;
@@ -936,7 +936,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       safeThis->mainLayout->getSlotBar().setCurrentTab(slot);
       safeThis->switchToSlot(slot, /*notifySynth=*/false, /*bringOnScreen=*/false);
     });
-  });
+  }); });
 
   setSize(1280, 800);
 
@@ -1006,21 +1006,21 @@ MainComponent::~MainComponent() {
   // Disconnect MIDI and clear all async callbacks to prevent post-destruction
   // dispatches (fixes crash-on-close in plugin builds)
   synthHub.active().disconnect();
-  synthHub.active().setStatusCallback(nullptr);
-  synthHub.active().setVoiceCountCallback(nullptr);
-  synthHub.active().setPatchDataCallback(nullptr);
-  synthHub.active().setParameterChangeCallback(nullptr);
-  synthHub.active().setSynthErrorCallback(nullptr);
-  synthHub.active().setSlotChangedCallback(nullptr);
-  synthHub.active().setSlotsEnabledCallback(nullptr);
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setStatusCallback(nullptr); });
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setVoiceCountCallback(nullptr); });
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setPatchDataCallback(nullptr); });
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setParameterChangeCallback(nullptr); });
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setSynthErrorCallback(nullptr); });
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setSlotChangedCallback(nullptr); });
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setSlotsEnabledCallback(nullptr); });
   slotSetLoadTimer.reset();
   synthHub.active().setUploadCompleteCallback(nullptr);
-  synthHub.active().setUploadFailedCallback(nullptr);
-  synthHub.active().setLightMeterCallback(nullptr);
-  synthHub.active().setPatchListCallback(nullptr);
-  synthHub.active().setBankLocationCallback(nullptr);
-  synthHub.active().setPatchLoadProgressCallback(nullptr);
-  synthHub.active().setPatchLoadIncompleteCallback(nullptr);
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setUploadFailedCallback(nullptr); });
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setLightMeterCallback(nullptr); });
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setPatchListCallback(nullptr); });
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setBankLocationCallback(nullptr); });
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setPatchLoadProgressCallback(nullptr); });
+  forEachSynth([this](int s, ConnectionManager& cm) { cm.setPatchLoadIncompleteCallback(nullptr); });
 
   // Tear down UI before members are destroyed
 #if JUCE_MAC
@@ -2699,10 +2699,10 @@ void MainComponent::showSynthSettingsDialog() {
 }
 
 void MainComponent::openSynthSettingsDialog() {
-  synthSettingsDialog = SynthSettingsDialog::show(this, cachedSynthSettings,
+  synthSettingsDialog = SynthSettingsDialog::show(this, activeState().settings,
       [this](const SynthSettings& s)
       {
-        cachedSynthSettings = s;
+        activeState().settings = s;
         mainLayout->getHeaderBar().setSynthName(juce::String(s.name));
         mainLayout->getStatusBar().showMessage("Synth settings updated", 2000);
         if (synthHub.active().isConnected())
@@ -2713,7 +2713,7 @@ void MainComponent::openSynthSettingsDialog() {
 
 void MainComponent::showMidiSettingsDialog() {
   midiSettingsDialog = MidiSettingsDialog::show(
-      this, lastInputId, lastOutputId, synthHub.active().getStatus(),
+      this, activeState().lastInputId, activeState().lastOutputId, synthHub.active().getStatus(),
       [this](const juce::String &inputId, const juce::String &outputId) {
         handleConnectionRequest(inputId, outputId);
       },
@@ -3138,10 +3138,10 @@ void MainComponent::restoreMdiLayout() {
 // Nord currently has enabled, and from then on opening and closing sub-windows
 // is the user's business alone.
 void MainComponent::scheduleSlotWindowReconcile() {
-  if (slotWindowsReconciled || slotWindowsReconcileScheduled)
+  if (activeState().windowsReconciled || activeState().windowsReconcileScheduled)
     return;
 
-  slotWindowsReconcileScheduled = true;
+  activeState().windowsReconcileScheduled = true;
 
   // SlotsSelected (the mask) and SlotActivated (the focused slot) are separate
   // messages arriving in either order during the connect handshake. Let both
@@ -3149,11 +3149,11 @@ void MainComponent::scheduleSlotWindowReconcile() {
   // focused slot and leaves a spurious window open for the rest of the session.
   juce::Component::SafePointer<MainComponent> safeThis(this);
   juce::Timer::callAfterDelay(400, [safeThis]() {
-    if (safeThis == nullptr || !safeThis->slotWindowsReconcileScheduled)
+    if (safeThis == nullptr || !safeThis->activeState().windowsReconcileScheduled)
       return;
-    safeThis->slotWindowsReconcileScheduled = false;
-    if (safeThis->slotEnableStateKnown)
-      safeThis->reconcileSlotWindowsWithSynth(safeThis->lastEnabledSlots);
+    safeThis->activeState().windowsReconcileScheduled = false;
+    if (safeThis->activeState().enableStateKnown)
+      safeThis->reconcileSlotWindowsWithSynth(safeThis->activeState().lastEnabled);
   });
 }
 
@@ -3161,7 +3161,7 @@ void MainComponent::reconcileSlotWindowsWithSynth(const std::array<bool, 4>& ena
   if (mainLayout == nullptr)
     return;
 
-  slotWindowsReconciled = true;
+  activeState().windowsReconciled = true;
 
   auto& area = mainLayout->getPatchArea();
   const int focused = juce::jlimit(0, numSlots - 1, synthHub.getCurrentSlot());
@@ -3845,8 +3845,8 @@ void MainComponent::handleSlotFileCommand(int slot, const juce::String& cmd) {
 }
 void MainComponent::handleConnectionRequest(const juce::String &inputId,
                                             const juce::String &outputId) {
-  lastInputId = inputId;
-  lastOutputId = outputId;
+  activeState().lastInputId = inputId;
+  activeState().lastOutputId = outputId;
   synthHub.active().connect(inputId, outputId);
 }
 
@@ -3892,10 +3892,10 @@ void MainComponent::onConnectionStatusChanged(
   if (!connected) {
     // Reconciling with the synth is a once-per-connection thing, so losing the
     // connection arms it again for the next one.
-    slotEnableStateKnown = false;
+    activeState().enableStateKnown = false;
     // The next synth to answer may be a different one (a real G1, then G1-Emu):
     // its name must not be reported until its own settings arrive.
-    cachedSynthSettingsKnown = false;
+    activeState().settingsKnown = false;
     // Nor can the slots be taken to match it. Until a slot is fetched again it
     // is LOCAL and sends nothing: switching from G1-Emu to a real G1 left slot A
     // showing the emulator's patch, not LOCAL and with its synchronizer on, for
@@ -3907,15 +3907,15 @@ void MainComponent::onConnectionStatusChanged(
       slotSynchronizers[s].reset();
       setSlotLocal(s, true);
     }
-    slotWindowsReconciled = false;
-    slotWindowsReconcileScheduled = false;
+    activeState().windowsReconciled = false;
+    activeState().windowsReconcileScheduled = false;
   }
   mainLayout->getStatusBar().setConnectionStatus(status.message, connected);
   // The slot bar's name box is the synth's own name once its settings arrive.
   if (!connected)
     mainLayout->getSlotBar().setSynthName({});
-  else if (cachedSynthSettingsKnown && !cachedSynthSettings.name.empty())
-    mainLayout->getSlotBar().setSynthName(juce::String(cachedSynthSettings.name));
+  else if (activeState().settingsKnown && !activeState().settings.name.empty())
+    mainLayout->getSlotBar().setSynthName(juce::String(activeState().settings.name));
   else
     mainLayout->getSlotBar().setSynthName("Modular");
   mainLayout->getStatusBar().setSynthLink(
@@ -3925,7 +3925,7 @@ void MainComponent::onConnectionStatusChanged(
 
   if (connected) {
     // Save settings on successful connection
-    saveMidiSettings(lastInputId, lastOutputId);
+    saveMidiSettings(activeState().lastInputId, activeState().lastOutputId);
 
     // Patch loading is triggered by SlotActivated (sc=0x09) from synth,
     // with a fallback timer in ConnectionManager if no slot message arrives.
@@ -4016,15 +4016,15 @@ void MainComponent::attemptAutoConnect() {
   if (resolvedInputId.isNotEmpty() && resolvedOutputId.isNotEmpty()) {
     DBG("Auto-connecting: input=" + resolvedInputId +
         " output=" + resolvedOutputId);
-    lastInputId = resolvedInputId;
-    lastOutputId = resolvedOutputId;
+    activeState().lastInputId = resolvedInputId;
+    activeState().lastOutputId = resolvedOutputId;
     synthHub.active().connect(resolvedInputId, resolvedOutputId);
   } else {
     // ALSA may not have enumerated devices yet — retry a few times
-    if (autoConnectRetries > 0 && (inputs.isEmpty() || outputs.isEmpty())) {
-      autoConnectRetries--;
+    if (activeState().autoConnectRetries > 0 && (inputs.isEmpty() || outputs.isEmpty())) {
+      activeState().autoConnectRetries--;
       DBG("No MIDI devices found yet, retrying in 500ms (" +
-          juce::String(autoConnectRetries) + " left)");
+          juce::String(activeState().autoConnectRetries) + " left)");
       juce::Component::SafePointer<MainComponent> safeThis(this);
       juce::Timer::callAfterDelay(500, [safeThis]() { if (safeThis) safeThis->attemptAutoConnect(); });
     } else {
