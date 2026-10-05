@@ -163,19 +163,12 @@ public:
 
     std::function<void(int)> onSlotChanged;  // called with slot index 0-3
     std::function<void(int)> onSlotViewToggled;  // right-click a slot row: show/hide its sub-window
-    std::function<void()> onMidiSettingsClicked;
-    std::function<void()> onStoreToBankClicked;
-    std::function<void()> onLibraryFolderClicked;
 
 private:
-    // Left column: inspector + toolbar + slots
+    // Left column: inspector + slots
     SlotBar           slotBar;
     InspectorPanel    inspectorPanel;
 
-    // Toolbar buttons
-    juce::TextButton midiButton { "MIDI" };
-    juce::TextButton libraryButton { "Library" };
-    juce::TextButton storeButton { "Store" };
     juce::Component   leftColumn;   // groups all left elements
 
     PanelToggleStrip  leftToggleStrip { true };
@@ -202,7 +195,6 @@ private:
 
     static constexpr int statusBarHeight = 24;
     static constexpr int slotBarHeight   = 30;   // one synth row
-    static constexpr int toolbarHeight   = 28;
     static constexpr int headerBarHeight = 48;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainLayout)

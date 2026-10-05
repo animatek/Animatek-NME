@@ -379,17 +379,11 @@ MainLayout::MainLayout(ModuleDescriptions& moduleDescs)
             onSlotViewToggled(idx);
     };
 
-    midiButton.onClick = [this]() { if (onMidiSettingsClicked) onMidiSettingsClicked(); };
 
-    libraryButton.onClick = [this]() { if (onLibraryFolderClicked) onLibraryFolderClicked(); };
 
-    storeButton.onClick = [this]() { if (onStoreToBankClicked) onStoreToBankClicked(); };
 
-    // Left column: inspector + toolbar + slots
+    // Left column: inspector + slots
     leftColumn.addAndMakeVisible(inspectorPanel);
-    leftColumn.addAndMakeVisible(midiButton);
-    leftColumn.addAndMakeVisible(libraryButton);
-    leftColumn.addAndMakeVisible(storeButton);
     leftColumn.addAndMakeVisible(slotBar);
 
     rightBrowserTabs.setTabBarDepth(28);
@@ -429,15 +423,6 @@ MainLayout::MainLayout(ModuleDescriptions& moduleDescs)
 
 void MainLayout::applyTheme()
 {
-    midiButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
-    midiButton.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().buttonActive);
-    midiButton.setColour(juce::TextButton::textColourOffId, AppTheme::palette().textSecondary);
-    libraryButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
-    libraryButton.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().buttonActive);
-    libraryButton.setColour(juce::TextButton::textColourOffId, AppTheme::palette().textSecondary);
-    storeButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().inputBackground);
-    storeButton.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().buttonActive);
-    storeButton.setColour(juce::TextButton::textColourOffId, AppTheme::palette().textSecondary);
 
     moduleIconBar.applyTheme();
 
@@ -484,14 +469,9 @@ void MainLayout::resized()
                                    area.getWidth(), area.getHeight(),
                                    false, true);
 
-    // Layout left column: inspector | toolbar buttons | slot bar
+    // Layout left column: inspector | slot bar
     auto leftArea = leftColumn.getLocalBounds();
     slotBar.setBounds(leftArea.removeFromBottom(slotBarHeight));
-    auto toolRow = leftArea.removeFromBottom(toolbarHeight);
-    auto thirdW = toolRow.getWidth() / 3;
-    midiButton.setBounds(toolRow.removeFromLeft(thirdW).reduced(2));
-    libraryButton.setBounds(toolRow.removeFromLeft(thirdW).reduced(2));
-    storeButton.setBounds(toolRow.reduced(2));
     inspectorPanel.setBounds(leftArea);
 }
 

@@ -863,15 +863,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   });
 
   // Wire toolbar buttons
-  mainLayout->onMidiSettingsClicked = [this]() { showMidiSettingsDialog(); };
 
   // Chevron strips go through the same path as Ctrl+I / Ctrl+Shift+I so the
   // status bar reports the change either way.
   mainLayout->onPanelToggleRequested = [this](bool left) {
     if (left) toggleLeftPanel(); else toggleRightPanel();
   };
-  mainLayout->onLibraryFolderClicked = [this]() { choosePresetLibraryFolder(); };
-  mainLayout->onStoreToBankClicked = [this]() { storePatchToBank(); };
   mainLayout->getDiskPresetBrowser().setLibraryRoot(editorOptions.presetLibraryRoot);
   mainLayout->getDiskPresetBrowser().onPatchChosen = [this](const juce::File& file) {
     openPatchFileWithChooser(file);
@@ -1111,6 +1108,11 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
   if (key == juce::KeyPress(',', juce::ModifierKeys::commandModifier, 0))
   {
     showEditorOptionsDialog();
+    return true;
+  }
+  if (key == juce::KeyPress('m', juce::ModifierKeys::commandModifier, 0))
+  {
+    showMidiSettingsDialog();
     return true;
   }
   if (key == juce::KeyPress('b', juce::ModifierKeys::commandModifier, 0))
@@ -1440,7 +1442,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
   }
   else if (menuIndex == 3) // Device
   {
-    menu.addItem(30, "MIDI Settings...");
+    addShortcutItem(menu, 30, "MIDI Settings...", "Ctrl+M");
     menu.addSeparator();
     bool connected = connectionManager.isConnected();
     menu.addItem(31, "Request Patch from Synth", connected);
