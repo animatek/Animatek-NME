@@ -104,6 +104,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     canvasScheme.wireframe = editorOptions.wireframe;
     canvasScheme.skeuomorphic = editorOptions.hardwareLook;
     canvasScheme.knobStyle = editorOptions.hardwareKnobStyle;
+    canvasScheme.flatKnobs = editorOptions.flatKnobs;
     mainLayout->setTheme(canvasScheme);
   }
   addAndMakeVisible(mainLayout.get());
@@ -2773,6 +2774,7 @@ void MainComponent::applyUiTheme(int index, bool persist) {
   canvasScheme.wireframe = editorOptions.wireframe;
   canvasScheme.skeuomorphic = editorOptions.hardwareLook;
   canvasScheme.knobStyle = editorOptions.hardwareKnobStyle;
+    canvasScheme.flatKnobs = editorOptions.flatKnobs;
   mainLayout->setTheme(canvasScheme);
   mainLayout->applyTheme();
   if (presetBrowserWindow)

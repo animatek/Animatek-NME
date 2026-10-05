@@ -49,6 +49,7 @@ ColorScheme makeCanvas(const PaletteSpec& p)
     s.moduleText       = p.fg0.withAlpha(0.87f);
     s.groupBoxBorder   = p.bg4;
 
+    s.knobArc          = p.blue;
     s.knobBase         = p.fg1;
     s.knobBorder       = p.bg4;
     s.knobGrip         = p.bg1;
@@ -201,6 +202,26 @@ const PaletteSpec kNordClassic = {
     juce::Colour(0xff5a5fb3), juce::Colour(0xffcf7a3a), juce::Colour(0xff9a5fb3),
 };
 
+// "Animatek Rack": the colours of the Animatek modules for VCV Rack: bluish
+// graphite panels (#2A2F3A body, #33384A raised parts), pale blue-grey text
+// (#C8D4E3), and the style guide's accents: blue #2C7FFF (primary), orange
+// #FD9A00 (secondary), green #24B979, purple #C084FC, rose #FB7185.
+const PaletteSpec kAnimatekRack = {
+    juce::Colour(0xff181a21), juce::Colour(0xff1f222b), juce::Colour(0xff2a2f3a),
+    juce::Colour(0xff33384a), juce::Colour(0xff4a5068),
+    juce::Colour(0xffc8d4e3), juce::Colour(0xff9aa2b5), juce::Colour(0xff6b7389),
+    juce::Colour(0xfffb7185), juce::Colour(0xff24b979), juce::Colour(0xfff5c542),
+    juce::Colour(0xff2c7fff), juce::Colour(0xfffd9a00), juce::Colour(0xffc084fc),
+};
+
+ColorScheme makeAnimatekRack()
+{
+    ColorScheme s = makeCanvas(kAnimatekRack);
+    s.displayText = juce::Colour(0xff5db7ff);   // the modules' display blue
+    s.knobArc     = juce::Colour(0xff2c7fff);
+    return s;
+}
+
 ColorScheme makeNordClassic()
 {
     ColorScheme s = makeCanvas(kNordClassic);
@@ -210,6 +231,7 @@ ColorScheme makeNordClassic()
 
     // Knobs: medium-dark grey dial like the original — NOT tied to the (now very
     // dark) text colour, which turned the knobs near-black. Light grip for contrast.
+    s.knobArc    = juce::Colour(0xff4a3fb0);   // indigo, as the LCD readouts
     s.knobBase   = juce::Colour(0xff8f8f8f);
     s.knobBorder = juce::Colour(0xff4a4a4a);
     s.knobGrip   = juce::Colour(0xff202020);
@@ -276,6 +298,7 @@ const std::vector<EditorTheme>& themes()
         { "Macchiato",        makeApp(kMacchiato),       []{ return makeCanvas(kMacchiato); } },
         { "Cubitwig",         makeApp(kCubitwig),        []{ return makeCanvas(kCubitwig); } },
         { "Nord Classic",     makeNordClassicApp(),      makeNordClassic },
+        { "Animatek Rack",    makeApp(kAnimatekRack),    makeAnimatekRack },
     };
     return list;
 }

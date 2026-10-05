@@ -17,6 +17,18 @@
   it runs smoothly (the Debug build is visibly slower). Not measured on a very large patch,
   and **Grant has not yet confirmed the licence of his contribution.**
 
+- **Flat knobs, and an "Animatek Rack" theme** (2026-10-05, #89; Claude, at Javier's
+  request). A second knob look for the normal (non-hardware) mode, taken from the Animatek
+  modules for VCV Rack: a disc with a thin rim, a slightly different face, a pointer, and
+  the value painted over the rim (bipolar ranges fill from the centre). Editor Options >
+  Appearance > "Flat knobs"; off by default, ignored with Hardware look or Wireframe on.
+  The colours follow the theme: light disc and dark pointer on light themes, dark disc on
+  dark ones, and the arc takes a new per-theme colour (`ColorScheme::knobArc`: the palette's
+  blue, or indigo on the light themes). A morph group still colours the rim. New theme
+  **Animatek Rack**, last in the list so saved theme indices do not move: bluish graphite
+  panels, pale blue-grey text and the style guide's accents. Builds, tests pass, and Javier
+  looked at it on the Release build; some themes still need their colours polished.
+
 ### Changed
 
 - **Sine Bank: the ratio arrows sit beside the tune knob** (2026-10-05, #89; Grant,

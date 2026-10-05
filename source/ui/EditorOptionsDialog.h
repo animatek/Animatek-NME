@@ -24,6 +24,10 @@ struct EditorOptions
     // off by default so the canvas looks the way it always has until asked.
     bool        hardwareLook   = false;
     int         hardwareKnobStyle = 2;  // 0 domed cap, 1 black knurled, 2 aluminium knurled
+    // Flat knobs, as on the Animatek Rack modules: a dark disc, grey rim, white
+    // pointer and the value in blue on the rim. For the normal (non-hardware) look;
+    // ignored while Hardware look or Wireframe is on.
+    bool        flatKnobs      = false;
     bool        animateTiling  = true;  // slide slot sub-windows to their new tiles
     // Borrow the synth's own display to name the dialog that is on screen, and
     // give the patch name back when it closes. Off by default: it writes to the
@@ -118,6 +122,7 @@ private:
     juce::ToggleButton hardwareLookToggle { "Hardware look  (skeuomorphic knobs, jacks, panels and cables)" };
     juce::Label    knobStyleLabel { {}, "Knob style" };
     juce::ComboBox knobStyleSelector;
+    juce::ToggleButton flatKnobsToggle { "Flat knobs  (dark disc, value arc on the rim; not with Hardware look)" };
 
     // Cable Style
     juce::Label    cableStyleLabel   { {}, "CABLE STYLE" };

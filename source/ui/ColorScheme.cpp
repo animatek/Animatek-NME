@@ -13,6 +13,7 @@ static ColorScheme makeClassicTheme()
     s.groupBoxBorder  = juce::Colour(0x44000000);
     s.moduleBg        = juce::Colour();  // transparent = use XML/descriptor color (preserve Classic behavior)
     // Knobs
+    s.knobArc         = juce::Colour(0xff4a3fb0);   // indigo, as the LCD readouts
     s.knobBase        = juce::Colour(0xff989898);
     s.knobBorder      = juce::Colour(0xff666666);
     s.knobGrip        = juce::Colours::white;
