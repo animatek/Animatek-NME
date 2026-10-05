@@ -54,6 +54,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl`+wheel, trackpad pinch | Zoom in / out around the pointer |
 | `Ctrl+T` | Cycle color theme |
 | `Ctrl+W` | Toggle wireframe modules (**macOS: `Cmd+Shift+W`**, because macOS keeps `Cmd+W` for closing windows) |
+| `Ctrl+H` | Toggle hardware look (**macOS: `Cmd+Shift+H`**) |
 | `Ctrl+I` | Toggle the inspector panel (left side) |
 | `Ctrl+Shift+I` | Toggle the patch browser (right side) |
 | `S` | Shake cables |

@@ -61,6 +61,8 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.autoUpload     = props->getBoolValue  ("autoUpload",     true);
     o.askSlotOnOpen  = props->getBoolValue  ("askSlotOnOpen",  true);
     o.wireframe      = props->getBoolValue  ("wireframe",      false);
+    o.hardwareLook   = props->getBoolValue  ("hardwareLook",   false);
+    o.hardwareKnobStyle = juce::jlimit (0, 2, props->getIntValue ("hardwareKnobStyle", 2));
     o.animateTiling  = props->getBoolValue  ("animateTiling",  true);
     o.synthDisplayCaptions = props->getBoolValue ("synthDisplayCaptions", false);
     o.seqNoteNames   = props->getBoolValue  ("seqNoteNames",   false);
@@ -85,6 +87,8 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("autoUpload",      autoUpload);
     props->setValue ("askSlotOnOpen",   askSlotOnOpen);
     props->setValue ("wireframe",       wireframe);
+    props->setValue ("hardwareLook",    hardwareLook);
+    props->setValue ("hardwareKnobStyle", hardwareKnobStyle);
     props->setValue ("animateTiling",   animateTiling);
     props->setValue ("synthDisplayCaptions", synthDisplayCaptions);
     props->setValue ("seqNoteNames",    seqNoteNames);
@@ -158,6 +162,29 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     styleLabel (themeLabel);
     populateThemeSelector();
     addAndMakeVisible (appearanceLabel);
+
+    // Hardware look + knob style
+    styleToggle (hardwareLookToggle);
+    hardwareLookToggle.setToggleState (options.hardwareLook, juce::dontSendNotification);
+    hardwareLookToggle.setTooltip ("Draws knobs, jacks, module panels, displays and cables as "
+                                   "physical hardware. Works with any theme.");
+    hardwareLookToggle.onClick = [this]() {
+        knobStyleSelector.setEnabled (hardwareLookToggle.getToggleState());
+    };
+    addAndMakeVisible (hardwareLookToggle);
+
+    styleLabel (knobStyleLabel);
+    knobStyleSelector.addItem ("Domed cap",       1);
+    knobStyleSelector.addItem ("Black knurled",      2);
+    knobStyleSelector.addItem ("Aluminium knurled",  3);
+    knobStyleSelector.setSelectedId (options.hardwareKnobStyle + 1, juce::dontSendNotification);
+    knobStyleSelector.setEnabled (options.hardwareLook);
+    knobStyleSelector.setColour (juce::ComboBox::backgroundColourId, p().inputBackground);
+    knobStyleSelector.setColour (juce::ComboBox::outlineColourId,    p().borderColor);
+    knobStyleSelector.setColour (juce::ComboBox::textColourId,       p().textSecondary);
+    knobStyleSelector.setColour (juce::ComboBox::arrowColourId,      p().textSecondary);
+    addAndMakeVisible (knobStyleLabel);
+    addAndMakeVisible (knobStyleSelector);
     addAndMakeVisible (themeLabel);
     addAndMakeVisible (themeSelector);
 
@@ -382,6 +409,11 @@ int EditorOptionsDialog::layoutComponents (bool apply)
     y += secH + 6;
     place (themeLabel,    pad + 8,  y, 80, rowH);
     place (themeSelector, pad + 92, y, w - pad * 2 - 100, rowH);
+    y += rowH + 2;
+    place (hardwareLookToggle, pad + 8, y, w - pad * 2 - 8, rowH);
+    y += rowH;
+    place (knobStyleLabel,    pad + 8,  y, 80, rowH);
+    place (knobStyleSelector, pad + 92, y, w - pad * 2 - 100, rowH);
     y += rowH + secGap;
 
     // ── Cable Style ──────────────────────────────────────────
@@ -523,6 +555,8 @@ void EditorOptionsDialog::apply()
     options.uiThemeIndex   = themeSelector.getSelectedId() - 1;
     options.autoUpload     = autoUploadToggle.getToggleState();
     options.wireframe      = wireframeToggle  .getToggleState();
+    options.hardwareLook   = hardwareLookToggle.getToggleState();
+    options.hardwareKnobStyle = juce::jmax (0, knobStyleSelector.getSelectedId() - 1);
     options.animateTiling  = animateTilingToggle.getToggleState();
     options.askSlotOnOpen  = askSlotToggle.getToggleState();
     options.synthDisplayCaptions = synthCaptionToggle.getToggleState();
