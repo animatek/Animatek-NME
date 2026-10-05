@@ -102,6 +102,7 @@ set(NME_SHARED_SOURCES
     source/ui/ColorScheme.cpp
     source/ui/ThemeRegistry.cpp
     source/ui/ThemeFile.cpp
+    source/ui/ThemeEditorWindow.cpp
     source/ui/InspectorPanel.cpp
     source/ui/StatusBar.cpp
     source/ui/PatchHeaderBar.cpp

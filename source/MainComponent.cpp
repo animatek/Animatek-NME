@@ -1347,6 +1347,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
       themeMenu.addItem(200 + i, ThemeRegistry::get(i).name, true,
                         i == editorOptions.uiThemeIndex);
     themeMenu.addSeparator();
+    themeMenu.addItem(193, "Edit Theme Colours...");
     themeMenu.addItem(190, "Save Current Theme as File...");
     themeMenu.addItem(191, "Reload Theme Files");
     themeMenu.addItem(192, "Open Themes Folder");
@@ -1767,6 +1768,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
                                            + " user theme(s)", 3000);
     break;
   }
+  case 193:
+    showThemeEditor();
+    break;
   case 192:  // Open the themes folder
     ThemeFile::userFolder().createDirectory();
     ThemeFile::userFolder().startAsProcess();
@@ -2814,8 +2818,38 @@ void MainComponent::applyUiTheme(int index, bool persist) {
   const int n = ThemeRegistry::count();
   index = ((index % n) + n) % n;
   editorOptions.uiThemeIndex = index;
+  applyThemeLive(ThemeRegistry::get(index));
+  if (persist)
+    editorOptions.save(appProperties.getUserSettings());
+}
 
-  const auto& theme = ThemeRegistry::get(index);
+void MainComponent::showThemeEditor() {
+  if (themeEditorWindow) {
+    themeEditorWindow->toFront(true);
+    return;
+  }
+  const auto& cur = ThemeRegistry::get(editorOptions.uiThemeIndex);
+  const bool builtin = ThemeRegistry::findBuiltin(cur.name) != nullptr;
+  themeEditorWindow = std::make_unique<ThemeEditorWindow>(cur, builtin ? cur.name : "Dark");
+  themeEditorWindow->onChange = [this](const EditorTheme& t) { applyThemeLive(t); };
+  themeEditorWindow->onSaved = [this](const EditorTheme& t, const juce::File&) {
+    ThemeRegistry::reloadUserThemes();
+    const int idx = ThemeRegistry::indexOfName(t.name);
+    if (idx >= 0)
+      applyUiTheme(idx, true);
+  };
+  themeEditorWindow->onClosed = [this] {
+    // Closing without saving puts the chosen theme back.
+    juce::MessageManager::callAsync([safe = juce::Component::SafePointer<MainComponent>(this)] {
+      if (safe == nullptr) return;
+      safe->themeEditorWindow.reset();
+      safe->applyUiTheme(safe->editorOptions.uiThemeIndex, false);
+    });
+  };
+  themeEditorWindow->setVisible(true);
+}
+
+void MainComponent::applyThemeLive(const EditorTheme& theme) {
   AppTheme::setPalette(theme.app);
   auto canvasScheme = theme.makeCanvas();
   canvasScheme.wireframe = editorOptions.wireframe;
@@ -2845,9 +2879,6 @@ void MainComponent::applyUiTheme(int index, bool persist) {
   // (the native macOS menu keeps the stale tick otherwise). Covers every path:
   // View menu, Ctrl+T cycle, and the Editor Options dialog.
   menuItemsChanged();
-
-  if (persist)
-    editorOptions.save(appProperties.getUserSettings());
 }
 
 void MainComponent::toggleWireframe() {

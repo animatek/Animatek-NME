@@ -91,6 +91,10 @@ const CanvasField kCanvasFields[] = {
     { "slotIconActive", &ColorScheme::slotIconActive },
     { "slotIconInactive", &ColorScheme::slotIconInactive },
     { "knobArc", &ColorScheme::knobArc },
+    { "sliderGrip", &ColorScheme::sliderGrip },
+    { "stepOn", &ColorScheme::stepOn },
+    { "seqNote", &ColorScheme::seqNote },
+    { "seqNoteActive", &ColorScheme::seqNoteActive },
 };
 
 // Writes every field of `fields` that `obj` carries as a readable colour into `dst`.
@@ -239,4 +243,73 @@ std::vector<EditorTheme> ThemeFile::loadFolder(const juce::File& folder, const E
     std::sort(found.begin(), found.end(),
               [](const EditorTheme& a, const EditorTheme& b) { return a.name.compareIgnoreCase(b.name) < 0; });
     return found;
+}
+
+ThemeFile::Doc ThemeFile::makeDoc(const EditorTheme& theme)
+{
+    // The canvas factories read the active app palette, so make it this theme's.
+    const auto saved = AppTheme::palette();
+    AppTheme::setPalette(theme.app);
+    Doc d { theme.name, theme.app, theme.makeCanvas() };
+    AppTheme::setPalette(saved);
+    return d;
+}
+
+EditorTheme ThemeFile::makeTheme(const Doc& doc)
+{
+    EditorTheme t;
+    t.name = doc.name;
+    t.app = doc.app;
+    t.makeCanvas = [cs = doc.canvas] { return cs; };
+    return t;
+}
+
+juce::Colour& ThemeFile::colourRef(Doc& doc, const Entry& e)
+{
+    if (e.app != nullptr)    return doc.app.*(e.app);
+    if (e.morph >= 0)        return doc.canvas.morphColor[e.morph];
+    return doc.canvas.*(e.canvas);
+}
+
+const std::vector<ThemeFile::Entry>& ThemeFile::entries()
+{
+    using C = ColorScheme;
+    static const std::vector<Entry> list = [] {
+        std::vector<Entry> v;
+        auto cv = [&](const char* g, const char* l, juce::Colour C::* m, bool a = false) {
+            Entry e { g, l }; e.canvas = m; e.autoWhenTransparent = a; v.push_back(e); };
+        const char* led = "LEDs and meters";
+        cv(led, "LED on", &C::ledOn);            cv(led, "LED off", &C::ledOff);
+        cv(led, "Audio LED on", &C::ledAudioOn); cv(led, "Yellow LED", &C::ledYellow);
+        cv(led, "Meter low", &C::meterLow);      cv(led, "Meter mid", &C::meterMid);
+        cv(led, "Meter high", &C::meterHigh);    cv(led, "Meter track", &C::meterTrack);
+        cv(led, "Meter background", &C::meterBg);
+        const char* cab = "Cables and jacks";
+        cv(cab, "Audio cable and jack", &C::cableAudio);     cv(cab, "Control cable and jack", &C::cableControl);
+        cv(cab, "Logic cable and jack", &C::cableLogic);     cv(cab, "Master/slave cable and jack", &C::cableMasterSlave);
+        cv(cab, "User 1 cable and jack", &C::cableUser1);    cv(cab, "User 2 cable and jack", &C::cableUser2);
+        cv(cab, "Jack hole", &C::connHole);                  cv(cab, "Jack ring", &C::connOutline);
+        const char* mor = "Morph knobs";
+        const char* morphNames[] = { "Morph 1 (red)", "Morph 2 (green)", "Morph 3 (blue)", "Morph 4 (yellow)" };
+        for (int i = 0; i < 4; ++i) { Entry e { mor, morphNames[i] }; e.morph = i; v.push_back(e); }
+        const char* seq = "Sequencers (empty = automatic)";
+        cv(seq, "Slider grip (NoteSeqA, CtrlSeq)", &C::sliderGrip, true);
+        cv(seq, "Lit step (EventSeq)", &C::stepOn, true);
+        cv(seq, "Note (NoteSeqB)", &C::seqNote, true);
+        cv(seq, "Note under the playhead (NoteSeqB)", &C::seqNoteActive, true);
+        const char* kn = "Knobs";
+        cv(kn, "Knob", &C::knobBase);  cv(kn, "Knob outline", &C::knobBorder);
+        cv(kn, "Knob pointer", &C::knobGrip); cv(kn, "Knob value arc (flat knobs)", &C::knobArc);
+        const char* mod = "Modules and canvas";
+        cv(mod, "Canvas", &C::gridBackground); cv(mod, "Canvas grid", &C::gridLines);
+        cv(mod, "Module border", &C::moduleBorder); cv(mod, "Module text", &C::moduleText);
+        cv(mod, "Display", &C::displayBg); cv(mod, "Display text", &C::displayText);
+        const char* app = "Application";
+        auto av = [&](const char* l, juce::Colour AppThemePalette::* m) { Entry e { app, l }; e.app = m; v.push_back(e); };
+        av("Window background", &AppThemePalette::backgroundMain); av("Panels", &AppThemePalette::backgroundPanel);
+        av("Buttons", &AppThemePalette::buttonBackground);        av("Text", &AppThemePalette::textPrimary);
+        av("Accent", &AppThemePalette::accentActive);
+        return v;
+    }();
+    return list;
 }

@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Theme editor** (2026-10-05, #90, step 2; the colour options asked for by Grant). View > Theme > Edit Theme Colours opens a window with a swatch per colour, grouped: LEDs and meters, cables and matching jacks, morph knobs, sequencers, knobs, modules and the app. The canvas follows live while a colour is dragged; Save writes a user theme file, closing without saving restores the chosen theme. New colours: NoteSeqA/CtrlSeq slider grip, EventSeq lit step, NoteSeqB notes and playhead note; left empty they keep the old derived look.
 - **Theme files and a user theme folder** (2026-10-05, #90, step 1). A theme can be saved by name to `~/.AnimatekNME/themes`, reloaded and opened from View > Theme. Grant's drawing code now carries his credit in its headers (licence confirmed by him).
 - **Hardware look: an optional skeuomorphic way to draw the canvas** (2026-10-05, #89;
   code by Grant (teezdalien), a Patreon supporter, integrated by Claude). Knobs, jacks,

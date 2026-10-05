@@ -94,6 +94,13 @@ struct ColorScheme
     juce::Colour incrementBorder;
     juce::Colour incrementFg;
 
+    // Sequencer colours. Transparent (the default) keeps the derived look: the grip in the
+    // reset text colour, a lit EventSeq step from the module colour, notes in the display curves.
+    juce::Colour sliderGrip;         // grip of the vertical sliders (NoteSeqA, CtrlSeq...)
+    juce::Colour stepOn;             // a lit step toggle (EventSeq)
+    juce::Colour seqNote;            // NoteSeqB note blocks
+    juce::Colour seqNoteActive;      // NoteSeqB note under the playhead
+
     // Mute button active state
     juce::Colour muteActive;
 

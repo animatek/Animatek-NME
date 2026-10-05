@@ -32,6 +32,30 @@ namespace ThemeFile
     bool fromJson(const juce::String& text, const EditorTheme& fallbackBase,
                   EditorTheme& out, juce::String& error);
 
+    // An editable snapshot of a theme: the app palette and the finished canvas scheme.
+    struct Doc
+    {
+        juce::String name;
+        AppThemePalette app;
+        ColorScheme canvas;
+    };
+    Doc makeDoc(const EditorTheme& theme);
+    EditorTheme makeTheme(const Doc& doc);
+
+    // One editable colour. `group` is what the editor sorts it under; `label` is plain English.
+    // Exactly one of `app` / `canvas` is set, or `morph` is 0-3 for a morph group colour.
+    struct Entry
+    {
+        const char* group;
+        const char* label;
+        juce::Colour AppThemePalette::* app = nullptr;
+        juce::Colour ColorScheme::*     canvas = nullptr;
+        int morph = -1;
+        bool autoWhenTransparent = false;   // transparent means "derive from the theme"
+    };
+    const std::vector<Entry>& entries();
+    juce::Colour& colourRef(Doc& doc, const Entry& e);
+
     // "#rrggbb" for opaque colours, "#aarrggbb" otherwise.
     juce::String colourToString(juce::Colour c);
     // False when `s` is not a colour.

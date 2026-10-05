@@ -2314,8 +2314,9 @@ void PatchCanvas::paintButtons(juce::Graphics& g, const Module& m, juce::Rectang
             continue;
         }
 
-        juce::Colour base      = isOn ? (hasMorph ? morphCol
-                                                  : moduleBg.brighter(0.2f).withSaturation(0.4f))
+        const juce::Colour stepLit = activeScheme_.stepOn.isTransparent()
+                                       ? moduleBg.brighter(0.2f).withSaturation(0.4f) : activeScheme_.stepOn;
+        juce::Colour base      = isOn ? (hasMorph ? morphCol : stepLit)
                                       : moduleBg.darker(0.15f);
         juce::Colour labelCol  = isOn ? (hasMorph ? morphCol.contrasting(0.8f)
                                                   : activeScheme_.buttonTextActive)
@@ -2369,7 +2370,9 @@ void PatchCanvas::paintSliders(juce::Graphics& g, const Module& m, juce::Rectang
         // Draw grip — morph-assigned sliders show the group color, like knobs
         int morphGroup = (param != nullptr) ? param->getMorphGroup() : -1;
         bool hasMorph = (morphGroup >= 0 && morphGroup < 4);
-        const juce::Colour gripCol = hasMorph ? activeScheme_.morphColor[morphGroup] : activeScheme_.resetText;
+        const juce::Colour gripCol = hasMorph ? activeScheme_.morphColor[morphGroup]
+                                              : (activeScheme_.sliderGrip.isTransparent() ? activeScheme_.resetText
+                                                                                         : activeScheme_.sliderGrip);
         g.setColour(gripCol);
         bool vertical = (ts.orientation != "horizontal");
         if (vertical)
@@ -3426,7 +3429,9 @@ void PatchCanvas::paintCustomDisplays(juce::Graphics& g, const Module& m, juce::
                 float nw = juce::jmax(4.0f, stepW - 3.0f);
                 bool active = (i == currentStep && i < stepCount);
 
-                auto noteColour = active ? activeScheme_.displayCurveYellow : activeScheme_.displayCurveGreen;
+                const auto noteLit  = activeScheme_.seqNoteActive.isTransparent() ? activeScheme_.displayCurveYellow : activeScheme_.seqNoteActive;
+                const auto noteIdle = activeScheme_.seqNote.isTransparent() ? activeScheme_.displayCurveGreen : activeScheme_.seqNote;
+                auto noteColour = active ? noteLit : noteIdle;
                 if (i >= stepCount)
                     noteColour = noteColour.withMultipliedAlpha(0.35f);
                 if (clipped)

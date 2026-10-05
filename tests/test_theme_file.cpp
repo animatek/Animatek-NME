@@ -102,3 +102,25 @@ TEST_CASE("themes are found by name, the saved choice")
     CHECK(ThemeRegistry::indexOfName("Animatek Rack") == ThemeRegistry::builtinCount() - 1);
     CHECK(ThemeRegistry::indexOfName("No such theme") == -1);
 }
+
+TEST_CASE("the theme editor's entries edit a doc and the sequencer colours survive a file")
+{
+    auto doc = ThemeFile::makeDoc(ThemeRegistry::get(0));
+    for (const auto& e : ThemeFile::entries())
+        CHECK_NOTHROW(ThemeFile::colourRef(doc, e));
+
+    doc.name = "Edited";
+    doc.canvas.stepOn = juce::Colour(0xffff8800);
+    doc.canvas.seqNote = juce::Colour(0xff00aaff);
+    doc.canvas.morphColor[2] = juce::Colour(0xffabcdef);
+    const auto theme = ThemeFile::makeTheme(doc);
+
+    EditorTheme back;
+    juce::String error;
+    REQUIRE(ThemeFile::fromJson(ThemeFile::toJson(theme, ThemeRegistry::get(0).name), ThemeRegistry::get(0), back, error));
+    const auto cs = back.makeCanvas();
+    CHECK(cs.stepOn == juce::Colour(0xffff8800));
+    CHECK(cs.seqNote == juce::Colour(0xff00aaff));
+    CHECK(cs.morphColor[2] == juce::Colour(0xffabcdef));
+    CHECK(cs.sliderGrip.isTransparent());   // left automatic
+}

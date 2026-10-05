@@ -20,6 +20,7 @@
 #include "undo/PatchActions.h"
 #include "ui/MainLayout.h"
 #include "ui/EditorOptionsDialog.h"
+#include "ui/ThemeEditorWindow.h"
 #include "ui/PresetBrowserWindow.h"
 #include "ui/KnobFloaterWindow.h"
 #include "ui/KeyboardFloaterWindow.h"
@@ -205,6 +206,8 @@ private:
     juce::String getMcpBridgeCommand() const;
 #endif
     void applyUiTheme(int index, bool persist);
+    void applyThemeLive(const EditorTheme& theme);   // theme editor preview, not in the registry
+    void showThemeEditor();
     void toggleWireframe();
     void toggleLeftPanel();   // Ctrl+I: inspector column (issue #38)
     void toggleRightPanel();  // Ctrl+Shift+I: patch browser
@@ -376,6 +379,7 @@ private:
     EditorOptions editorOptions;
     std::unique_ptr<PresetBrowserWindow> presetBrowserWindow;
     std::unique_ptr<KnobFloaterWindow> knobFloaterWindow;
+    std::unique_ptr<ThemeEditorWindow> themeEditorWindow;
     std::unique_ptr<KeyboardFloaterWindow> keyboardFloaterWindow;
     std::unique_ptr<PatchNotesFloaterWindow> patchNotesFloaterWindow;
     std::unique_ptr<MutatorWindow> mutatorWindow;
