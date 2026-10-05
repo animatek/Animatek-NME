@@ -56,6 +56,7 @@ public:
     std::function<float(int synth)> loadProvider;
 
     std::function<void(int)> onSlotChanged;
+    std::function<void(int)> onSynthSelected;    // click on a synth's name box
     std::function<void(int)> onSlotEnableToggled;  // Ctrl+click on this slot
     std::function<void(int)> onSlotViewToggled;  // Right-click: show/hide this slot
 
@@ -164,7 +165,8 @@ public:
     // reports in the status bar. Falls back to toggling directly if unwired.
     std::function<void(bool)> onPanelToggleRequested;
 
-    std::function<void(int)> onSlotChanged;  // called with slot index 0-3
+    std::function<void(int)> onSlotChanged;  // called with the global slot index
+    std::function<void(int)> onSynthSelected;
     std::function<void(int)> onSlotViewToggled;  // right-click a slot row: show/hide its sub-window
 
 private:

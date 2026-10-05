@@ -266,6 +266,14 @@ void SlotBar::itemDropped(const SourceDetails& details)
 void SlotBar::mouseDown(const juce::MouseEvent& e)
 {
     auto pos = e.getPosition();
+    // A click on a synth's name makes it the synth being edited.
+    for (int synth = 0; synth < kMaxSynths; ++synth)
+        if (nameBounds[synth].contains(pos))
+        {
+            if (synthName[synth].isNotEmpty() && onSynthSelected)
+                onSynthSelected(synth);
+            return;
+        }
     for (int i = 0; i < numSlots; ++i)
     {
         if (!slotBounds[i].contains(pos))
@@ -387,6 +395,10 @@ MainLayout::MainLayout(ModuleDescriptions& moduleDescs)
     slotBar.onSlotChanged = [this](int idx) {
         if (onSlotChanged)
             onSlotChanged(idx);
+    };
+    slotBar.onSynthSelected = [this](int synth) {
+        if (onSynthSelected)
+            onSynthSelected(synth);
     };
     slotBar.onSlotViewToggled = [this](int idx) {
         if (onSlotViewToggled)

@@ -26,6 +26,12 @@
 #include <set>
 #include <climits>
 
+// Port 1 keeps the settings keys it always had, so an upgrade finds its saved ports;
+// the others carry their number.
+static juce::String portKey(const char* base, int synth) {
+  return synth == 0 ? juce::String(base) : juce::String(base) + "_" + juce::String(synth + 1);
+}
+
 MainComponent::MainComponent(juce::ApplicationProperties &props)
     : appProperties(props) {
   editorOptions = EditorOptions::load(appProperties.getUserSettings());
@@ -362,8 +368,9 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   mainLayout->getPatchBrowser().onPatchDoubleClicked = [this](int section, int position) {
     loadBankPatchIntoSlot(section, position, activeSlot);
   };
+  // The browser lists the bank of the synth being edited, so its slot menu (A..D) is that synth's.
   mainLayout->getPatchBrowser().onPatchLoadToSlot = [this](int section, int position, int slot) {
-    loadBankPatchIntoSlot(section, position, slot);
+    loadBankPatchIntoSlot(section, position, SynthSlot::global(synthHub.activeSynth(), slot));
   };
 
   // Dragging a patch out of the Synth browser onto a slot loads it there
@@ -912,6 +919,14 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     switchToSlot(slot);
   };
 
+  // A click on a synth's name: edit that synth, on the slot it has focused (or A).
+  mainLayout->onSynthSelected = [this](int synth) {
+    if (synth == synthHub.activeSynth())
+      return;
+    auto& cm = synthHub.synth(synth);
+    switchToSlot(SynthSlot::global(synth, cm.isConnected() ? cm.getCurrentSlot() : 0));
+  };
+
   // Right-click a slot row: show or hide that slot's sub-window in the work area
   mainLayout->onSlotViewToggled = [this](int slot) {
     toggleSlotOpen(slot);
@@ -1222,7 +1237,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
    #endif
     if (slot >= 0)
     {
-      toggleSlotOpen(slot);
+      toggleSlotOpen(SynthSlot::global(synthHub.activeSynth(), slot));   // the digits are the active synth's slots
       return true;
     }
   }
@@ -1415,13 +1430,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     {
         auto letter = SynthSlot::label(i);
         auto name = slotPatches[i] ? slotPatches[i]->getName() : juce::String("empty");
-        addShortcutItem(slotMenu, 90 + i, "Slot " + letter + " - " + name,
-                        NME_SLOT_TOGGLE_CHORD + juce::String(i + 1),
+        // Ctrl+Shift+1..4 are the active synth's four slots; the others have the menu.
+        addShortcutItem(slotMenu, 200 + i, "Slot " + letter + " - " + name,
+                        SynthSlot::synthOf(i) == synthHub.activeSynth()
+                            ? NME_SLOT_TOGGLE_CHORD + juce::String(SynthSlot::localOf(i) + 1)
+                            : juce::String(),
                         true, patchArea.isSlotOpen(i));
     }
     slotMenu.addSeparator();
     const bool severalOpen = patchArea.getNumOpenSlots() > 1;
-    const bool grid = patchArea.getNumOpenSlots() == 4;  // up/down only exist in the 2x2
+    const bool grid = patchArea.getNumOpenSlots() >= 4;  // up/down only exist in a grid
     addShortcutItem(slotMenu, 96, "Move Slot Left", "Ctrl+Shift+Left", severalOpen);
     addShortcutItem(slotMenu, 97, "Move Slot Right", "Ctrl+Shift+Right", severalOpen);
     addShortcutItem(slotMenu, 99, "Move Slot Up", "Ctrl+Shift+Up", grid);
@@ -1736,8 +1754,8 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 84:  // SysEx Monitor
     toggleSysexMonitor();
     break;
-  case 90: case 91: case 92: case 93:  // show/hide slot A..D
-    toggleSlotOpen(menuItemID - 90);
+  case 200: case 201: case 202: case 203: case 204: case 205: case 206: case 207:  // show/hide a slot
+    toggleSlotOpen(menuItemID - 200);
     break;
   case 94:  // Tile Slots
     mainLayout->getPatchArea().retile();
@@ -2470,6 +2488,15 @@ void MainComponent::loadBankPatchIntoSlot(int section, int position, int slot) {
   if (slot < 0 || slot >= numSlots)
     return;
 
+  // The bank positions on screen are the active synth's. Loading them into a slot
+  // of another synth would fetch whatever that synth keeps at the same position.
+  if (SynthSlot::synthOf(slot) != synthHub.activeSynth()) {
+    mainLayout->getStatusBar().showMessage(
+        "The browser lists the bank of synth " + juce::String(synthHub.activeSynth() + 1)
+            + ": switch to synth " + juce::String(SynthSlot::synthOf(slot) + 1) + " to load from its bank", 4000);
+    return;
+  }
+
   pendingBrowserLoadSlot = slot;
 
   // Show the destination, so the patch does not arrive somewhere off screen.
@@ -2774,12 +2801,34 @@ void MainComponent::openSynthSettingsDialog() {
 }
 
 void MainComponent::showMidiSettingsDialog() {
+  MidiSettingsDialog::Ports ports;
+  auto* settings = appProperties.getUserSettings();
+  for (int i = 0; i < kMaxSynths; ++i) {
+    const auto& st = synthState[static_cast<size_t>(i)];
+    auto& p = ports[static_cast<size_t>(i)];
+    p.inputId = st.lastInputId;
+    p.outputId = st.lastOutputId;
+    // Enabled is what the user last asked for; a connected port is certainly enabled.
+    p.enabled = synthHub.synth(i).isConnected()
+             || (settings != nullptr && settings->getBoolValue(portKey("midiEnabled", i), i == 0));
+  }
   midiSettingsDialog = MidiSettingsDialog::show(
-      this, activeState().lastInputId, activeState().lastOutputId, synthHub.active().getStatus(),
-      [this](const juce::String &inputId, const juce::String &outputId) {
-        handleConnectionRequest(synthHub.activeSynth(), inputId, outputId);
-      },
-      [this]() { handleDisconnectionRequest(synthHub.activeSynth()); });
+      this, ports,
+      [this](int port, const MidiSettingsDialog::Port& wanted) {
+        if (auto* st = appProperties.getUserSettings()) {
+          st->setValue(portKey("midiEnabled", port), wanted.enabled);
+          st->saveIfNeeded();
+        }
+        if (!wanted.enabled) {
+          if (synthHub.synth(port).isConnected())
+            handleDisconnectionRequest(port);
+        } else if (wanted.inputId.isNotEmpty() && wanted.outputId.isNotEmpty()) {
+          handleConnectionRequest(port, wanted.inputId, wanted.outputId);
+        }
+      });
+  // Each port shows what its connection says right now.
+  for (int i = 0; i < kMaxSynths; ++i)
+    midiSettingsDialog->setPortStatus(i, synthHub.synth(i).getStatus());
   announceDialogOnSynth(midiSettingsDialog.getComponent());
 }
 
@@ -3450,7 +3499,7 @@ bool MainComponent::handleFloaterShortcut(const juce::KeyPress& key) {
   if (code == 127) code = '8';  // X11 legacy: Ctrl+8 arrives as DEL (0x7F)
   switch (code) {
     case '1': case '2': case '3': case '4':
-      switchToSlot(code - '1');
+      switchToSlot(SynthSlot::global(synthHub.activeSynth(), code - '1'));
       return true;
     case '5': toggleKnobFloater(); return true;
     case '6': toggleKeyboardFloater(); return true;
@@ -3966,7 +4015,7 @@ void MainComponent::onConnectionStatusChanged(
   // Without this the dialog kept the state it opened with: Connect stayed Connect
   // after the handshake, and a lost connection still offered Disconnect.
   if (midiSettingsDialog != nullptr)
-    midiSettingsDialog->setConnectedState(status);
+    midiSettingsDialog->setPortStatus(synth, status);
   if (!connected) {
     // Reconciling with the synth is a once-per-connection thing, so losing the
     // connection arms it again for the next one.
@@ -4036,12 +4085,6 @@ void MainComponent::onConnectionStatusChanged(
     mainLayout->getHeaderBar().setSynthDspLoad(-1, -1, -1, -1);
     std::cout << "[SYNC] Slot synchronizers of synth " << synth << " disabled on disconnect" << std::endl;
   }
-}
-
-// Port 1 keeps the settings keys it always had, so an upgrade finds its saved ports;
-// the others carry their number.
-static juce::String portKey(const char* base, int synth) {
-  return synth == 0 ? juce::String(base) : juce::String(base) + "_" + juce::String(synth + 1);
 }
 
 void MainComponent::attemptAutoConnect() {

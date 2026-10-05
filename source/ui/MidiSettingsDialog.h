@@ -1,20 +1,33 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
-#include "../midi/ConnectionManager.h"
+#include <array>
+#include "../midi/SynthHub.h"
 #include "FlatCloseButton.h"
 
+// MIDI Setup, as the original editor has it: one group per port, each with its In and
+// Out ports, an Enabled box and the Status of the synth found there. A port is one
+// synth with its own four slots. OK applies and closes, Apply applies, Cancel closes.
 class MidiSettingsDialog : public juce::Component
 {
 public:
+    struct Port
+    {
+        juce::String inputId, outputId;
+        bool enabled = false;
+    };
+    using Ports = std::array<Port, kMaxSynths>;
+
     MidiSettingsDialog();
 
     void refreshDeviceLists();
-    void setSelectedPorts(const juce::String& inputId, const juce::String& outputId);
-    void setConnectedState(const ConnectionManager::Status& status);
+    void setPorts(const Ports& ports);
+    // What a port's connection says: "Looking...", the synth's name once it answers, or why not.
+    void setPortStatus(int port, const ConnectionManager::Status& status);
 
-    std::function<void(const juce::String& inputId, const juce::String& outputId)> onConnectionRequest;
-    std::function<void()> onDisconnectionRequest;
+    // Called for every port whose settings changed (or that is enabled but not
+    // connected) when OK or Apply is pressed.
+    std::function<void(int port, const Port& wanted)> onApply;
 
     void paint   (juce::Graphics& g) override;
     void resized () override;
@@ -23,32 +36,32 @@ public:
     void mouseDrag  (const juce::MouseEvent& e) override;
 
     // Returns the dialog, so a caller can watch for it closing and keep its
-    // connection state current.
-    static MidiSettingsDialog* show(juce::Component* parent,
-                     const juce::String& currentInputId,
-                     const juce::String& currentOutputId,
-                     const ConnectionManager::Status& status,
-                     std::function<void(const juce::String&, const juce::String&)> connectCb,
-                     std::function<void()> disconnectCb);
+    // port status current.
+    static MidiSettingsDialog* show(juce::Component* parent, const Ports& ports,
+                                    std::function<void(int, const Port&)> applyCb);
 
 private:
-    void close();
-    void updateButtonState();
-    void requestConnection();
+    struct PortGroup
+    {
+        juce::Label    inLabel  { {}, "In" };
+        juce::Label    outLabel { {}, "Out" };
+        juce::ComboBox inCombo, outCombo;
+        juce::ToggleButton enabled { "Enabled" };
+        juce::Label    statusCaption { {}, "Status:" };
+        juce::Label    status;
+        bool connected = false;
+    };
 
-    bool connected = false;
+    void close();
+    void apply();
+    Port currentPort(int i) const;
+    void updateEnabledState(int i);
+
     juce::ComponentDragger dragger;
     FlatCloseButton closeButton;
-
-    juce::Label    inputLabel    { {}, "MIDI INPUT" };
-    juce::ComboBox inputCombo;
-    juce::Label    outputLabel   { {}, "MIDI OUTPUT" };
-    juce::ComboBox outputCombo;
-    // Connect while disconnected, Reconnect while connected: the handshake runs
-    // again on the ports chosen above, which may be the same ones or another synth.
-    juce::TextButton connectButton;
-    juce::TextButton disconnectButton { "Disconnect" };
-    juce::Label    statusLabel;
+    std::array<PortGroup, kMaxSynths> groups;
+    std::array<Port, kMaxSynths> applied;   // what the synth was last told
+    juce::TextButton okButton { "OK" }, cancelButton { "Cancel" }, applyButton { "Apply" };
 
     juce::StringArray inputIds;
     juce::StringArray outputIds;

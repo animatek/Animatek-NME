@@ -1,4 +1,5 @@
 #include "SlotView.h"
+#include "../midi/SynthHub.h"
 #include "AppTheme.h"
 
 SlotView::SlotView(int slot)
@@ -76,7 +77,10 @@ void SlotView::refreshTitle()
 {
     // juce::String has no char constructor — String(char) silently picks the
     // int overload and prints the ASCII code. Always charToString.
-    auto title = "Slot " + juce::String::charToString(static_cast<char>('A' + slot_));
+    // As the original editor titles its patch windows: the port and the slot.
+    const auto letter = juce::String::charToString(static_cast<char>('A' + SynthSlot::localOf(slot_)));
+    auto title = kMaxSynths == 1 ? "Slot " + letter
+                                 : "Port " + juce::String(SynthSlot::synthOf(slot_) + 1) + ", Slot " + letter;
     if (patchName_.isNotEmpty())
         title += " - " + patchName_;
     if (local_)
