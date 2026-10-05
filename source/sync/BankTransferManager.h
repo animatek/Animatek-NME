@@ -38,6 +38,8 @@ public:
     ~BankTransferManager();
 
     bool isBusy() const { return busy; }
+    // Follow the synth being edited. Ignored mid-transfer: a transfer finishes on the synth it began on.
+    void retarget(ConnectionManager& cm) { if (!busy) connection = &cm; }
 
     // Save every non-empty patch of bank `section` (0-8) into destFolder.
     // Requires the synth patch list to be loaded (to skip empty positions).
@@ -86,7 +88,7 @@ private:
     void reportProgress(const juce::String& itemName);
     static juce::String sanitizeFileName(juce::String name);
 
-    ConnectionManager& connection;
+    ConnectionManager* connection;   // the synth being edited; retargeted when that changes
     ModuleDescriptions& moduleDescs;
 
     std::shared_ptr<std::atomic<bool>> alive { std::make_shared<std::atomic<bool>>(true) };

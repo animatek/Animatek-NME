@@ -1969,6 +1969,7 @@ void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen)
 void MainComponent::refreshForActiveSynth() {
   const int synth = synthHub.activeSynth();
   auto& cm = synthHub.synth(synth);
+  bankTransfer.retarget(cm);
   const auto& state = synthState[static_cast<size_t>(synth)];
   const bool connected = cm.isConnected();
 
