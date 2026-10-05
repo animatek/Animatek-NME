@@ -54,6 +54,10 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     // a fresh install with neither key defaults to "Nord" (index 6).
     const int legacyIndex = props->getIntValue("appearanceTheme", -1) == 1 ? 2 : 6;
     o.uiThemeIndex   = props->getIntValue("uiThemeIndex", legacyIndex);
+    o.uiThemeName    = props->getValue("uiThemeName");
+    if (const int byName = o.uiThemeName.isNotEmpty() ? ThemeRegistry::indexOfName(o.uiThemeName) : -1;
+        byName >= 0)
+        o.uiThemeIndex = byName;
     o.cableStyle     = static_cast<CableStyle>  (props->getIntValue  ("cableStyle",      0));
     // Vertical is the default: it is how the original editor behaves, and
     // what people reach for first.
@@ -83,6 +87,7 @@ void EditorOptions::save(juce::PropertiesFile* props) const
 {
     if (!props) return;
     props->setValue ("uiThemeIndex",    uiThemeIndex);
+    props->setValue ("uiThemeName",     ThemeRegistry::get (uiThemeIndex).name);
     props->setValue ("cableStyle",      static_cast<int> (cableStyle));
     props->setValue ("knobControl",     static_cast<int> (knobControl));
     props->setValue ("autoUpload",      autoUpload);

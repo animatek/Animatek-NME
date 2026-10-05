@@ -34,10 +34,15 @@ target_sources(nme_tests PRIVATE
     test_slot_set.cpp
     test_pch_area_rows.cpp
     test_pch_macbinary.cpp
+    test_theme_file.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
     ${CMAKE_SOURCE_DIR}/source/model/ThemeData.cpp
+    ${CMAKE_SOURCE_DIR}/source/ui/ThemeFile.cpp
+    ${CMAKE_SOURCE_DIR}/source/ui/ThemeRegistry.cpp
+    ${CMAKE_SOURCE_DIR}/source/ui/ColorScheme.cpp
+    ${CMAKE_SOURCE_DIR}/source/ui/AppTheme.cpp
     ${CMAKE_SOURCE_DIR}/source/model/Patch.cpp
     ${CMAKE_SOURCE_DIR}/source/model/ModuleDescriptions.cpp
     ${CMAKE_SOURCE_DIR}/source/format/ValueFormatters.cpp
@@ -97,6 +102,7 @@ target_link_libraries(nme_tests PRIVATE
     juce::juce_data_structures   # juce::UndoManager, for the undo action tests
     juce::juce_audio_devices
     juce::juce_graphics    # Descriptors carry juce::Colour
+    juce::juce_gui_basics  # ThemeRegistry/AppTheme (themes as files, #90)
     juce::juce_recommended_config_flags
     juce::juce_recommended_warning_flags
 )

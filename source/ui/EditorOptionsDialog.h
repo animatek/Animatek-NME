@@ -11,6 +11,9 @@ struct EditorOptions
     enum class KnobControl { Horizontal = 0, Circular, Vertical };
 
     int         uiThemeIndex   = 6;   // index into ThemeRegistry ("Nord")
+    // The saved choice is the name, so user theme files coming and going never
+    // moves it to another theme; the index is only the fallback for old settings.
+    juce::String uiThemeName;
     CableStyle  cableStyle     = CableStyle::CurvedThick;
     KnobControl knobControl    = KnobControl::Vertical;
     bool        autoUpload     = true;

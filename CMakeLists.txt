@@ -101,6 +101,7 @@ set(NME_SHARED_SOURCES
     source/ui/PatchCanvasPresets.cpp
     source/ui/ColorScheme.cpp
     source/ui/ThemeRegistry.cpp
+    source/ui/ThemeFile.cpp
     source/ui/InspectorPanel.cpp
     source/ui/StatusBar.cpp
     source/ui/PatchHeaderBar.cpp

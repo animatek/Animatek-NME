@@ -1,4 +1,5 @@
 #include "ThemeRegistry.h"
+#include "ThemeFile.h"
 
 #include <vector>
 
@@ -282,9 +283,9 @@ AppThemePalette makeNordClassicApp()
 
 // Theme menu items use IDs 200+ in MainComponent's View menu (see getMenuForIndex
 // / menuItemSelected), so the registry can grow freely.
-const std::vector<EditorTheme>& themes()
+std::vector<EditorTheme>& builtinList()
 {
-    static const std::vector<EditorTheme> list = {
+    static std::vector<EditorTheme> list = {
         { "Nomad",            AppTheme::palette(AppThemeId::SoftDarkGrey), createClassicTheme },
         { "Dark",             AppTheme::palette(AppThemeId::SoftDarkGrey), createDarkTheme },
         { "Deep Dark",        AppTheme::palette(AppThemeId::DeepDarkGrey), createDarkTheme },
@@ -302,6 +303,60 @@ const std::vector<EditorTheme>& themes()
     };
     return list;
 }
+
+// Built-ins first, then the user's: a name that is already taken gets " (user)".
+std::vector<EditorTheme>& allThemes()
+{
+    static std::vector<EditorTheme> all = [] {
+        auto v = builtinList();
+        const auto base = v[1];   // "Dark"
+        for (auto& t : ThemeFile::loadFolder(ThemeFile::userFolder(), base))
+        {
+            for (const auto& other : v)
+                if (other.name.equalsIgnoreCase(t.name)) { t.name += " (user)"; break; }
+            v.push_back(std::move(t));
+        }
+        return v;
+    }();
+    return all;
+}
+
+const std::vector<EditorTheme>& themes() { return allThemes(); }
+}
+
+int ThemeRegistry::builtinCount()
+{
+    return static_cast<int>(builtinList().size());
+}
+
+void ThemeRegistry::reloadUserThemes()
+{
+    auto& all = allThemes();
+    all.resize(static_cast<size_t>(builtinCount()));
+    const auto base = all[1];
+    for (auto& t : ThemeFile::loadFolder(ThemeFile::userFolder(), base))
+    {
+        for (const auto& other : all)
+            if (other.name.equalsIgnoreCase(t.name)) { t.name += " (user)"; break; }
+        all.push_back(std::move(t));
+    }
+}
+
+int ThemeRegistry::indexOfName(const juce::String& name)
+{
+    const auto& list = themes();
+    for (size_t i = 0; i < list.size(); ++i)
+        if (list[i].name == name)
+            return static_cast<int>(i);
+    return -1;
+}
+
+const EditorTheme* ThemeRegistry::findBuiltin(const juce::String& name)
+{
+    for (const auto& t : builtinList())
+        if (t.name == name)
+            return &t;
+    return nullptr;
 }
 
 int ThemeRegistry::count()

@@ -12,6 +12,7 @@
 #include "ui/SynthSettingsDialog.h"
 #include "ui/AppTheme.h"
 #include "ui/ThemeRegistry.h"
+#include "ui/ThemeFile.h"
 #include "model/Mutator.h"
 #include "model/MutationCategories.h"
 #include "format/ValueFormatters.h"
@@ -1345,6 +1346,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     for (int i = 0; i < ThemeRegistry::count(); ++i)  // ids 200+ reserved for themes
       themeMenu.addItem(200 + i, ThemeRegistry::get(i).name, true,
                         i == editorOptions.uiThemeIndex);
+    themeMenu.addSeparator();
+    themeMenu.addItem(190, "Save Current Theme as File...");
+    themeMenu.addItem(191, "Reload Theme Files");
+    themeMenu.addItem(192, "Open Themes Folder");
     {
       // A submenu with a shortcut hint needs the Item form: addSubMenu has no
       // shortcut field, and Ctrl+T cycling the theme is worth advertising.
@@ -1723,6 +1728,48 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 101:  // Reset slot order: A|B / C|D, same as the header bar's ABCD
     mainLayout->getPatchArea().resetTileOrder();
     mainLayout->getStatusBar().showMessage("Slots back in ABCD order", 2000);
+    break;
+
+  case 190:  // Save the current theme as a file the user can edit (#90)
+  {
+    const auto folder = ThemeFile::userFolder();
+    folder.createDirectory();
+    const auto& cur = ThemeRegistry::get(editorOptions.uiThemeIndex);
+    // A copy with its own name, so it appears beside the original after a reload.
+    EditorTheme copy = cur;
+    copy.name = cur.name + " copy";
+    auto file = folder.getChildFile(juce::File::createLegalFileName(copy.name) + ".json");
+    for (int n = 2; file.existsAsFile(); ++n)
+    {
+      copy.name = cur.name + " copy " + juce::String(n);
+      file = folder.getChildFile(juce::File::createLegalFileName(copy.name) + ".json");
+    }
+    // Missing keys fall back to a built-in: the theme itself, or Dark for a user theme.
+    const auto json = ThemeFile::toJson(copy, ThemeRegistry::findBuiltin(cur.name) != nullptr ? cur.name : "Dark");
+    if (file.replaceWithText(json))
+    {
+      ThemeRegistry::reloadUserThemes();
+      applyUiTheme(ThemeRegistry::indexOfName(cur.name), false);
+      mainLayout->getStatusBar().showMessage("Saved " + file.getFullPathName() + "  (edit it, then Reload Theme Files)", 6000);
+      file.revealToUser();
+    }
+    else
+      mainLayout->getStatusBar().showMessage("Could not write " + file.getFullPathName(), 4000);
+    break;
+  }
+  case 191:  // Reload theme files
+  {
+    const auto current = ThemeRegistry::get(editorOptions.uiThemeIndex).name;
+    ThemeRegistry::reloadUserThemes();
+    const int idx = ThemeRegistry::indexOfName(current);
+    applyUiTheme(idx >= 0 ? idx : editorOptions.uiThemeIndex, true);
+    mainLayout->getStatusBar().showMessage("Themes reloaded: " + juce::String(ThemeRegistry::count() - ThemeRegistry::builtinCount())
+                                           + " user theme(s)", 3000);
+    break;
+  }
+  case 192:  // Open the themes folder
+    ThemeFile::userFolder().createDirectory();
+    ThemeFile::userFolder().startAsProcess();
     break;
 
   default:
@@ -2774,7 +2821,7 @@ void MainComponent::applyUiTheme(int index, bool persist) {
   canvasScheme.wireframe = editorOptions.wireframe;
   canvasScheme.skeuomorphic = editorOptions.hardwareLook;
   canvasScheme.knobStyle = editorOptions.hardwareKnobStyle;
-    canvasScheme.flatKnobs = editorOptions.flatKnobs;
+  canvasScheme.flatKnobs = editorOptions.flatKnobs;
   mainLayout->setTheme(canvasScheme);
   mainLayout->applyTheme();
   if (presetBrowserWindow)
