@@ -30,6 +30,7 @@ target_sources(nme_tests PRIVATE
     test_editor_key.cpp
     test_module_title_limit.cpp
     test_synth_settings_clock.cpp
+    test_synth_link.cpp
     test_keyquant_scales.cpp
     test_slot_set.cpp
     test_pch_area_rows.cpp

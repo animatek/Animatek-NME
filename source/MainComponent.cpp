@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "midi/SynthLink.h"
 #include "ui/KnobDrag.h"
 #include "model/PatchParser.h"
 #include "model/PchFileIO.h"
@@ -3903,6 +3904,8 @@ void MainComponent::onConnectionStatusChanged(
     slotWindowsReconcileScheduled = false;
   }
   mainLayout->getStatusBar().setConnectionStatus(status.message, connected);
+  mainLayout->getStatusBar().setSynthLink(
+      SynthLink::describe(connected, connectionManager.getConnectedPortName()));
   menuItemsChanged(); // rebuild native macOS menu bar to update enabled states
   updateStoreLocationDisplay();  // storing needs a synth to store into
 

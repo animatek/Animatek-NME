@@ -8,6 +8,8 @@ public:
     StatusBar();
 
     void setConnectionStatus(const juce::String& status, bool connected = false);
+    // Where the editor is connected: "Real G1 (port)", "G1-Emu (port)", "Not connected".
+    void setSynthLink(const juce::String& text);
     void setVoiceCount(int count);
     void setDspLoad(float percent);
     void showMessage(const juce::String& message, int durationMs = 3000);
@@ -30,6 +32,7 @@ public:
 
 private:
     juce::Label connectionLabel;
+    juce::Label linkLabel;
     juce::Label voiceLabel;
     juce::Label dspLabel;
     juce::Label messageLabel;  // Temporary status messages

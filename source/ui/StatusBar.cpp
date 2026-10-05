@@ -11,6 +11,8 @@ StatusBar::StatusBar()
     };
 
     setupLabel(connectionLabel, "Disconnected");
+    setupLabel(linkLabel, "Not connected");
+    linkLabel.setJustificationType(juce::Justification::centredRight);
     setupLabel(voiceLabel, "");
     voiceLabel.setVisible(false);
     setupLabel(dspLabel, "");
@@ -37,6 +39,7 @@ void StatusBar::applyTheme()
     const auto ink = AppTheme::palette().textPrimary;
     connectionLabel.setColour(juce::Label::textColourId, ink);
     messageLabel.setColour(juce::Label::textColourId, ink);
+    linkLabel.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
     voiceLabel.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
     dspLabel.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
     repaint();
@@ -55,6 +58,12 @@ void StatusBar::setConnectionStatus(const juce::String& status, bool connected)
     connectionLabel.setText(status, juce::dontSendNotification);
     // The text stays one ink in both states; the LED goes green or grey.
     repaint();
+}
+
+void StatusBar::setSynthLink(const juce::String& text)
+{
+    linkLabel.setText(text, juce::dontSendNotification);
+    linkLabel.setTooltip(text);
 }
 
 void StatusBar::setVoiceCount(int count)
@@ -177,6 +186,7 @@ void StatusBar::resized()
     // Right-aligned labels
     dspLabel.setBounds(area.removeFromRight(100));
     voiceLabel.setBounds(area.removeFromRight(100));
+    linkLabel.setBounds(area.removeFromRight(juce::jmin(260, area.getWidth() / 3)));
 
     // Message label in the center (takes remaining space), shared with the
     // progress bar

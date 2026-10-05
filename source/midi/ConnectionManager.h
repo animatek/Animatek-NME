@@ -48,6 +48,8 @@ public:
 
     bool isConnected() const { return status.state == State::Connected; }
     const Status& getStatus() const { return status; }
+    // The MIDI input port the editor is on, empty when not connected.
+    juce::String getConnectedPortName() const { return midiDevice ? midiDevice->getInputDeviceName() : juce::String(); }
 
     // Synth commands
     void requestPatch(int slot = 0);
