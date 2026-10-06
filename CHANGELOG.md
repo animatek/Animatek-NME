@@ -23,6 +23,11 @@
   does, so the name is the synth's and not only the editor's: each G1-Emu instance keeps its own
   (flash.bin for the standalone, the DAW project for the plugin), which is what tells them apart.
   Not tried on the window yet.
+- **A new G1-Emu instance gets a name of its own** (2026-10-06). A new plugin instance starts as a
+  copy of the standalone, name included. When an emulator this editor connected by itself answers to
+  a name another connected synth already has, the editor gives it one from a short list ("G1 Basalt",
+  "G1 Nebula"...) and stores it in the synth, as a rename would. Never a real G1 nor a port set by
+  hand; the emulator itself keeps its factory behaviour. Not tried on the window yet.
 - **Ports follow the emulators** (2026-10-06). A G1-Emu instance found on its direct link switches
   its port on (Enabled in MIDI Setup) and connects; when the instance goes, the editor switches that
   port off again, its row leaves the slot panel, and if it was the synth being edited the editor

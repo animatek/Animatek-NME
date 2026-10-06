@@ -352,6 +352,11 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   forEachSynth([this](int s, ConnectionManager& cm) { cm.setSynthSettingsCallback([this, s](const SynthSettings& settings) {
     synthState[static_cast<size_t>(s)].settings = settings;
     synthState[static_cast<size_t>(s)].settingsKnown = true;
+    // A new G1-Emu instance starts as a copy of the standalone, name included: two synths called
+    // the same cannot be told apart, so the emulator this editor connected by itself gets a name
+    // of its own. Never a real G1, nor a port set by hand.
+    if (giveDuplicateEmulatorAName(s))
+      return;   // the new name is shown already; the rest below would put the old one back
     setSynthDisplayName(s, settings.name.empty() ? juce::String("Modular")
                                                   : juce::String(settings.name));
     if (s != synthHub.activeSynth())
@@ -2043,6 +2048,52 @@ void MainComponent::renameSynth(int synth) {
       safeThis->mainLayout->getHeaderBar().setSynthName(name);
     safeThis->mainLayout->getStatusBar().showMessage("Synth renamed: " + name, 2500);
   }), true);
+}
+
+bool MainComponent::giveDuplicateEmulatorAName(int synth) {
+  auto& state = synthState[static_cast<size_t>(synth)];
+  auto& cm = synthHub.synth(synth);
+  if (!cm.isConnected() || !DirectLink::isDeviceId(state.lastInputId))
+    return false;
+  auto* st = appProperties.getUserSettings();
+  if (st == nullptr || !st->getBoolValue(portKey("midiAutoPort", synth), false))
+    return false;
+
+  juce::StringArray taken;
+  for (int other = 0; other < kMaxSynths; ++other)
+    if (other != synth && synthHub.synth(other).isConnected()
+        && synthState[static_cast<size_t>(other)].settingsKnown)
+      taken.add(juce::String(synthState[static_cast<size_t>(other)].settings.name).trim());
+  const juce::String current = juce::String(state.settings.name).trim();
+  if (!taken.contains(current, true))
+    return false;
+
+  // Short, plain ASCII (the G1's display) and at most 16 characters.
+  static const char* const kNames[] = {
+    "G1 Basalt", "G1 Nebula", "G1 Amber", "G1 Cobalt", "G1 Quartz", "G1 Ember", "G1 Cirrus",
+    "G1 Onyx", "G1 Saffron", "G1 Tundra", "G1 Mistral", "G1 Indigo", "G1 Copper", "G1 Lagoon",
+    "G1 Graphite", "G1 Sierra", "G1 Ozone", "G1 Pulsar", "G1 Ferro", "G1 Vapor", "G1 Delta",
+    "G1 Garnet", "G1 Harbor", "G1 Kelvin", "G1 Lumen", "G1 Magma", "G1 Orbit", "G1 Prism" };
+  juce::Random random;
+  juce::String name;
+  for (int tries = 0; tries < 64 && name.isEmpty(); ++tries) {
+    const juce::String candidate(kNames[random.nextInt(static_cast<int>(std::size(kNames)))]);
+    if (!taken.contains(candidate, true) && candidate != current)
+      name = candidate;
+  }
+  if (name.isEmpty())
+    return false;
+
+  std::cout << "[LINK] Port " << (synth + 1) << " answers to \"" << current
+            << "\" like another synth here: renaming it \"" << name << "\"" << std::endl;
+  state.settings.name = name.toStdString();
+  cm.sendSynthSettings(state.settings);
+  setSynthDisplayName(synth, name);
+  if (synth == synthHub.activeSynth())
+    mainLayout->getHeaderBar().setSynthName(name);
+  mainLayout->getStatusBar().showMessage("Another G1-Emu with the same name: this one is \"" + name
+                                             + "\" now (double-click it to change)", 4000);
+  return true;
 }
 
 void MainComponent::setSynthDisplayName(int synth, const juce::String& name) {
