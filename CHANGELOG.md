@@ -43,6 +43,10 @@
 
 ### Added
 
+- **Only the windows of the synths that are there** (2026-10-06). On startup only Port 1's slot
+  windows come back from the saved layout; another synth's windows open when it connects (its
+  enabled slots, as before) and close when it disconnects, so the work area no longer starts full of
+  "No patch open" windows for synths that are not there.
 - **The slot panel has a frame** (2026-10-06): a rule that ends the inspector above it, a "SYNTHS"
   header with how many are connected, and a margin before the status bar. When more G1-Emu
   instances are running than there are free ports, the header says how many are waiting in the

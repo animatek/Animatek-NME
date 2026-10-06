@@ -3376,8 +3376,12 @@ void MainComponent::restoreMdiLayout() {
   // Default to the slot that is already open, so a first run and a corrupt or
   // empty mask both land somewhere sensible rather than on an empty work area.
   uint32_t openMask = static_cast<uint32_t>(settings->getIntValue("mdiOpenSlots", static_cast<int>(1u << activeSlot)));
+  // Only Port 1's windows come back on their own: the other synths' open with the synths, when
+  // they connect (reconcileSlotWindowsWithSynth), or the work area starts full of empty windows
+  // for synths that are not there.
+  openMask &= (1u << kSlotsPerSynth) - 1;
   if (openMask == 0)
-    openMask = 1u << activeSlot;
+    openMask = 1u << SynthSlot::localOf(activeSlot);
 
   for (int i = 0; i < numSlots; ++i)
     if (openMask & (1u << i))
@@ -4199,6 +4203,18 @@ void MainComponent::onConnectionStatusChanged(
     }
     state.windowsReconciled = false;
     state.windowsReconcileScheduled = false;
+
+    // A synth that is gone takes its windows with it (Port 1's stay: it is the editor's own
+    // work area even with no synth). They come back when it connects again.
+    if (synth > 0 && status.state == ConnectionManager::State::Disconnected && mainLayout != nullptr) {
+      auto& area = mainLayout->getPatchArea();
+      const juce::ScopedValueSetter<bool> syncGuard(syncingSlotWindows, true);
+      for (int l = 0; l < kSlotsPerSynth; ++l) {
+        const int s = SynthSlot::global(synth, l);
+        if (area.isSlotOpen(s) && area.getNumOpenSlots() > 1)
+          area.closeSlot(s);
+      }
+    }
 
     // An emulator this editor connected by itself is gone (closed, or its plugin instance
     // removed): its port is switched off again, so its row goes and the next one can take it.
