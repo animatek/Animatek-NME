@@ -69,6 +69,7 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.hardwareKnobStyle = juce::jlimit (0, 2, props->getIntValue ("hardwareKnobStyle", 2));
     o.flatKnobs      = props->getBoolValue  ("flatKnobs",      false);
     o.animateTiling  = props->getBoolValue  ("animateTiling",  true);
+    o.restoreAllWindows = props->getBoolValue ("restoreAllWindows", false);
     o.synthDisplayCaptions = props->getBoolValue ("synthDisplayCaptions", false);
     o.seqNoteNames   = props->getBoolValue  ("seqNoteNames",   false);
     o.moduleIconBar  = props->getBoolValue  ("moduleIconBar",  true);
@@ -97,6 +98,7 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("hardwareKnobStyle", hardwareKnobStyle);
     props->setValue ("flatKnobs",       flatKnobs);
     props->setValue ("animateTiling",   animateTiling);
+    props->setValue ("restoreAllWindows", restoreAllWindows);
     props->setValue ("synthDisplayCaptions", synthDisplayCaptions);
     props->setValue ("seqNoteNames",    seqNoteNames);
     props->setValue ("moduleIconBar",   moduleIconBar);
@@ -262,6 +264,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     styleToggle (autoUploadToggle);
     styleToggle (wireframeToggle);
     styleToggle (animateTilingToggle);
+    styleToggle (restoreWindowsToggle);
     styleToggle (synthCaptionToggle);
     styleToggle (askSlotToggle);
     styleToggle (seqNoteNamesToggle);
@@ -269,12 +272,17 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     askSlotToggle   .setToggleState (options.askSlotOnOpen,  juce::dontSendNotification);
     wireframeToggle .setToggleState (options.wireframe,      juce::dontSendNotification);
     animateTilingToggle.setToggleState (options.animateTiling, juce::dontSendNotification);
+    restoreWindowsToggle.setToggleState (options.restoreAllWindows, juce::dontSendNotification);
+    restoreWindowsToggle.setTooltip ("Off: on startup only Port 1's slot windows come back, and another synth's "
+                                     "windows open when it connects and close when it goes. On: every window "
+                                     "left open last time comes back, and they stay open.");
     synthCaptionToggle.setToggleState (options.synthDisplayCaptions, juce::dontSendNotification);
     seqNoteNamesToggle.setToggleState (options.seqNoteNames, juce::dontSendNotification);
     addAndMakeVisible (behaviourLabel);
     addAndMakeVisible (autoUploadToggle);
     addAndMakeVisible (wireframeToggle);
     addAndMakeVisible (animateTilingToggle);
+    addAndMakeVisible (restoreWindowsToggle);
     addAndMakeVisible (synthCaptionToggle);
     addAndMakeVisible (askSlotToggle);
     addAndMakeVisible (seqNoteNamesToggle);
@@ -469,6 +477,8 @@ int EditorOptionsDialog::layoutComponents (bool apply)
     y += rowH;
     place (animateTilingToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH;
+    place (restoreWindowsToggle, pad + 8, y, w - pad * 2 - 8, rowH);
+    y += rowH;
     place (askSlotToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH;
     place (synthCaptionToggle, pad + 8, y, w - pad * 2 - 8, rowH);
@@ -577,6 +587,7 @@ void EditorOptionsDialog::apply()
     options.hardwareKnobStyle = juce::jmax (0, knobStyleSelector.getSelectedId() - 1);
     options.flatKnobs      = flatKnobsToggle.getToggleState();
     options.animateTiling  = animateTilingToggle.getToggleState();
+    options.restoreAllWindows = restoreWindowsToggle.getToggleState();
     options.askSlotOnOpen  = askSlotToggle.getToggleState();
     options.synthDisplayCaptions = synthCaptionToggle.getToggleState();
     options.seqNoteNames   = seqNoteNamesToggle.getToggleState();

@@ -3379,7 +3379,9 @@ void MainComponent::restoreMdiLayout() {
   // Only Port 1's windows come back on their own: the other synths' open with the synths, when
   // they connect (reconcileSlotWindowsWithSynth), or the work area starts full of empty windows
   // for synths that are not there.
-  openMask &= (1u << kSlotsPerSynth) - 1;
+  // Editor Options can ask for the last session's windows instead, all of them.
+  if (!editorOptions.restoreAllWindows)
+    openMask &= (1u << kSlotsPerSynth) - 1;
   if (openMask == 0)
     openMask = 1u << SynthSlot::localOf(activeSlot);
 
@@ -4206,7 +4208,8 @@ void MainComponent::onConnectionStatusChanged(
 
     // A synth that is gone takes its windows with it (Port 1's stay: it is the editor's own
     // work area even with no synth). They come back when it connects again.
-    if (synth > 0 && status.state == ConnectionManager::State::Disconnected && mainLayout != nullptr) {
+    if (synth > 0 && status.state == ConnectionManager::State::Disconnected && mainLayout != nullptr
+        && !editorOptions.restoreAllWindows) {
       auto& area = mainLayout->getPatchArea();
       const juce::ScopedValueSetter<bool> syncGuard(syncingSlotWindows, true);
       for (int l = 0; l < kSlotsPerSynth; ++l) {

@@ -49,6 +49,13 @@ The sub-windows slide to their new places rather than jumping. Turn that off
 with **Animate Slot Tiling** in Editor Options (`Ctrl+,`) if you prefer it
 instant.
 
+With several synths connected (MIDI Setup, `Ctrl+M`, has a port for each), every
+synth has its own row in the slot bar and its own windows, titled with the slot,
+the patch and the synth's name. On startup only Port 1's windows come back; another
+synth's open when it connects and close when it goes. To get every window of the
+last session back instead, turn on **Reopen Every Slot Window of the Last Session**
+in Editor Options.
+
 Each slot keeps its own canvas, selection and undo history, and edits land on
 the right slot even when it doesn't have hardware focus. Every sub-window
 follows the synth live: turning a physical knob on the front panel, or a light or

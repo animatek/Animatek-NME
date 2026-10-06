@@ -32,6 +32,9 @@ struct EditorOptions
     // ignored while Hardware look or Wireframe is on.
     bool        flatKnobs      = false;
     bool        animateTiling  = true;  // slide slot sub-windows to their new tiles
+    // Slot windows on startup: false = follow the synths (Port 1's come back, the others open and
+    // close with their synth); true = the last session's windows, all of them, kept open.
+    bool        restoreAllWindows = false;
     // Borrow the synth's own display to name the dialog that is on screen, and
     // give the patch name back when it closes. Off by default: it writes to the
     // synth's edit buffer, and an editor that dies with a dialog up leaves the
@@ -150,6 +153,7 @@ private:
     juce::ToggleButton askSlotToggle      { "Ask which slot when opening a patch  (off: open into the current slot)" };
     juce::ToggleButton wireframeToggle    { "Wireframe modules  (outline only, works with any theme)" };
     juce::ToggleButton animateTilingToggle { "Animate Slot Tiling  (slide sub-windows into place)" };
+    juce::ToggleButton restoreWindowsToggle { "Reopen Every Slot Window of the Last Session  (not only the synths connected)" };
     juce::ToggleButton synthCaptionToggle { "Show the editor on the synth display  (borrows the patch name while a dialog is open)" };
     juce::ToggleButton seqNoteNamesToggle { "Read sequencer steps as note names  (NoteSeqB in pitches, NoteSeqA in intervals)" };
     juce::Label    sendRateLabel     { {}, "Send speed" };
