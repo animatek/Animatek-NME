@@ -242,9 +242,6 @@ void SlotBar::paint(juce::Graphics& g)
                 rest.removeFromLeft(bar.getWidth() * load);
                 g.setColour(pal.backgroundPanel.darker(0.6f).withAlpha(0.85f));
                 g.fillRect(rest);
-                const float x = bar.getX() + bar.getWidth() * load;
-                g.setColour(juce::Colours::white);
-                g.fillRect(juce::jlimit(bar.getX(), bar.getRight() - 2.0f, x - 1.0f), bar.getY() - 2.0f, 2.0f, bar.getHeight() + 4.0f);
             }
             else
             {

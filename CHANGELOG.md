@@ -46,7 +46,8 @@
 - **The slot panel has a frame** (2026-10-06): a rule that ends the inspector above it, a "SYNTHS"
   header with how many are connected, and a margin before the status bar. When more G1-Emu
   instances are running than there are free ports, the header says how many are waiting in the
-  warning colour instead of leaving them out silently. MIDI Setup scrolls its port groups, with OK,
+  warning colour instead of leaving them out silently. The load bar loses its white marker: the
+  colour edge and the percentage say the same. MIDI Setup scrolls its port groups, with OK,
   Cancel and Apply always in sight.
 - **The slot panel shows only the synths that are there** (2026-10-06). Port 1's row always, any
   other port's row while it is connected or connecting, or while it is the one being edited; the
