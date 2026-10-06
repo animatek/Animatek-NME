@@ -922,6 +922,9 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     switchToSlot(slot);
   };
 
+  // A double-click on a synth's name renames it.
+  mainLayout->onSynthRenameRequested = [this](int synth) { renameSynth(synth); };
+
   // A click on a synth's name: edit that synth, on the slot it has focused (or A).
   mainLayout->onSynthSelected = [this](int synth) {
     if (synth == synthHub.activeSynth())
@@ -1991,6 +1994,57 @@ void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen)
 
 // The surfaces that show one synth's state follow the synth being edited: the status
 // bar, the header, the bank in the patch browser and the store button.
+// The synth's own name, the one it answers to, lives in its Synth Settings: renaming it is
+// sending those settings back with the new name, as the Synth Settings dialog does. Each G1-Emu
+// instance keeps its own (in its flash: flash.bin, or the DAW project for the plugin), which is
+// what tells them apart.
+void MainComponent::renameSynth(int synth) {
+  auto& cm = synthHub.synth(synth);
+  const auto& state = synthState[static_cast<size_t>(synth)];
+  if (!cm.isConnected())
+    return;
+  if (!state.settingsKnown) {
+    // Everything else in the settings has to go back as it is, so it has to be known first.
+    cm.requestSynthSettings();
+    mainLayout->getStatusBar().showMessage("Reading the synth's settings: try again in a moment", 3000);
+    return;
+  }
+
+  auto* dialog = new juce::AlertWindow("Rename Synth",
+                                       "The name the synth answers to (up to 16 characters).",
+                                       juce::MessageBoxIconType::NoIcon, this);
+  dialog->addTextEditor("name", juce::String(state.settings.name));
+  if (auto* editor = dialog->getTextEditor("name"))
+    editor->setInputRestrictions(16);
+  dialog->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+  dialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  juce::Component::SafePointer<juce::AlertWindow> safeDialog(dialog);
+  dialog->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, safeDialog, synth](int result) {
+    if (result != 1 || safeThis == nullptr || safeDialog == nullptr)
+      return;
+    // The G1 shows plain ASCII; anything else would come back as garbage on its display.
+    juce::String name;
+    for (auto c : safeDialog->getTextEditorContents("name").trim())
+      if (c >= 32 && c < 127)
+        name += juce::String::charToString(c);
+    name = name.substring(0, 16).trim();
+    if (name.isEmpty())
+      return;
+    auto& cm2 = safeThis->synthHub.synth(synth);
+    auto& st = safeThis->synthState[static_cast<size_t>(synth)];
+    if (!cm2.isConnected() || !st.settingsKnown)
+      return;
+    st.settings.name = name.toStdString();
+    cm2.sendSynthSettings(st.settings);
+    safeThis->setSynthDisplayName(synth, name);
+    if (synth == safeThis->synthHub.activeSynth())
+      safeThis->mainLayout->getHeaderBar().setSynthName(name);
+    safeThis->mainLayout->getStatusBar().showMessage("Synth renamed: " + name, 2500);
+  }), true);
+}
+
 void MainComponent::setSynthDisplayName(int synth, const juce::String& name) {
   mainLayout->getSlotBar().setSynthName(synth, name);
   for (int l = 0; l < kSlotsPerSynth; ++l)

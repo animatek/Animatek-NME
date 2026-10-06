@@ -18,6 +18,11 @@
   window is not tried yet. An instance already connected through its MIDI PC Port is not connected
   again over the link: G1-Emu's greeting names its PC Port's ids (or its name, where JUCE gives no
   id) and the editor compares them with its ports.
+- **Rename a synth with a double-click on its name** in the slot panel (2026-10-06). It sends the
+  synth its own settings back with the new name (up to 16 plain characters), as Synth Settings
+  does, so the name is the synth's and not only the editor's: each G1-Emu instance keeps its own
+  (flash.bin for the standalone, the DAW project for the plugin), which is what tells them apart.
+  Not tried on the window yet.
 - **Ports follow the emulators** (2026-10-06). A G1-Emu instance found on its direct link switches
   its port on (Enabled in MIDI Setup) and connects; when the instance goes, the editor switches that
   port off again, its row leaves the slot panel, and if it was the synth being edited the editor

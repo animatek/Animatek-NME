@@ -30,6 +30,7 @@ public:
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
+    void mouseDoubleClick(const juce::MouseEvent& e) override;   // on a synth's name: rename it
     void resized() override;
 
     // A patch dragged out of either browser can be dropped on a slot row to
@@ -62,6 +63,7 @@ public:
 
     std::function<void(int)> onSlotChanged;
     std::function<void(int)> onSynthSelected;    // click on a synth's name box
+    std::function<void(int)> onSynthRenameRequested;   // double-click on it
     std::function<void(int)> onSlotEnableToggled;  // Ctrl+click on this slot
     std::function<void(int)> onSlotViewToggled;  // Right-click: show/hide this slot
 
@@ -173,6 +175,7 @@ public:
 
     std::function<void(int)> onSlotChanged;  // called with the global slot index
     std::function<void(int)> onSynthSelected;
+    std::function<void(int)> onSynthRenameRequested;
     std::function<void(int)> onSlotViewToggled;  // right-click a slot row: show/hide its sub-window
 
 private:

@@ -449,6 +449,7 @@ private:
     void updateSlotBarRows();
     // A synth's name where the user sees it: its row in the slot bar and its slot windows.
     void setSynthDisplayName(int synth, const juce::String& name);
+    void renameSynth(int synth);   // double-click on its name in the slot bar
     // Zero a canvas's LEDs and meters. The synth streams them for one slot at a
     // time, so the slot being left has to be blanked or it freezes lit.
     void clearLightMeterData(int slot);

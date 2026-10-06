@@ -294,6 +294,17 @@ void SlotBar::itemDropped(const SourceDetails& details)
         onPatchFileDroppedOnSlot(SlotDrop::fileOf(d), slot);
 }
 
+void SlotBar::mouseDoubleClick(const juce::MouseEvent& e)
+{
+    for (int synth = 0; synth < kMaxSynths; ++synth)
+        if (nameBounds[synth].contains(e.getPosition()) && synthName[synth].isNotEmpty())
+        {
+            if (onSynthRenameRequested)
+                onSynthRenameRequested(synth);
+            return;
+        }
+}
+
 void SlotBar::mouseDown(const juce::MouseEvent& e)
 {
     auto pos = e.getPosition();
@@ -428,6 +439,10 @@ MainLayout::MainLayout(ModuleDescriptions& moduleDescs)
             onSlotChanged(idx);
     };
     slotBar.onRowsChanged = [this] { resized(); };
+    slotBar.onSynthRenameRequested = [this](int synth) {
+        if (onSynthRenameRequested)
+            onSynthRenameRequested(synth);
+    };
     slotBar.onSynthSelected = [this](int synth) {
         if (onSynthSelected)
             onSynthSelected(synth);
