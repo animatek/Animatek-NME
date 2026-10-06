@@ -27,6 +27,20 @@ TEST_CASE("the direct link's byte stream comes back as whole SysEx messages")
     }
 }
 
+TEST_CASE("the greeting names the instance and the ids of its MIDI PC Port")
+{
+    DirectLink::Instance inst;
+    REQUIRE(DirectLink::parseGreeting("G1-Emu 1 G1-Emu plugin 2\tpcport=129-0,129-1", inst));
+    CHECK(inst.name == "G1-Emu plugin 2");
+    CHECK(inst.pcPortIds == juce::StringArray { "129-0", "129-1" });
+
+    REQUIRE(DirectLink::parseGreeting("G1-Emu 1 G1-Emu", inst));   // an emulator that knows no ids
+    CHECK(inst.name == "G1-Emu");
+    CHECK(inst.pcPortIds.isEmpty());
+
+    CHECK_FALSE(DirectLink::parseGreeting("SSH-2.0-OpenSSH", inst));
+}
+
 TEST_CASE("a link is listed among the MIDI devices by an id that names its port")
 {
     CHECK(DirectLink::deviceId(47311) == "g1link:47311");

@@ -2,10 +2,23 @@
 
 namespace DirectLink
 {
+bool parseGreeting (const juce::String& line, Instance& out)
+{
+    if (! line.startsWith ("G1-Emu "))
+        return false;
+    const auto afterVersion = line.fromFirstOccurrenceOf (" ", false, false).fromFirstOccurrenceOf (" ", false, false);
+    out.name = afterVersion.upToFirstOccurrenceOf ("\t", false, false).trim();
+    out.pcPortIds.clear();
+    const auto extra = afterVersion.fromFirstOccurrenceOf ("\t", false, false);
+    if (extra.startsWith ("pcport="))
+        out.pcPortIds.addTokens (extra.fromFirstOccurrenceOf ("=", false, false).trim(), ",", {});
+    out.pcPortIds.removeEmptyStrings();
+    return out.name.isNotEmpty();
+}
+
 namespace
 {
-    // The greeting line, or empty if the emulator closed without one (it already has an editor)
-    // or said something that is not G1-Emu.
+    // The greeting line, or empty if the emulator closed without one (it already has an editor).
     juce::String readGreeting (juce::StreamingSocket& s, int timeoutMs)
     {
         juce::String line;
@@ -24,10 +37,7 @@ namespace
                 break;
             line += juce::String::charToString (static_cast<juce::juce_wchar> (static_cast<unsigned char> (c)));
         }
-        if (! line.startsWith ("G1-Emu "))
-            return {};
-        // "G1-Emu <version> <name>"
-        return line.fromFirstOccurrenceOf (" ", false, false).fromFirstOccurrenceOf (" ", false, false).trim();
+        return line.startsWith ("G1-Emu ") ? line : juce::String();
     }
 }
 
@@ -42,8 +52,7 @@ std::vector<Instance> discover (int timeoutMs)
             continue;
         Instance inst;
         inst.port = port;
-        inst.name = readGreeting (s, timeoutMs);
-        inst.busy = inst.name.isEmpty();
+        inst.busy = ! parseGreeting (readGreeting (s, timeoutMs), inst);
         found.push_back (inst);
         s.close();
     }
@@ -96,12 +105,12 @@ bool Client::open (int port, std::function<void (std::vector<uint8_t>)> onSysEx,
     auto s = std::make_unique<juce::StreamingSocket>();
     if (! s->connect ("127.0.0.1", port, 500))
         return false;
-    const auto name = readGreeting (*s, 1000);
-    if (name.isEmpty())
+    Instance inst;
+    if (! parseGreeting (readGreeting (*s, 1000), inst))
         return false;   // another editor has it
 
     socket = std::move (s);
-    instanceName = name;
+    instanceName = inst.name;
     linkPort = port;
     reader = std::make_unique<Reader> (*socket, std::move (onSysEx), std::move (onClosed));
     reader->startThread();

@@ -1441,6 +1441,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     juce::PopupMenu slotMenu;
     for (int i = 0; i < numSlots; ++i)
     {
+        if (!isSynthShown(SynthSlot::synthOf(i)))
+            continue;   // a synth that is not there has no slots to show
         auto letter = SynthSlot::label(i);
         auto name = slotPatches[i] ? slotPatches[i]->getName() : juce::String("empty");
         // Ctrl+Shift+1..4 are the active synth's four slots; the others have the menu.
@@ -1995,7 +1997,22 @@ void MainComponent::setSynthDisplayName(int synth, const juce::String& name) {
     mainLayout->getPatchArea().getView(SynthSlot::global(synth, l)).setSynthName(name);
 }
 
+// A synth gets its row in the slot bar, and its slots in the View menu, while it is connected or
+// connecting, or being edited; Port 1 always has its row.
+bool MainComponent::isSynthShown(int synth) const {
+  if (synth == 0 || synth == synthHub.activeSynth())
+    return true;
+  const auto& cm = synthHub.synth(synth);
+  return cm.isConnected() || cm.getStatus().state == ConnectionManager::State::Connecting;
+}
+
+void MainComponent::updateSlotBarRows() {
+  for (int synth = 1; synth < kMaxSynths; ++synth)
+    mainLayout->getSlotBar().setRowShown(synth, isSynthShown(synth));
+}
+
 void MainComponent::refreshForActiveSynth() {
+  updateSlotBarRows();
   const int synth = synthHub.activeSynth();
   auto& cm = synthHub.synth(synth);
   bankTransfer.retarget(cm);
@@ -4068,6 +4085,8 @@ void MainComponent::onConnectionStatusChanged(
     state.windowsReconciled = false;
     state.windowsReconcileScheduled = false;
   }
+  updateSlotBarRows();
+
   // Every synth's name, in the slot bar and on its windows, whether or not it is the one being edited.
   if (!connected)
     setSynthDisplayName(synth, {});
@@ -4172,6 +4191,17 @@ void MainComponent::connectFoundEmulators(const std::vector<DirectLink::Instance
   for (const auto& inst : found) {
     if (inst.busy)
       continue;   // it has an editor already (maybe this one, on another port)
+    // The same G1 already reached through its MIDI PC Port, on any port of this editor: once is enough.
+    bool onMidi = false;
+    for (int synth = 0; synth < kMaxSynths; ++synth) {
+      const auto& st = synthState[static_cast<size_t>(synth)];
+      const auto& cm = synthHub.synth(synth);
+      const bool live = cm.isConnected() || cm.getStatus().state == ConnectionManager::State::Connecting;
+      if (live && (inst.pcPortIds.contains(st.lastInputId) || inst.pcPortIds.contains(st.lastOutputId)))
+        onMidi = true;
+    }
+    if (onMidi)
+      continue;
     const auto id = DirectLink::deviceId(inst.port);
     // A port that last used this very instance gets it back; otherwise the first free one.
     int target = -1;

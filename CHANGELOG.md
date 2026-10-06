@@ -15,7 +15,12 @@
   rest of the editor sees a connection like any other. Checked: `tests/test_direct_link.cpp`
   (SysEx split across any cut of the stream) and, against a running `g1run`, the editor's IAm over
   the link answered by the emulated G1 (`NME_G1EMU_LINK_TEST=1`); the automatic connection in the
-  window is not tried yet.
+  window is not tried yet. An instance already connected through its MIDI PC Port is not connected
+  again over the link: G1-Emu's greeting names its PC Port's ids and the editor compares them with
+  its ports.
+- **The slot panel shows only the synths that are there** (2026-10-06). Port 1's row always, any
+  other port's row while it is connected or connecting, or while it is the one being edited; the
+  View menu's slot list follows. The bar's height follows the rows.
 
 - **Two synths at once, the way the original editor does it** (2026-10-05, #84, #88; on branch
   `multi-synth-84`, not yet tried on hardware). MIDI Setup is now one group per port (In, Out, Enabled and

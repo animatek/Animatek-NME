@@ -92,12 +92,39 @@ void SlotBar::setLoad(int synth, float fraction)
     repaint(loadBounds[synth]);
 }
 
+void SlotBar::setRowShown(int synth, bool shown)
+{
+    if (synth <= 0 || synth >= kMaxSynths || rowShown[synth] == shown)
+        return;   // Port 1's row is always there
+    rowShown[synth] = shown;
+    resized();
+    repaint();
+    if (onRowsChanged)
+        onRowsChanged();
+}
+
+int SlotBar::getPreferredHeight() const
+{
+    int rows = 0;
+    for (bool shown : rowShown)
+        rows += shown ? 1 : 0;
+    return 30 * juce::jmax(1, rows);
+}
+
 void SlotBar::resized()
 {
     auto all = getLocalBounds();
     static constexpr int buttonW = 20;
     for (int synth = 0; synth < kMaxSynths; ++synth)
     {
+        if (! rowShown[synth])
+        {
+            // Nothing on screen, so nothing to click or drop onto either.
+            for (int l = 0; l < kSlotsPerSynth; ++l)
+                slotBounds[SynthSlot::global(synth, l)] = {};
+            nameBounds[synth] = loadBounds[synth] = {};
+            continue;
+        }
         auto area = all.removeFromTop(30).reduced(4, 4);
         for (int l = 0; l < kSlotsPerSynth; ++l)
             slotBounds[SynthSlot::global(synth, l)] = area.removeFromLeft(buttonW).withTrimmedRight(2);
@@ -116,6 +143,8 @@ void SlotBar::paint(juce::Graphics& g)
 
     for (int i = 0; i < numSlots; ++i)
     {
+        if (slotBounds[i].isEmpty())
+            continue;   // its synth's row is hidden
         auto b = slotBounds[i].toFloat();
         const bool active = (i == activeIndex);
 
@@ -153,6 +182,8 @@ void SlotBar::paint(juce::Graphics& g)
 
     for (int synth = 0; synth < kMaxSynths; ++synth)
     {
+        if (! rowShown[synth])
+            continue;
         // The synth's name: dark when it is the synth being edited, as in the original.
         const bool hasSynth = synthName[synth].isNotEmpty();
         const bool beingEdited = (synth == SynthSlot::synthOf(activeIndex));
@@ -396,6 +427,7 @@ MainLayout::MainLayout(ModuleDescriptions& moduleDescs)
         if (onSlotChanged)
             onSlotChanged(idx);
     };
+    slotBar.onRowsChanged = [this] { resized(); };
     slotBar.onSynthSelected = [this](int synth) {
         if (onSynthSelected)
             onSynthSelected(synth);
@@ -497,7 +529,7 @@ void MainLayout::resized()
 
     // Layout left column: inspector | slot bar
     auto leftArea = leftColumn.getLocalBounds();
-    slotBar.setBounds(leftArea.removeFromBottom(slotBarHeight));
+    slotBar.setBounds(leftArea.removeFromBottom(slotBar.getPreferredHeight()));
     inspectorPanel.setBounds(leftArea);
 }
 

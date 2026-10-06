@@ -51,6 +51,11 @@ public:
     void setSlotLocal(int slot, bool local);  // show a "LOCAL" (not-synced) badge
     void setSynthName(int synth, const juce::String& name);  // the name box; empty = no synth
     void setLoad(int synth, float fraction);                 // the DSP bar, 0..1; negative = unknown
+    // Rows are shown only for synths that are there (and Port 1 always): four empty rows of
+    // "No synth" are four rows of nothing. The bar's height follows.
+    void setRowShown(int synth, bool shown);
+    int getPreferredHeight() const;
+    std::function<void()> onRowsChanged;
     // Asked for the load on every blink of the LEDs, so the bar follows edits
     // without every place that changes a patch having to say so.
     std::function<float(int synth)> loadProvider;
@@ -75,6 +80,7 @@ private:
     juce::Rectangle<int> slotBounds[numSlots];   // the A B C D buttons
     juce::Rectangle<int> nameBounds[kMaxSynths], loadBounds[kMaxSynths];
     juce::String synthName[kMaxSynths];
+    bool rowShown[kMaxSynths] = { true };
     float loadFraction[kMaxSynths];
     // Row a patch is currently being dragged over, -1 when none. Painted so the
     // drop says where it is going before it happens.
@@ -199,7 +205,6 @@ private:
     int  savedRightWidth   = 220;
 
     static constexpr int statusBarHeight = 24;
-    static constexpr int slotBarHeight   = 30 * kMaxSynths;   // one row per synth
     static constexpr int headerBarHeight = 48;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainLayout)
