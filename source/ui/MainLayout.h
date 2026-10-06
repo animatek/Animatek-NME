@@ -52,7 +52,7 @@ public:
     void setSlotLocal(int slot, bool local);  // show a "LOCAL" (not-synced) badge
     void setSynthName(int synth, const juce::String& name);  // the name box; empty = no synth
     void setLoad(int synth, float fraction);                 // the DSP bar, 0..1; negative = unknown
-    // Rows are shown only for synths that are there (and Port 1 always): four empty rows of
+    // Rows are shown only for synths that are there (or being edited): four empty rows of
     // "No synth" are four rows of nothing. The bar's height follows.
     void setRowShown(int synth, bool shown);
     int getPreferredHeight() const;

@@ -36,6 +36,15 @@
 
 ### Fixed
 
+- **Opening a patch from the Disk browser (or File > Open) closed the editor** (2026-10-06). The
+  slot chooser was filled with every slot of the editor (32 now, eight synths of four) into an
+  array of four, and it was handed a global slot as if it were 0-3. It now lists the four slots of
+  the synth being edited, labelled with it (2A..2D), and loads into that synth's slot. Compiles;
+  not tried on the window yet.
+- **No "No synth" row for Port 1 when the only synth is on another port** (2026-10-06). Port 1's
+  row was always shown; it now follows the same rule as the others: there while connected,
+  connecting or being edited, so the panel is never empty.
+
 - **Emulators found at startup: renamed in a loop, or counted as gone** (2026-10-06). Seen with three
   G1-Emu plugins in Bitwig and NME's log: (1) the automatic name was sent before the synth had a
   patch, with patch id 0, so the synth ignored it, came back "Modular" and was renamed again and

@@ -94,8 +94,8 @@ void SlotBar::setLoad(int synth, float fraction)
 
 void SlotBar::setRowShown(int synth, bool shown)
 {
-    if (synth <= 0 || synth >= kMaxSynths || rowShown[synth] == shown)
-        return;   // Port 1's row is always there
+    if (synth < 0 || synth >= kMaxSynths || rowShown[synth] == shown)
+        return;
     rowShown[synth] = shown;
     resized();
     repaint();

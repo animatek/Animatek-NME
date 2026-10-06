@@ -2125,16 +2125,17 @@ void MainComponent::setSynthDisplayName(int synth, const juce::String& name) {
 }
 
 // A synth gets its row in the slot bar, and its slots in the View menu, while it is connected or
-// connecting, or being edited; Port 1 always has its row.
+// connecting, or being edited. Port 1 too: with the only synth on Port 2 its row was a "No synth"
+// above the real one. The synth being edited always has its row, so the bar is never empty.
 bool MainComponent::isSynthShown(int synth) const {
-  if (synth == 0 || synth == synthHub.activeSynth())
+  if (synth == synthHub.activeSynth())
     return true;
   const auto& cm = synthHub.synth(synth);
   return cm.isConnected() || cm.getStatus().state == ConnectionManager::State::Connecting;
 }
 
 void MainComponent::updateSlotBarRows() {
-  for (int synth = 1; synth < kMaxSynths; ++synth)
+  for (int synth = 0; synth < kMaxSynths; ++synth)
     mainLayout->getSlotBar().setRowShown(synth, isSynthShown(synth));
 }
 
@@ -2630,19 +2631,25 @@ void MainComponent::openPatchFileWithChooser(const juce::File &file) {
     return;
   }
 
+  // The four slots of the synth on screen. The dialog speaks 0-3 and the
+  // editor's slots are global (synth * 4 + slot): filling it with all of them
+  // wrote past the array and closed the editor on every open.
+  const int synth = SynthSlot::synthOf(activeSlot);
   std::array<juce::String, 4> names;
-  for (int i = 0; i < numSlots; ++i)
+  for (int i = 0; i < kSlotsPerSynth; ++i) {
+    const int slot = SynthSlot::global(synth, i);
     names[static_cast<size_t>(i)] =
-        slotPatches[i] ? slotPatches[i]->getName() : juce::String();
+        slotPatches[slot] ? slotPatches[slot]->getName() : juce::String();
+  }
 
   juce::Component::SafePointer<MainComponent> safeThis(this);
   SlotSelectDialog::show(
       this, "Open \"" + file.getFileNameWithoutExtension() + "\" into...",
-      names, activeSlot,
-      [safeThis, file](const SlotSelectDialog::Result &r) {
+      names, synth, SynthSlot::localOf(activeSlot),
+      [safeThis, file, synth](const SlotSelectDialog::Result &r) {
         if (!safeThis || !r.confirmed)
           return;
-        safeThis->loadPatchFromFile(file, r.slot, r.local);
+        safeThis->loadPatchFromFile(file, SynthSlot::global(synth, r.slot), r.local);
       });
 }
 
