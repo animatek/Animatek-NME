@@ -4,6 +4,19 @@
 
 ### Added
 
+- **G1-Emu without a MIDI port: the direct link, found and connected on its own** (2026-10-06, #83,
+  G1-Emu #8). G1-Emu listens on a local socket (127.0.0.1, from port 47310, one per instance) and
+  NME talks to it there with the same SysEx as the PC Port, with no virtual MIDI port, driver or
+  loopMIDI: this is the way to the emulator where none can be made (the plugin on Windows). Every
+  3 seconds the editor looks for instances and connects each free one to a free port of MIDI Setup
+  (a port switched off, connected, or kept for MIDI ports that are plugged in is left alone);
+  Device > Connect to G1-Emu Automatically turns it off. The instances are also listed in MIDI
+  Setup as "G1-Emu (direct link)". `source/midi/DirectLink.*`, used by `MidiDeviceManager`, so the
+  rest of the editor sees a connection like any other. Checked: `tests/test_direct_link.cpp`
+  (SysEx split across any cut of the stream) and, against a running `g1run`, the editor's IAm over
+  the link answered by the emulated G1 (`NME_G1EMU_LINK_TEST=1`); the automatic connection in the
+  window is not tried yet.
+
 - **Two synths at once, the way the original editor does it** (2026-10-05, #84, #88; on branch
   `multi-synth-84`, not yet tried on hardware). MIDI Setup is now one group per port (In, Out, Enabled and
   the synth's Status, with OK / Cancel / Apply), and each enabled port is its own connection with its own

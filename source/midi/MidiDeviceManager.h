@@ -2,6 +2,7 @@
 
 #include <juce_audio_devices/juce_audio_devices.h>
 #include "NmProtocol.h"
+#include "DirectLink.h"
 #include <atomic>
 #include <memory>
 
@@ -19,7 +20,9 @@ public:
     bool connect(const juce::String& inputId, const juce::String& outputId);
     void disconnect();
 
-    bool isConnected() const { return midiInput != nullptr && midiOutput != nullptr; }
+    bool isConnected() const { return (midiInput != nullptr && midiOutput != nullptr) || link.isOpen(); }
+    // Connected to G1-Emu over its direct link rather than through MIDI ports.
+    bool isDirectLink() const { return link.isOpen(); }
 
     // Send raw SysEx data
     void sendSysEx(const std::vector<uint8_t>& data);
@@ -37,6 +40,12 @@ private:
     void checkPortsStillThere();
 
     void handleIncomingMidiMessage(juce::MidiInput* source, const juce::MidiMessage& message) override;
+    // A whole SysEx from either transport, on any thread: filtered, logged and handed to the protocol
+    // on the message thread.
+    void deliverSysEx(const uint8_t* data, int size);
+    bool connectLink(int port);
+
+    DirectLink::Client link;
 
     NmProtocol& protocol;
     std::unique_ptr<juce::MidiInput> midiInput;

@@ -1002,6 +1002,16 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   extrasFlushTimer = std::make_unique<ExtrasTimer>(*this);
   extrasFlushTimer->startTimer(3000);
 
+  // G1-Emu found on its own (#83): every few seconds, look for emulator instances on their direct
+  // link and give each free one a free port. The first look waits for the saved ports to be tried.
+  struct EmulatorScanTimer : public juce::Timer {
+    MainComponent& mc;
+    explicit EmulatorScanTimer(MainComponent& m) : mc(m) {}
+    void timerCallback() override { mc.scanForEmulators(); }
+  };
+  emulatorScanTimer = std::make_unique<EmulatorScanTimer>(*this);
+  emulatorScanTimer->startTimer(3000);
+
   // Auto-connect after UI is set up (with delay to let ALSA enumerate devices)
   {
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -1493,6 +1503,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
   else if (menuIndex == 3) // Device
   {
     addShortcutItem(menu, 30, "MIDI Settings...", "Ctrl+M");
+    menu.addItem(37, "Connect to G1-Emu Automatically", true, autoConnectEmulatorsEnabled());
     menu.addSeparator();
     bool connected = synthHub.active().isConnected();
     menu.addItem(31, "Request Patch from Synth", connected);
@@ -1615,6 +1626,16 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 30:
     showMidiSettingsDialog();
+    break;
+  case 37:
+    if (auto* st = appProperties.getUserSettings()) {
+      st->setValue("autoConnectG1Emu", !autoConnectEmulatorsEnabled());
+      st->saveIfNeeded();
+    }
+    mainLayout->getStatusBar().showMessage(autoConnectEmulatorsEnabled()
+        ? "G1-Emu instances will be connected as they appear"
+        : "G1-Emu is only connected from MIDI Settings", 3000);
+    menuItemsChanged();
     break;
   case 31:
     synthHub.requestPatch(synthHub.getCurrentSlot());
@@ -4094,6 +4115,77 @@ void MainComponent::onConnectionStatusChanged(
     mainLayout->getHeaderBar().setSynthName({});
     mainLayout->getHeaderBar().setSynthDspLoad(-1, -1, -1, -1);
     std::cout << "[SYNC] Slot synchronizers of synth " << synth << " disabled on disconnect" << std::endl;
+  }
+}
+
+bool MainComponent::autoConnectEmulatorsEnabled() const {
+  auto* st = appProperties.getUserSettings();
+  return st == nullptr || st->getBoolValue("autoConnectG1Emu", true);
+}
+
+// Looks for G1-Emu instances on a background thread (each knock on a listening emulator waits for
+// its greeting) and, back on the message thread, connects every free instance to a free port.
+void MainComponent::scanForEmulators() {
+  if (!autoConnectEmulatorsEnabled() || emulatorScanRunning)
+    return;
+  // Nothing to give an emulator: every port is taken or busy connecting.
+  bool anyFree = false;
+  for (int synth = 0; synth < kMaxSynths; ++synth)
+    if (isPortFreeForEmulator(synth))
+      anyFree = true;
+  if (!anyFree)
+    return;
+
+  emulatorScanRunning = true;
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  juce::Thread::launch([safeThis] {
+    auto found = DirectLink::discover();
+    juce::MessageManager::callAsync([safeThis, found] {
+      if (safeThis == nullptr)
+        return;
+      safeThis->emulatorScanRunning = false;
+      safeThis->connectFoundEmulators(found);
+    });
+  });
+}
+
+// A port an emulator may take: switched on in MIDI Setup (or never set), not connected, not
+// trying to connect, and not kept for MIDI ports of its own that are still around.
+bool MainComponent::isPortFreeForEmulator(int synth) const {
+  const auto& cm = synthHub.synth(synth);
+  if (cm.isConnected() || cm.getStatus().state == ConnectionManager::State::Connecting)
+    return false;
+  auto* st = appProperties.getUserSettings();
+  if (st != nullptr && !st->getBoolValue(portKey("midiEnabled", synth), true))
+    return false;
+  const auto& saved = synthState[static_cast<size_t>(synth)].lastInputId;
+  if (saved.isEmpty() || DirectLink::isDeviceId(saved))
+    return true;
+  // MIDI ports only: listing the direct links would knock on every emulator from here.
+  for (const auto& d : juce::MidiInput::getAvailableDevices())
+    if (d.identifier == saved)
+      return false;   // its own synth is plugged in and may answer yet
+  return true;
+}
+
+void MainComponent::connectFoundEmulators(const std::vector<DirectLink::Instance>& found) {
+  for (const auto& inst : found) {
+    if (inst.busy)
+      continue;   // it has an editor already (maybe this one, on another port)
+    const auto id = DirectLink::deviceId(inst.port);
+    // A port that last used this very instance gets it back; otherwise the first free one.
+    int target = -1;
+    for (int synth = 0; synth < kMaxSynths && target < 0; ++synth)
+      if (isPortFreeForEmulator(synth) && synthState[static_cast<size_t>(synth)].lastInputId == id)
+        target = synth;
+    for (int synth = 0; synth < kMaxSynths && target < 0; ++synth)
+      if (isPortFreeForEmulator(synth))
+        target = synth;
+    if (target < 0)
+      return;
+    std::cout << "[LINK] " << inst.name << " found on port " << inst.port
+              << " - connecting it to Port " << (target + 1) << std::endl;
+    handleConnectionRequest(target, id, id);
   }
 }
 

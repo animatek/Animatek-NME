@@ -334,6 +334,14 @@ private:
     void handleDisconnectionRequest(int synth);
     void onConnectionStatusChanged(int synth, const ConnectionManager::Status& status);
     void attemptAutoConnect();            // every port saved as enabled
+  public:
+    void scanForEmulators();              // G1-Emu instances on their direct link (#83)
+  private:
+    bool autoConnectEmulatorsEnabled() const;
+    bool isPortFreeForEmulator(int synth) const;
+    void connectFoundEmulators(const std::vector<DirectLink::Instance>& found);
+    std::unique_ptr<juce::Timer> emulatorScanTimer;
+    bool emulatorScanRunning = false;
     void attemptAutoConnect(int synth);
     void saveMidiSettings(int synth, const juce::String& inputId, const juce::String& outputId);
     void openURL(const juce::String& url);

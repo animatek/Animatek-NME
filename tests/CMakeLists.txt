@@ -32,6 +32,7 @@ target_sources(nme_tests PRIVATE
     test_synth_settings_clock.cpp
     test_synth_link.cpp
     test_synth_slot.cpp
+    test_direct_link.cpp
     test_keyquant_scales.cpp
     test_slot_set.cpp
     test_pch_area_rows.cpp
@@ -58,6 +59,7 @@ target_sources(nme_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/source/midi/NmProtocol.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/MidiMonitor.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/MidiDeviceManager.cpp
+    ${CMAKE_SOURCE_DIR}/source/midi/DirectLink.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/ConnectionManager.cpp
     ${CMAKE_SOURCE_DIR}/source/sync/PatchSynchronizer.cpp
     ${CMAKE_SOURCE_DIR}/source/sync/BankTransferManager.cpp
