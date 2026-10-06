@@ -18,6 +18,20 @@
   window is not tried yet. An instance already connected through its MIDI PC Port is not connected
   again over the link: G1-Emu's greeting names its PC Port's ids and the editor compares them with
   its ports.
+- **Ports follow the emulators** (2026-10-06). A G1-Emu instance found on its direct link switches
+  its port on (Enabled in MIDI Setup) and connects; when the instance goes, the editor switches that
+  port off again, its row leaves the slot panel, and if it was the synth being edited the editor
+  moves to one that is still connected. A port switched off by hand in MIDI Setup stays off.
+
+### Fixed
+
+- **Every synth's name, not "Modular"** (2026-10-06). On connecting, only the synth being edited was
+  asked for its settings (where its name is) and its bank list; its ports were saved and its slots'
+  edits re-enabled only for it too. All of that is done for every synth now, so a real G1 called
+  "animatek" beside G1-Emu reads "animatek".
+
+### Added
+
 - **The slot panel shows only the synths that are there** (2026-10-06). Port 1's row always, any
   other port's row while it is connected or connecting, or while it is the one being edited; the
   View menu's slot list follows. The bar's height follows the rows.

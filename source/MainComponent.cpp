@@ -2864,6 +2864,9 @@ void MainComponent::showMidiSettingsDialog() {
       [this](int port, const MidiSettingsDialog::Port& wanted) {
         if (auto* st = appProperties.getUserSettings()) {
           st->setValue(portKey("midiEnabled", port), wanted.enabled);
+          // What is set here by hand is the user's: not switched on or off by the editor again.
+          st->setValue(portKey("midiAutoOff", port), false);
+          st->setValue(portKey("midiAutoPort", port), false);
           st->saveIfNeeded();
         }
         if (!wanted.enabled) {
@@ -4084,6 +4087,53 @@ void MainComponent::onConnectionStatusChanged(
     }
     state.windowsReconciled = false;
     state.windowsReconcileScheduled = false;
+
+    // An emulator this editor connected by itself is gone (closed, or its plugin instance
+    // removed): its port is switched off again, so its row goes and the next one can take it.
+    if (status.state == ConnectionManager::State::Disconnected && DirectLink::isDeviceId(state.lastInputId))
+      if (auto* st = appProperties.getUserSettings())
+        if (st->getBoolValue(portKey("midiAutoPort", synth), false)) {
+          st->setValue(portKey("midiEnabled", synth), false);
+          st->setValue(portKey("midiAutoOff", synth), true);
+          st->saveIfNeeded();
+          // If it was the synth being edited, the editor moves to one that is still there
+          // (Port 1 when none is), after this notification has been dealt with.
+          if (synth == synthHub.activeSynth()) {
+            juce::Component::SafePointer<MainComponent> safeThis(this);
+            juce::MessageManager::callAsync([safeThis, synth] {
+              if (safeThis == nullptr || safeThis->synthHub.activeSynth() != synth
+                  || safeThis->synthHub.synth(synth).isConnected())
+                return;
+              int target = 0;
+              for (int other = 0; other < kMaxSynths; ++other)
+                if (other != synth && safeThis->synthHub.synth(other).isConnected()) {
+                  target = other;
+                  break;
+                }
+              if (target == synth)
+                return;
+              auto& cm = safeThis->synthHub.synth(target);
+              safeThis->switchToSlot(SynthSlot::global(target, cm.isConnected() ? cm.getCurrentSlot() : 0));
+            });
+          }
+        }
+  }
+
+  // Every synth, not only the one being edited: its ports are remembered, and it is asked for
+  // its settings (where its name is) and its bank list, and the slots it is known to hold send
+  // their edits again.
+  if (connected) {
+    saveMidiSettings(synth, state.lastInputId, state.lastOutputId);
+    for (int l = 0; l < kSlotsPerSynth; ++l) {
+      const int s = SynthSlot::global(synth, l);
+      if (slotPatches[s] && !slotSynchronizers[s] && !slotIsLocal[s]) {
+        slotSynchronizers[s] = std::make_unique<PatchSynchronizer>(
+            *slotPatches[s], synthHub.synth(synth), l);
+        std::cout << "[SYNC] Patch synchronizer enabled on connection, slot " << SynthSlot::label(s) << std::endl;
+      }
+    }
+    synthHub.synth(synth).requestPatchList();
+    synthHub.synth(synth).requestSynthSettings();
   }
   updateSlotBarRows();
 
@@ -4105,27 +4155,14 @@ void MainComponent::onConnectionStatusChanged(
   updateStoreLocationDisplay();  // storing needs a synth to store into
 
   if (connected) {
-    // Save settings on successful connection
-    saveMidiSettings(synth, state.lastInputId, state.lastOutputId);
-
     // Patch loading is triggered by SlotActivated (sc=0x09) from synth,
     // with a fallback timer in ConnectionManager if no slot message arrives.
-
-    // Enable synchronizer if we have a patch loaded that the synth is known to
-    // hold. A LOCAL one is not (built or opened while disconnected, or left from
-    // the last connection): its edits would land on whatever that slot of the
-    // synth has, so it waits for the fetch that follows the connection.
-    if (currentPatch() && !currentSynchronizer() && !slotIsLocal[activeSlot]) {
-      currentSynchronizer() = std::make_unique<PatchSynchronizer>(
-          *currentPatch(), synthHub.forSlot(activeSlot), SynthHub::local(activeSlot));
-      std::cout << "[SYNC] Patch synchronizer enabled on connection" << std::endl;
-    }
+    // The ports, the settings and bank list requests and the synchronizers were
+    // seen to above, for every synth.
 
     // Show synth name in header bar (will be replaced by real name from SynthSettings later)
     mainLayout->getHeaderBar().setSynthName("Nord Modular");
-
-    synthHub.synth(synth).requestPatchList();
-    synthHub.synth(synth).requestSynthSettings();
+    mainLayout->getPatchBrowser().setLoadingState(true);
   } else {
     // Disable the synchronizers of this synth's slots (done above); the keyboard
     // and the header belong to the synth being edited.
@@ -4174,8 +4211,11 @@ bool MainComponent::isPortFreeForEmulator(int synth) const {
   const auto& cm = synthHub.synth(synth);
   if (cm.isConnected() || cm.getStatus().state == ConnectionManager::State::Connecting)
     return false;
+  // A port switched off by hand stays off; one this editor switched off when its emulator went
+  // away is free again.
   auto* st = appProperties.getUserSettings();
-  if (st != nullptr && !st->getBoolValue(portKey("midiEnabled", synth), true))
+  if (st != nullptr && !st->getBoolValue(portKey("midiEnabled", synth), true)
+      && !st->getBoolValue(portKey("midiAutoOff", synth), false))
     return false;
   const auto& saved = synthState[static_cast<size_t>(synth)].lastInputId;
   if (saved.isEmpty() || DirectLink::isDeviceId(saved))
@@ -4215,6 +4255,14 @@ void MainComponent::connectFoundEmulators(const std::vector<DirectLink::Instance
       return;
     std::cout << "[LINK] " << inst.name << " found on port " << inst.port
               << " - connecting it to Port " << (target + 1) << std::endl;
+    // The port is switched on for it, and remembered as switched on by the editor, so it is
+    // switched off again when the emulator goes.
+    if (auto* st = appProperties.getUserSettings()) {
+      st->setValue(portKey("midiEnabled", target), true);
+      st->setValue(portKey("midiAutoOff", target), false);
+      st->setValue(portKey("midiAutoPort", target), true);
+      st->saveIfNeeded();
+    }
     handleConnectionRequest(target, id, id);
   }
 }
