@@ -7,11 +7,19 @@ bool parseGreeting (const juce::String& line, Instance& out)
     if (! line.startsWith ("G1-Emu "))
         return false;
     const auto afterVersion = line.fromFirstOccurrenceOf (" ", false, false).fromFirstOccurrenceOf (" ", false, false);
-    out.name = afterVersion.upToFirstOccurrenceOf ("\t", false, false).trim();
+    juce::StringArray fields;
+    fields.addTokens (afterVersion, "\t", {});
+    out.name = fields.isEmpty() ? juce::String() : fields[0].trim();
     out.pcPortIds.clear();
-    const auto extra = afterVersion.fromFirstOccurrenceOf ("\t", false, false);
-    if (extra.startsWith ("pcport="))
-        out.pcPortIds.addTokens (extra.fromFirstOccurrenceOf ("=", false, false).trim(), ",", {});
+    out.pcPortName.clear();
+    for (int i = 1; i < fields.size(); ++i)
+    {
+        const auto& f = fields[i];
+        if (f.startsWith ("pcport="))
+            out.pcPortIds.addTokens (f.fromFirstOccurrenceOf ("=", false, false).trim(), ",", {});
+        else if (f.startsWith ("pcname="))
+            out.pcPortName = f.fromFirstOccurrenceOf ("=", false, false).trim();
+    }
     out.pcPortIds.removeEmptyStrings();
     return out.name.isNotEmpty();
 }

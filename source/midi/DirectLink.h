@@ -70,9 +70,11 @@ namespace DirectLink
         // The ids its MIDI PC Port has in this computer's MIDI lists, from the greeting: an editor
         // already on one of them is already talking to this G1.
         juce::StringArray pcPortIds;
+        // Its name in the MIDI lists, for when there are no ids (JUCE's virtual ports on Linux).
+        juce::String pcPortName;
     };
 
-    // The greeting, "G1-Emu <version> <name>[\tpcport=<id>,<id>]", without its newline. False when
+    // The greeting, "G1-Emu <version> <name>[\tpcport=<id>,<id>][\tpcname=<name>]", without its newline. False when
     // it is not G1-Emu's.
     bool parseGreeting (const juce::String& line, Instance& out);
 

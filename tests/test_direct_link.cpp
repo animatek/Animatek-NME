@@ -38,6 +38,11 @@ TEST_CASE("the greeting names the instance and the ids of its MIDI PC Port")
     CHECK(inst.name == "G1-Emu");
     CHECK(inst.pcPortIds.isEmpty());
 
+    REQUIRE(DirectLink::parseGreeting("G1-Emu 1 G1-Emu plugin 1\tpcport=,\tpcname=G1-Emu PC Port", inst));
+    CHECK(inst.name == "G1-Emu plugin 1");
+    CHECK(inst.pcPortIds.isEmpty());   // JUCE's virtual ports on Linux have no id
+    CHECK(inst.pcPortName == "G1-Emu PC Port");
+
     CHECK_FALSE(DirectLink::parseGreeting("SSH-2.0-OpenSSH", inst));
 }
 

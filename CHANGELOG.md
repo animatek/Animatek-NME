@@ -16,8 +16,8 @@
   (SysEx split across any cut of the stream) and, against a running `g1run`, the editor's IAm over
   the link answered by the emulated G1 (`NME_G1EMU_LINK_TEST=1`); the automatic connection in the
   window is not tried yet. An instance already connected through its MIDI PC Port is not connected
-  again over the link: G1-Emu's greeting names its PC Port's ids and the editor compares them with
-  its ports.
+  again over the link: G1-Emu's greeting names its PC Port's ids (or its name, where JUCE gives no
+  id) and the editor compares them with its ports.
 - **Ports follow the emulators** (2026-10-06). A G1-Emu instance found on its direct link switches
   its port on (Enabled in MIDI Setup) and connects; when the instance goes, the editor switches that
   port off again, its row leaves the slot panel, and if it was the synth being edited the editor

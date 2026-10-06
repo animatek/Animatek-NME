@@ -4237,7 +4237,13 @@ void MainComponent::connectFoundEmulators(const std::vector<DirectLink::Instance
       const auto& st = synthState[static_cast<size_t>(synth)];
       const auto& cm = synthHub.synth(synth);
       const bool live = cm.isConnected() || cm.getStatus().state == ConnectionManager::State::Connecting;
-      if (live && (inst.pcPortIds.contains(st.lastInputId) || inst.pcPortIds.contains(st.lastOutputId)))
+      if (!live)
+        continue;
+      if (inst.pcPortIds.contains(st.lastInputId) || inst.pcPortIds.contains(st.lastOutputId))
+        onMidi = true;
+      // No ids to go by (JUCE's virtual ports on Linux): the port's name, which is the instance's own.
+      else if (inst.pcPortIds.isEmpty() && inst.pcPortName.isNotEmpty()
+               && cm.getConnectedPortName() == inst.pcPortName)
         onMidi = true;
     }
     if (onMidi)
