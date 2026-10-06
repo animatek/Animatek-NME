@@ -553,6 +553,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
             // Then work out where it lives. This has to come after the LOCAL
             // badge is cleared: a slot still marked local is not looked up.
             safeThis->slotPatchFromSynth[targetSlot] = true;
+
+            // The first patch is what makes a rename stick (it brings the patch id the settings
+            // are sent under): an emulator still waiting for its own name gets it now.
+            const auto& synthSt = safeThis->synthState[static_cast<size_t>(s)];
+            if (synthSt.settingsKnown && !synthSt.autoNameTried)
+              safeThis->giveDuplicateEmulatorAName(s);
             safeThis->inferSlotBankLocation(targetSlot);
 
             // And give it back its comments, notes, variations and Mutator
@@ -2058,6 +2064,14 @@ bool MainComponent::giveDuplicateEmulatorAName(int synth) {
   auto* st = appProperties.getUserSettings();
   if (st == nullptr || !st->getBoolValue(portKey("midiAutoPort", synth), false))
     return false;
+  // Once per connection: a synth that comes back with its old name keeps it, rather than being
+  // renamed again and again.
+  if (state.autoNameTried)
+    return false;
+  // And only once the synth has a patch in its focused slot: settings sent before that carry no
+  // patch id, and the synth ignores them. The next patch to arrive tries again.
+  if (cm.getPatchId(cm.getCurrentSlot()) <= 0)
+    return false;
 
   juce::StringArray taken;
   for (int other = 0; other < kMaxSynths; ++other)
@@ -2090,6 +2104,7 @@ bool MainComponent::giveDuplicateEmulatorAName(int synth) {
   if (name.isEmpty())
     return false;
 
+  state.autoNameTried = true;
   std::cout << "[LINK] Port " << (synth + 1) << " answers to \"" << current
             << "\" (" << (factoryName ? "its factory name" : "another synth's name") << "): renaming it \""
             << name << "\"" << std::endl;
@@ -4185,6 +4200,12 @@ void MainComponent::onConnectionStatusChanged(
   if (midiSettingsDialog != nullptr)
     midiSettingsDialog->setPortStatus(synth, status);
   if (!connected) {
+    // Some of what follows is only for a connection that is really closed: a synth that is slow
+    // to answer is "Disconnected" with its ports (or link) still open, and answers later.
+    const bool portsGone = !synthHub.synth(synth).hasOpenPorts();
+    if (portsGone)
+      state.autoNameTried = false;
+
     // Reconciling with the synth is a once-per-connection thing, so losing the
     // connection arms it again for the next one.
     state.enableStateKnown = false;
@@ -4208,8 +4229,8 @@ void MainComponent::onConnectionStatusChanged(
 
     // A synth that is gone takes its windows with it (Port 1's stay: it is the editor's own
     // work area even with no synth). They come back when it connects again.
-    if (synth > 0 && status.state == ConnectionManager::State::Disconnected && mainLayout != nullptr
-        && !editorOptions.restoreAllWindows) {
+    if (synth > 0 && status.state == ConnectionManager::State::Disconnected && portsGone
+        && mainLayout != nullptr && !editorOptions.restoreAllWindows) {
       auto& area = mainLayout->getPatchArea();
       const juce::ScopedValueSetter<bool> syncGuard(syncingSlotWindows, true);
       for (int l = 0; l < kSlotsPerSynth; ++l) {
@@ -4221,7 +4242,8 @@ void MainComponent::onConnectionStatusChanged(
 
     // An emulator this editor connected by itself is gone (closed, or its plugin instance
     // removed): its port is switched off again, so its row goes and the next one can take it.
-    if (status.state == ConnectionManager::State::Disconnected && DirectLink::isDeviceId(state.lastInputId))
+    if (status.state == ConnectionManager::State::Disconnected && portsGone
+        && DirectLink::isDeviceId(state.lastInputId))
       if (auto* st = appProperties.getUserSettings())
         if (st->getBoolValue(portKey("midiAutoPort", synth), false)) {
           st->setValue(portKey("midiEnabled", synth), false);
@@ -4337,7 +4359,8 @@ void MainComponent::scanForEmulators() {
 // trying to connect, and not kept for MIDI ports of its own that are still around.
 bool MainComponent::isPortFreeForEmulator(int synth) const {
   const auto& cm = synthHub.synth(synth);
-  if (cm.isConnected() || cm.getStatus().state == ConnectionManager::State::Connecting)
+  if (cm.isConnected() || cm.getStatus().state == ConnectionManager::State::Connecting
+      || cm.hasOpenPorts())   // still listening to a synth that has not answered yet
     return false;
   // A port switched off by hand stays off; one this editor switched off when its emulator went
   // away is free again.

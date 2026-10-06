@@ -36,6 +36,15 @@
 
 ### Fixed
 
+- **Emulators found at startup: renamed in a loop, or counted as gone** (2026-10-06). Seen with three
+  G1-Emu plugins in Bitwig and NME's log: (1) the automatic name was sent before the synth had a
+  patch, with patch id 0, so the synth ignored it, came back "Modular" and was renamed again and
+  again; it is now one try per connection, made once the synth has a patch (checked: "G1 Ferro"
+  sent with pid 1 and confirmed by the synth). (2) A synth on the direct link gets 15 s to answer
+  the greeting, which is said again every 3 s, instead of 3 s: emulators sharing a DAW's CPU can be
+  slower than a G1. (3) A synth that has not answered yet is "Disconnected" with its link still
+  open: its port is no longer switched off nor its windows closed for that, nor given to another
+  instance; only a connection that is really closed does that.
 - **Every synth's name, not "Modular"** (2026-10-06). On connecting, only the synth being edited was
   asked for its settings (where its name is) and its bank list; its ports were saved and its slots'
   edits re-enabled only for it too. All of that is done for every synth now, so a real G1 called

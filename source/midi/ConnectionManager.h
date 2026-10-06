@@ -47,6 +47,10 @@ public:
     void disconnect(const juce::String& reason = "Disconnected");
 
     bool isConnected() const { return status.state == State::Connected; }
+    // Ports (or a direct link) still open, whatever the state says: a synth that did not answer in
+    // time is "Disconnected" but still listened to, and comes back by itself when it speaks.
+    bool hasOpenPorts() const { return midiDevice != nullptr && midiDevice->isConnected(); }
+    bool isDirectLink() const { return midiDevice != nullptr && midiDevice->isDirectLink(); }
     const Status& getStatus() const { return status; }
     // The MIDI input port the editor is on, empty when not connected.
     juce::String getConnectedPortName() const { return midiDevice ? midiDevice->getInputDeviceName() : juce::String(); }

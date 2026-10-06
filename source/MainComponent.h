@@ -415,6 +415,7 @@ private:
         bool windowsReconcileScheduled = false;
         juce::String lastInputId, lastOutputId;   // ports of its last good connection
         int autoConnectRetries = 5;
+        bool autoNameTried = false;   // the editor named this emulator already, this connection
     };
     std::array<SynthState, kMaxSynths> synthState;
     SynthState& activeState() { return synthState[static_cast<size_t>(synthHub.activeSynth())]; }
