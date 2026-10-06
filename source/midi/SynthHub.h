@@ -18,7 +18,7 @@
 // patch list, the keyboard). There is deliberately no slot-less isConnected() or
 // sendRawSysEx(): with two synths those are the calls that would reach the wrong one.
 constexpr int kSlotsPerSynth = 4;
-constexpr int kMaxSynths = 4;   // 2, then 4 or more (G1-Emu allows many instances)
+constexpr int kMaxSynths = 8;   // 2, then 4 or more (G1-Emu allows many instances)
 constexpr int kTotalSlots = kSlotsPerSynth * kMaxSynths;
 
 namespace SynthSlot
@@ -34,6 +34,15 @@ namespace SynthSlot
     {
         const auto letter = juce::String::charToString (static_cast<juce::juce_wchar> ('A' + localOf (slot)));
         return kMaxSynths == 1 ? letter : juce::String (synthOf (slot) + 1) + letter;
+    }
+
+    // One character per slot, for saving an order of slots: 0-9 then a-v, enough for 32.
+    inline juce::String orderChar (int slot) { return juce::String::charToString (static_cast<juce::juce_wchar> ("0123456789abcdefghijklmnopqrstuv"[slot & 31])); }
+    inline int fromOrderChar (juce::juce_wchar c)
+    {
+        if (c >= '0' && c <= '9') return static_cast<int> (c - '0');
+        if (c >= 'a' && c <= 'v') return static_cast<int> (c - 'a') + 10;
+        return -1;
     }
 
     // The same, for settings keys: the first synth keeps the bare letter, so the layout

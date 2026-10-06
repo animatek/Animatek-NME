@@ -51,7 +51,7 @@ MidiSettingsDialog::MidiSettingsDialog()
         g.enabled.onClick = [this, i]() { updateEnabledState (i); };
         for (juce::Component* c : std::initializer_list<juce::Component*> {
                  &g.inLabel, &g.outLabel, &g.inCombo, &g.outCombo, &g.enabled, &g.statusCaption, &g.status })
-            addAndMakeVisible (c);
+            content.addAndMakeVisible (c);
     }
 
     for (auto* b : { &okButton, &cancelButton, &applyButton })
@@ -66,8 +66,13 @@ MidiSettingsDialog::MidiSettingsDialog()
     applyButton.onClick  = [this]() { apply(); };
     cancelButton.onClick = [this]() { close(); };
 
+    content.owner = this;
+    viewport.setViewedComponent (&content, false);
+    viewport.setScrollBarsShown (true, false);
+    addAndMakeVisible (viewport);
+
     refreshDeviceLists();
-    setSize (480, 38 + kMaxSynths * 112 + 52);
+    setSize (480, kTitleH + 6 + juce::jmin (kMaxSynths * kGroupH, 4 * kGroupH + kGroupH / 2) + kButtonsH);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -188,12 +193,16 @@ void MidiSettingsDialog::paint (juce::Graphics& g)
     g.setColour (kSep);
     g.fillRect (0, 31, getWidth(), 1);
 
+}
+
+void MidiSettingsDialog::Content::paint (juce::Graphics& g)
+{
     // One framed group per port, titled as in the original editor.
-    constexpr int pad = 12, groupH = 104;
+    constexpr int pad = 12;
     for (int i = 0; i < kMaxSynths; ++i)
     {
-        const juce::Rectangle<float> r (static_cast<float> (pad), static_cast<float> (38 + i * 112 + 6),
-                                        static_cast<float> (getWidth() - pad * 2), static_cast<float> (groupH - 6));
+        const juce::Rectangle<float> r (static_cast<float> (pad), static_cast<float> (i * kGroupH + 10),
+                                        static_cast<float> (getWidth() - pad * 2), static_cast<float> (kGroupH - 14));
         g.setColour (kCtrlBd);
         g.drawRoundedRectangle (r, 3.0f, 1.0f);
         const auto title = "Port " + juce::String (i + 1);
@@ -207,15 +216,13 @@ void MidiSettingsDialog::paint (juce::Graphics& g)
     }
 }
 
-void MidiSettingsDialog::resized()
+void MidiSettingsDialog::Content::resized()
 {
-    constexpr int titleH = 32, pad = 12, rowH = 24;
-    closeButton.setBounds (getWidth() - 32, 2, 28, 28);
-
+    constexpr int pad = 12, rowH = 24;
     for (int i = 0; i < kMaxSynths; ++i)
     {
-        auto& g = groups[static_cast<size_t> (i)];
-        auto area = juce::Rectangle<int> (pad + 10, titleH + 6 + i * 112 + 14, getWidth() - pad * 2 - 20, 84);
+        auto& g = owner->groups[static_cast<size_t> (i)];
+        auto area = juce::Rectangle<int> (pad + 10, i * kGroupH + 18, getWidth() - pad * 2 - 20, 84);
         auto row1 = area.removeFromTop (rowH);
         g.inLabel.setBounds (row1.removeFromLeft (24));
         const int comboW = (row1.getWidth() - 34) / 2;
@@ -228,6 +235,15 @@ void MidiSettingsDialog::resized()
         g.statusCaption.setBounds (row2.removeFromLeft (50));
         g.status.setBounds (row2);
     }
+}
+
+void MidiSettingsDialog::resized()
+{
+    closeButton.setBounds (getWidth() - 32, 2, 28, 28);
+
+    viewport.setBounds (0, kTitleH + 6, getWidth(), getHeight() - kTitleH - 6 - kButtonsH);
+    content.setSize (viewport.getWidth() - (kMaxSynths * kGroupH > viewport.getHeight() ? viewport.getScrollBarThickness() : 0),
+                     kMaxSynths * kGroupH);
 
     constexpr int btnW = 84, btnH = 28;
     auto bottom = juce::Rectangle<int> (0, getHeight() - btnH - 12, getWidth(), btnH);

@@ -60,6 +60,18 @@ private:
     juce::ComponentDragger dragger;
     FlatCloseButton closeButton;
     std::array<PortGroup, kMaxSynths> groups;
+
+    // The port groups scroll when there are more than fit: eight ports are taller than a laptop's
+    // screen. The buttons stay below, always in sight.
+    struct Content : public juce::Component
+    {
+        void paint (juce::Graphics& g) override;
+        void resized() override;
+        MidiSettingsDialog* owner = nullptr;
+    };
+    Content content;
+    juce::Viewport viewport;
+    static constexpr int kGroupH = 112, kTitleH = 32, kButtonsH = 52;
     std::array<Port, kMaxSynths> applied;   // what the synth was last told
     juce::TextButton okButton { "OK" }, cancelButton { "Cancel" }, applyButton { "Apply" };
 

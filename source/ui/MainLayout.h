@@ -56,6 +56,9 @@ public:
     // "No synth" are four rows of nothing. The bar's height follows.
     void setRowShown(int synth, bool shown);
     int getPreferredHeight() const;
+    // Emulators found that no port is left for: said in the header, so a fifth (or ninth) synth
+    // is not silently left out.
+    void setWaitingEmulators(int count);
     std::function<void()> onRowsChanged;
     // Asked for the load on every blink of the LEDs, so the bar follows edits
     // without every place that changes a patch having to say so.
@@ -83,6 +86,10 @@ private:
     juce::Rectangle<int> nameBounds[kMaxSynths], loadBounds[kMaxSynths];
     juce::String synthName[kMaxSynths];
     bool rowShown[kMaxSynths] = { true };
+    int waitingEmulators = 0;
+    // The panel's frame: a header with a rule above it (the inspector ends there), the rows, and
+    // a margin before the status bar.
+    static constexpr int kHeaderH = 24, kRowH = 30, kBottomPad = 8;
     float loadFraction[kMaxSynths];
     // Row a patch is currently being dragged over, -1 when none. Painted so the
     // drop says where it is going before it happens.

@@ -118,7 +118,7 @@ def list_modules(
     """List the modules and cables currently in a patch slot.
 
     slot: 0-3 (A-D); defaults to whichever slot's tab is currently active
-    port: 1-4, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
+    port: 1-8, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     in the editor.
     section: 0=common, 1=poly; omit to list both.
     container_index: one index or a list of them - return only those modules,
@@ -171,7 +171,7 @@ def mutate_patch(
     only - small values (0.1-0.2) explore around the current sound, large ones
     depart from it.
     slot: 0-3 (A-D); defaults to the currently active slot.
-    port: 1-4, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
+    port: 1-8, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
 
     Parameters that are locked, in a module excluded from mutation, or in an
     Output module are never touched. Interpolate and cross are not exposed:
@@ -228,7 +228,7 @@ def add_module(
     type_id or type_name: identifies the module type - get these from
     list_module_types first (typeId is the more reliable of the two).
     slot: 0-3 (A-D); defaults to the currently active slot.
-    port: 1-4, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
+    port: 1-8, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
 
     Returns the new module's containerIndex and actual position.
     """
@@ -266,7 +266,7 @@ def move_module(
     grid_x/grid_y: non-negative grid coordinates. Account for each module's
     height when stacking modules vertically so they do not overlap.
     slot: 0-3 (A-D); defaults to the currently active slot.
-    port: 1-4, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
+    port: 1-8, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     """
     params: dict[str, Any] = {
         "section": section,
@@ -296,7 +296,7 @@ def rename_module(
     name: new title, 1-16 characters (the G1 module-name limit). The name lives
     in the patch/editor and reaches the synth on the next full patch upload.
     slot: 0-3 (A-D); defaults to the currently active slot.
-    port: 1-4, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
+    port: 1-8, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     Returns the new name and the previous one.
     """
     params: dict[str, Any] = {
@@ -390,7 +390,7 @@ def connect_cable(
     ambiguous (a handful of module types reuse the same name for an input
     and an output) - the error message says so if this is required.
     slot: 0-3 (A-D); defaults to the currently active slot.
-    port: 1-4, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
+    port: 1-8, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     """
     params: dict[str, Any] = {
         "section": section,
@@ -535,7 +535,7 @@ def save_patch(
     extension defaults to .pch. Parent folders are created as needed. This lets a
     patch built through the bridge be persisted instead of living only in memory.
     slot: 0-3 (A-D); defaults to the currently active slot.
-    port: 1-4, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
+    port: 1-8, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     Returns the full saved path and the patch name.
     """
     params: dict[str, Any] = {"path": path}
@@ -557,7 +557,7 @@ def store_to_bank(
 
     bank: 1-9. position: 1-99 (bank location = bank*100 + position, e.g. 101).
     slot: 0-3 (A-D); defaults to the currently active slot.
-    port: 1-4, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
+    port: 1-8, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     The patch is uploaded to the synth working slot and then written to the bank,
     so this overwrites that working slot. The patch list must have finished
     loading. Returns the target bank/position/location.
@@ -699,7 +699,7 @@ def list_assignments(slot: Optional[int] = None) -> Any:
     A target is either a module parameter (section, containerIndex, parameterId,
     moduleName, parameterName) or a morph group's dial (morphGroup).
     slot: 0-3 (A-D); defaults to the currently active slot.
-    port: 1-4, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
+    port: 1-8, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     """
     params: dict[str, Any] = {}
     if slot is not None:
@@ -914,7 +914,7 @@ def fetch_patch(slot: Optional[int] = None) -> Any:
     """Ask the synth for the patch in a slot again and load it into the editor.
 
     slot: 0-3 (A-D); defaults to the slot the synth has focused.
-    port: 1-4, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
+    port: 1-8, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     The editor's copy of that slot is replaced when the patch arrives, so unsaved
     editor-only changes to it are lost; the synth itself is not changed. Poll
     get_synth_status until transfer.fetching is false, or read get_events for

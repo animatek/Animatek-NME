@@ -43,6 +43,11 @@
 
 ### Added
 
+- **The slot panel has a frame** (2026-10-06): a rule that ends the inspector above it, a "SYNTHS"
+  header with how many are connected, and a margin before the status bar. When more G1-Emu
+  instances are running than there are free ports, the header says how many are waiting in the
+  warning colour instead of leaving them out silently. MIDI Setup scrolls its port groups, with OK,
+  Cancel and Apply always in sight.
 - **The slot panel shows only the synths that are there** (2026-10-06). Port 1's row always, any
   other port's row while it is connected or connecting, or while it is the one being edited; the
   View menu's slot list follows. The bar's height follows the rows.
@@ -56,8 +61,9 @@
   (click its name to edit that synth), each patch window is titled with its slot, patch and synth ("Slot A - Bella - animatek", or the port until the synth says its name), the tiling is a grid
   from four windows up, and the saved ports of the first synth keep their old settings keys. The MCP bridge
   takes an optional `port` (1-based) on every slot tool. Slot sets, the bank browser and the bank transfers
-  follow the synth being edited. Four ports, as in the original editor: the number is `kMaxSynths` in
-  `source/midi/SynthHub.h`. The "show/hide slot" menu ids moved to 1000+ (they overlapped the theme
+  follow the synth being edited. Eight ports since 2026-10-06 (the original editor has four; G1-Emu's direct link
+  serves eight instances): the number is `kMaxSynths` in `source/midi/SynthHub.h`. The saved window
+  order uses one character per slot from 0-9a-v (32 slots) and the open-window masks are unsigned. The "show/hide slot" menu ids moved to 1000+ (they overlapped the theme
   list's 200+), and the window order is saved in hexadecimal so sixteen slots fit.
 
 ## 0.20.0 — 2026-10-05

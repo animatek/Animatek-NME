@@ -108,12 +108,20 @@ int SlotBar::getPreferredHeight() const
     int rows = 0;
     for (bool shown : rowShown)
         rows += shown ? 1 : 0;
-    return 30 * juce::jmax(1, rows);
+    return kHeaderH + kRowH * juce::jmax(1, rows) + kBottomPad;
+}
+
+void SlotBar::setWaitingEmulators(int count)
+{
+    if (waitingEmulators == count)
+        return;
+    waitingEmulators = count;
+    repaint(0, 0, getWidth(), kHeaderH);
 }
 
 void SlotBar::resized()
 {
-    auto all = getLocalBounds();
+    auto all = getLocalBounds().withTrimmedTop(kHeaderH).withTrimmedBottom(kBottomPad);
     static constexpr int buttonW = 20;
     for (int synth = 0; synth < kMaxSynths; ++synth)
     {
@@ -125,7 +133,7 @@ void SlotBar::resized()
             nameBounds[synth] = loadBounds[synth] = {};
             continue;
         }
-        auto area = all.removeFromTop(30).reduced(4, 4);
+        auto area = all.removeFromTop(kRowH).reduced(8, 3);
         for (int l = 0; l < kSlotsPerSynth; ++l)
             slotBounds[SynthSlot::global(synth, l)] = area.removeFromLeft(buttonW).withTrimmedRight(2);
         area.removeFromLeft(2);
@@ -140,6 +148,27 @@ void SlotBar::paint(juce::Graphics& g)
 {
     const auto& pal = AppTheme::palette();
     g.fillAll(pal.backgroundPanel);
+
+    // The rule that ends the inspector, then the header: what this is, and how many synths.
+    g.setColour(pal.borderColor);
+    g.fillRect(0, 0, getWidth(), 1);
+    auto header = juce::Rectangle<int>(8, 4, getWidth() - 16, kHeaderH - 6);
+    g.setColour(pal.textSecondary);
+    g.setFont(AppTheme::uiFont(10.0f).withStyle("Bold"));
+    g.drawText("SYNTHS", header, juce::Justification::centredLeft, false);
+    int connected = 0;
+    for (int synth = 0; synth < kMaxSynths; ++synth)
+        if (synthName[synth].isNotEmpty())
+            ++connected;
+    juce::String count = juce::String(connected) + " / " + juce::String(kMaxSynths);
+    g.setFont(AppTheme::uiFont(10.0f));
+    if (waitingEmulators > 0)
+    {
+        // More emulators than ports: the ones left out are counted where it shows.
+        count = "+" + juce::String(waitingEmulators) + " G1-Emu waiting, ports full   " + count;
+        g.setColour(pal.accentWarning);
+    }
+    g.drawText(count, header, juce::Justification::centredRight, true);
 
     for (int i = 0; i < numSlots; ++i)
     {

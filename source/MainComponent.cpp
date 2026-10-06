@@ -3322,12 +3322,12 @@ void MainComponent::saveMdiLayout() {
   auto& area = mainLayout->getPatchArea();
   const bool freeMode = area.getTileMode() == SlotMdiArea::TileMode::Free;
 
-  int openMask = 0;
+  uint32_t openMask = 0;
   for (int i = 0; i < numSlots; ++i)
     if (area.isSlotOpen(i))
-      openMask |= (1 << i);
+      openMask |= (1u << i);
 
-  settings->setValue("mdiOpenSlots", openMask);
+  settings->setValue("mdiOpenSlots", static_cast<int>(openMask));
   settings->setValue("mdiFocusedSlot", activeSlot);
   settings->setValue("mdiFreeLayout", freeMode);
   settings->setValue("mdiFocusMode", area.isFocusMode());
@@ -3369,18 +3369,18 @@ void MainComponent::restoreMdiLayout() {
   {
     juce::String identity;
     for (int i = 0; i < numSlots; ++i)
-      identity += juce::String::toHexString(i);
+      identity += SynthSlot::orderChar(i);
     area.setTileOrderString(settings->getValue("mdiTileOrder", identity));
   }
 
   // Default to the slot that is already open, so a first run and a corrupt or
   // empty mask both land somewhere sensible rather than on an empty work area.
-  int openMask = settings->getIntValue("mdiOpenSlots", 1 << activeSlot);
-  if ((openMask & ((1 << numSlots) - 1)) == 0)
-    openMask = 1 << activeSlot;
+  uint32_t openMask = static_cast<uint32_t>(settings->getIntValue("mdiOpenSlots", static_cast<int>(1u << activeSlot)));
+  if (openMask == 0)
+    openMask = 1u << activeSlot;
 
   for (int i = 0; i < numSlots; ++i)
-    if (openMask & (1 << i))
+    if (openMask & (1u << i))
       area.openSlot(i);
 
   if (settings->getBoolValue("mdiFreeLayout", false)) {
@@ -3401,7 +3401,7 @@ void MainComponent::restoreMdiLayout() {
             << " tileOrder=" << mainLayout->getPatchArea().getTileOrderString() << std::endl;
 
   const int focused = settings->getIntValue("mdiFocusedSlot", activeSlot);
-  if (focused >= 0 && focused < numSlots && (openMask & (1 << focused)))
+  if (focused >= 0 && focused < numSlots && (openMask & (1u << focused)))
     switchToSlot(focused, /*notifySynth=*/false);
 
   // Last, so it maximises the slot that ended up focused.
@@ -3451,15 +3451,15 @@ void MainComponent::reconcileSlotWindowsWithSynth(int synth, const std::array<bo
   const int focused = SynthSlot::global(synth, juce::jlimit(0, kSlotsPerSynth - 1,
                                                             synthHub.synth(synth).getCurrentSlot()));
 
-  int desiredMask = 1 << focused;  // focused slot must always remain reachable
+  uint32_t desiredMask = 1u << focused;  // focused slot must always remain reachable
   for (int l = 0; l < kSlotsPerSynth; ++l)
     if (enabled[static_cast<size_t>(l)])
-      desiredMask |= 1 << (first + l);
+      desiredMask |= 1u << (first + l);
 
-  int currentMask = 0;
+  uint32_t currentMask = 0;
   for (int l = 0; l < kSlotsPerSynth; ++l)
     if (area.isSlotOpen(first + l))
-      currentMask |= 1 << (first + l);
+      currentMask |= 1u << (first + l);
 
   if (currentMask == desiredMask) {
     std::cout << "[MDI] Slot windows already match the synth: mask=" << desiredMask
@@ -3479,7 +3479,7 @@ void MainComponent::reconcileSlotWindowsWithSynth(int synth, const std::array<bo
     {
       const juce::ScopedValueSetter<bool> focusGuard(inSlotFocusChange, true);
       for (int slot = first; slot < first + kSlotsPerSynth; ++slot)
-        if ((desiredMask & (1 << slot)) != 0 && !area.isSlotOpen(slot))
+        if ((desiredMask & (1u << slot)) != 0 && !area.isSlotOpen(slot))
           area.openSlot(slot);
     }
 
@@ -3489,7 +3489,7 @@ void MainComponent::reconcileSlotWindowsWithSynth(int synth, const std::array<bo
       switchToSlot(focused, /*notifySynth=*/false, /*bringOnScreen=*/false);
 
     for (int slot = first; slot < first + kSlotsPerSynth; ++slot)
-      if ((desiredMask & (1 << slot)) == 0 && area.isSlotOpen(slot))
+      if ((desiredMask & (1u << slot)) == 0 && area.isSlotOpen(slot))
         area.closeSlot(slot);
 
     // A restored F11 state would leave the newly opened windows underneath the
@@ -4294,15 +4294,12 @@ bool MainComponent::autoConnectEmulatorsEnabled() const {
 // Looks for G1-Emu instances on a background thread (each knock on a listening emulator waits for
 // its greeting) and, back on the message thread, connects every free instance to a free port.
 void MainComponent::scanForEmulators() {
-  if (!autoConnectEmulatorsEnabled() || emulatorScanRunning)
+  if (!autoConnectEmulatorsEnabled() || emulatorScanRunning) {
+    if (!autoConnectEmulatorsEnabled())
+      mainLayout->getSlotBar().setWaitingEmulators(0);
     return;
-  // Nothing to give an emulator: every port is taken or busy connecting.
-  bool anyFree = false;
-  for (int synth = 0; synth < kMaxSynths; ++synth)
-    if (isPortFreeForEmulator(synth))
-      anyFree = true;
-  if (!anyFree)
-    return;
+  }
+  // Looked for even with every port taken: the ones left out are counted in the slot panel.
 
   emulatorScanRunning = true;
   juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -4340,6 +4337,11 @@ bool MainComponent::isPortFreeForEmulator(int synth) const {
 }
 
 void MainComponent::connectFoundEmulators(const std::vector<DirectLink::Instance>& found) {
+  int waiting = 0;
+  struct SetWaiting {
+    MainComponent& mc; int& n;
+    ~SetWaiting() { mc.mainLayout->getSlotBar().setWaitingEmulators(n); }
+  } setWaiting { *this, waiting };
   for (const auto& inst : found) {
     if (inst.busy)
       continue;   // it has an editor already (maybe this one, on another port)
@@ -4369,8 +4371,10 @@ void MainComponent::connectFoundEmulators(const std::vector<DirectLink::Instance
     for (int synth = 0; synth < kMaxSynths && target < 0; ++synth)
       if (isPortFreeForEmulator(synth))
         target = synth;
-    if (target < 0)
-      return;
+    if (target < 0) {
+      ++waiting;   // no port left for it
+      continue;
+    }
     std::cout << "[LINK] " << inst.name << " found on port " << inst.port
               << " - connecting it to Port " << (target + 1) << std::endl;
     // The port is switched on for it, and remembered as switched on by the editor, so it is
