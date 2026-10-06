@@ -450,8 +450,8 @@ private:
     // A synth's name where the user sees it: its row in the slot bar and its slot windows.
     void setSynthDisplayName(int synth, const juce::String& name);
     void renameSynth(int synth);   // double-click on its name in the slot bar
-    // An emulator connected by the editor itself that answers to a name another connected synth
-    // has gets a name of its own. True when it was renamed.
+    // An emulator connected by the editor itself that still has its factory name, or answers to a
+    // name another connected synth has, gets a name of its own. True when it was renamed.
     bool giveDuplicateEmulatorAName(int synth);
     // Zero a canvas's LEDs and meters. The synth streams them for one slot at a
     // time, so the slot being left has to be blanked or it freezes lit.

@@ -2065,7 +2065,13 @@ bool MainComponent::giveDuplicateEmulatorAName(int synth) {
         && synthState[static_cast<size_t>(other)].settingsKnown)
       taken.add(juce::String(synthState[static_cast<size_t>(other)].settings.name).trim());
   const juce::String current = juce::String(state.settings.name).trim();
-  if (!taken.contains(current, true))
+  // Every emulator gets a name of its own, the first one too: one still called what it was called
+  // at the factory ("Modular", the name in the G1's OS) is renamed like one that repeats another
+  // synth's name. A name of its own, given here or by the user, is kept, so it does not change
+  // every time the project opens.
+  const bool factoryName = current.isEmpty() || current.equalsIgnoreCase("Modular")
+                        || current.equalsIgnoreCase("Nord Modular");
+  if (!factoryName && !taken.contains(current, true))
     return false;
 
   // Short, plain ASCII (the G1's display) and at most 16 characters.
@@ -2085,14 +2091,15 @@ bool MainComponent::giveDuplicateEmulatorAName(int synth) {
     return false;
 
   std::cout << "[LINK] Port " << (synth + 1) << " answers to \"" << current
-            << "\" like another synth here: renaming it \"" << name << "\"" << std::endl;
+            << "\" (" << (factoryName ? "its factory name" : "another synth's name") << "): renaming it \""
+            << name << "\"" << std::endl;
   state.settings.name = name.toStdString();
   cm.sendSynthSettings(state.settings);
   setSynthDisplayName(synth, name);
   if (synth == synthHub.activeSynth())
     mainLayout->getHeaderBar().setSynthName(name);
-  mainLayout->getStatusBar().showMessage("Another G1-Emu with the same name: this one is \"" + name
-                                             + "\" now (double-click it to change)", 4000);
+  mainLayout->getStatusBar().showMessage("G1-Emu on Port " + juce::String(synth + 1) + " is \"" + name
+                                             + "\" now (double-click its name to change it)", 4000);
   return true;
 }
 
