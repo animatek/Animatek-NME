@@ -7,7 +7,7 @@
 #include <iostream>
 
 BankTransferManager::BankTransferManager(ConnectionManager& cm, ModuleDescriptions& descs)
-    : connection(cm), moduleDescs(descs)
+    : connection(&cm), moduleDescs(descs)
 {
 }
 
@@ -83,8 +83,8 @@ void BankTransferManager::finishTransfer(bool cancelled)
 {
     ++generation;
     busy = false;
-    connection.setBankFetchCallback(nullptr);
-    connection.setBankUploadResultCallback(nullptr);
+    connection->setBankFetchCallback(nullptr);
+    connection->setBankUploadResultCallback(nullptr);
 
     if (savingToDisk && stagingRoot != juce::File())
     {
@@ -124,14 +124,14 @@ void BankTransferManager::finishTransfer(bool cancelled)
 
     // The synth's temp slot now holds the last transferred patch — re-fetch it
     // so the editor model matches, then refresh bank names after a send.
-    if (connection.isConnected())
+    if (connection->isConnected())
     {
-        connection.requestPatch(tempSlot);
+        connection->requestPatch(tempSlot);
 
         if (!savingToDisk)
         {
             auto aliveFlag = alive;
-            auto* conn = &connection;
+            auto* conn = connection;
             juce::Timer::callAfterDelay(1500, [aliveFlag, conn]() {
                 if (*aliveFlag && conn->isConnected())
                     conn->requestPatchList();
@@ -146,7 +146,7 @@ void BankTransferManager::finishTransfer(bool cancelled)
 void BankTransferManager::saveBankToDisk(int section, const juce::File& folder,
                                          int slot, ProgressCallback cb)
 {
-    if (busy || !connection.isConnected())
+    if (busy || !connection->isConnected())
         return;
 
     savingToDisk = true;
@@ -159,7 +159,7 @@ void BankTransferManager::saveBankToDisk(int section, const juce::File& folder,
     stagingRoot = juce::File();
 
     saveItems.clear();
-    const auto& list = connection.getPatchList();
+    const auto& list = connection->getPatchList();
     for (int pos = 0; pos < 99; ++pos)
     {
         const size_t idx = static_cast<size_t>(bankSection * 99 + pos);
@@ -182,13 +182,13 @@ void BankTransferManager::saveBankToDisk(int section, const juce::File& folder,
 void BankTransferManager::saveAllBanksToDisk(const juce::File& banksRoot, int slot,
                                              ProgressCallback cb)
 {
-    if (busy || !connection.isConnected())
+    if (busy || !connection->isConnected())
         return;
 
     // Mirror semantics need to know which positions are genuinely empty. An
     // unloaded list reads as all-empty, which would publish an empty backup
     // over a good one.
-    if (!connection.isPatchListLoaded())
+    if (!connection->isPatchListLoaded())
     {
         std::cout << "[BANKXFER] Refusing all-banks backup: patch list not loaded"
                   << std::endl;
@@ -210,7 +210,7 @@ void BankTransferManager::saveAllBanksToDisk(const juce::File& banksRoot, int sl
     stagingRoot.createDirectory();
 
     saveItems.clear();
-    const auto& list = connection.getPatchList();
+    const auto& list = connection->getPatchList();
     for (int section = 0; section < 9; ++section)
     {
         const auto folder = stagingRoot.getChildFile("Bank" + juce::String(section + 1));
@@ -255,7 +255,7 @@ void BankTransferManager::beginSaveTransfer()
 void BankTransferManager::saveNextItem()
 {
     if (cancelRequested || itemIndex >= static_cast<int>(saveItems.size())
-        || !connection.isConnected())
+        || !connection->isConnected())
     {
         finishTransfer(cancelRequested);
         return;
@@ -269,7 +269,7 @@ void BankTransferManager::saveNextItem()
 
     // finalizePatch() may fire this off the message thread — bounce first,
     // then validate the generation so stale fetches and watchdogs are ignored.
-    connection.setBankFetchCallback(
+    connection->setBankFetchCallback(
         [this, aliveFlag, gen, item](const std::vector<std::vector<uint8_t>>& sections, int) {
             auto sectionsCopy = sections;
             juce::MessageManager::callAsync(
@@ -305,13 +305,13 @@ void BankTransferManager::saveNextItem()
                 });
         });
 
-    connection.loadPatchFromBank(item.section, item.position, tempSlot);
+    connection->loadPatchFromBank(item.section, item.position, tempSlot);
 
     juce::Timer::callAfterDelay(fetchWatchdogMs, [this, aliveFlag, gen, item]() {
         if (!*aliveFlag || gen != generation || !busy)
             return;
         ++generation;
-        connection.setBankFetchCallback(nullptr);
+        connection->setBankFetchCallback(nullptr);
 
         std::cout << "[BANKXFER] Fetch timeout for \"" << item.name.toStdString()
                   << "\" (bank " << (item.section + 1) << ", pos "
@@ -330,7 +330,7 @@ void BankTransferManager::saveNextItem()
 void BankTransferManager::sendBankToSynth(const juce::Array<juce::File>& files,
                                           int section, int slot, ProgressCallback cb)
 {
-    if (busy || !connection.isConnected())
+    if (busy || !connection->isConnected())
         return;
 
     savingToDisk = false;
@@ -372,7 +372,7 @@ void BankTransferManager::sendBankToSynth(const juce::Array<juce::File>& files,
 
 void BankTransferManager::sendNextFile()
 {
-    if (cancelRequested || itemIndex >= sendFiles.size() || !connection.isConnected())
+    if (cancelRequested || itemIndex >= sendFiles.size() || !connection->isConnected())
     {
         finishTransfer(cancelRequested);
         return;
@@ -381,7 +381,7 @@ void BankTransferManager::sendNextFile()
     // Let the previous StorePatch drain first: uploadPatch() clears the ACK
     // queue, so starting the next upload early would silently drop the store.
     // The queue's own 3 s ACK timeout bounds this wait.
-    if (!connection.isAckedQueueIdle())
+    if (!connection->isAckedQueueIdle())
     {
         auto aliveWait = alive;
         juce::Timer::callAfterDelay(150, [this, aliveWait]() {
@@ -420,7 +420,7 @@ void BankTransferManager::sendNextFile()
 
     // Fires on the message thread: true once every section is ACKed, false on
     // an ACK timeout. The roadmap calls for a clean stop on failure.
-    connection.setBankUploadResultCallback([this, aliveFlag, gen, file, position](bool success) {
+    connection->setBankUploadResultCallback([this, aliveFlag, gen, file, position](bool success) {
         if (!*aliveFlag || gen != generation || !busy)
             return;
         ++generation;
@@ -433,7 +433,7 @@ void BankTransferManager::sendNextFile()
         }
 
         StorePatchMessage store(tempSlot, bankSection, position);
-        connection.sendAckedSysEx(store.toSysEx(tempSlot));
+        connection->sendAckedSysEx(store.toSysEx(tempSlot));
 
         ++itemIndex;
         ++progress.current;
@@ -448,15 +448,15 @@ void BankTransferManager::sendNextFile()
     // The G1 only accepts working-memory uploads reliably into the focused
     // slot (issue #1) — focus it and give the synth a moment to settle,
     // mirroring the proven single-file disk upload path.
-    connection.selectSlot(tempSlot);
+    connection->selectSlot(tempSlot);
     juce::Timer::callAfterDelay(slotFocusDelayMs, [this, aliveFlag, gen, patch]() {
         if (!*aliveFlag || !busy || gen != generation)
             return;
-        if (!connection.isConnected())
+        if (!connection->isConnected())
         {
             finishTransfer(false);
             return;
         }
-        connection.uploadPatch(tempSlot, *patch);
+        connection->uploadPatch(tempSlot, *patch);
     });
 }

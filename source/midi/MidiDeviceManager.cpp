@@ -18,19 +18,67 @@ MidiDeviceManager::~MidiDeviceManager()
     disconnect();
 }
 
+// The running G1-Emu instances, listed among the MIDI devices with the same id on both sides, so
+// MIDI Setup offers them like any port. One that already has an editor (this one, on another
+// port, or someone else's) is listed too: it is still there.
+static void addDirectLinks(juce::Array<juce::MidiDeviceInfo>& devices)
+{
+    for (const auto& inst : DirectLink::discover())
+        devices.add(juce::MidiDeviceInfo(
+            (inst.name.isNotEmpty() ? inst.name : juce::String("G1-Emu")) + " (direct link"
+                + (inst.busy ? ", in use)" : ")"),
+            DirectLink::deviceId(inst.port)));
+}
+
 juce::Array<juce::MidiDeviceInfo> MidiDeviceManager::getAvailableInputDevices()
 {
-    return juce::MidiInput::getAvailableDevices();
+    auto devices = juce::MidiInput::getAvailableDevices();
+    addDirectLinks(devices);
+    return devices;
 }
 
 juce::Array<juce::MidiDeviceInfo> MidiDeviceManager::getAvailableOutputDevices()
 {
-    return juce::MidiOutput::getAvailableDevices();
+    auto devices = juce::MidiOutput::getAvailableDevices();
+    addDirectLinks(devices);
+    return devices;
+}
+
+bool MidiDeviceManager::connectLink(int port)
+{
+    alive = std::make_shared<std::atomic<bool>>(true);
+    auto aliveFlag = alive;
+    const bool ok = link.open(port,
+        [this, aliveFlag](std::vector<uint8_t> m) {
+            if (*aliveFlag)
+                deliverSysEx(m.data(), static_cast<int>(m.size()));
+        },
+        [this, aliveFlag] {
+            // The emulator closed (quit, or its instance was removed): like a MIDI port that left.
+            auto cb = portsGoneCallback;
+            const auto name = inputName;
+            juce::MessageManager::callAsync([cb, aliveFlag, name] {
+                if (*aliveFlag && cb)
+                    cb(name);
+            });
+        });
+    if (!ok)
+        return false;
+
+    protocol.setSendFunction([this](const std::vector<uint8_t>& data) { sendSysEx(data); });
+    inputId = outputId = DirectLink::deviceId(port);
+    inputName = outputName = link.name() + " (direct link)";
+    DBG("G1-Emu direct link connected: " + inputName);
+    return true;
 }
 
 bool MidiDeviceManager::connect(const juce::String& inputId_, const juce::String& outputId_)
 {
     disconnect();
+
+    // A direct link carries both directions: either side naming one is enough.
+    if (DirectLink::isDeviceId(inputId_) || DirectLink::isDeviceId(outputId_))
+        return connectLink(DirectLink::portOf(DirectLink::isDeviceId(inputId_) ? inputId_ : outputId_));
 
     midiInput = juce::MidiInput::openDevice(inputId_, this);
     midiOutput = juce::MidiOutput::openDevice(outputId_);
@@ -62,6 +110,7 @@ void MidiDeviceManager::disconnect()
     inputId.clear();
     outputId.clear();
     protocol.setSendFunction({});
+    link.close();
     if (midiInput)
     {
         midiInput->stop();
@@ -85,12 +134,18 @@ void MidiDeviceManager::sendSysEx(const std::vector<uint8_t>& data)
         MidiMonitor::instance().record(MidiMonitor::Direction::Tx, data.data(), data.size());
         midiOutput->sendMessageNow(juce::MidiMessage(data.data(), static_cast<int>(data.size())));
     }
+    else if (link.isOpen() && !data.empty())
+    {
+        MidiMonitor::instance().record(MidiMonitor::Direction::Tx, data.data(), data.size());
+        link.send(data);
+    }
 }
 
 
 void MidiDeviceManager::checkPortsStillThere()
 {
-    if (!isConnected() || !portsGoneCallback)
+    // A direct link reports its own end; probing the emulator here would knock on its door.
+    if (!isConnected() || !portsGoneCallback || link.isOpen())
         return;
 
     const auto present = [](const juce::Array<juce::MidiDeviceInfo>& devices, const juce::String& id) {
@@ -100,10 +155,11 @@ void MidiDeviceManager::checkPortsStillThere()
         return false;
     };
 
+    // The MIDI lists alone: this runs on every device change, and the full lists knock on emulators.
     juce::StringArray gone;
-    if (!present(getAvailableInputDevices(), inputId))
+    if (!present(juce::MidiInput::getAvailableDevices(), inputId))
         gone.add(inputName);
-    if (!present(getAvailableOutputDevices(), outputId))
+    if (!present(juce::MidiOutput::getAvailableDevices(), outputId))
         gone.addIfNotAlreadyThere(outputName);
     if (gone.isEmpty())
         return;
@@ -120,12 +176,12 @@ void MidiDeviceManager::checkPortsStillThere()
 
 juce::String MidiDeviceManager::getInputDeviceName() const
 {
-    return midiInput ? midiInput->getName() : juce::String();
+    return midiInput ? midiInput->getName() : link.isOpen() ? inputName : juce::String();
 }
 
 juce::String MidiDeviceManager::getOutputDeviceName() const
 {
-    return midiOutput ? midiOutput->getName() : juce::String();
+    return midiOutput ? midiOutput->getName() : link.isOpen() ? outputName : juce::String();
 }
 
 void MidiDeviceManager::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage& message)
@@ -135,8 +191,11 @@ void MidiDeviceManager::handleIncomingMidiMessage(juce::MidiInput*, const juce::
 
     // Use getRawData to get the full SysEx frame (F0 ... F7) that SysEx::decode() expects.
     // getSysExData() strips the leading F0 which would break our decoder.
-    auto* data = message.getRawData();
-    auto size = message.getRawDataSize();
+    deliverSysEx(message.getRawData(), message.getRawDataSize());
+}
+
+void MidiDeviceManager::deliverSysEx(const uint8_t* data, int size)
+{
 
     // Log every incoming SysEx (even non-Nord frames) before filtering, so the
     // monitor can surface unexpected traffic.

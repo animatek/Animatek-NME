@@ -2414,17 +2414,27 @@ void ConnectionManager::setStatus(State state, const juce::String& message)
 
 void ConnectionManager::startHandshakeTimeout()
 {
-    // Use a Timer via callAfterDelay for the 3-second handshake timeout
+    // A G1-Emu on its direct link gets longer, with the greeting said again every 3 s: several
+    // emulators in one DAW share the CPU, and one that has just been added can take longer than a
+    // G1 to answer. Giving up on it after 3 s left it connected but counted as gone.
+    const bool link = isDirectLink();
+    const int attempts = link ? 5 : 1;
     auto aliveFlag = alive;
-    juce::Timer::callAfterDelay(NmProtocol::timeoutMs, [this, aliveFlag]()
+    for (int i = 1; i <= attempts; ++i)
     {
-        if (!*aliveFlag) return;
-        if (status.state == State::Connecting)
+        juce::Timer::callAfterDelay(NmProtocol::timeoutMs * i, [this, aliveFlag, i, attempts]()
         {
+            if (!*aliveFlag || status.state != State::Connecting)
+                return;
+            if (i < attempts)
+            {
+                sendHandshake();   // still waiting: say hello again
+                return;
+            }
             DBG("ConnectionManager: handshake timeout");
             setStatus(State::Disconnected, "No response from synth (timeout)");
-        }
-    });
+        });
+    }
 }
 
 void ConnectionManager::cancelHandshakeTimeout()

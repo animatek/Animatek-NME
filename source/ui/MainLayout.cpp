@@ -9,6 +9,8 @@ constexpr const char* SlotBar::slotLetters[];
 
 SlotBar::SlotBar()
 {
+    for (auto& f : loadFraction)
+        f = -1.0f;
     setInterceptsMouseClicks(true, false);
     startTimer(450);  // hardware-style blink for the focused slot's LED
 }
@@ -22,7 +24,8 @@ void SlotBar::timerCallback()
 {
     blinkPhase = !blinkPhase;
     if (loadProvider)
-        setLoad(loadProvider());
+        for (int synth = 0; synth < kMaxSynths; ++synth)
+            setLoad(synth, loadProvider(synth));
     for (int i = 0; i < numSlots; ++i)
         repaint(slotBounds[i]);
 }
@@ -54,14 +57,15 @@ void SlotBar::setSlotLocal(int slot, bool local)
     }
 }
 
-void SlotBar::setSlotsEnabled(const std::array<bool, 4>& enabled)
+void SlotBar::setSlotsEnabled(int synth, const std::array<bool, 4>& enabled)
 {
     bool changed = false;
-    for (int i = 0; i < numSlots; ++i)
+    for (int l = 0; l < kSlotsPerSynth; ++l)
     {
-        if (slotEnabledFlags[i] != enabled[static_cast<size_t>(i)])
+        const int i = SynthSlot::global(synth, l);
+        if (slotEnabledFlags[i] != enabled[static_cast<size_t>(l)])
         {
-            slotEnabledFlags[i] = enabled[static_cast<size_t>(i)];
+            slotEnabledFlags[i] = enabled[static_cast<size_t>(l)];
             changed = true;
         }
     }
@@ -69,34 +73,75 @@ void SlotBar::setSlotsEnabled(const std::array<bool, 4>& enabled)
         repaint();
 }
 
-void SlotBar::setSynthName(const juce::String& name)
+void SlotBar::setSynthName(int synth, const juce::String& name)
 {
-    if (synthName == name)
+    if (synth < 0 || synth >= kMaxSynths || synthName[synth] == name)
         return;
-    synthName = name;
-    repaint(nameBounds);
+    synthName[synth] = name;
+    repaint(nameBounds[synth]);
 }
 
-void SlotBar::setLoad(float fraction)
+void SlotBar::setLoad(int synth, float fraction)
 {
-    fraction = fraction < 0.0f ? -1.0f : juce::jlimit(0.0f, 1.0f, fraction);
-    if (juce::approximatelyEqual(loadFraction, fraction))
+    if (synth < 0 || synth >= kMaxSynths)
         return;
-    loadFraction = fraction;
-    repaint(loadBounds);
+    fraction = fraction < 0.0f ? -1.0f : juce::jlimit(0.0f, 1.0f, fraction);
+    if (juce::approximatelyEqual(loadFraction[synth], fraction))
+        return;
+    loadFraction[synth] = fraction;
+    repaint(loadBounds[synth]);
+}
+
+void SlotBar::setRowShown(int synth, bool shown)
+{
+    if (synth < 0 || synth >= kMaxSynths || rowShown[synth] == shown)
+        return;
+    rowShown[synth] = shown;
+    resized();
+    repaint();
+    if (onRowsChanged)
+        onRowsChanged();
+}
+
+int SlotBar::getPreferredHeight() const
+{
+    int rows = 0;
+    for (bool shown : rowShown)
+        rows += shown ? 1 : 0;
+    return kHeaderH + kRowH * juce::jmax(1, rows) + kBottomPad;
+}
+
+void SlotBar::setWaitingEmulators(int count)
+{
+    if (waitingEmulators == count)
+        return;
+    waitingEmulators = count;
+    repaint(0, 0, getWidth(), kHeaderH);
 }
 
 void SlotBar::resized()
 {
-    auto area = getLocalBounds().reduced(4, 4);
+    auto all = getLocalBounds().withTrimmedTop(kHeaderH).withTrimmedBottom(kBottomPad);
     static constexpr int buttonW = 20;
-    for (int i = 0; i < numSlots; ++i)
-        slotBounds[i] = area.removeFromLeft(buttonW).withTrimmedRight(2);
-    area.removeFromLeft(2);
-    // The name takes about half of what is left, the load bar the rest.
-    nameBounds = area.removeFromLeft(juce::jmax(40, area.getWidth() * 11 / 20));
-    area.removeFromLeft(6);
-    loadBounds = area;
+    for (int synth = 0; synth < kMaxSynths; ++synth)
+    {
+        if (! rowShown[synth])
+        {
+            // Nothing on screen, so nothing to click or drop onto either.
+            for (int l = 0; l < kSlotsPerSynth; ++l)
+                slotBounds[SynthSlot::global(synth, l)] = {};
+            nameBounds[synth] = loadBounds[synth] = {};
+            continue;
+        }
+        auto area = all.removeFromTop(kRowH).reduced(8, 3);
+        for (int l = 0; l < kSlotsPerSynth; ++l)
+            slotBounds[SynthSlot::global(synth, l)] = area.removeFromLeft(buttonW).withTrimmedRight(2);
+        area.removeFromLeft(2);
+        // The name takes about half of what is left, the load bar the rest.
+        nameBounds[synth] = area.removeFromLeft(juce::jmax(40, area.getWidth() * 11 / 20));
+        area.removeFromLeft(6);
+        loadBounds[synth] = area;
+    }
 }
 
 void SlotBar::paint(juce::Graphics& g)
@@ -104,8 +149,31 @@ void SlotBar::paint(juce::Graphics& g)
     const auto& pal = AppTheme::palette();
     g.fillAll(pal.backgroundPanel);
 
+    // The rule that ends the inspector, then the header: what this is, and how many synths.
+    g.setColour(pal.borderColor);
+    g.fillRect(0, 0, getWidth(), 1);
+    auto header = juce::Rectangle<int>(8, 4, getWidth() - 16, kHeaderH - 6);
+    g.setColour(pal.textSecondary);
+    g.setFont(AppTheme::uiFont(10.0f).withStyle("Bold"));
+    g.drawText("SYNTHS", header, juce::Justification::centredLeft, false);
+    int connected = 0;
+    for (int synth = 0; synth < kMaxSynths; ++synth)
+        if (synthName[synth].isNotEmpty())
+            ++connected;
+    juce::String count = juce::String(connected) + " / " + juce::String(kMaxSynths);
+    g.setFont(AppTheme::uiFont(10.0f));
+    if (waitingEmulators > 0)
+    {
+        // More emulators than ports: the ones left out are counted where it shows.
+        count = "+" + juce::String(waitingEmulators) + " G1-Emu waiting, ports full   " + count;
+        g.setColour(pal.accentWarning);
+    }
+    g.drawText(count, header, juce::Justification::centredRight, true);
+
     for (int i = 0; i < numSlots; ++i)
     {
+        if (slotBounds[i].isEmpty())
+            continue;   // its synth's row is hidden
         auto b = slotBounds[i].toFloat();
         const bool active = (i == activeIndex);
 
@@ -124,7 +192,7 @@ void SlotBar::paint(juce::Graphics& g)
         g.setColour(active ? juce::Colours::white
                            : slotEnabledFlags[i] ? pal.textPrimary : pal.textSecondary.withAlpha(0.5f));
         g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
-        g.drawText(slotLetters[i], slotBounds[i], juce::Justification::centred);
+        g.drawText(slotLetters[SynthSlot::localOf(i)], slotBounds[i], juce::Justification::centred);
 
         // The slot LED, as a bar under the letter: blinking = focused, fixed =
         // enabled, off = disabled. Ctrl+click the button to toggle enable.
@@ -141,50 +209,53 @@ void SlotBar::paint(juce::Graphics& g)
         }
     }
 
-    // The synth's name: dark when it is the synth being edited, as in the original.
-    auto name = nameBounds.toFloat();
-    const bool hasSynth = synthName.isNotEmpty();
-    g.setColour(hasSynth ? juce::Colour(0xff3a2f7a) : pal.inputBackground);
-    g.fillRoundedRectangle(name, 2.0f);
-    g.setColour(pal.borderColor);
-    g.drawRoundedRectangle(name, 2.0f, 1.0f);
-    g.setColour(hasSynth ? juce::Colours::white : pal.textSecondary);
-    g.setFont(AppTheme::uiFont(12.0f));
-    g.drawText(hasSynth ? synthName : "No synth", nameBounds.reduced(3, 0),
-               juce::Justification::centred, true);
-
-    // The load: a green-to-red track, darkened past the current value.
-    if (loadBounds.getWidth() > 8)
+    for (int synth = 0; synth < kMaxSynths; ++synth)
     {
-        auto bar = loadBounds.toFloat().withSizeKeepingCentre(static_cast<float>(loadBounds.getWidth()), 7.0f);
-        g.setGradientFill(juce::ColourGradient(juce::Colour(0xff2fae3f), bar.getX(), 0.0f,
-                                               juce::Colour(0xffc8352b), bar.getRight(), 0.0f, false));
-        g.fillRoundedRectangle(bar, 2.0f);
-        if (loadFraction >= 0.0f)
-        {
-            auto rest = bar;
-            rest.removeFromLeft(bar.getWidth() * loadFraction);
-            g.setColour(pal.backgroundPanel.darker(0.6f).withAlpha(0.85f));
-            g.fillRect(rest);
-        }
-        else
-        {
-            g.setColour(pal.backgroundPanel.withAlpha(0.7f));
-            g.fillRoundedRectangle(bar, 2.0f);
-        }
-        if (loadFraction >= 0.0f)
-        {
-            const float x = bar.getX() + bar.getWidth() * loadFraction;
-            g.setColour(juce::Colours::white);
-            g.fillRect(juce::jlimit(bar.getX(), bar.getRight() - 2.0f, x - 1.0f), bar.getY() - 2.0f, 2.0f, bar.getHeight() + 4.0f);
-        }
+        if (! rowShown[synth])
+            continue;
+        // The synth's name: dark when it is the synth being edited, as in the original.
+        const bool hasSynth = synthName[synth].isNotEmpty();
+        const bool beingEdited = (synth == SynthSlot::synthOf(activeIndex));
+        auto name = nameBounds[synth].toFloat();
+        g.setColour(! hasSynth ? pal.inputBackground
+                               : beingEdited ? juce::Colour(0xff3a2f7a) : juce::Colour(0xffa9c8c8));
+        g.fillRoundedRectangle(name, 2.0f);
         g.setColour(pal.borderColor);
-        g.drawRoundedRectangle(bar, 2.0f, 1.0f);
-        g.setColour(pal.textSecondary);
-        g.setFont(AppTheme::uiFont(9.0f));
-        g.drawText(loadFraction >= 0.0f ? juce::String(juce::roundToInt(loadFraction * 100.0f)) + "%" : "--",
-                   loadBounds.withTrimmedTop(loadBounds.getCentreY() + 5 - loadBounds.getY()),
-                   juce::Justification::centred, false);
+        g.drawRoundedRectangle(name, 2.0f, 1.0f);
+        g.setColour(! hasSynth ? pal.textSecondary : beingEdited ? juce::Colours::white : juce::Colours::black);
+        g.setFont(AppTheme::uiFont(12.0f));
+        g.drawText(hasSynth ? synthName[synth] : "No synth", nameBounds[synth].reduced(3, 0),
+                   juce::Justification::centred, true);
+
+        // The load: a green-to-red track, darkened past the current value.
+        const auto lb = loadBounds[synth];
+        const float load = loadFraction[synth];
+        if (lb.getWidth() > 8)
+        {
+            auto bar = lb.toFloat().withSizeKeepingCentre(static_cast<float>(lb.getWidth()), 7.0f);
+            g.setGradientFill(juce::ColourGradient(juce::Colour(0xff2fae3f), bar.getX(), 0.0f,
+                                                   juce::Colour(0xffc8352b), bar.getRight(), 0.0f, false));
+            g.fillRoundedRectangle(bar, 2.0f);
+            if (load >= 0.0f)
+            {
+                auto rest = bar;
+                rest.removeFromLeft(bar.getWidth() * load);
+                g.setColour(pal.backgroundPanel.darker(0.6f).withAlpha(0.85f));
+                g.fillRect(rest);
+            }
+            else
+            {
+                g.setColour(pal.backgroundPanel.withAlpha(0.7f));
+                g.fillRoundedRectangle(bar, 2.0f);
+            }
+            g.setColour(pal.borderColor);
+            g.drawRoundedRectangle(bar, 2.0f, 1.0f);
+            g.setColour(pal.textSecondary);
+            g.setFont(AppTheme::uiFont(9.0f));
+            g.drawText(load >= 0.0f ? juce::String(juce::roundToInt(load * 100.0f)) + "%" : "--",
+                       lb.withTrimmedTop(lb.getCentreY() + 5 - lb.getY()),
+                       juce::Justification::centred, false);
+        }
     }
 }
 
@@ -249,9 +320,28 @@ void SlotBar::itemDropped(const SourceDetails& details)
         onPatchFileDroppedOnSlot(SlotDrop::fileOf(d), slot);
 }
 
+void SlotBar::mouseDoubleClick(const juce::MouseEvent& e)
+{
+    for (int synth = 0; synth < kMaxSynths; ++synth)
+        if (nameBounds[synth].contains(e.getPosition()) && synthName[synth].isNotEmpty())
+        {
+            if (onSynthRenameRequested)
+                onSynthRenameRequested(synth);
+            return;
+        }
+}
+
 void SlotBar::mouseDown(const juce::MouseEvent& e)
 {
     auto pos = e.getPosition();
+    // A click on a synth's name makes it the synth being edited.
+    for (int synth = 0; synth < kMaxSynths; ++synth)
+        if (nameBounds[synth].contains(pos))
+        {
+            if (synthName[synth].isNotEmpty() && onSynthSelected)
+                onSynthSelected(synth);
+            return;
+        }
     for (int i = 0; i < numSlots; ++i)
     {
         if (!slotBounds[i].contains(pos))
@@ -374,6 +464,15 @@ MainLayout::MainLayout(ModuleDescriptions& moduleDescs)
         if (onSlotChanged)
             onSlotChanged(idx);
     };
+    slotBar.onRowsChanged = [this] { resized(); };
+    slotBar.onSynthRenameRequested = [this](int synth) {
+        if (onSynthRenameRequested)
+            onSynthRenameRequested(synth);
+    };
+    slotBar.onSynthSelected = [this](int synth) {
+        if (onSynthSelected)
+            onSynthSelected(synth);
+    };
     slotBar.onSlotViewToggled = [this](int idx) {
         if (onSlotViewToggled)
             onSlotViewToggled(idx);
@@ -471,7 +570,7 @@ void MainLayout::resized()
 
     // Layout left column: inspector | slot bar
     auto leftArea = leftColumn.getLocalBounds();
-    slotBar.setBounds(leftArea.removeFromBottom(slotBarHeight));
+    slotBar.setBounds(leftArea.removeFromBottom(slotBar.getPreferredHeight()));
     inspectorPanel.setBounds(leftArea);
 }
 

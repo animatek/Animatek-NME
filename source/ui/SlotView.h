@@ -67,12 +67,15 @@ public:
     // bar already badges it; the sub-window title has to say so too, or with
     // four of them tiled you cannot tell which one is out of sync.
     void setLocal(bool isLocal);
+    // The synth this slot belongs to, by the name it answers to; empty while none is connected.
+    void setSynthName(const juce::String& synthName);
 
 private:
     void refreshTitle();
 
     const int slot_;
     juce::String patchName_;
+    juce::String synthName_;
     bool local_ = false;
     bool dropArmed_ = false;   // a patch is hovering over this window
     PatchCanvasComponent canvas;

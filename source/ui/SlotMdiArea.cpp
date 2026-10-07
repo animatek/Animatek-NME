@@ -362,16 +362,19 @@ void SlotMdiArea::applyLayout(bool animate, bool useProxy)
         return std::make_pair(a, b - a);
     };
 
-    if (n == 4)
+    if (n >= 4)
     {
-        // 2x2, in slot order: A top-left, B top-right, C bottom-left, D bottom-right.
-        for (int i = 0; i < 4; ++i)
+        // A grid, in slot order: four is 2x2 (A top-left, B top-right, C bottom-left,
+        // D bottom-right); more windows, from several synths, make it wider and taller.
+        const int cols = gridColumns(n);
+        const int rows = (n + cols - 1) / cols;
+        for (int i = 0; i < n; ++i)
         {
             auto* window = windowFor(open[(size_t) i]);
             if (window == nullptr)
                 continue;
-            const auto [x, w] = split(area.getX(), area.getWidth(),  i % 2, 2);
-            const auto [y, h] = split(area.getY(), area.getHeight(), i / 2, 2);
+            const auto [x, w] = split(area.getX(), area.getWidth(),  i % cols, cols);
+            const auto [y, h] = split(area.getY(), area.getHeight(), i / cols, rows);
             placeWindow(*window, { x, y, w, h }, animate, useProxy);
         }
     }
@@ -389,6 +392,16 @@ void SlotMdiArea::applyLayout(bool animate, bool useProxy)
             placeWindow(*window, { x, area.getY(), w, area.getHeight() }, animate, useProxy);
         }
     }
+}
+
+int SlotMdiArea::gridColumns(int n)
+{
+    if (n <= 3)
+        return juce::jmax(1, n);
+    int cols = 2;
+    while (cols * cols < n)
+        ++cols;
+    return cols;
 }
 
 void SlotMdiArea::windowMovedOrResized(juce::Component& component,
@@ -541,14 +554,15 @@ void SlotMdiArea::moveFocusedTile(Direction direction)
     // two and three are columns. An edge move is a no-op rather than a wrap, so
     // the arrow key always means what it says.
     int to = -1;
-    if (n == 4)
+    if (n >= 4)
     {
+        const int cols = gridColumns(n);
         switch (direction)
         {
-            case Direction::Left:  if (from % 2 == 1) to = from - 1; break;
-            case Direction::Right: if (from % 2 == 0) to = from + 1; break;
-            case Direction::Up:    if (from >= 2)     to = from - 2; break;
-            case Direction::Down:  if (from < 2)      to = from + 2; break;
+            case Direction::Left:  if (from % cols > 0)                       to = from - 1;    break;
+            case Direction::Right: if (from % cols < cols - 1 && from + 1 < n) to = from + 1;    break;
+            case Direction::Up:    if (from >= cols)                          to = from - cols; break;
+            case Direction::Down:  if (from + cols < n)                       to = from + cols; break;
         }
     }
     else  // columns: up and down have nowhere to go
@@ -655,7 +669,7 @@ juce::String SlotMdiArea::getTileOrderString() const
 {
     juce::String out;
     for (int slot : tileOrder)
-        out += juce::String(slot);
+        out += SynthSlot::orderChar(slot);   // one character each, up to 32 slots
     return out;
 }
 
@@ -670,7 +684,7 @@ void SlotMdiArea::setTileOrderString(const juce::String& order)
     bool seen[numSlots] = {};
     for (int i = 0; i < numSlots; ++i)
     {
-        const int slot = order[i] - '0';
+        const int slot = SynthSlot::fromOrderChar(order[i]);
         if (slot < 0 || slot >= numSlots || seen[slot])
             return;
         seen[slot] = true;

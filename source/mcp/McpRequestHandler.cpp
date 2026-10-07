@@ -402,12 +402,21 @@ juce::String knobName(int knob)
 }
 } // namespace
 
+// "slot" is 0-3 (A-D) on a port: "port" (1-based, as MIDI Setup numbers them) picks the
+// synth and defaults to the one being edited. The result is the editor's global slot,
+// port * 4 + slot, which is also what the replies report.
 int McpRequestHandler::resolveSlot(const juce::var& params) const
 {
-    int slot = params.hasProperty("slot") ? static_cast<int>(params["slot"]) : owner_.getActiveSlot();
-    if (slot < 0 || slot >= kNumSlots)
+    const int port = params.hasProperty("port") ? static_cast<int>(params["port"]) - 1
+                                                 : owner_.getActiveSynth();
+    if (port < 0 || port >= kMaxSynths)
+        throw McpError{ "invalid_port", "port must be 1-" + juce::String(kMaxSynths) };
+    if (! params.hasProperty("slot"))
+        return port == owner_.getActiveSynth() ? owner_.getActiveSlot() : SynthSlot::global(port, 0);
+    const int local = static_cast<int>(params["slot"]);
+    if (local < 0 || local >= kNumSlots)
         throw McpError{ "invalid_slot", "slot must be 0-3 (A-D)" };
-    return slot;
+    return SynthSlot::global(port, local);
 }
 
 juce::var McpRequestHandler::handle(const juce::var& request)
@@ -784,14 +793,15 @@ juce::var McpRequestHandler::listPatches(const juce::var& params)
     const auto& root = owner_.getPresetLibraryRoot();
 
     juce::Array<juce::var> loadedSlots;
-    for (int slot = 0; slot < kNumSlots; ++slot)
+    for (int slot = 0; slot < kTotalSlots; ++slot)
     {
         auto* patch = owner_.getSlotPatch(slot);
         if (!patch)
             continue;
         auto* obj = new juce::DynamicObject();
         obj->setProperty("slot", slot);
-        obj->setProperty("slotName", juce::String::charToString(static_cast<char>('A' + slot)));
+        obj->setProperty("port", SynthSlot::synthOf(slot) + 1);
+        obj->setProperty("slotName", juce::String::charToString(static_cast<char>('A' + SynthSlot::localOf(slot))));
         obj->setProperty("patchName", patch->getName());
         const auto& file = owner_.getSlotPatchFile(slot);
         if (file != juce::File())
@@ -1452,22 +1462,27 @@ juce::var McpRequestHandler::getSynthStatus(const juce::var& /*params*/)
     result->setProperty("transfer", juce::var(transfer));
 
     const bool maskKnown = owner_.isSlotEnableStateKnown();
+    // Everything above and below is about the synth being edited (its port); the
+    // slots listed are its four, numbered globally like every other "slot".
+    result->setProperty("port", owner_.getActiveSynth() + 1);
+    result->setProperty("slotsPerPort", kNumSlots);
     juce::Array<juce::var> slots;
-    for (int slot = 0; slot < kNumSlots; ++slot)
+    for (int local = 0; local < kNumSlots; ++local)
     {
+        const int slot = SynthSlot::global(owner_.getActiveSynth(), local);
         auto* s = new juce::DynamicObject();
         s->setProperty("slot", slot);
-        s->setProperty("slotName", juce::String::charToString(static_cast<char>('A' + slot)));
+        s->setProperty("slotName", juce::String::charToString(static_cast<char>('A' + local)));
         auto* patch = owner_.getSlotPatch(slot);
         s->setProperty("patchName", patch != nullptr ? juce::var(patch->getName()) : juce::var());
         // LOCAL: the editor's patch is not known to match the synth's. Edits to
         // a LOCAL slot are still sent while connected (plan item S4).
         s->setProperty("local", owner_.isSlotLocal(slot));
-        s->setProperty("enabled", maskKnown ? juce::var(owner_.getLastEnabledSlots()[static_cast<size_t>(slot)])
+        s->setProperty("enabled", maskKnown ? juce::var(owner_.getLastEnabledSlots()[static_cast<size_t>(local)])
                                             : juce::var());
-        s->setProperty("voices", owner_.getSynthVoiceCounts()[static_cast<size_t>(slot)]);
-        const int bankSection = connection.getSlotBankSection(slot);
-        const int bankPosition = connection.getSlotBankPosition(slot);
+        s->setProperty("voices", owner_.getSynthVoiceCounts()[static_cast<size_t>(local)]);
+        const int bankSection = connection.getSlotBankSection(local);
+        const int bankPosition = connection.getSlotBankPosition(local);
         if (bankSection >= 0 && bankPosition >= 0)
             s->setProperty("bankLocation", (bankSection + 1) * 100 + bankPosition + 1);
         slots.add(juce::var(s));

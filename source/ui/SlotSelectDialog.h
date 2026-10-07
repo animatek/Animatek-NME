@@ -5,9 +5,10 @@
 #include <functional>
 #include "FlatCloseButton.h"
 #include "SelfOwnedDialog.h"
+#include "../midi/SynthHub.h"
 
 // Slot chooser shown when opening a .pch (issue #21). Lists the four slots
-// A/B/C/D with the name of the patch currently loaded in each, so you can see
+// of one synth (1A..1D, 2A..2D...) with the name of the patch currently loaded in each, so you can see
 // what you are about to overwrite, plus a separate "Local" option that loads
 // the patch into the editor only without uploading anything to the synth.
 // Cancel aborts the load. Self-owned: it lives on the desktop and takes itself
@@ -18,7 +19,7 @@ class SlotSelectDialog : public SelfOwnedDialog
 public:
     struct Result
     {
-        int  slot      = 0;      // 0-3 destination slot/tab; == currentSlot when local
+        int  slot      = 0;      // 0-3 slot of the dialog's synth; == currentSlot when local
         bool local     = false;  // true = editor-only, do not upload to the synth
         bool confirmed = false;
     };
@@ -27,6 +28,7 @@ public:
 
     SlotSelectDialog(const juce::String& title,
                      const std::array<juce::String, 4>& slotNames,
+                     int  synth,
                      int  currentSlot,
                      Callback cb);
 
@@ -39,6 +41,7 @@ public:
     static void show(juce::Component* parent,
                      const juce::String& title,
                      const std::array<juce::String, 4>& slotNames,
+                     int  synth,
                      int  currentSlot,
                      Callback cb);
 

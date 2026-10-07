@@ -29,12 +29,11 @@ static void styleToggle (juce::ToggleButton& t)
 // ─────────────────────────────────────────────────────────────────────────────
 SlotSelectDialog::SlotSelectDialog(const juce::String& title,
                                    const std::array<juce::String, 4>& slotNames,
+                                   int  synth,
                                    int  currentSlot,
                                    Callback cb)
     : title_ (title), currentSlot_ (juce::jlimit (0, 3, currentSlot)), callback (std::move (cb))
 {
-    static const char* letters[] = { "A", "B", "C", "D" };
-
     closeButton.onClick = [this] { cancel(); };
     addAndMakeVisible (closeButton);
 
@@ -43,7 +42,7 @@ SlotSelectDialog::SlotSelectDialog(const juce::String& title,
         auto name = slotNames[static_cast<size_t> (i)].isNotEmpty()
                         ? slotNames[static_cast<size_t> (i)]
                         : juce::String ("(empty)");
-        slotButtons[static_cast<size_t> (i)].setButtonText (juce::String (letters[i]) + " :  " + name);
+        slotButtons[static_cast<size_t> (i)].setButtonText (SynthSlot::label (SynthSlot::global (synth, i)) + " :  " + name);
         styleToggle (slotButtons[static_cast<size_t> (i)]);
         addAndMakeVisible (slotButtons[static_cast<size_t> (i)]);
     }
@@ -142,10 +141,11 @@ void SlotSelectDialog::close() { closeSelf(); }
 void SlotSelectDialog::show(juce::Component* parent,
                             const juce::String& title,
                             const std::array<juce::String, 4>& slotNames,
+                            int  synth,
                             int  currentSlot,
                             Callback cb)
 {
-    auto* dlg = new SlotSelectDialog (title, slotNames, currentSlot, std::move (cb));
+    auto* dlg = new SlotSelectDialog (title, slotNames, synth, currentSlot, std::move (cb));
 
     if (parent != nullptr)
     {

@@ -14,7 +14,7 @@
 #include "model/PchFileIO.h"
 #include "model/SnipFileIO.h"
 #include "model/SynthSettings.h"
-#include "midi/ConnectionManager.h"
+#include "midi/SynthHub.h"
 #include "sync/BankTransferManager.h"
 #include "sync/PatchSynchronizer.h"
 #include "undo/PatchActions.h"
@@ -58,6 +58,7 @@ public:
     // needs to reach a specific slot's model/undo state without duplicating
     // MainComponent's own slot-lookup logic or requiring friend access.
     int getActiveSlot() const { return activeSlot; }
+    int getActiveSynth() const { return synthHub.activeSynth(); }
     Patch* getSlotPatch(int slot) const { return slotPatches[slot].get(); }
     const juce::File& getSlotPatchFile(int slot) const { return slotPatchFiles[slot]; }
     juce::File getPatchesFolder() const { return editorOptions.getPatchesFolder(); }
@@ -74,7 +75,7 @@ public:
     UndoContext* getSlotUndoContext(int slot) const { return slotUndoContexts[slot].get(); }
     bool isPatchTransferInProgress() const
     {
-        return connectionManager.isUploadingPatch() || connectionManager.isFetchingPatch();
+        return synthHub.active().isUploadingPatch() || synthHub.active().isFetchingPatch();
     }
     const juce::File& getPresetLibraryRoot() const { return editorOptions.presetLibraryRoot; }
     bool createEmptyPatchInSlot(int slot, const juce::String& name, bool activate,
@@ -87,14 +88,14 @@ public:
     // read-back tools (get_synth_status, read_lights, get_events). Nothing here
     // asks the synth anything: it is the state the UI was already drawing from,
     // made visible to a client that cannot see the screen.
-    const ConnectionManager& getConnectionManager() const { return connectionManager; }
+    const ConnectionManager& getConnectionManager() const { return synthHub.active(); }
     bool isSlotLocal(int slot) const { return slot >= 0 && slot < numSlots && slotIsLocal[slot]; }
-    bool isSlotEnableStateKnown() const { return slotEnableStateKnown; }
-    const std::array<bool, 4>& getLastEnabledSlots() const { return lastEnabledSlots; }
-    const std::array<int, 4>& getSynthVoiceCounts() const { return synthVoiceCounts; }
-    const SynthSettings& getCachedSynthSettings() const { return cachedSynthSettings; }
+    bool isSlotEnableStateKnown() const { return activeState().enableStateKnown; }
+    const std::array<bool, 4>& getLastEnabledSlots() const { return activeState().lastEnabled; }
+    const std::array<int, 4>& getSynthVoiceCounts() const { return activeState().voiceCounts; }
+    const SynthSettings& getCachedSynthSettings() const { return activeState().settings; }
     // False from a disconnect until the synth that answers next sends its settings.
-    bool areSynthSettingsFromThisConnection() const { return cachedSynthSettingsKnown; }
+    bool areSynthSettingsFromThisConnection() const { return activeState().settingsKnown; }
     const ThemeData& getThemeData() const { return themeData; }
     struct LightMeterFrame
     {
@@ -103,7 +104,7 @@ public:
         int slot = -1;              // the slot that had synth focus when it arrived
         juce::int64 timeMs = 0;     // 0 = no frame since the editor started
     };
-    const LightMeterFrame& getLastLightMeterFrame() const { return lastLightMeterFrame; }
+    const LightMeterFrame& getLastLightMeterFrame() const { return activeState().lastLightFrame; }
     McpEventLog& getMcpEventLog() { return mcpEventLog; }
     // A morph group's dial, by the same path as dragging it in the header bar.
     bool setSlotMorphValue(int slot, int group, int value, juce::String& error);
@@ -112,10 +113,10 @@ public:
     // The MCP bridge's connection tools, by the same paths as the MIDI settings
     // dialog (which also remembers the ports once the synth answers) and the
     // "reload the patch from the synth" command.
-    void connectToPorts(const juce::String& inputId, const juce::String& outputId) { handleConnectionRequest(inputId, outputId); }
-    void disconnectFromSynth() { handleDisconnectionRequest(); }
-    const juce::String& getLastInputId() const { return lastInputId; }
-    const juce::String& getLastOutputId() const { return lastOutputId; }
+    void connectToPorts(const juce::String& inputId, const juce::String& outputId) { handleConnectionRequest(synthHub.activeSynth(), inputId, outputId); }
+    void disconnectFromSynth() { handleDisconnectionRequest(synthHub.activeSynth()); }
+    const juce::String& getLastInputId() const { return activeState().lastInputId; }
+    const juce::String& getLastOutputId() const { return activeState().lastOutputId; }
     // Ask the synth for the patch in a slot again; the editor's copy of that slot is
     // replaced when it arrives, like any fetch.
     bool refetchSlotFromSynth(int slot, juce::String& error);
@@ -176,6 +177,7 @@ private:
     {
         enum class Stage { Patches, Focus, Enable };
         bool active = false;
+        int synth = 0;                 // the synth the whole load is for
         Stage stage = Stage::Patches;
         SlotSet set;
         juce::File folder;
@@ -236,17 +238,13 @@ private:
     // After that the windows are the user's to open and close; the enable mask
     // is a single slot most of the time and changes on every slot press, so
     // following it live would keep closing everything but one.
-    void scheduleSlotWindowReconcile();
-    void reconcileSlotWindowsWithSynth(const std::array<bool, 4>& enabled);
+    void scheduleSlotWindowReconcile(int synth);
+    void reconcileSlotWindowsWithSynth(int synth, const std::array<bool, 4>& enabled);
     // Starts true: the constructor opens a slot before restoreMdiLayout() runs,
     // and that fires onLayoutChanged, which would save the default layout over
     // the stored one before it was ever read. Cleared when restore finishes.
     bool restoringMdiLayout = true;
     bool syncingSlotWindows = false;
-    std::array<bool, 4> lastEnabledSlots {};
-    bool slotEnableStateKnown = false;
-    bool slotWindowsReconciled = false;
-    bool slotWindowsReconcileScheduled = false;
 
     void showMidiSettingsDialog();
     void showPatchSettingsDialog();
@@ -332,24 +330,33 @@ private:
         parameters, so anything that moves a morph value has to say so here or
         those cells sit at whatever they last read (issue #64). */
     void refreshKnobFloater();
-    void handleConnectionRequest(const juce::String& inputId, const juce::String& outputId);
-    void handleDisconnectionRequest();
-    void onConnectionStatusChanged(const ConnectionManager::Status& status);
-    void attemptAutoConnect();
-    void saveMidiSettings(const juce::String& inputId, const juce::String& outputId);
+    void handleConnectionRequest(int synth, const juce::String& inputId, const juce::String& outputId);
+    void handleDisconnectionRequest(int synth);
+    void onConnectionStatusChanged(int synth, const ConnectionManager::Status& status);
+    void attemptAutoConnect();            // every port saved as enabled
+  public:
+    void scanForEmulators();              // G1-Emu instances on their direct link (#83)
+  private:
+    bool autoConnectEmulatorsEnabled() const;
+    bool isPortFreeForEmulator(int synth) const;
+    void connectFoundEmulators(const std::vector<DirectLink::Instance>& found);
+    std::unique_ptr<juce::Timer> emulatorScanTimer;
+    bool emulatorScanRunning = false;
+    void attemptAutoConnect(int synth);
+    void saveMidiSettings(int synth, const juce::String& inputId, const juce::String& outputId);
     void openURL(const juce::String& url);
 
     juce::ApplicationProperties& appProperties;
     ModuleDescriptions moduleDescs;
     ModulePresetLibrary modulePresets;
     ThemeData themeData;
-    ConnectionManager connectionManager;
-    BankTransferManager bankTransfer { connectionManager, moduleDescs };
+    SynthHub synthHub;
+    BankTransferManager bankTransfer { synthHub.active(), moduleDescs };
     std::unique_ptr<MainLayout> mainLayout;
     std::unique_ptr<juce::MenuBarComponent> menuBar;
 
     // Multi-slot state (4 slots: A/B/C/D)
-    static constexpr int numSlots = 4;
+    static constexpr int numSlots = kTotalSlots;   // global slots: synth * 4 + slot
     std::unique_ptr<Patch> slotPatches[numSlots];
     // Bumped every time a slot's patch object is replaced, so deferred work
     // scheduled for the old one (a delayed upload, say) can tell that it is
@@ -392,13 +399,33 @@ private:
     std::unique_ptr<McpBridgeServer> mcpBridgeServer;
 #endif
 
-    // Last-known global synth settings.
-    SynthSettings cachedSynthSettings;
-    bool cachedSynthSettingsKnown = false;
-    // Last voice counts, light frame and synth-side events, kept for the MCP
-    // bridge (see the accessors above). Written on the message thread.
-    std::array<int, 4> synthVoiceCounts {};
-    LightMeterFrame lastLightMeterFrame;
+    // What the editor knows about each synth, one entry per port. The accessors above
+    // and the dialogs read the active synth's; a synth's own callbacks write theirs.
+    struct SynthState
+    {
+        SynthSettings settings;              // its last-known global settings
+        bool settingsKnown = false;          // false from a disconnect until it sends them again
+        // Last voice counts, light frame and slot enable state, kept for the MCP
+        // bridge. Written on the message thread.
+        std::array<int, 4> voiceCounts {};
+        LightMeterFrame lastLightFrame;
+        std::array<bool, 4> lastEnabled {};
+        bool enableStateKnown = false;
+        bool windowsReconciled = false;
+        bool windowsReconcileScheduled = false;
+        juce::String lastInputId, lastOutputId;   // ports of its last good connection
+        int autoConnectRetries = 5;
+        bool autoNameTried = false;   // the editor named this emulator already, this connection
+    };
+    std::array<SynthState, kMaxSynths> synthState;
+    SynthState& activeState() { return synthState[static_cast<size_t>(synthHub.activeSynth())]; }
+    const SynthState& activeState() const { return synthState[static_cast<size_t>(synthHub.activeSynth())]; }
+    template <typename F> void forEachSynth(F&& f)
+    {
+        for (int s = 0; s < kMaxSynths; ++s)
+            f(s, synthHub.synth(s));
+    }
+
     McpEventLog mcpEventLog;
     bool pendingSynthSettingsDialogOpen = false;
     juce::Component::SafePointer<SynthSettingsDialog> synthSettingsDialog;
@@ -418,6 +445,15 @@ private:
     // Telling the synth which slot to focus is debounced: walking focus across
     // four sub-windows must not spray SlotActivated messages down the wire.
     void notifySynthOfSlot(int slot);
+    void refreshForActiveSynth();
+    bool isSynthShown(int synth) const;
+    void updateSlotBarRows();
+    // A synth's name where the user sees it: its row in the slot bar and its slot windows.
+    void setSynthDisplayName(int synth, const juce::String& name);
+    void renameSynth(int synth);   // double-click on its name in the slot bar
+    // An emulator connected by the editor itself that still has its factory name, or answers to a
+    // name another connected synth has, gets a name of its own. True when it was renamed.
+    bool giveDuplicateEmulatorAName(int synth);
     // Zero a canvas's LEDs and meters. The synth streams them for one slot at a
     // time, so the slot being left has to be blanked or it freezes lit.
     void clearLightMeterData(int slot);
@@ -425,7 +461,7 @@ private:
     int  synthSlotGeneration = 0;
     bool inSlotFocusChange = false;   // switchToSlot -> focusSlot -> onSlotFocused
     void updateDspLoadDisplay();
-  float synthDspLoad() const;
+  float synthDspLoad(int synth) const;
 
     // Module presets. wirePresetCallbacks() serves both the main window's
     // inspector and a slot window's, since the two are the same class driving
@@ -503,9 +539,6 @@ private:
     int morphKnobIndex = -1;    // physical knob (0..22) assigned as the fader carrier, -1 = none
     int morphKnobMin = 0, morphKnobMax = 127;   // range of the learned knob's param
 
-    juce::String lastInputId;
-    juce::String lastOutputId;
-    int autoConnectRetries = 5;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

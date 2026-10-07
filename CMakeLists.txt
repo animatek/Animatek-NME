@@ -134,6 +134,7 @@ set(NME_SHARED_SOURCES
     source/midi/NmMessages.cpp
     source/midi/NmProtocol.cpp
     source/midi/MidiDeviceManager.cpp
+    source/midi/DirectLink.cpp
     source/midi/ConnectionManager.cpp
     source/midi/MidiMonitor.cpp
 

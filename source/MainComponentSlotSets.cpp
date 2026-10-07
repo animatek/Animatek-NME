@@ -33,15 +33,17 @@ void MainComponent::saveSlotSet() {
     return;
   }
 
-  const bool maskKnown = connectionManager.isConnected() && slotEnableStateKnown;
+  // A slot set is the four slots of one synth: the one being edited.
+  const int base = SynthSlot::global(synthHub.activeSynth(), 0);
+  const bool maskKnown = synthHub.active().isConnected() && activeState().enableStateKnown;
   std::array<SaveSlotSetDialog::SlotInfo, 4> info;
-  for (int i = 0; i < numSlots; ++i) {
+  for (int i = 0; i < kSlotsPerSynth; ++i) {
     auto& s = info[static_cast<size_t>(i)];
-    s.hasPatch = slotPatches[i] != nullptr;
+    s.hasPatch = slotPatches[base + i] != nullptr;
     if (s.hasPatch)
-      s.patchName = slotPatches[i]->getName();
+      s.patchName = slotPatches[base + i]->getName();
     s.enabledKnown = maskKnown;
-    s.enabled = lastEnabledSlots[static_cast<size_t>(i)];
+    s.enabled = activeState().lastEnabled[static_cast<size_t>(i)];
   }
 
   juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -101,29 +103,30 @@ void MainComponent::writeSlotSet(const juce::String& name, const juce::String& n
   SlotSet set;
   set.name = name.trim();
   set.notes = notes;
-  const bool maskKnown = connectionManager.isConnected() && slotEnableStateKnown;
+  const int base = SynthSlot::global(synthHub.activeSynth(), 0);
+  const bool maskKnown = synthHub.active().isConnected() && activeState().enableStateKnown;
   juce::StringArray failed;
-  for (int i = 0; i < numSlots; ++i) {
+  for (int i = 0; i < kSlotsPerSynth; ++i) {
     auto& s = set.slots[static_cast<size_t>(i)];
     s.mode = modes[static_cast<size_t>(i)];
     if (s.mode != SlotSet::Mode::Patch)
       continue;
-    if (slotPatches[i] == nullptr) {   // emptied while the dialog was open
+    if (slotPatches[base + i] == nullptr) {   // emptied while the dialog was open
       s.mode = SlotSet::Mode::Keep;
       continue;
     }
 
-    s.patchName = slotPatches[i]->getName();
+    s.patchName = slotPatches[base + i]->getName();
     s.file = slotSetPatchFileName(i, s.patchName);
-    s.enabled = maskKnown ? lastEnabledSlots[static_cast<size_t>(i)] : true;
-    s.bankSection = connectionManager.getSlotBankSection(i);
-    s.bankPosition = connectionManager.getSlotBankPosition(i);
+    s.enabled = maskKnown ? activeState().lastEnabled[static_cast<size_t>(i)] : true;
+    s.bankSection = synthHub.getSlotBankSection(base + i);
+    s.bankPosition = synthHub.getSlotBankPosition(base + i);
 
     const auto file = folder.getChildFile(s.file);
     // saveSlotPatchToFile only writes a .var when there is something in it, so
     // one left by an earlier save of this set would come back with the patch.
     file.withFileExtension("var").deleteFile();
-    if (!saveSlotPatchToFile(i, file))
+    if (!saveSlotPatchToFile(base + i, file))
       failed.add(kSlotLetters[i]);
   }
 
@@ -139,10 +142,10 @@ void MainComponent::writeSlotSet(const juce::String& name, const juce::String& n
     return;
   }
 
-  if (set.slots[static_cast<size_t>(activeSlot)].mode == SlotSet::Mode::Patch)
-    set.focusSlot = activeSlot;
+  if (set.slots[static_cast<size_t>(SynthSlot::localOf(activeSlot))].mode == SlotSet::Mode::Patch)
+    set.focusSlot = SynthSlot::localOf(activeSlot);
   else
-    for (int i = 0; i < numSlots && set.focusSlot < 0; ++i)
+    for (int i = 0; i < kSlotsPerSynth && set.focusSlot < 0; ++i)
       if (set.slots[static_cast<size_t>(i)].mode == SlotSet::Mode::Patch)
         set.focusSlot = i;
 
@@ -167,7 +170,7 @@ void MainComponent::writeSlotSet(const juce::String& name, const juce::String& n
     presetBrowserWindow->refresh();
 
   juce::StringArray parts;
-  for (int i = 0; i < numSlots; ++i) {
+  for (int i = 0; i < kSlotsPerSynth; ++i) {
     const auto mode = set.slots[static_cast<size_t>(i)].mode;
     if (mode == SlotSet::Mode::Patch)
       parts.add(kSlotLetters[i]);
@@ -223,9 +226,10 @@ void MainComponent::loadSlotSet(const juce::File& manifest) {
   }
 
   const auto folder = manifest.getParentDirectory();
+  const int base = SynthSlot::global(synthHub.activeSynth(), 0);
   juce::String plan;
   juce::StringArray missing;
-  for (int i = 0; i < numSlots; ++i) {
+  for (int i = 0; i < kSlotsPerSynth; ++i) {
     const auto& s = set.slots[static_cast<size_t>(i)];
     plan << kSlotLetters[i] << "   ";
     if (s.mode == SlotSet::Mode::Keep) {
@@ -236,8 +240,8 @@ void MainComponent::loadSlotSet(const juce::File& manifest) {
       plan << (s.patchName.isNotEmpty() ? s.patchName : s.file);
       if (!s.enabled)
         plan << " (loaded, off)";
-      if (slotPatches[i] != nullptr)
-        plan << "   replaces " << slotPatches[i]->getName();
+      if (slotPatches[base + i] != nullptr)
+        plan << "   replaces " << slotPatches[base + i]->getName();
       if (!folder.getChildFile(s.file).existsAsFile())
         missing.add(juce::String(kSlotLetters[i]) + "  " + s.file);
     }
@@ -252,7 +256,7 @@ void MainComponent::loadSlotSet(const juce::File& manifest) {
     return;
   }
 
-  if (!connectionManager.isConnected())
+  if (!synthHub.active().isConnected())
     plan << "\nNot connected: the patches load into the editor only (LOCAL), and no slot is "
             "switched on or off.\n";
   if (set.notes.isNotEmpty())
@@ -279,9 +283,10 @@ void MainComponent::startSlotSetLoad(const SlotSet& set, const juce::File& folde
 
   slotSetLoad = SlotSetLoad{};
   slotSetLoad.active = true;
+  slotSetLoad.synth = synthHub.activeSynth();   // the whole load stays on this synth
   slotSetLoad.set = set;
   slotSetLoad.folder = folder;
-  for (int i = 0; i < numSlots; ++i)
+  for (int i = 0; i < kSlotsPerSynth; ++i)
     if (set.slots[static_cast<size_t>(i)].mode == SlotSet::Mode::Patch)
       slotSetLoad.pending.push_back(i);
 
@@ -304,7 +309,9 @@ void MainComponent::slotSetLoadTick() {
       slotSetLoadTimer->stopTimer();
     return;
   }
-  const bool connected = connectionManager.isConnected();
+  auto& synthConn = synthHub.synth(load.synth);
+  const int base = SynthSlot::global(load.synth, 0);
+  const bool connected = synthConn.isConnected();
 
   switch (load.stage) {
   case SlotSetLoad::Stage::Patches: {
@@ -318,7 +325,7 @@ void MainComponent::slotSetLoadTick() {
       } else if (!connected) {
         load.failed.add(letter + ": the connection dropped during the upload");
         load.current = -1;
-      } else if (!connectionManager.isUploadingPatch()) {
+      } else if (!synthConn.isUploadingPatch()) {
         // The ACK callback is posted after the upload flag drops, so give it a
         // moment before calling the upload lost.
         if (++load.quietTicks >= kQuietTicks) {
@@ -331,10 +338,10 @@ void MainComponent::slotSetLoadTick() {
       }
 
       if (load.current < 0 && load.uploading) {
-        connectionManager.setUploadCompleteCallback(nullptr);
+        synthConn.setUploadCompleteCallback(nullptr);
         load.settleTicks = kSettleTicks;
         if (!load.uploadAcked)
-          setSlotLocal(slot, true);   // the editor has it, the synth does not
+          setSlotLocal(base + slot, true);   // the editor has it, the synth does not
       }
       return;
     }
@@ -347,7 +354,7 @@ void MainComponent::slotSetLoadTick() {
       load.stage = SlotSetLoad::Stage::Focus;
       return;
     }
-    if (connected && (isPatchTransferInProgress() || !connectionManager.isAckedQueueIdle())) {
+    if (connected && (synthConn.isUploadingPatch() || synthConn.isFetchingPatch() || !synthConn.isAckedQueueIdle())) {
       if (++load.stepTicks >= kStepTimeoutTicks) {
         for (int slot : load.pending)
           load.failed.add(juce::String(kSlotLetters[slot]) + ": the synth stayed busy");
@@ -368,7 +375,7 @@ void MainComponent::slotSetLoadTick() {
 
     if (connected) {
       juce::Component::SafePointer<MainComponent> safeThis(this);
-      connectionManager.setUploadCompleteCallback([safeThis, slot]() {
+      synthConn.setUploadCompleteCallback([safeThis, slot]() {
         if (safeThis && safeThis->slotSetLoad.active && safeThis->slotSetLoad.current == slot)
           safeThis->slotSetLoad.uploadAcked = true;
       });
@@ -379,25 +386,25 @@ void MainComponent::slotSetLoadTick() {
             + entry.patchName + "...", 0);
 
     juce::String error;
-    if (!loadPatchFileIntoSlot(slot, load.folder.getChildFile(entry.file), false, error)) {
+    if (!loadPatchFileIntoSlot(base + slot, load.folder.getChildFile(entry.file), false, error)) {
       load.failed.add(juce::String(kSlotLetters[slot]) + ": " + error);
       load.current = -1;
       if (connected)
-        connectionManager.setUploadCompleteCallback(nullptr);
+        synthConn.setUploadCompleteCallback(nullptr);
     }
     return;
   }
 
   case SlotSetLoad::Stage::Focus: {
     // Worked out before focus moves: moving it changes what the synth reports.
-    load.mask = slotSetEnableMask(load.set, lastEnabledSlots);
-    const int currentFocus = connected ? connectionManager.getCurrentSlot() : activeSlot;
+    load.mask = slotSetEnableMask(load.set, synthState[static_cast<size_t>(load.synth)].lastEnabled);
+    const int currentFocus = connected ? synthConn.getCurrentSlot() : SynthSlot::localOf(activeSlot);
     const int focus = slotSetFocusAfterLoad(load.set, load.mask, currentFocus);
-    if (focus >= 0 && focus < numSlots) {
-      if (focus != activeSlot)
-        switchToSlot(focus, /*notifySynth=*/false);
-      if (connected && connectionManager.getCurrentSlot() != focus)
-        connectionManager.selectSlot(focus);
+    if (focus >= 0 && focus < kSlotsPerSynth) {
+      if (base + focus != activeSlot)
+        switchToSlot(base + focus, /*notifySynth=*/false);
+      if (connected && synthConn.getCurrentSlot() != focus)
+        synthHub.selectSlot(base + focus);
     }
     load.stage = SlotSetLoad::Stage::Enable;
     load.settleTicks = kSettleTicks;
@@ -409,7 +416,7 @@ void MainComponent::slotSetLoadTick() {
       --load.settleTicks;
       return;
     }
-    if (connected && !connectionManager.setSlotPins(load.mask))
+    if (connected && !synthConn.setSlotPins(load.mask))
       load.failed.add("No slot was switched on or off: the synth has not reported which "
                       "slots are enabled yet");
     finishSlotSetLoad();
