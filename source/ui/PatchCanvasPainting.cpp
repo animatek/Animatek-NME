@@ -925,7 +925,7 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
 
         if (activeScheme_.skeuomorphic && !activeScheme_.wireframe)
         {
-            skeuo::drawJack(g, cx, cy, sz, isOutput, connColour, darkHole, capped);
+            skeuo::drawJack(g, cx, cy, sz, isOutput, connColour, darkHole, outline, capped);
             continue;
         }
 
@@ -1224,7 +1224,8 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         }
         else if (skeuoOn && activeScheme_.knobStyle > 0)
         {
-            skeuo::drawKnurledPointer(g, centerX, centerY, radius, knobAngle, activeScheme_.knobStyle);
+            skeuo::drawKnurledPointer(g, centerX, centerY, radius, knobAngle, activeScheme_.knobStyle,
+                                      activeScheme_.knobBase, activeScheme_.knobGrip);
         }
         else if (skeuoOn)
         {
@@ -2645,10 +2646,10 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
     const int meterBase = slots != nullptr ? slots->meterBase : 0;
     const bool skeuoOn  = activeScheme_.skeuomorphic && !activeScheme_.wireframe;
 
-    // Hardware-look LEDs light green, as on the original editor's panels. A LED
-    // paired with a level meter (ledOnValue >= 0) is an overload indicator and
-    // keeps the theme's red.
-    const juce::Colour ledGreen    (0xff3fe64a);
+    // Hardware-look LEDs light in the theme's step LED colour (green by default,
+    // as on the original editor's panels). A LED paired with a level meter
+    // (ledOnValue >= 0) is an overload indicator and keeps the theme's LED colour.
+    const juce::Colour ledGreen    = activeScheme_.ledStep;
     const juce::Colour ledGreenOff = ledGreen.darker(0.85f);
 
     // Build map of meter vertical centers (for LED alignment) and meter index
