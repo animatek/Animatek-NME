@@ -914,6 +914,23 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
         else if (tc.cssClass == "cUSER1")   connColour = activeScheme_.cableUser1;
         else if (tc.cssClass == "cUSER2")   connColour = activeScheme_.cableUser2;
 
+        // Hardware look: the ring takes the theme's cable colour for its signal
+        // type, so the theme editor's "... cable and jack" swatches recolour the
+        // jacks as well as the cords, and a jack still matches its cable.
+        if (activeScheme_.skeuomorphic && !activeScheme_.wireframe && actualConnector != nullptr)
+        {
+            switch (actualConnector->getDescriptor()->signalType)
+            {
+                case SignalType::Audio:       connColour = activeScheme_.cableAudio;       break;
+                case SignalType::Control:     connColour = activeScheme_.cableControl;     break;
+                case SignalType::Logic:       connColour = activeScheme_.cableLogic;       break;
+                case SignalType::MasterSlave: connColour = activeScheme_.cableMasterSlave; break;
+                case SignalType::User1:       connColour = activeScheme_.cableUser1;       break;
+                case SignalType::User2:       connColour = activeScheme_.cableUser2;       break;
+                default: break;
+            }
+        }
+
         // Check if this connector has a hidden (filtered) cable — show "capped" visual
         bool capped = (actualConnector != nullptr) && hasHiddenCable(*actualConnector, container);
 
@@ -925,7 +942,7 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
 
         if (activeScheme_.skeuomorphic && !activeScheme_.wireframe)
         {
-            skeuo::drawJack(g, cx, cy, sz, isOutput, connColour, darkHole, capped);
+            skeuo::drawJack(g, cx, cy, sz, isOutput, connColour, darkHole, outline, capped);
             continue;
         }
 
@@ -1224,7 +1241,8 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         }
         else if (skeuoOn && activeScheme_.knobStyle > 0)
         {
-            skeuo::drawKnurledPointer(g, centerX, centerY, radius, knobAngle, activeScheme_.knobStyle);
+            skeuo::drawKnurledPointer(g, centerX, centerY, radius, knobAngle, activeScheme_.knobStyle,
+                                      activeScheme_.knobBase, activeScheme_.knobGrip);
         }
         else if (skeuoOn)
         {
@@ -2645,10 +2663,10 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
     const int meterBase = slots != nullptr ? slots->meterBase : 0;
     const bool skeuoOn  = activeScheme_.skeuomorphic && !activeScheme_.wireframe;
 
-    // Hardware-look LEDs light green, as on the original editor's panels. A LED
-    // paired with a level meter (ledOnValue >= 0) is an overload indicator and
-    // keeps the theme's red.
-    const juce::Colour ledGreen    (0xff3fe64a);
+    // Hardware-look LEDs light in the theme's step LED colour (green by default,
+    // as on the original editor's panels). A LED paired with a level meter
+    // (ledOnValue >= 0) is an overload indicator and keeps the theme's LED colour.
+    const juce::Colour ledGreen    = activeScheme_.ledStep;
     const juce::Colour ledGreenOff = ledGreen.darker(0.85f);
 
     // Build map of meter vertical centers (for LED alignment) and meter index
@@ -4486,11 +4504,10 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
         {
             // A rounded cord with a plug head at each end. Thick and thin still
             // follow the cable style setting.
-            // The cord takes its colour from the signal type, the same source the
-            // jack rings use, so a cable always matches the jack it plugs into.
-            // (The theme's own cable colours stay in use for the flat look.)
-            const auto cordCol = getSignalColour(conn.output->getDescriptor()->signalType);
-            skeuo::drawCord(g, path, cordCol, isThick ? 2.6f : 1.6f, cableOpacity);
+            // The cord takes the theme's cable colour for its signal type, the
+            // same colour the hardware jack ring uses (see paintConnectors), so the
+            // theme editor recolours both and a cable always matches its jacks.
+            skeuo::drawCord(g, path, cableCol, isThick ? 2.6f : 1.6f, cableOpacity);
             skeuo::drawPlug(g, static_cast<float>(srcPos.x), static_cast<float>(srcPos.y), cableOpacity);
             skeuo::drawPlug(g, static_cast<float>(dstPos.x), static_cast<float>(dstPos.y), cableOpacity);
             continue;

@@ -63,6 +63,7 @@ struct ColorScheme
     juce::Colour meterHigh;
     juce::Colour meterTrack;
     juce::Colour meterBg;        // meter track background (dark fill behind bars)
+    juce::Colour ledStep { 0xff3fe64a };   // hardware look: lit step and activity LEDs (green)
 
     // Custom displays (envelopes, LFO, filter curves)
     juce::Colour displayBgCustom;

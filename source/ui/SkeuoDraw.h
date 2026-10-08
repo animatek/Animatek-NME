@@ -298,7 +298,8 @@ namespace skeuo
     //
     //   radius       the radius the flat knob uses (rSz * 0.5)
     //   pixelRadius  radius * zoom: knurling is only drawn when it can be seen
-    //   capColour    style 0 only: the theme's knob colour
+    //   capColour    the theme's knob colour: the cap of the domed knob, the metal of
+    //                the aluminium knurled knob, the (darkened) body of the black one
     //   collar       the morph-group colour, drawn as a ring round the cap
     inline void drawKnobBody(juce::Graphics& g, float cx, float cy, float radius,
                              int style, float pixelRadius,
@@ -340,6 +341,15 @@ namespace skeuo
         const bool alu = (style >= 2);
         const float pi = juce::MathConstants<float>::pi;
 
+        // The knurled knobs take their metal from the theme's knob colour, so the
+        // theme editor's "Knob" swatch recolours them like any other knob. Black
+        // is that colour taken down to near black, keeping its hue.
+        const juce::Colour base      = alu ? capColour : capColour.withMultipliedBrightness(0.2f);
+        const juce::Colour skirtLit   = alu ? base.brighter(0.65f) : base.brighter(0.75f);
+        const juce::Colour skirtShade = alu ? base.darker(0.30f)   : base.darker(0.70f);
+        const juce::Colour topLit     = alu ? base.brighter(0.75f) : base.brighter(0.60f);
+        const juce::Colour topShade   = alu ? base.darker(0.15f)   : base.darker(0.60f);
+
         // The knob stands proud of the panel, so it casts a small shadow.
         g.setColour(juce::Colours::black.withAlpha(0.32f));
         g.fillEllipse(cx - radius * 1.02f + 0.6f, cy - radius * 1.02f + 1.2f,
@@ -348,8 +358,8 @@ namespace skeuo
         // Skirt: the wide base the top sits on.
         {
             const float r = radius;
-            juce::ColourGradient skirt(alu ? juce::Colour(0xfff4f4f4) : juce::Colour(0xff4a4a4a), cx - r * 0.7f, cy - r * 0.8f,
-                                       alu ? juce::Colour(0xff7c7c7c) : juce::Colour(0xff0a0a0a), cx + r * 0.7f, cy + r * 0.8f, false);
+            juce::ColourGradient skirt(skirtLit,   cx - r * 0.7f, cy - r * 0.8f,
+                                       skirtShade, cx + r * 0.7f, cy + r * 0.8f, false);
             g.setGradientFill(skirt);
             g.fillEllipse(cx - r, cy - r, r * 2.0f, r * 2.0f);
 
@@ -385,8 +395,8 @@ namespace skeuo
         // Top: flat disc; aluminium gets faint concentric machining lines.
         {
             const float r = radius * 0.68f;
-            juce::ColourGradient top(alu ? juce::Colour(0xfffafafa) : juce::Colour(0xff3c3c3c), cx - r * 0.6f, cy - r * 0.7f,
-                                     alu ? juce::Colour(0xff9a9a9a) : juce::Colour(0xff111111), cx + r * 0.7f, cy + r * 0.8f, false);
+            juce::ColourGradient top(topLit,   cx - r * 0.6f, cy - r * 0.7f,
+                                     topShade, cx + r * 0.7f, cy + r * 0.8f, false);
             g.setGradientFill(top);
             g.fillEllipse(cx - r, cy - r, r * 2.0f, r * 2.0f);
 
@@ -478,10 +488,19 @@ namespace skeuo
     }
 
     // Knurled-knob pointer: a bold line from near the centre out across the skirt.
-    // White on the black knob, dark on the aluminium one.
+    // Light on a dark knob, dark on a light one, so it stays readable whatever the
+    // theme's knob colour is. The theme's pointer colour is used instead whenever it
+    // contrasts well enough with the knob.
     inline void drawKnurledPointer(juce::Graphics& g, float cx, float cy, float radius,
-                                float angleRad, int style)
+                                   float angleRad, int style, juce::Colour capColour, juce::Colour grip)
     {
+        const juce::Colour mid = (style >= 2) ? capColour : capColour.withMultipliedBrightness(0.2f);
+        juce::Colour ink = mid.getPerceivedBrightness() > 0.5f ? juce::Colour(0xff1b1b1b)
+                                                               : juce::Colour(0xfff2f2f2);
+        if (!grip.isTransparent()
+            && std::abs(grip.getPerceivedBrightness() - mid.getPerceivedBrightness()) > 0.45f)
+            ink = grip;
+
         const float s = std::sin(angleRad), c = std::cos(angleRad);
         const float inner = radius * 0.12f, outer = radius * 0.97f;
         const float w = juce::jmax(1.4f, radius * 0.15f);
@@ -490,7 +509,7 @@ namespace skeuo
         g.drawLine(cx + s * inner + 0.5f, cy - c * inner + 0.7f,
                    cx + s * outer + 0.5f, cy - c * outer + 0.7f, w);
 
-        g.setColour(style == 1 ? juce::Colour(0xfff2f2f2) : juce::Colour(0xff1b1b1b));
+        g.setColour(ink);
         g.drawLine(cx + s * inner, cy - c * inner, cx + s * outer, cy - c * outer, w);
     }
 
@@ -501,9 +520,10 @@ namespace skeuo
     //   (x, y, sz)  the connector's top-left and size, as in paintConnectors
     //   signal      the signal-type colour: a ring round the metal nut
     //   hole        activeScheme_.connHole
+    //   outline     activeScheme_.connOutline: a thin rim round the ring
     //   capped      a cable of this type is hidden by the cable filters
     inline void drawJack(juce::Graphics& g, float x, float y, float sz, bool isOutput,
-                         juce::Colour signal, juce::Colour hole, bool capped)
+                         juce::Colour signal, juce::Colour hole, juce::Colour outline, bool capped)
     {
         auto fillShape = [&](float ix, float iy, float isz)
         {
@@ -518,6 +538,11 @@ namespace skeuo
         // Signal ring: the whole footprint in the signal colour.
         g.setColour(signal);
         fillShape(x, y, sz);
+
+        // Thin rim in the theme's jack outline colour.
+        g.setColour(outline.withAlpha(0.85f));
+        if (isOutput) g.drawRoundedRectangle(x, y, sz, sz, sz * 0.25f, 0.8f);
+        else          g.drawEllipse(x, y, sz, sz, 0.8f);
 
         // Metal nut inside the ring, brushed-steel gradient.
         {

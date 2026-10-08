@@ -67,6 +67,7 @@ const CanvasField kCanvasFields[] = {
     { "meterHigh", &ColorScheme::meterHigh },
     { "meterTrack", &ColorScheme::meterTrack },
     { "meterBg", &ColorScheme::meterBg },
+    { "ledStep", &ColorScheme::ledStep },
     { "displayBgCustom", &ColorScheme::displayBgCustom },
     { "displayBorderCustom", &ColorScheme::displayBorderCustom },
     { "displayGrid", &ColorScheme::displayGrid },
@@ -284,6 +285,7 @@ const std::vector<ThemeFile::Entry>& ThemeFile::entries()
         cv(led, "Meter low", &C::meterLow);      cv(led, "Meter mid", &C::meterMid);
         cv(led, "Meter high", &C::meterHigh);    cv(led, "Meter track", &C::meterTrack);
         cv(led, "Meter background", &C::meterBg);
+        cv(led, "Step LED on (hardware look)", &C::ledStep);
         const char* cab = "Cables and jacks";
         cv(cab, "Audio cable and jack", &C::cableAudio);     cv(cab, "Control cable and jack", &C::cableControl);
         cv(cab, "Logic cable and jack", &C::cableLogic);     cv(cab, "Master/slave cable and jack", &C::cableMasterSlave);
