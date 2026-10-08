@@ -1045,7 +1045,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 #endif
 
 #if JUCE_MAC
-  juce::MenuBarModel::setMacMainMenu(this);
+  // Only the app owns the macOS menu bar. Inside a DAW the menus stay in the
+  // editor's window: setting them here replaced the host's own menu bar (#95).
+  if (juce::JUCEApplicationBase::isStandaloneApp())
+    juce::MenuBarModel::setMacMainMenu(this);
 #endif
 }
 
@@ -1095,7 +1098,8 @@ MainComponent::~MainComponent() {
 
   // Tear down UI before members are destroyed
 #if JUCE_MAC
-  juce::MenuBarModel::setMacMainMenu(nullptr);
+  if (juce::JUCEApplicationBase::isStandaloneApp())
+    juce::MenuBarModel::setMacMainMenu(nullptr);
 #endif
   // The slot chooser and the store-location dialog live on the desktop and are
   // owned by nobody, so quitting with one still open leaked it and printed an

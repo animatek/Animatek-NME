@@ -36,6 +36,11 @@
 
 ### Fixed
 
+- **Plugin on macOS: the editor no longer takes over the DAW's menu bar** (2026-10-08, #95). The
+  editor set its menus as the application's menu bar whether it ran as the app or inside a host, so
+  after opening it in Ableton the host's own menus (Settings, opening a project) were gone. Only
+  the app sets them now (`JUCEApplicationBase::isStandaloneApp()`); in a DAW the menus stay in
+  the editor's window, where they already were. Not built or tried on a Mac yet.
 - **Synth Settings: Global Sync is the number of quarter notes, 1 to 32** (2026-10-08, #92). It was
   a checkbox that wrote 1 (2 quarter notes) whenever it was ticked, so pressing OK, even without
   touching it, turned a G1 set to 4 quarter notes into 2. It is now a selector like the MIDI
