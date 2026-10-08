@@ -57,7 +57,8 @@ private:
     juce::ToggleButton clockInt { "Internal" }, clockExt { "External" };
     juce::Label  bpmLbl       { {}, "BPM" };
     juce::Slider bpmSlider;
-    juce::ToggleButton globalSyncTgl { "Global Sync" };
+    juce::Label  globalSyncLbl { {}, "Global Sync" };
+    juce::Slider globalSyncSlider;   // quarter notes, 1-32
 
     // ── Behavior ──
     juce::Label  behavHdr     { {}, "BEHAVIOR" };

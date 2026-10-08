@@ -123,13 +123,16 @@ SynthSettingsDialog::SynthSettingsDialog (const SynthSettings& current, Callback
     bpmSlider.setRange (24, 250, 1);
     bpmSlider.setValue (juce::jlimit (24, 250, working.midiClockBpm), juce::dontSendNotification);
     styleSlider (bpmSlider, 50);
-    globalSyncTgl.setToggleState (working.globalSync != 0, juce::dontSendNotification);
-    styleToggle (globalSyncTgl);
+    styleLabel (globalSyncLbl);
+    globalSyncLbl.setTooltip ("Quarter notes between the Sync pulses of the MIDI Global module");
+    globalSyncSlider.setRange (1, 32, 1);
+    globalSyncSlider.setValue (working.globalSyncQuarters(), juce::dontSendNotification);
+    styleSlider (globalSyncSlider, 34);
 
     addAndMakeVisible (clockHdr);
     addAndMakeVisible (clockInt);  addAndMakeVisible (clockExt);
     addAndMakeVisible (bpmLbl);    addAndMakeVisible (bpmSlider);
-    addAndMakeVisible (globalSyncTgl);
+    addAndMakeVisible (globalSyncLbl);  addAndMakeVisible (globalSyncSlider);
 
     // ── Behavior ─────────────────────────────────────────────────────────────
     styleLabel (behavHdr, true);
@@ -171,7 +174,7 @@ SynthSettingsDialog::SynthSettingsDialog (const SynthSettings& current, Callback
             r.programChangeSend      = pgmSendTgl   .getToggleState() ? 1 : 0;
             r.setClockInternal (clockInt.getToggleState());
             r.midiClockBpm           = static_cast<int> (bpmSlider.getValue());
-            r.globalSync             = globalSyncTgl.getToggleState() ? 1 : 0;
+            r.setGlobalSyncQuarters (static_cast<int> (globalSyncSlider.getValue()));
             r.knobMode               = knobHook     .getToggleState() ? 1 : 0;
             r.pedalPolarity          = pedalInv     .getToggleState() ? 1 : 0;
             r.keyboardMode           = kbSelected   .getToggleState() ? 1 : 0;
@@ -206,7 +209,7 @@ void SynthSettingsDialog::setSettings (const SynthSettings& settings)
     clockInt.setToggleState (working.clockIsInternal(), juce::dontSendNotification);
     clockExt.setToggleState (! working.clockIsInternal(), juce::dontSendNotification);
     bpmSlider.setValue (juce::jlimit (24, 250, working.midiClockBpm), juce::dontSendNotification);
-    globalSyncTgl.setToggleState (working.globalSync != 0, juce::dontSendNotification);
+    globalSyncSlider.setValue (working.globalSyncQuarters(), juce::dontSendNotification);
     knobImm.setToggleState (working.knobMode == 0, juce::dontSendNotification);
     knobHook.setToggleState (working.knobMode != 0, juce::dontSendNotification);
     pedalNorm.setToggleState (working.pedalPolarity == 0, juce::dontSendNotification);
@@ -269,7 +272,7 @@ void SynthSettingsDialog::paint (juce::Graphics& g)
     sep (masterTuneSlider.getBottom() + 5);
     sep (chanSliders[0].getBottom() + 5);
     sep (localOnTgl.getBottom() + 5);
-    sep (globalSyncTgl.getBottom() + 5);
+    sep (globalSyncSlider.getBottom() + 5);
     sep (kbSelected.getBottom() + 5);
 }
 
@@ -340,7 +343,8 @@ void SynthSettingsDialog::resized()
     clockExt.setBounds    (pad + 92,  y, 90, rowH);
     bpmLbl.setBounds      (pad + 194, y, 36, rowH);
     bpmSlider.setBounds   (pad + 232, y, 130, rowH);
-    globalSyncTgl.setBounds (pad + 376, y, 110, rowH);
+    globalSyncLbl.setBounds    (pad + 372, y, 74, rowH);
+    globalSyncSlider.setBounds (pad + 446, y, W - 446, rowH);
     y += rowH + gap + 2;  // → sep 236
 
     y += gap;

@@ -36,6 +36,12 @@
 
 ### Fixed
 
+- **Synth Settings: Global Sync is the number of quarter notes, 1 to 32** (2026-10-08, #92). It was
+  a checkbox that wrote 1 (2 quarter notes) whenever it was ticked, so pressing OK, even without
+  touching it, turned a G1 set to 4 quarter notes into 2. It is now a selector like the MIDI
+  channels, showing the field plus one as the G1's own GLOBAL SYNC page does
+  (`SynthSettings::globalSyncQuarters()`). Checked: `tests/test_synth_settings_clock.cpp` (1-32
+  through an encode/decode round trip); the dialog is not tried on a synth yet.
 - **Opening a patch from the Disk browser (or File > Open) closed the editor** (2026-10-06). The
   slot chooser was filled with every slot of the editor (32 now, eight synths of four) into an
   array of four, and it was handed a global slot as if it were 0-3. It now lists the four slots of

@@ -18,7 +18,10 @@ struct SynthSettings
     int  localOn             = 1;    // 1 bit
     int  keyboardMode        = 0;    // 1 bit  (0=Active slot, 1=Selected slots)
     int  pedalPolarity       = 0;    // 1 bit
-    int  globalSync          = 0;    // 5 bits
+    // 5 bits: the quarter notes between the Sync pulses of the MIDI Global module, less
+    // one (0 = 1 quarter note, 31 = 32), as the G1's own GLOBAL SYNC page counts them.
+    // Use globalSyncQuarters().
+    int  globalSync          = 0;
     // 8 bits, a signed byte: 0 = in tune, one step per cent, -127..127 (as nmedit's
     // editor reads it). A real G1 at 0 on its own display sends 0. Use masterTuneCents().
     int  masterTune          = 0;
@@ -40,4 +43,7 @@ struct SynthSettings
 
     int  masterTuneCents() const          { return static_cast<signed char> (masterTune & 0xff); }
     void setMasterTuneCents(int cents)    { masterTune = (cents < -127 ? -127 : cents > 127 ? 127 : cents) & 0xff; }
+
+    int  globalSyncQuarters() const       { return (globalSync & 0x1f) + 1; }
+    void setGlobalSyncQuarters(int q)     { globalSync = (q < 1 ? 1 : q > 32 ? 32 : q) - 1; }
 };

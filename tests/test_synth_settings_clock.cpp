@@ -73,3 +73,28 @@ TEST_CASE("the master tune is a signed byte centred on 0")
     CHECK(s.masterTuneCents() == -127);
     CHECK(SynthSettings{}.masterTuneCents() == 0);
 }
+
+// Global Sync is 5 bits: the quarter notes between Sync pulses, less one. NME showed it
+// as a checkbox and wrote 1 (2 quarter notes) for anything ticked, so OK in Synth
+// Settings turned a G1 set to 4 quarter notes into 2 (#92).
+TEST_CASE("global sync carries 1 to 32 quarter notes through a round trip")
+{
+    for (const int quarters : { 1, 2, 4, 16, 32 })
+    {
+        SynthSettings s;
+        REQUIRE(SynthSettingsMessage::decode(kExternalReply, s));
+        s.setGlobalSyncQuarters(quarters);
+        CHECK(s.globalSync == quarters - 1);
+
+        SynthSettingsMessage m;
+        m.settings = s;
+        const auto payload = m.encode(0);
+        const std::vector<uint8_t> packed(payload.begin() + 1, payload.end());
+        SynthSettings back;
+        REQUIRE(SynthSettingsMessage::decode(packed, back));
+        CHECK(back.globalSyncQuarters() == quarters);
+    }
+    SynthSettings s;
+    s.setGlobalSyncQuarters(0);   CHECK(s.globalSyncQuarters() == 1);
+    s.setGlobalSyncQuarters(99);  CHECK(s.globalSyncQuarters() == 32);
+}
