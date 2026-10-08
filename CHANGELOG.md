@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.21.0 — 2026-10-08
+
 ### Added
 
 - **Hardware look follows the theme editor** (2026-10-08, PR #93; Grant Atkinson (teezdalien)).
@@ -11,7 +13,7 @@
   jack rings and cords now follow the theme editor's "... cable and jack" swatches together, so a
   cable still matches its jacks. Lit step and activity LEDs have their own colour, "Step LED on
   (hardware look)", saved as `ledStep` in theme files (green by default). Checked: builds and the
-  tests pass; the aluminium knob on themes with a coloured knob is not looked at yet.
+  tests pass; the three knob styles looked at by Javier (2026-10-08).
 - **G1-Emu without a MIDI port: the direct link, found and connected on its own** (2026-10-06, #83,
   G1-Emu #8). G1-Emu listens on a local socket (127.0.0.1, from port 47310, one per instance) and
   NME talks to it there with the same SysEx as the PC Port, with no virtual MIDI port, driver or
@@ -23,7 +25,7 @@
   rest of the editor sees a connection like any other. Checked: `tests/test_direct_link.cpp`
   (SysEx split across any cut of the stream) and, against a running `g1run`, the editor's IAm over
   the link answered by the emulated G1 (`NME_G1EMU_LINK_TEST=1`); the automatic connection in the
-  window is not tried yet. An instance already connected through its MIDI PC Port is not connected
+  window tried by Javier (2026-10-08). An instance already connected through its MIDI PC Port is not connected
   again over the link: G1-Emu's greeting names its PC Port's ids (or its name, where JUCE gives no
   id) and the editor compares them with its ports.
 - **Rename a synth with a double-click on its name** in the slot panel (2026-10-06). It sends the
@@ -41,45 +43,6 @@
   its port on (Enabled in MIDI Setup) and connects; when the instance goes, the editor switches that
   port off again, its row leaves the slot panel, and if it was the synth being edited the editor
   moves to one that is still connected. A port switched off by hand in MIDI Setup stays off.
-
-### Fixed
-
-- **Plugin on macOS: the editor no longer takes over the DAW's menu bar** (2026-10-08, #95). The
-  editor set its menus as the application's menu bar whether it ran as the app or inside a host, so
-  after opening it in Ableton the host's own menus (Settings, opening a project) were gone. Only
-  the app sets them now (`JUCEApplicationBase::isStandaloneApp()`); in a DAW the menus stay in
-  the editor's window, where they already were. Not built or tried on a Mac yet.
-- **Synth Settings: Global Sync is the number of quarter notes, 1 to 32** (2026-10-08, #92). It was
-  a checkbox that wrote 1 (2 quarter notes) whenever it was ticked, so pressing OK, even without
-  touching it, turned a G1 set to 4 quarter notes into 2. It is now a selector like the MIDI
-  channels, showing the field plus one as the G1's own GLOBAL SYNC page does
-  (`SynthSettings::globalSyncQuarters()`). Checked: `tests/test_synth_settings_clock.cpp` (1-32
-  through an encode/decode round trip); the dialog is not tried on a synth yet.
-- **Opening a patch from the Disk browser (or File > Open) closed the editor** (2026-10-06). The
-  slot chooser was filled with every slot of the editor (32 now, eight synths of four) into an
-  array of four, and it was handed a global slot as if it were 0-3. It now lists the four slots of
-  the synth being edited, labelled with it (2A..2D), and loads into that synth's slot. Compiles;
-  not tried on the window yet.
-- **No "No synth" row for Port 1 when the only synth is on another port** (2026-10-06). Port 1's
-  row was always shown; it now follows the same rule as the others: there while connected,
-  connecting or being edited, so the panel is never empty.
-
-- **Emulators found at startup: renamed in a loop, or counted as gone** (2026-10-06). Seen with three
-  G1-Emu plugins in Bitwig and NME's log: (1) the automatic name was sent before the synth had a
-  patch, with patch id 0, so the synth ignored it, came back "Modular" and was renamed again and
-  again; it is now one try per connection, made once the synth has a patch (checked: "G1 Ferro"
-  sent with pid 1 and confirmed by the synth). (2) A synth on the direct link gets 15 s to answer
-  the greeting, which is said again every 3 s, instead of 3 s: emulators sharing a DAW's CPU can be
-  slower than a G1. (3) A synth that has not answered yet is "Disconnected" with its link still
-  open: its port is no longer switched off nor its windows closed for that, nor given to another
-  instance; only a connection that is really closed does that.
-- **Every synth's name, not "Modular"** (2026-10-06). On connecting, only the synth being edited was
-  asked for its settings (where its name is) and its bank list; its ports were saved and its slots'
-  edits re-enabled only for it too. All of that is done for every synth now, so a real G1 called
-  "animatek" beside G1-Emu reads "animatek".
-
-### Added
-
 - **Only the windows of the synths that are there** (2026-10-06). On startup only Port 1's slot
   windows come back from the saved layout; another synth's windows open when it connects (its
   enabled slots, as before) and close when it disconnects, so the work area no longer starts full of
@@ -94,9 +57,8 @@
 - **The slot panel shows only the synths that are there** (2026-10-06). Port 1's row always, any
   other port's row while it is connected or connecting, or while it is the one being edited; the
   View menu's slot list follows. The bar's height follows the rows.
-
-- **Two synths at once, the way the original editor does it** (2026-10-05, #84, #88; on branch
-  `multi-synth-84`, not yet tried on hardware). MIDI Setup is now one group per port (In, Out, Enabled and
+- **Two synths at once, the way the original editor does it** (2026-10-05, #84, #88; tried by
+  Javier with a real G1 and G1-Emu at once). MIDI Setup is now one group per port (In, Out, Enabled and
   the synth's Status, with OK / Cancel / Apply), and each enabled port is its own connection with its own
   four slots. Slots are numbered globally (synth * 4 + slot), so patches, windows, undo and snapshots keep
   working with a bigger range; `SynthHub` (`source/midi/SynthHub.h`) turns a global slot into its synth and
@@ -108,6 +70,41 @@
   serves eight instances): the number is `kMaxSynths` in `source/midi/SynthHub.h`. The saved window
   order uses one character per slot from 0-9a-v (32 slots) and the open-window masks are unsigned. The "show/hide slot" menu ids moved to 1000+ (they overlapped the theme
   list's 200+), and the window order is saved in hexadecimal so sixteen slots fit.
+
+### Fixed
+
+- **Plugin on macOS: the editor no longer takes over the DAW's menu bar** (2026-10-08, #95). The
+  editor set its menus as the application's menu bar whether it ran as the app or inside a host, so
+  after opening it in Ableton the host's own menus (Settings, opening a project) were gone. Only
+  the app sets them now (`JUCEApplicationBase::isStandaloneApp()`); in a DAW the menus stay in
+  the editor's window, where they already were. Not built or tried on a Mac yet.
+- **Synth Settings: Global Sync is the number of quarter notes, 1 to 32** (2026-10-08, #92). It was
+  a checkbox that wrote 1 (2 quarter notes) whenever it was ticked, so pressing OK, even without
+  touching it, turned a G1 set to 4 quarter notes into 2. It is now a selector like the MIDI
+  channels, showing the field plus one as the G1's own GLOBAL SYNC page does
+  (`SynthSettings::globalSyncQuarters()`). Checked: `tests/test_synth_settings_clock.cpp` (1-32
+  through an encode/decode round trip) and by Javier on a synth (2026-10-08).
+- **Opening a patch from the Disk browser (or File > Open) closed the editor** (2026-10-06). The
+  slot chooser was filled with every slot of the editor (32 now, eight synths of four) into an
+  array of four, and it was handed a global slot as if it were 0-3. It now lists the four slots of
+  the synth being edited, labelled with it (2A..2D), and loads into that synth's slot. Compiles;
+  not tried on the window yet.
+- **No "No synth" row for Port 1 when the only synth is on another port** (2026-10-06). Port 1's
+  row was always shown; it now follows the same rule as the others: there while connected,
+  connecting or being edited, so the panel is never empty.
+- **Emulators found at startup: renamed in a loop, or counted as gone** (2026-10-06). Seen with three
+  G1-Emu plugins in Bitwig and NME's log: (1) the automatic name was sent before the synth had a
+  patch, with patch id 0, so the synth ignored it, came back "Modular" and was renamed again and
+  again; it is now one try per connection, made once the synth has a patch (checked: "G1 Ferro"
+  sent with pid 1 and confirmed by the synth). (2) A synth on the direct link gets 15 s to answer
+  the greeting, which is said again every 3 s, instead of 3 s: emulators sharing a DAW's CPU can be
+  slower than a G1. (3) A synth that has not answered yet is "Disconnected" with its link still
+  open: its port is no longer switched off nor its windows closed for that, nor given to another
+  instance; only a connection that is really closed does that.
+- **Every synth's name, not "Modular"** (2026-10-06). On connecting, only the synth being edited was
+  asked for its settings (where its name is) and its bank list; its ports were saved and its slots'
+  edits re-enabled only for it too. All of that is done for every synth now, so a real G1 called
+  "animatek" beside G1-Emu reads "animatek".
 
 ## 0.20.0 — 2026-10-05
 
