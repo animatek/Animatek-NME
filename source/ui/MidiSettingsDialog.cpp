@@ -145,8 +145,12 @@ MidiSettingsDialog::Port MidiSettingsDialog::currentPort (int i) const
     p.enabled = g.enabled.getToggleState();
     const int inIdx  = g.inCombo.getSelectedItemIndex();
     const int outIdx = g.outCombo.getSelectedItemIndex();
-    if (inIdx  >= 0) p.inputId  = inputIds[inIdx];
-    if (outIdx >= 0) p.outputId = outputIds[outIdx];
+    // A port whose device is not in the lists (an emulator that has gone) shows nothing selected.
+    // That is not the user choosing nothing: it keeps the device it had, or OK would hand the
+    // editor a change nobody made, and the port was taken as switched off by hand.
+    const auto& had = applied[static_cast<size_t> (i)];
+    p.inputId  = inIdx  >= 0 ? inputIds[inIdx]   : had.inputId;
+    p.outputId = outIdx >= 0 ? outputIds[outIdx] : had.outputId;
     return p;
 }
 

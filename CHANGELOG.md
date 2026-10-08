@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Every port looked taken after a few emulators came and went** (2026-10-08). A port whose
+  emulator had gone keeps that emulator's direct link as its device; MIDI Setup could not show it,
+  left the port's lists empty, and took that as a change: OK or Apply saved the port as switched
+  off by hand, and the editor never gave it to an emulator again. One by one the ports went, until
+  new emulators found none free while most were empty. MIDI Setup now keeps a device it cannot
+  show, a port is only made the user's when the user changes it (Apply retrying an enabled port is
+  not a change), and on the first start the ports saved that way are handed back to the emulators
+  (`emulatorPortsRepaired`). Seen in Javier's settings: Ports 3 to 8 switched off, none by him.
+- **A new emulator kept "Modular" until it was clicked** (2026-10-08). The name is given once the
+  synth's settings and a patch have both arrived; when that moment was missed the editor did not
+  try again until something else brought a patch. It now tries again on every look for emulators
+  (every 3 s) while one is still waiting for its name. Not tried on the window yet.
+
 ## 0.21.0 — 2026-10-08
 
 ### Added

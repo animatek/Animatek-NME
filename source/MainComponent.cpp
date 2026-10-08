@@ -1016,6 +1016,23 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   extrasFlushTimer = std::make_unique<ExtrasTimer>(*this);
   extrasFlushTimer->startTimer(3000);
 
+  // Up to 0.21.0, OK in MIDI Setup saved every port whose emulator had gone as switched off by
+  // hand (its device was no longer in the lists, which read as a change), and the editor never
+  // gave those ports to an emulator again: after a few emulators came and went, all of them
+  // looked taken. Once, such a port is handed back to the editor, as switched off by it.
+  if (auto* st = appProperties.getUserSettings();
+      st != nullptr && !st->getBoolValue("emulatorPortsRepaired", false)) {
+    for (int synth = 0; synth < kMaxSynths; ++synth)
+      if (DirectLink::isDeviceId(st->getValue(portKey("midiInputDevice", synth)))
+          && !st->getBoolValue(portKey("midiEnabled", synth), synth == 0)
+          && !st->getBoolValue(portKey("midiAutoOff", synth), false)) {
+        st->setValue(portKey("midiAutoOff", synth), true);
+        std::cout << "[LINK] Port " << (synth + 1) << " handed back to the emulators" << std::endl;
+      }
+    st->setValue("emulatorPortsRepaired", true);
+    st->saveIfNeeded();
+  }
+
   // G1-Emu found on its own (#83): every few seconds, look for emulator instances on their direct
   // link and give each free one a free port. The first look waits for the saved ports to be tried.
   struct EmulatorScanTimer : public juce::Timer {
@@ -3001,10 +3018,19 @@ void MainComponent::showMidiSettingsDialog() {
       this, ports,
       [this](int port, const MidiSettingsDialog::Port& wanted) {
         if (auto* st = appProperties.getUserSettings()) {
+          const auto& had = synthState[static_cast<size_t>(port)];
+          const bool wasEnabled = synthHub.synth(port).isConnected()
+                               || st->getBoolValue(portKey("midiEnabled", port), port == 0);
+          const bool userChange = wanted.enabled != wasEnabled
+                               || wanted.inputId != had.lastInputId || wanted.outputId != had.lastOutputId;
           st->setValue(portKey("midiEnabled", port), wanted.enabled);
-          // What is set here by hand is the user's: not switched on or off by the editor again.
-          st->setValue(portKey("midiAutoOff", port), false);
-          st->setValue(portKey("midiAutoPort", port), false);
+          // What is changed here by hand is the user's: not switched on or off by the editor
+          // again. Apply on a port nobody touched (it only retries an enabled port) leaves a
+          // port the editor runs for an emulator as it is.
+          if (userChange) {
+            st->setValue(portKey("midiAutoOff", port), false);
+            st->setValue(portKey("midiAutoPort", port), false);
+          }
           st->saveIfNeeded();
         }
         if (!wanted.enabled) {
@@ -4390,6 +4416,15 @@ bool MainComponent::isPortFreeForEmulator(int synth) const {
 }
 
 void MainComponent::connectFoundEmulators(const std::vector<DirectLink::Instance>& found) {
+  // An emulator still waiting for its name gets another try on every look: the name is given when
+  // the synth's settings and a patch have both arrived, and a moment missed (the patch first, a
+  // slow emulator) left it as "Modular" until it was clicked.
+  for (int synth = 0; synth < kMaxSynths; ++synth) {
+    const auto& st = synthState[static_cast<size_t>(synth)];
+    if (st.settingsKnown && !st.autoNameTried && synthHub.synth(synth).isConnected())
+      giveDuplicateEmulatorAName(synth);
+  }
+
   int waiting = 0;
   struct SetWaiting {
     MainComponent& mc; int& n;
