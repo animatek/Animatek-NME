@@ -71,6 +71,10 @@ every box must pass before tagging.
 ## 5. Package & publish
 
 - [ ] CI artifacts downloaded and renamed `AnimatekNME-x.y.z-<platform>`.
+- [ ] Linux AppImage built locally (CI only makes the ZIPs), from the release commit:
+      `VERSION=x.y.z bash packaging/build-appimage.sh`, then copied with its `.sha256` into
+      `#Ejecutables/<version>/` next to the ZIPs. 0.20.0 shipped without one because this step
+      was not written down.
 - [ ] Launch each packaged artifact and confirm its reported version is the intended release.
 - [ ] `git tag vx.y.z && git push --tags`.
 - [ ] Release notes: paste the CHANGELOG section, note known limitations
