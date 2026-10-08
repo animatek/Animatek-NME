@@ -4,6 +4,14 @@
 
 ### Added
 
+- **Hardware look follows the theme editor** (2026-10-08, PR #93; Grant Atkinson (teezdalien)).
+  The knurled knobs take their metal from the theme's Knob colour (black is that colour taken down
+  to near black), and their pointer turns light or dark to stay readable, using the theme's pointer
+  colour when it contrasts enough. Hardware jacks get a thin rim in the Jack outline colour, and the
+  jack rings and cords now follow the theme editor's "... cable and jack" swatches together, so a
+  cable still matches its jacks. Lit step and activity LEDs have their own colour, "Step LED on
+  (hardware look)", saved as `ledStep` in theme files (green by default). Checked: builds and the
+  tests pass; the aluminium knob on themes with a coloured knob is not looked at yet.
 - **G1-Emu without a MIDI port: the direct link, found and connected on its own** (2026-10-06, #83,
   G1-Emu #8). G1-Emu listens on a local socket (127.0.0.1, from port 47310, one per instance) and
   NME talks to it there with the same SysEx as the PC Port, with no virtual MIDI port, driver or
@@ -22,7 +30,7 @@
   synth its own settings back with the new name (up to 16 plain characters), as Synth Settings
   does, so the name is the synth's and not only the editor's: each G1-Emu instance keeps its own
   (flash.bin for the standalone, the DAW project for the plugin), which is what tells them apart.
-  Not tried on the window yet.
+  Tried by Javier on the window (2026-10-08).
 - **A new G1-Emu instance gets a name of its own** (2026-10-06). A new plugin instance starts as a
   copy of the standalone, name included. When an emulator this editor connected by itself still has
   its factory name ("Modular") or answers to a name another connected synth already has, the editor
