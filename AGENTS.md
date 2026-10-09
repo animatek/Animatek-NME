@@ -82,6 +82,7 @@ exactly what happened until 2026-09-10, when the panel only read the `Animatek.n
 That entry is the summary: what changed, the real verification, the agent, and the commit or the
 path to this repo's changelog. Technical detail stays here and is not duplicated.
 
+- **Write entries with `cambios apuntar "<project>" "<what changed, verification, commit>" -a <agent>`**, not by editing the file: it files them under the date and project without rewriting anything or breaking the symlink (`cambios proyectos` lists the names; if the link is already broken, `cambios reparar`). Never `sed -i`, `>` or a whole-file write on it: that is how the symlink broke three times.
 - The path is a **symlink** to the canonical Obsidian note `00 - Sistema/CHANGELOG - CODE.md`.
   Resolve it and edit the target; never replace it with a separate file or start a second copy.
   If it is unavailable, report the blocker instead of inventing another location.
