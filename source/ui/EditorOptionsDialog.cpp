@@ -80,6 +80,10 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.checkCommunityThemes   = props->getBoolValue ("checkCommunityThemes", true);
     o.communityThemesChecked = props->getValue ("communityThemesChecked", "0").getLargeIntValue();
     o.communityThemesSeen    = props->getValue ("communityThemesSeen");
+    o.checkNewVersion        = props->getBoolValue ("checkNewVersion", true);
+    o.newVersionChecked      = props->getValue ("newVersionChecked", "0").getLargeIntValue();
+    o.latestVersion          = props->getValue ("latestVersion");
+    o.newVersionSeen         = props->getValue ("newVersionSeen");
     o.moduleIconBar  = props->getBoolValue  ("moduleIconBar",  true);
     o.moduleIconBarCategory = props->getValue ("moduleIconBarCategory", "In/Out");
     o.mcpBridgeEnabled = props->getBoolValue("mcpBridgeEnabled", false);
@@ -118,6 +122,10 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("checkCommunityThemes",   checkCommunityThemes);
     props->setValue ("communityThemesChecked", juce::String (communityThemesChecked));
     props->setValue ("communityThemesSeen",    communityThemesSeen);
+    props->setValue ("checkNewVersion",        checkNewVersion);
+    props->setValue ("newVersionChecked",      juce::String (newVersionChecked));
+    props->setValue ("latestVersion",          latestVersion);
+    props->setValue ("newVersionSeen",         newVersionSeen);
     props->setValue ("moduleIconBar",   moduleIconBar);
     props->setValue ("moduleIconBarCategory", moduleIconBarCategory);
     props->setValue ("mcpBridgeEnabled", mcpBridgeEnabled);
@@ -291,6 +299,12 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
                                       "github.com/animatek/nme-themes and marks the new ones in View > Theme. "
                                       "Nothing is sent but the request. Off: only when you choose Check Now.");
     addAndMakeVisible (communityThemesToggle);
+    styleToggle (newVersionToggle);
+    newVersionToggle.setToggleState (options.checkNewVersion, juce::dontSendNotification);
+    newVersionToggle.setTooltip ("On startup, at most once a day, NME reads the release tags of "
+                                 "github.com/animatek/Animatek-NME. When a newer version is out, About "
+                                 "gets a red dot and an item that opens Patreon. It never downloads anything.");
+    addAndMakeVisible (newVersionToggle);
     autoUploadToggle.setToggleState (options.autoUpload,     juce::dontSendNotification);
     askSlotToggle   .setToggleState (options.askSlotOnOpen,  juce::dontSendNotification);
     wireframeToggle .setToggleState (options.wireframe,      juce::dontSendNotification);
@@ -509,6 +523,8 @@ int EditorOptionsDialog::layoutComponents (bool apply)
     place (seqNoteNamesToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH;
     place (communityThemesToggle, pad + 8, y, w - pad * 2 - 8, rowH);
+    y += rowH;
+    place (newVersionToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH + 4;
     place (sendRateLabel,    pad + 8,  y, 80, rowH);
     place (sendRateSelector, pad + 92, y, w - pad * 2 - 100, rowH);
@@ -617,6 +633,7 @@ void EditorOptionsDialog::apply()
     options.synthDisplayCaptions = synthCaptionToggle.getToggleState();
     options.seqNoteNames   = seqNoteNamesToggle.getToggleState();
     options.checkCommunityThemes = communityThemesToggle.getToggleState();
+    options.checkNewVersion = newVersionToggle.getToggleState();
     options.sendRateIndex  = sendRateSelector.getSelectedId() - 1;
     options.mcpBridgeEnabled = mcpBridgeToggle.getToggleState();
     options.cableOpacity   = static_cast<float> (cableOpacitySlider.getValue()) * 0.01f;

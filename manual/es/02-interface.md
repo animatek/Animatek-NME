@@ -4,9 +4,13 @@
 
 De arriba abajo:
 
-- **Barra de menús**: File, Edit, View, Device y Help. Device tiene las
+- **Barra de menús**: File, Edit, View, Device, Help y About. Device tiene las
   herramientas que hablan con el sintetizador (transferencia de bancos,
-  controller snapshot); View tiene las ventanas flotantes.
+  controller snapshot); View tiene las ventanas flotantes. Cuando sale una
+  versión nueva de NME, **About** lleva un punto rojo y su primera opción,
+  *Version X.Y.Z is out*, abre Patreon, que es donde están las descargas. NME
+  lo mira como mucho una vez al día al arrancar y nunca descarga nada por su
+  cuenta; en Editor Options se puede desactivar.
 - **Cabecera**: el nombre del patch actual (clic para renombrar), el contador
   **Voices** con sus flechas, los medidores **Load**, los cuatro **knobs de
   morph** y los **botones de variación** (8 por slot).

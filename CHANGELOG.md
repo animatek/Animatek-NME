@@ -4,6 +4,18 @@
 
 ### Added
 
+- **NME says when a new version is out** (2026-10-13, #97). On startup, at most once a day,
+  it reads the release tags of this repository from GitHub's tag list (`vX.Y.Z` only: a tag is a
+  release, a push is not). When one is newer than the running build, **About** gets a red dot and
+  a first item "Version X.Y.Z is out: get it on Patreon" that opens the Patreon collection; the
+  status bar says so once. Choosing the item clears the dot; the item stays until that version is
+  installed. Not an updater: the builds are behind Patreon, so NME never downloads anything.
+  Silent when offline or rate-limited. Editor Options: "Tell me when a new version of NME is
+  out", on by default; off also hides the last answer. New `VersionCheck` (`source/ui/`), tested
+  in `test_version_check.cpp` (plain tags only, numeric compare so 0.10 is after 0.9, the highest
+  tag whatever GitHub's order, error answers ignored). Also fixed on the way: OK in Editor Options
+  no longer puts back what the background checks wrote while the dialog was open (the themes
+  check's date and seen list included).
 - **Community themes from animatek/nme-themes** (2026-10-13, #91). View > Theme > **Community
   Themes...** opens a window listing the repository's themes (name, author, description), with a
   New badge on the ones not seen before and Update on the ones whose file changed, and an

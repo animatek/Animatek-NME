@@ -40,12 +40,14 @@ target_sources(nme_tests PRIVATE
     test_pch_legacy210.cpp
     test_theme_file.cpp
     test_community_themes.cpp
+    test_version_check.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
     ${CMAKE_SOURCE_DIR}/source/model/ThemeData.cpp
     ${CMAKE_SOURCE_DIR}/source/ui/ThemeFile.cpp
     ${CMAKE_SOURCE_DIR}/source/ui/CommunityThemes.cpp
+    ${CMAKE_SOURCE_DIR}/source/ui/VersionCheck.cpp
     ${CMAKE_SOURCE_DIR}/source/ui/ThemeRegistry.cpp
     ${CMAKE_SOURCE_DIR}/source/ui/ColorScheme.cpp
     ${CMAKE_SOURCE_DIR}/source/ui/AppTheme.cpp

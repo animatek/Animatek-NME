@@ -59,6 +59,12 @@ struct EditorOptions
     bool        checkCommunityThemes = true;
     juce::int64 communityThemesChecked = 0;   // ms since 1970 of the last look that answered
     juce::String communityThemesSeen;         // "file:sha256" per line, the ones the user has seen
+    // New version notice (#97): the latest release tag read from GitHub, kept so the
+    // menu can say so before the network answers, and the one the user already opened.
+    bool        checkNewVersion = true;
+    juce::int64 newVersionChecked = 0;        // ms since 1970 of the last look that answered
+    juce::String latestVersion;               // "X.Y.Z", empty until a look answered
+    juce::String newVersionSeen;              // the latestVersion whose menu item was chosen
     bool        moduleIconBar  = true;  // the module icon bar under the header (issue #17)
     juce::String moduleIconBarCategory { "In/Out" };  // tab it was left on
     bool        mcpBridgeEnabled = false; // embedded MCP control socket (source/mcp/), if built in; opt-in so no localhost port opens unless asked
@@ -171,6 +177,7 @@ private:
     juce::ToggleButton restoreWindowsToggle { "Reopen Every Slot Window of the Last Session  (not only the synths connected)" };
     juce::ToggleButton synthCaptionToggle { "Show the editor on the synth display  (borrows the patch name while a dialog is open)" };
     juce::ToggleButton communityThemesToggle { "Look for new community themes once a day  (animatek/nme-themes on GitHub)" };
+    juce::ToggleButton newVersionToggle { "Tell me when a new version of NME is out  (checks GitHub once a day)" };
     juce::ToggleButton seqNoteNamesToggle { "Read sequencer steps as note names  (NoteSeqB in pitches, NoteSeqA in intervals)" };
     juce::Label    sendRateLabel     { {}, "Send speed" };
     juce::ComboBox sendRateSelector;

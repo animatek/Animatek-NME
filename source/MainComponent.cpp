@@ -15,6 +15,7 @@
 #include "ui/ThemeRegistry.h"
 #include "ui/ThemeFile.h"
 #include "ui/AppLookAndFeel.h"
+#include "ui/VersionCheck.h"
 #include "model/Mutator.h"
 #include "model/MutationCategories.h"
 #include "format/ValueFormatters.h"
@@ -1071,6 +1072,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     if (editorOptions.checkCommunityThemes
         && juce::Time::currentTimeMillis() - editorOptions.communityThemesChecked > dayMs)
       juce::Timer::callAfterDelay(4000, [safeThis]() { if (safeThis) safeThis->checkCommunityThemes(false); });
+    // New version notice (#97), on the same once-a-day footing.
+    if (editorOptions.checkNewVersion
+        && juce::Time::currentTimeMillis() - editorOptions.newVersionChecked > dayMs)
+      juce::Timer::callAfterDelay(5000, [safeThis]() { if (safeThis) safeThis->checkNewVersion(); });
   }
 
 #if NME_MCP_BRIDGE
@@ -1345,7 +1350,9 @@ juce::StringArray MainComponent::getMenuBarNames() {
   // A dot on View while there are community themes the user has not seen (#91), like
   // VCV Rack's library. Menus are picked by index, so the changed name is harmless.
   const juce::String view = communityNewCount() > 0 ? "View" + AppLookAndFeel::newMarker() : "View";
-  return {"File", "Edit", view, "Device", "Help", "About"};
+  // And on About while a newer version is out that the user has not looked at (#97).
+  const juce::String about = newVersionUnseen() ? "About" + AppLookAndFeel::newMarker() : "About";
+  return {"File", "Edit", view, "Device", "Help", about};
 }
 
 #if JUCE_MAC
@@ -1597,6 +1604,14 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
   }
   else if (menuIndex == 5) // About
   {
+    if (newVersionOut()) {
+      const juce::String text = "Version " + editorOptions.latestVersion + " is out: get it on Patreon";
+      if (newVersionUnseen())
+        menu.addItem(55, text, true, false, AppLookAndFeel::newDot());
+      else
+        menu.addItem(55, text);
+      menu.addSeparator();
+    }
     menu.addItem(54, "About Animatek NME...", true);
     menu.addSeparator();
     menu.addItem(53, "Animatek NME Website", true);
@@ -1768,7 +1783,13 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     openURL("https://animatek.net/animatek-nme-eng/");
     break;
   case 50:  // Patreon
-    openURL("https://www.patreon.com/collection/2038913");
+    openURL(VersionCheck::kPatreonUrl);
+    break;
+  case 55:  // A new version is out (#97): the dot goes, the item stays until it is installed
+    openURL(VersionCheck::kPatreonUrl);
+    editorOptions.newVersionSeen = editorOptions.latestVersion;
+    editorOptions.save(appProperties.getUserSettings());
+    menuItemsChanged();
     break;
   case 51:  // GitHub
     openURL("https://github.com/animatek/Animatek-NME/");
@@ -3125,6 +3146,12 @@ void MainComponent::showEditorOptionsDialog() {
 void MainComponent::applyEditorOptions(const EditorOptions& opts) {
   const auto before = editorOptions;
   editorOptions = opts;
+  // What the background checks write is not the dialog's: its copy is from when it opened.
+  editorOptions.communityThemesChecked = before.communityThemesChecked;
+  editorOptions.communityThemesSeen    = before.communityThemesSeen;
+  editorOptions.newVersionChecked      = before.newVersionChecked;
+  editorOptions.latestVersion          = before.latestVersion;
+  editorOptions.newVersionSeen         = before.newVersionSeen;
   // A theme picked in the dialog brings its render style, unless the dialog's own
   // render options were changed too: then those are what the user asked for.
   if (opts.uiThemeIndex != before.uiThemeIndex && opts.renderStyle() == before.renderStyle())
@@ -3365,6 +3392,42 @@ void MainComponent::checkCommunityThemes(bool userAsked) {
           std::cout << "[THEMES] community check failed: " << error << std::endl;
       }
       self.refreshCommunityThemesWindow();
+    });
+  });
+}
+
+bool MainComponent::newVersionOut() const {
+  // Switched off in Editor Options, the last answer is not shown either.
+  return editorOptions.checkNewVersion
+      && VersionCheck::isNewer(editorOptions.latestVersion, JUCE_APPLICATION_VERSION_STRING);
+}
+
+bool MainComponent::newVersionUnseen() const {
+  return newVersionOut() && editorOptions.newVersionSeen != editorOptions.latestVersion;
+}
+
+void MainComponent::checkNewVersion() {
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  juce::Thread::launch([safeThis] {
+    const auto data = CommunityThemes::fetch(VersionCheck::kTagsUrl, VersionCheck::kMaxTagsBytes);
+    juce::MessageManager::callAsync([safeThis, data] {
+      if (safeThis == nullptr)
+        return;
+      auto& self = *safeThis;
+      // Offline, or GitHub said no (rate limit): quietly try again tomorrow's start.
+      const auto latest = data ? VersionCheck::latestRelease(data->toString()) : juce::String();
+      if (latest.isEmpty()) {
+        std::cout << "[VERSION] no answer from GitHub's tag list" << std::endl;
+        return;
+      }
+      const bool wasUnseen = self.newVersionUnseen();
+      self.editorOptions.latestVersion = latest;
+      self.editorOptions.newVersionChecked = juce::Time::currentTimeMillis();
+      self.editorOptions.save(self.appProperties.getUserSettings());
+      if (self.newVersionUnseen() && !wasUnseen && self.mainLayout != nullptr)
+        self.mainLayout->getStatusBar().showMessage(
+            "Animatek NME " + latest + " is out: About > Version " + latest + " to get it", 8000);
+      self.menuItemsChanged();
     });
   });
 }

@@ -78,11 +78,13 @@ every box must pass before tagging.
       `#Ejecutables/<version>/` next to the ZIPs. 0.20.0 shipped without one because this step
       was not written down.
 - [ ] Launch each packaged artifact and confirm its reported version is the intended release.
-- [ ] `git tag vx.y.z && git push --tags`.
 - [ ] Release notes: paste the CHANGELOG section, note known limitations
       (e.g. stuck MIDI-IN notes are cleared with the synth's front-panel panic).
 - [ ] Review `RELEASE_NOTES_x.y.z.md` against the final build and use it for the distribution post.
 - [ ] Patreon post with binaries/links.
+- [ ] `git tag vx.y.z && git push --tags`, **after** the Patreon post is up: from 0.22 on, a
+      pushed `vX.Y.Z` tag is what tells every running NME a new version is out (#97), and
+      its menu item sends people to Patreon. Tag first and they find nothing there.
 
 ## 6. Post-release
 

@@ -105,6 +105,7 @@ set(NME_SHARED_SOURCES
     source/ui/ThemeEditorWindow.cpp
     source/ui/CommunityThemes.cpp
     source/ui/CommunityThemesWindow.cpp
+    source/ui/VersionCheck.cpp
     source/ui/InspectorPanel.cpp
     source/ui/StatusBar.cpp
     source/ui/PatchHeaderBar.cpp

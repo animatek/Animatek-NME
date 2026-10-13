@@ -4,9 +4,12 @@
 
 From top to bottom:
 
-- **Menu bar**: File, Edit, View, Device and Help menus. Device holds the
+- **Menu bar**: File, Edit, View, Device, Help and About menus. Device holds the
   synth-facing tools (bank transfers, controller snapshot); View holds the
-  floating windows.
+  floating windows. When a new version of NME is out, **About** gets a red dot
+  and its first item, *Version X.Y.Z is out*, opens Patreon, where the builds
+  are. NME looks once a day at most when it starts, and never downloads
+  anything itself; Editor Options can turn the look off.
 - **Header bar**: the current patch name (click to rename), the **Voices**
   counter with up/down arrows, the **Load** meters, the four **morph group
   knobs**, and the **snapshot/variation buttons** (8 per slot).

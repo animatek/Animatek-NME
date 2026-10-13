@@ -219,6 +219,11 @@ private:
     void showCommunityThemes();
     void refreshCommunityThemesWindow();
     void installCommunityTheme(const CommunityThemes::Entry& entry);
+    // New version notice (#97): a newer release tag than this build, and whether the
+    // user has not opened its menu item yet (that is what the red dot on About means).
+    void checkNewVersion();
+    bool newVersionOut() const;
+    bool newVersionUnseen() const;
     void applyThemeLive(const EditorTheme& theme);   // theme editor preview, not in the registry
     void showThemeEditor();
     void toggleWireframe();
