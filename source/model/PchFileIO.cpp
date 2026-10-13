@@ -46,6 +46,59 @@ int PchFileIO::splitAreaRows(const juce::StringArray& lines, juce::StringArray& 
     return area;
 }
 
+// Parameters a 2.10 file stores differently from 3.0, found by converting 800
+// patches that the archive holds in both formats and comparing each value with
+// its 3.0 twin (G1-Emu issue #65). Everything else matches verbatim.
+//
+// InvertedMute: the slave oscillators' and a few others' mute is 1 where 3.0
+// has 0 (441 of 442 OscSlvFM, all 195 OscSlvE), so a verbatim copy loaded
+// these oscillators muted and most factory patches were silent.
+//
+// OneBased: selectors stored as value + 1, capped at the top value, so the
+// top value is ambiguous and is kept (it matches 1562 of the twins' 1883
+// values, against 1439 for always subtracting one).
+enum class LegacyFix { InvertedMute, OneBased };
+
+static const struct { int type; int param; LegacyFix fix; } kLegacyParamFixes[] = {
+    {   9, 5,  LegacyFix::InvertedMute },   // OscC
+    {  10, 4,  LegacyFix::InvertedMute },   // OscSlvB
+    {  11, 3,  LegacyFix::InvertedMute },   // OscSlvC
+    {  12, 3,  LegacyFix::InvertedMute },   // OscSlvD
+    {  13, 3,  LegacyFix::InvertedMute },   // OscSlvE
+    {  58, 15, LegacyFix::InvertedMute },   // DrumSynth
+    {  85, 4,  LegacyFix::InvertedMute },   // OscSlvFM
+    {  95, 6,  LegacyFix::InvertedMute },   // PercOsc
+    {  96, 3,  LegacyFix::InvertedMute },   // FormantOsc
+    { 106, 18, LegacyFix::InvertedMute },   // OscSineBank, osc 1
+    { 106, 19, LegacyFix::InvertedMute },   // and 2-6, packed in BP0
+    { 106, 20, LegacyFix::InvertedMute },
+    { 106, 21, LegacyFix::InvertedMute },
+    { 106, 22, LegacyFix::InvertedMute },
+    { 106, 23, LegacyFix::InvertedMute },
+    {   7, 4,  LegacyFix::OneBased },       // OscA waveform
+    {   8, 3,  LegacyFix::OneBased },       // OscB waveform
+    {  14, 2,  LegacyFix::OneBased },       // OscSlvA waveform
+    {  24, 2,  LegacyFix::OneBased },       // LFOA waveform
+    {  26, 2,  LegacyFix::OneBased },       // LFOC waveform
+    {  51, 0,  LegacyFix::OneBased },       // FilterE type
+    {  79, 0,  LegacyFix::OneBased },       // 4-1Switch input
+    {  80, 2,  LegacyFix::OneBased },       // LFOSlvA waveform
+    {  92, 5,  LegacyFix::OneBased },       // FilterF slope
+};
+
+int PchFileIO::legacyParamValue(int moduleType, int paramIndex, int value, int maxValue)
+{
+    for (const auto& f : kLegacyParamFixes)
+    {
+        if (f.type != moduleType || f.param != paramIndex)
+            continue;
+        if (f.fix == LegacyFix::InvertedMute)
+            return value == 0 ? 1 : 0;
+        return value >= maxValue ? maxValue : juce::jmax(0, value - 1);
+    }
+    return value;
+}
+
 struct LegacyCableEntry
 {
     int sourceModule = 0;
@@ -382,16 +435,34 @@ std::unique_ptr<Patch> PchFileIO::readLegacyFile(const juce::StringArray& allLin
                 const auto name = getLegacyValue(sectionLines, "Name");
                 if (name.isNotEmpty()) module->setTitle(name);
 
+                // The on/off switches after the last P (a sequencer's steps,
+                // its loop, the sine bank's mutes) come packed in BP0, the
+                // first in its lowest bit; reading only the P keys left every
+                // 2.10 sequence empty.
+                int lastP = -1;
+                for (const auto& param : module->getParameters())
+                    if (param.getDescriptor()->paramClass == "parameter"
+                        && getLegacyValue(sectionLines, "P" + juce::String(param.getDescriptor()->index)).isNotEmpty())
+                        lastP = juce::jmax(lastP, param.getDescriptor()->index);
+                const auto packed = getLegacyValue(sectionLines, "BP0");
+                const auto packedBits = (juce::uint32) packed.getLargeIntValue();
+
                 for (const auto& param : module->getParameters())
                 {
                     if (param.getDescriptor()->paramClass != "parameter")
                         continue;
 
-                    const auto value = getLegacyValue(sectionLines, "P" + juce::String(param.getDescriptor()->index));
+                    const int index = param.getDescriptor()->index;
+                    auto value = getLegacyValue(sectionLines, "P" + juce::String(index));
+                    const int bit = index - lastP - 1;
+                    if (value.isEmpty() && packed.isNotEmpty() && bit >= 0 && bit < 32)
+                        value = juce::String((int) ((packedBits >> bit) & 1));
                     if (value.isNotEmpty())
-                        if (auto* mutableParam = module->getParameter(param.getDescriptor()->index))
+                        if (auto* mutableParam = module->getParameter(index))
                         {
-                            int paramValue = value.getIntValue();
+                            int paramValue = legacyParamValue(type, index,
+                                                              value.getIntValue(),
+                                                              param.getDescriptor()->maxValue);
                             // 2.10 stores output destinations 1-based (1 = "1/2");
                             // 3.0 is 0-based, so a verbatim copy lands every
                             // factory patch on outputs 3/4 (issue #14 follow-up).

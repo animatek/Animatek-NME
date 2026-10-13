@@ -4,6 +4,23 @@
 
 ### Fixed
 
+- **Old 2.10 patches loaded silent or wrong, most of Clavia's factory patches among them**
+  (2026-10-13, G1-Emu issue #65). Three things a 2.10 file stores differently from 3.0 were copied
+  verbatim:
+  - the mute of the slave oscillators, OscC, PercOsc, FormantOsc, DrumSynth and the sine bank is
+    inverted, so those oscillators arrived muted (FM Dream 2, Poing, Big Syn...);
+  - nine selectors (OscA/OscB/OscSlvA/LFO waveforms, FilterE type, FilterF slope, the 4-1 switch)
+    count from 1, capped at their top value;
+  - the on/off switches after the last `P` come packed in `BP0`, which was ignored, so every
+    sequencer's steps and loop came out empty (In The Air).
+
+  Found by converting 800 patches the community archive holds in both formats and comparing each
+  value with its 3.0 twin: the values that differ drop from 3,486 to 1,180 of 75,772. What is left
+  is mostly a selector at its top value, which 2.10 cannot tell apart from the one below and is kept
+  as the likelier, and later edits. Checked: `nme_tests` passes, with a new test
+  (`test_pch_legacy210.cpp`) that fails without the fix; in the emulated G1, 13 of 16 silent 2.10
+  factory patches out of 40 now sound. The other three are sequencer patches, still to look into.
+
 - **Every port looked taken after a few emulators came and went** (2026-10-08). A port whose
   emulator had gone keeps that emulator's direct link as its device; MIDI Setup could not show it,
   left the port's lists empty, and took that as a change: OK or Apply saved the port as switched

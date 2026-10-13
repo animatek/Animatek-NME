@@ -37,6 +37,7 @@ target_sources(nme_tests PRIVATE
     test_slot_set.cpp
     test_pch_area_rows.cpp
     test_pch_macbinary.cpp
+    test_pch_legacy210.cpp
     test_theme_file.cpp
 
     # The units under test, pulled straight from the app tree

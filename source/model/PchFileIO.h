@@ -50,6 +50,7 @@ private:
     void parseComments(const juce::StringArray& lines, Patch& patch);
     void parseNameDump(const juce::StringArray& lines, Patch& patch);
     std::unique_ptr<Patch> readLegacyFile(const juce::StringArray& lines, const juce::File& file);
+    static int legacyParamValue(int moduleType, int paramIndex, int value, int maxValue);
     static void normalizeLegacyModulePositions(ModuleContainer& container);
     static void connectLegacyCable(ModuleContainer& container, int sourceModule, int sourceConn,
                                    bool sourceIsOutput, int targetModule, int targetInput);
