@@ -89,3 +89,4 @@ mcp-bridge/*.egg-info/
 
 # MCP client registration - holds absolute paths to this checkout
 opencode.json
+mcp-bridge/.venv-win/
