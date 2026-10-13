@@ -125,8 +125,8 @@ The right-side browser (`Ctrl+B`) lists the synth's 9 internal banks. You can:
 - **store** the current patch to a bank position,
 - **copy, move and delete** patches inside synth memory.
 
-Legacy Nord Modular 2.10 files are tagged **PCH2** in the disk browser and load
-transparently.
+Legacy Nord Modular 2.10 files are tagged **PCH2** in the disk browser and are
+converted as they load (see [Files & Formats](06-files-and-formats.md)).
 
 ## Storing a patch in the synth
 

@@ -111,7 +111,7 @@ sintetizador. Desde ahí puedes:
 - **copiar, mover y borrar** patches dentro de la memoria del sintetizador.
 
 Los archivos Nord Modular 2.10 antiguos se marcan como **PCH2** en el navegador
-de disco y se cargan de forma transparente.
+de disco y se convierten al cargarlos (ver [Archivos y formatos](06-files-and-formats.md)).
 
 ## Sets de slots
 

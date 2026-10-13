@@ -6,11 +6,18 @@ Los patches son archivos `.pch` en el **formato de texto 3.0** estándar de Nord
 Modular, compatibles con el editor original de Clavia y con Nomad/nmedit. Todo
 lo que guardes en Animatek NME abre en los originales y viceversa.
 
-- **Patches 2.10 antiguos** (el formato viejo `[Module N]`) se cargan de forma
-  transparente, incluidos los cables encadenados y el enrutado correcto de
-  salidas 1/2. Se marcan como **PCH2** en el navegador de presets, y el filtro
-  **PCH2** del navegador los oculta cuando solo quieres los patches actuales. Al
-  guardar se reescriben en formato 3.0.
+- **Patches 2.10 antiguos** (el formato viejo `[Module N]`, del editor 2.x de
+  Clavia; muchos patches de fábrica son 2.10) se convierten como los convierte
+  el editor 3.03 de Clavia: los selectores cuyo 0 era "apagado" pasan a
+  selector más mute o bypass, el encendido invertido de los osciladores pasa al
+  mute de 3.0, se desempaquetan los pasos de los secuenciadores, y se conservan
+  el antiguo módulo de morph, las asignaciones de morph, los mandos, los
+  controladores MIDI y las notas. Se marcan como **PCH2** en el navegador de
+  presets, y el filtro **PCH2** del navegador los oculta cuando solo quieres los
+  patches actuales. Al guardar se reescriben en formato 3.0. Aun así, un patch
+  convertido puede sonar distinto de como lo oía su autor: si uno no suena,
+  mira sus salidas, sus entradas de audio y si espera al reloj MIDI o a que
+  gires un mando (sus notas suelen decirlo).
 - Las **notas de patch** se guardan en una sección `[Notes]`, una extensión de
   Nomad/nmedit que los editores originales ignoran sin causar problemas.
 

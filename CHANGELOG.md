@@ -4,22 +4,30 @@
 
 ### Fixed
 
-- **Old 2.10 patches loaded silent or wrong, most of Clavia's factory patches among them**
-  (2026-10-13, G1-Emu issue #65). Three things a 2.10 file stores differently from 3.0 were copied
-  verbatim:
-  - the mute of the slave oscillators, OscC, PercOsc, FormantOsc, DrumSynth and the sine bank is
-    inverted, so those oscillators arrived muted (FM Dream 2, Poing, Big Syn...);
-  - nine selectors (OscA/OscB/OscSlvA/LFO waveforms, FilterE type, FilterF slope, the 4-1 switch)
-    count from 1, capped at their top value;
-  - the on/off switches after the last `P` come packed in `BP0`, which was ignored, so every
-    sequencer's steps and loop came out empty (In The Air).
+- **Old 2.10 patches are converted as Clavia's editor converts them; most factory patches loaded
+  silent** (2026-10-13, G1-Emu issue #65). A 2.10 file was read with its values copied verbatim
+  and its morph and assignment sections left out. The rules now come from Clavia's editor 3.03
+  itself (`NME303.exe`, read for its behaviour in `G1originaleditor/notes/14-conversion-pch-2.10.md`):
+  - in 13 modules (outputs, OscA/OscB/OscSlvA, LFOs, FilterE/FilterF, the 1-4 and 4-1 switches,
+    SpectralOsc) a selector's 0 meant "off": 3.0 takes it one lower and adds the mute or bypass
+    2.10 did not have. Outputs, waveforms and filter types were one step off, and an "off" one
+    played;
+  - in 10 modules (the slave oscillators, OscC, PercOsc, FormantOsc, DrumSynth, the sine bank's
+    six) the switch meant "on", the inverse of 3.0's mute: they arrived muted (FM Dream 2, Poing,
+    Big Syn...);
+  - the switches after the last `P` come packed in `BP0`, which was ignored: every sequencer's
+    steps came out empty (In The Air);
+  - the morph knobs were a module (type 6), which was dropped: its four values are now the morph
+    groups', and `[Morphs]`, `[Knobs]` and `[Controllers]` (with velocity and note on a morph as
+    controllers 127 and 126) become the morph, knob and MIDI CC maps; `[Notes]` the patch notes.
 
-  Found by converting 800 patches the community archive holds in both formats and comparing each
-  value with its 3.0 twin: the values that differ drop from 3,486 to 1,180 of 75,772. What is left
-  is mostly a selector at its top value, which 2.10 cannot tell apart from the one below and is kept
-  as the likelier, and later edits. Checked: `nme_tests` passes, with a new test
-  (`test_pch_legacy210.cpp`) that fails without the fix; in the emulated G1, 13 of 16 silent 2.10
-  factory patches out of 40 now sound. The other three are sequencer patches, still to look into.
+  Checked: `nme_tests` passes, with `test_pch_legacy210.cpp`, which fails without it. Over 800
+  patches the community archive holds in both formats, the parameter values that differ from the
+  3.0 copy drop from 3,486 to 1,305 of 75,772, and what is left is the copies' authors' own edits
+  (both formats show a waveform's full range, 0 to 4, so the conversion is not what differs). In the
+  emulated G1, of 40 2.10 factory patches 16 were silent; now all sound but five that are silent by
+  design: two need the MIDI clock running, one starts when knob 4 is turned (its notes say so), and
+  two process the audio inputs.
 
 - **Every port looked taken after a few emulators came and went** (2026-10-08). A port whose
   emulator had gone keeps that emulator's direct link as its device; MIDI Setup could not show it,
