@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.22.0 — 2026-10-13
+
 ### Added
 
 - **NME says when a new version is out** (2026-10-13, #97). On startup, at most once a day,
@@ -13,7 +15,7 @@
   Silent when offline or rate-limited. Editor Options: "Tell me when a new version of NME is
   out", on by default; off also hides the last answer. New `VersionCheck` (`source/ui/`), tested
   in `test_version_check.cpp` (plain tags only, numeric compare so 0.10 is after 0.9, the highest
-  tag whatever GitHub's order, error answers ignored). Also fixed on the way: OK in Editor Options
+  tag whatever GitHub's order, error answers ignored); tried by Javier with a fake 0.99.0 in the settings. Also fixed on the way: OK in Editor Options
   no longer puts back what the background checks wrote while the dialog was open (the themes
   check's date and seen list included).
 - **Community themes from animatek/nme-themes** (2026-10-13, #91). View > Theme > **Community
@@ -25,8 +27,9 @@
   (`tools/build_index.py`, which also checks each theme on pull requests). NME reads it on
   startup at most once a day (Editor Options: "Look for new community themes once a day", on by
   default), caches it in `community-themes.json` next to the settings, shows "(N new)" in the menu,
-  a dot on **View** and on **Theme** (as VCV Rack does for its library) until the window is
-  opened, and says so in the status bar; Check Now reads it at once. Downloads run off the message thread;
+  a red dot on **View** and on **Theme** (as VCV Rack does for its library) until the window is
+  opened (drawn by `AppLookAndFeel`, the app's default LookAndFeel from now on; macOS's native menu
+  bar shows a text bullet instead), and says so in the status bar; Check Now reads it at once. Downloads run off the message thread;
   on Linux through `curl`, since the app is built without libcurl. New `juce_cryptography` link
   for the SHA-256. Manual (en/es). Checked: `nme_tests` passes with `test_community_themes.cpp`
   (index parsing drops file names that could leave the folder; new/seen/changed), the Release
@@ -41,10 +44,6 @@
   (`ThemeRegistry::mergeUserThemes`: same index, same saved choice) instead of appearing beside it
   as "(user)". Checked: `nme_tests` passes with two new cases (official file round trip and state,
   replacement in place).
-- **The community themes dot is red** (2026-10-13, #91). A text bullet took the menu's colour and was
-  easy to miss: the menu bar now draws a red dot after View (`AppLookAndFeel`, the app's default
-  LookAndFeel from now on, only `drawMenuBarItem` changed), and Theme and Community Themes carry a
-  red dot icon. macOS's native menu bar still shows the text bullet.
 - **A theme can set the render style, and themes import and export as single files** (2026-10-13,
   #90). A theme file may carry `"render"` (`wireframe`, `hardwareLook`, `knobStyle`, `flatKnobs`,
   each optional) and, when the theme is chosen (View menu, `Ctrl+T`, Editor Options, the theme
@@ -56,7 +55,8 @@
   built-in's name gets " (imported)", a user theme of the same name replaced only on confirmation)
   and **Export Current Theme...**. Manual (en/es) gets a "Your own themes" section, which 0.20 did
   not have. Checked: `nme_tests` passes with two new cases in `test_theme_file.cpp`; the Release
-  build compiles clean. Not tried on the window yet.
+  build compiles clean. The theme editor and Community Themes tried by Javier on the window
+  (2026-10-13); import and export not tried there.
 - **A Windows installer for the Patreon builds** (2026-10-13, asked by Javier). `build-binaries.yml`
   now also makes `AnimatekNME-x.y.z-windows-setup.exe` (Inno Setup 6, `packaging/windows/AnimatekNME.iss`)
   from the same files as the ZIP, with its SHA-256 and in the same Sigstore attestation, and puts
