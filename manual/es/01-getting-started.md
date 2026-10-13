@@ -21,7 +21,11 @@
 - *Binario suelto*: descomprime y ejecuta `AnimatekNME`. No hay instalación; los
   ajustes se guardan en tu perfil de usuario.
 
-**Windows.** Descomprime y ejecuta `AnimatekNME.exe`. No hace falta instalador.
+**Windows.** Ejecuta el instalador, `AnimatekNME-x.y.z-windows-setup.exe`: instala
+solo para tu usuario (sin permisos de administrador), pone Animatek NME en el menú
+Inicio y sustituye la versión anterior; se desinstala desde Configuración →
+Aplicaciones. No toca tus ajustes ni tus patches. O descomprime el ZIP y ejecuta
+`AnimatekNME.exe`, sin instalar nada.
 
 **macOS.** Descomprime, mueve `AnimatekNME.app` a Aplicaciones y ábrelo. El
 binario es universal (Apple Silicon + Intel). La primera vez puede que tengas

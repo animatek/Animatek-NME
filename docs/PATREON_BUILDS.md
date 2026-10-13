@@ -8,6 +8,9 @@ Each successful platform build produces:
 - `AnimatekNME-x.y.z-<platform>.zip`
 - `AnimatekNME-x.y.z-<platform>.zip.sha256`
 - `AnimatekNME-x.y.z-<platform>.zip.sigstore.json`
+- Windows only: `AnimatekNME-x.y.z-windows-setup.exe` and its `.sha256`, the
+  installer built from the same files as the ZIP (`packaging/windows/AnimatekNME.iss`).
+  The Sigstore bundle covers it too.
 
 The workflow stores these files in an unpublished GitHub Draft Release. Draft
 Releases are visible only to repository collaborators with write access. The

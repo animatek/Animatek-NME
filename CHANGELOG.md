@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Added
+
+- **A Windows installer for the Patreon builds** (2026-10-13, asked by Javier). `build-binaries.yml`
+  now also makes `AnimatekNME-x.y.z-windows-setup.exe` (Inno Setup 6, `packaging/windows/AnimatekNME.iss`)
+  from the same files as the ZIP, with its SHA-256 and in the same Sigstore attestation, and puts
+  it in the private draft. It installs for the current user, in `%LOCALAPPDATA%\Programs`, so no
+  administrator and no UAC prompt; adds a Start menu entry (a desktop one is optional); replaces
+  an earlier version in place, offering to close a running NME; and uninstalls from Settings →
+  Apps. Settings and patches are never touched. The ZIP stays. Manual (en/es), the README in the
+  package, `PATREON_BUILDS.md` and the release checklist say so. Checked here with 0.21.0's files:
+  it compiles, installs silently with no prompt, shows in the Start menu and in Windows' installed
+  apps, and uninstalls leaving nothing behind. The workflow's new step runs on the next build.
+
 ### Fixed
 
 - **Old 2.10 patches are converted as Clavia's editor converts them; most factory patches loaded

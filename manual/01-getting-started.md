@@ -20,7 +20,11 @@
 - *Plain binary*: unzip and run `AnimatekNME`. No installation required; settings
   are stored in your user profile.
 
-**Windows.** Unzip and run `AnimatekNME.exe`. No installer is required.
+**Windows.** Run the installer, `AnimatekNME-x.y.z-windows-setup.exe`: it installs
+for your user only (no administrator needed), adds Animatek NME to the Start menu
+and replaces an earlier version in place; uninstall it from Settings → Apps. Your
+settings and patches are not touched. Or unzip the ZIP and run `AnimatekNME.exe`,
+with no installation at all.
 
 **macOS.** Unzip, move `AnimatekNME.app` to Applications and run it. The build is
 universal (Apple Silicon + Intel). On first launch you may need to allow the app

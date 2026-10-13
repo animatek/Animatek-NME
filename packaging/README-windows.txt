@@ -3,6 +3,14 @@ Animatek NME - Nord Modular Editor G1 (Windows)
 
 64-bit build for Windows 10/11.
 
+INSTALLING
+----------
+Run AnimatekNME-x.y.z-windows-setup.exe: it installs for your user only
+(no administrator), adds Animatek NME to the Start menu, and replaces an
+earlier version in place. Uninstall it from Settings > Apps. Your settings
+and patches are never touched. Or use the ZIP: unzip it anywhere and run
+AnimatekNME.exe, nothing to install.
+
 FIRST LAUNCH
 ------------
 The binary is not code-signed, so Windows SmartScreen may show

@@ -21,7 +21,9 @@ every box must pass before tagging.
       Sigstore files for all three platforms. See `docs/PATREON_BUILDS.md`.
 - [ ] Linux: clean configure+build, Release config, no warnings-as-errors surprises:
       `cmake -B build-rel -DCMAKE_BUILD_TYPE=Release && cmake --build build-rel -j$(nproc)`
-- [ ] Windows build (CI) produces an artifact that launches.
+- [ ] Windows build (CI) produces an artifact that launches, and its installer
+      (`AnimatekNME-x.y.z-windows-setup.exe`) installs over the previous version,
+      launches from the Start menu and uninstalls cleanly.
 - [ ] macOS universal build (CI) contains Intel and Apple Silicon slices, reports
       macOS 10.13 as its Intel deployment target, and launches on a High Sierra
       Intel Mac, a Mojave Intel Mac, and a current macOS version (Gatekeeper note

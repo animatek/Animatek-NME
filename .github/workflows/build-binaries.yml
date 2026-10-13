@@ -327,12 +327,36 @@ jobs:
 
           echo "package=$package" >> "$GITHUB_OUTPUT"
           echo "checksum=$package.sha256" >> "$GITHUB_OUTPUT"
+          subjects="$package"
+
+          # Windows also gets an installer, from the same stage folder as the ZIP
+          # (packaging/windows/AnimatekNME.iss).
+          if [[ "$PLATFORM" == "windows" ]]; then
+            iscc="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+            [[ -x "$iscc" ]] || choco install innosetup -y --no-progress
+            setup="AnimatekNME-$VERSION-windows-setup.exe"
+            MSYS2_ARG_CONV_EXCL="*" "$iscc" "/DAppVersion=$VERSION" \
+              "/DStageDir=$(cygpath -w "$PWD/stage")" "/O$(cygpath -w "$PWD")" \
+              "$(cygpath -w packaging/windows/AnimatekNME.iss)"
+            test -f "$setup"
+            cmake -E sha256sum "$setup" > "$setup.sha256"
+            cmake -E sha256sum "$setup"
+            echo "setup=$setup" >> "$GITHUB_OUTPUT"
+            echo "setup_checksum=$setup.sha256" >> "$GITHUB_OUTPUT"
+            subjects="$subjects"$'\n'"$setup"
+          fi
+
+          {
+            echo "subjects<<EOF"
+            echo "$subjects"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Attest package provenance
         id: attest
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
-          subject-path: ${{ steps.package.outputs.package }}
+          subject-path: ${{ steps.package.outputs.subjects }}
 
       - name: Save Sigstore bundle
         id: bundle
@@ -354,12 +378,16 @@ jobs:
           PACKAGE: ${{ steps.package.outputs.package }}
           CHECKSUM: ${{ steps.package.outputs.checksum }}
           BUNDLE: ${{ steps.bundle.outputs.bundle }}
+          SETUP: ${{ steps.package.outputs.setup }}
+          SETUP_CHECKSUM: ${{ steps.package.outputs.setup_checksum }}
         run: |
           set -euo pipefail
+          files=("$PACKAGE" "$CHECKSUM" "$BUNDLE")
+          if [[ -n "$SETUP" ]]; then
+            files+=("$SETUP" "$SETUP_CHECKSUM")
+          fi
           gh release upload "$RELEASE_TAG" \
-            "$PACKAGE" \
-            "$CHECKSUM" \
-            "$BUNDLE" \
+            "${files[@]}" \
             --clobber \
             --repo "$GITHUB_REPOSITORY"
 
@@ -369,5 +397,9 @@ jobs:
             echo "- \`$PACKAGE\`"
             echo "- \`$CHECKSUM\`"
             echo "- \`$BUNDLE\`"
+            if [[ -n "$SETUP" ]]; then
+              echo "- \`$SETUP\`"
+              echo "- \`$SETUP_CHECKSUM\`"
+            fi
             echo "- Draft: ${{ needs.prepare.outputs.release_url }}"
           } >> "$GITHUB_STEP_SUMMARY"
