@@ -68,10 +68,18 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.hardwareLook   = props->getBoolValue  ("hardwareLook",   false);
     o.hardwareKnobStyle = juce::jlimit (0, 2, props->getIntValue ("hardwareKnobStyle", 2));
     o.flatKnobs      = props->getBoolValue  ("flatKnobs",      false);
+    // "wireframe,hardwareLook,knobStyle,flatKnobs" as 0/1/0-2/0/1; empty when no theme sets one.
+    if (const auto t = juce::StringArray::fromTokens (props->getValue ("renderBeforeTheme"), ",", {});
+        t.size() == 4)
+        o.renderBeforeTheme = RenderStyle { t[0].getIntValue() != 0, t[1].getIntValue() != 0,
+                                            juce::jlimit (0, 2, t[2].getIntValue()), t[3].getIntValue() != 0 };
     o.animateTiling  = props->getBoolValue  ("animateTiling",  true);
     o.restoreAllWindows = props->getBoolValue ("restoreAllWindows", false);
     o.synthDisplayCaptions = props->getBoolValue ("synthDisplayCaptions", false);
     o.seqNoteNames   = props->getBoolValue  ("seqNoteNames",   false);
+    o.checkCommunityThemes   = props->getBoolValue ("checkCommunityThemes", true);
+    o.communityThemesChecked = props->getValue ("communityThemesChecked", "0").getLargeIntValue();
+    o.communityThemesSeen    = props->getValue ("communityThemesSeen");
     o.moduleIconBar  = props->getBoolValue  ("moduleIconBar",  true);
     o.moduleIconBarCategory = props->getValue ("moduleIconBarCategory", "In/Out");
     o.mcpBridgeEnabled = props->getBoolValue("mcpBridgeEnabled", false);
@@ -97,10 +105,19 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("hardwareLook",    hardwareLook);
     props->setValue ("hardwareKnobStyle", hardwareKnobStyle);
     props->setValue ("flatKnobs",       flatKnobs);
+    props->setValue ("renderBeforeTheme",
+                     renderBeforeTheme ? juce::String (int (renderBeforeTheme->wireframe)) + ","
+                                             + juce::String (int (renderBeforeTheme->hardwareLook)) + ","
+                                             + juce::String (renderBeforeTheme->knobStyle) + ","
+                                             + juce::String (int (renderBeforeTheme->flatKnobs))
+                                       : juce::String());
     props->setValue ("animateTiling",   animateTiling);
     props->setValue ("restoreAllWindows", restoreAllWindows);
     props->setValue ("synthDisplayCaptions", synthDisplayCaptions);
     props->setValue ("seqNoteNames",    seqNoteNames);
+    props->setValue ("checkCommunityThemes",   checkCommunityThemes);
+    props->setValue ("communityThemesChecked", juce::String (communityThemesChecked));
+    props->setValue ("communityThemesSeen",    communityThemesSeen);
     props->setValue ("moduleIconBar",   moduleIconBar);
     props->setValue ("moduleIconBarCategory", moduleIconBarCategory);
     props->setValue ("mcpBridgeEnabled", mcpBridgeEnabled);
@@ -268,6 +285,12 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     styleToggle (synthCaptionToggle);
     styleToggle (askSlotToggle);
     styleToggle (seqNoteNamesToggle);
+    styleToggle (communityThemesToggle);
+    communityThemesToggle.setToggleState (options.checkCommunityThemes, juce::dontSendNotification);
+    communityThemesToggle.setTooltip ("On startup, at most once a day, NME reads the list of themes in "
+                                      "github.com/animatek/nme-themes and marks the new ones in View > Theme. "
+                                      "Nothing is sent but the request. Off: only when you choose Check Now.");
+    addAndMakeVisible (communityThemesToggle);
     autoUploadToggle.setToggleState (options.autoUpload,     juce::dontSendNotification);
     askSlotToggle   .setToggleState (options.askSlotOnOpen,  juce::dontSendNotification);
     wireframeToggle .setToggleState (options.wireframe,      juce::dontSendNotification);
@@ -484,6 +507,8 @@ int EditorOptionsDialog::layoutComponents (bool apply)
     place (synthCaptionToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH;
     place (seqNoteNamesToggle, pad + 8, y, w - pad * 2 - 8, rowH);
+    y += rowH;
+    place (communityThemesToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH + 4;
     place (sendRateLabel,    pad + 8,  y, 80, rowH);
     place (sendRateSelector, pad + 92, y, w - pad * 2 - 100, rowH);
@@ -591,6 +616,7 @@ void EditorOptionsDialog::apply()
     options.askSlotOnOpen  = askSlotToggle.getToggleState();
     options.synthDisplayCaptions = synthCaptionToggle.getToggleState();
     options.seqNoteNames   = seqNoteNamesToggle.getToggleState();
+    options.checkCommunityThemes = communityThemesToggle.getToggleState();
     options.sendRateIndex  = sendRateSelector.getSelectedId() - 1;
     options.mcpBridgeEnabled = mcpBridgeToggle.getToggleState();
     options.cableOpacity   = static_cast<float> (cableOpacitySlider.getValue()) * 0.01f;

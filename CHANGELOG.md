@@ -4,6 +4,47 @@
 
 ### Added
 
+- **Community themes from animatek/nme-themes** (2026-10-13, #91). View > Theme > **Community
+  Themes...** opens a window listing the repository's themes (name, author, description), with a
+  New badge on the ones not seen before and Update on the ones whose file changed, and an
+  Install / Update / Use button that downloads the file, checks its SHA-256 against the list,
+  reads it as a theme, writes it as it is into the user themes folder and switches to it. The
+  list is the repository's `index.json`, rebuilt there by CI on every merge
+  (`tools/build_index.py`, which also checks each theme on pull requests). NME reads it on
+  startup at most once a day (Editor Options: "Look for new community themes once a day", on by
+  default), caches it in `community-themes.json` next to the settings, shows "(N new)" in the menu,
+  a dot on **View** and on **Theme** (as VCV Rack does for its library) until the window is
+  opened, and says so in the status bar; Check Now reads it at once. Downloads run off the message thread;
+  on Linux through `curl`, since the app is built without libcurl. New `juce_cryptography` link
+  for the SHA-256. Manual (en/es). Checked: `nme_tests` passes with `test_community_themes.cpp`
+  (index parsing drops file names that could leave the folder; new/seen/changed), the Release
+  build compiles clean, and the live index and theme file from raw.githubusercontent.com match by
+  hash. Tried on the window: installing Tokyo Super Dark from the list works.
+- **NME's own themes are kept in animatek/nme-themes too, and update from there** (2026-10-13, #91).
+  The 14 built-in themes are in the repository as official files (`"official": true`), written by
+  the new `nme_theme_export` tool (`tests/theme_export.cpp`, `ThemeFile::officialJson`: every colour,
+  LF line ends, so the hash is the same on every OS). Community Themes lists them as **Built in**
+  while the repository's copy hashes the same as what NME ships; when one is touched there it
+  offers an **Update**, and the installed official file replaces the built-in in place
+  (`ThemeRegistry::mergeUserThemes`: same index, same saved choice) instead of appearing beside it
+  as "(user)". Checked: `nme_tests` passes with two new cases (official file round trip and state,
+  replacement in place).
+- **The community themes dot is red** (2026-10-13, #91). A text bullet took the menu's colour and was
+  easy to miss: the menu bar now draws a red dot after View (`AppLookAndFeel`, the app's default
+  LookAndFeel from now on, only `drawMenuBarItem` changed), and Theme and Community Themes carry a
+  red dot icon. macOS's native menu bar still shows the text bullet.
+- **A theme can set the render style, and themes import and export as single files** (2026-10-13,
+  #90). A theme file may carry `"render"` (`wireframe`, `hardwareLook`, `knobStyle`, `flatKnobs`,
+  each optional) and, when the theme is chosen (View menu, `Ctrl+T`, Editor Options, the theme
+  editor's Save, an import), those keys are applied over the user's own style. The user's style is
+  kept (`renderBeforeTheme` in the settings) and given back when a theme that sets none is chosen,
+  so a theme's flat knobs do not follow the user into every theme after it. **Animatek Rack** now
+  turns Flat knobs on. The theme editor has a "Save the render style with the theme" box. View >
+  Theme has **Import Theme File...** (checked with the same reader, files over 256 KB refused, a
+  built-in's name gets " (imported)", a user theme of the same name replaced only on confirmation)
+  and **Export Current Theme...**. Manual (en/es) gets a "Your own themes" section, which 0.20 did
+  not have. Checked: `nme_tests` passes with two new cases in `test_theme_file.cpp`; the Release
+  build compiles clean. Not tried on the window yet.
 - **A Windows installer for the Patreon builds** (2026-10-13, asked by Javier). `build-binaries.yml`
   now also makes `AnimatekNME-x.y.z-windows-setup.exe` (Inno Setup 6, `packaging/windows/AnimatekNME.iss`)
   from the same files as the ZIP, with its SHA-256 and in the same Sigstore attestation, and puts
@@ -17,6 +58,14 @@
 
 ### Fixed
 
+- **The theme editor had no swatch for the module panel colour** (2026-10-13, asked by Javier).
+  `moduleBg` was in theme files but not in the editor: it is now under "Modules and canvas" as
+  "Module panel (empty = each module's own colour)", since transparent means each module keeps its
+  type colour (Nomad, Nord Classic). Rows that can be automatic (this one and the sequencer
+  colours) have an **Auto** button that sets them back, instead of dragging alpha down to 0.
+- **The theme editor's colour picker showed its values black on black** (2026-10-13, reported by
+  Javier). The red/green/blue/alpha boxes took the theme's text colour on the picker's fixed dark
+  background; they now have the editor window's own light-on-dark colours.
 - **Old 2.10 patches are converted as Clavia's editor converts them; most factory patches loaded
   silent** (2026-10-13, G1-Emu issue #65). A 2.10 file was read with its values copied verbatim
   and its morph and assignment sections left out. The rules now come from Clavia's editor 3.03

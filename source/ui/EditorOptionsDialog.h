@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "FlatCloseButton.h"
 #include "AppTheme.h"
+#include "ThemeRegistry.h"
 #include <vector>
 
 struct EditorOptions
@@ -31,6 +32,16 @@ struct EditorOptions
     // pointer and the value in blue on the rim. For the normal (non-hardware) look;
     // ignored while Hardware look or Wireframe is on.
     bool        flatKnobs      = false;
+    // While the chosen theme sets a render style (#90), the user's own, given back
+    // when a theme that sets none is chosen. Empty otherwise.
+    std::optional<RenderStyle> renderBeforeTheme;
+
+    RenderStyle renderStyle() const { return { wireframe, hardwareLook, hardwareKnobStyle, flatKnobs }; }
+    void setRenderStyle(const RenderStyle& r)
+    {
+        wireframe = r.wireframe; hardwareLook = r.hardwareLook;
+        hardwareKnobStyle = r.knobStyle; flatKnobs = r.flatKnobs;
+    }
     bool        animateTiling  = true;  // slide slot sub-windows to their new tiles
     // Slot windows on startup: false = follow the synths (Port 1's come back, the others open and
     // close with their synth); true = the last session's windows, all of them, kept open.
@@ -44,6 +55,10 @@ struct EditorOptions
     // original editor shows (issue #76). Off by default, so a patch reads the
     // way the original does until it is asked not to.
     bool        seqNoteNames   = false;
+    // Community themes (#91): look at animatek/nme-themes at most once a day on startup.
+    bool        checkCommunityThemes = true;
+    juce::int64 communityThemesChecked = 0;   // ms since 1970 of the last look that answered
+    juce::String communityThemesSeen;         // "file:sha256" per line, the ones the user has seen
     bool        moduleIconBar  = true;  // the module icon bar under the header (issue #17)
     juce::String moduleIconBarCategory { "In/Out" };  // tab it was left on
     bool        mcpBridgeEnabled = false; // embedded MCP control socket (source/mcp/), if built in; opt-in so no localhost port opens unless asked
@@ -155,6 +170,7 @@ private:
     juce::ToggleButton animateTilingToggle { "Animate Slot Tiling  (slide sub-windows into place)" };
     juce::ToggleButton restoreWindowsToggle { "Reopen Every Slot Window of the Last Session  (not only the synths connected)" };
     juce::ToggleButton synthCaptionToggle { "Show the editor on the synth display  (borrows the patch name while a dialog is open)" };
+    juce::ToggleButton communityThemesToggle { "Look for new community themes once a day  (animatek/nme-themes on GitHub)" };
     juce::ToggleButton seqNoteNamesToggle { "Read sequencer steps as note names  (NoteSeqB in pitches, NoteSeqA in intervals)" };
     juce::Label    sendRateLabel     { {}, "Send speed" };
     juce::ComboBox sendRateSelector;

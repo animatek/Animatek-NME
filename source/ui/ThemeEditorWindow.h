@@ -17,6 +17,8 @@ public:
     std::function<void(const EditorTheme&)> onChange;             // live preview
     std::function<void(const EditorTheme&, const juce::File&)> onSaved;   // after the file is written
     std::function<void()> onClosed;
+    // The render style on screen, saved with the theme when the user ticks the box.
+    std::function<RenderStyle()> currentRender;
 
     void closeButtonPressed() override;
 

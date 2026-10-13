@@ -51,6 +51,17 @@ public:
         if (start.isTransparent())
             start = juce::Colour(0xffffffff);
         picker->setCurrentColour(start, juce::dontSendNotification);
+        // Its own light-on-dark colours, like the rest of this window: the value boxes took
+        // the theme's text colour, black on the dark box with a light theme or mid-edit.
+        picker->setColour(juce::ColourSelector::labelTextColourId, juce::Colour(0xffe0e0e0));
+        for (auto* c : picker->getChildren())
+            if (auto* s = dynamic_cast<juce::Slider*>(c))
+            {
+                s->setColour(juce::Slider::textBoxTextColourId, juce::Colour(0xffe0e0e0));
+                s->setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff1e1e1e));
+                s->setColour(juce::Slider::textBoxOutlineColourId, juce::Colour(0xff555555));
+                s->setColour(juce::Slider::textBoxHighlightColourId, juce::Colour(0xff4a6fa5));
+            }
         picker->setSize(280, 320);
         juce::CallOutBox::launchAsynchronously(std::move(picker), getScreenBounds(), nullptr);
     }
@@ -67,15 +78,28 @@ public:
         swatch.setColour = std::move(set);
         swatch.autoWhenTransparent = autoCol;
         addAndMakeVisible(swatch);
+        if (autoCol)
+        {
+            // Back to "automatic" (transparent) without dragging the alpha down to 0.
+            autoButton.onClick = [this] { swatch.setColour(juce::Colour()); swatch.repaint(); };
+            autoButton.setTooltip("Leave it to the theme: transparent, shown as \"auto\"");
+            addAndMakeVisible(autoButton);
+        }
     }
     void resized() override
     {
         auto r = getLocalBounds().reduced(8, 2);
         swatch.setBounds(r.removeFromRight(64));
+        if (autoButton.isVisible())
+        {
+            r.removeFromRight(4);
+            autoButton.setBounds(r.removeFromRight(44));
+        }
         label.setBounds(r);
     }
     juce::Label label;
     Swatch swatch;
+    juce::TextButton autoButton { "Auto" };
 };
 
 class GroupHeader : public juce::Label
@@ -104,6 +128,13 @@ public:
         addAndMakeVisible(saveButton);
         addAndMakeVisible(resetButton);
         addAndMakeVisible(status);
+        // Ticked when the theme already sets one, so saving keeps what it had.
+        keepRender.setToggleState(start.render.any(), juce::dontSendNotification);
+        keepRender.setTooltip("When this theme is chosen it also turns Wireframe, Hardware look "
+                              "and Flat knobs on or off as they are now. The theme's own while the "
+                              "box is ticked; untick it to leave the render style to Editor Options.");
+        keepRender.setColour(juce::ToggleButton::textColourId, juce::Colours::lightgrey);
+        addAndMakeVisible(keepRender);
         status.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
 
         const char* lastGroup = nullptr;
@@ -143,6 +174,7 @@ public:
         top.removeFromRight(6);
         nameEditor.setBounds(top);
         status.setBounds(r.removeFromBottom(22));
+        keepRender.setBounds(r.removeFromBottom(26));
         r.removeFromTop(6);
         viewport.setBounds(r);
         const int w = viewport.getMaximumVisibleWidth();
@@ -175,6 +207,10 @@ private:
         const auto folder = ThemeFile::userFolder();
         folder.createDirectory();
         const auto file = folder.getChildFile(juce::File::createLegalFileName(doc.name) + ".json");
+        if (!keepRender.getToggleState())
+            doc.render = {};
+        else if (owner.currentRender)
+            doc.render = ThemeRender::all(owner.currentRender());
         const auto theme = ThemeFile::makeTheme(doc);
         if (file.replaceWithText(ThemeFile::toJson(theme, baseName)))
         {
@@ -192,6 +228,7 @@ private:
     juce::TextEditor nameEditor;
     juce::TextButton saveButton { "Save" }, resetButton { "Reset" };
     juce::Label status;
+    juce::ToggleButton keepRender { "Save the render style with the theme" };
     juce::Viewport viewport;
     juce::Component body;
     std::vector<std::unique_ptr<GroupHeader>> headers;

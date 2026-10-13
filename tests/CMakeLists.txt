@@ -39,11 +39,13 @@ target_sources(nme_tests PRIVATE
     test_pch_macbinary.cpp
     test_pch_legacy210.cpp
     test_theme_file.cpp
+    test_community_themes.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
     ${CMAKE_SOURCE_DIR}/source/model/ThemeData.cpp
     ${CMAKE_SOURCE_DIR}/source/ui/ThemeFile.cpp
+    ${CMAKE_SOURCE_DIR}/source/ui/CommunityThemes.cpp
     ${CMAKE_SOURCE_DIR}/source/ui/ThemeRegistry.cpp
     ${CMAKE_SOURCE_DIR}/source/ui/ColorScheme.cpp
     ${CMAKE_SOURCE_DIR}/source/ui/AppTheme.cpp
@@ -103,6 +105,7 @@ target_compile_definitions(nme_tests PRIVATE
 
 target_link_libraries(nme_tests PRIVATE
     juce::juce_core
+    juce::juce_cryptography   # CommunityThemes (#91)
     juce::juce_events
     juce::juce_data_structures   # juce::UndoManager, for the undo action tests
     juce::juce_audio_devices
@@ -132,6 +135,28 @@ target_link_libraries(nme_pch_dump PRIVATE
     juce::juce_events
     juce::juce_data_structures
     juce::juce_graphics
+    juce::juce_recommended_config_flags
+    juce::juce_recommended_warning_flags
+)
+
+# nme_theme_export: the built-in themes as the official files of animatek/nme-themes
+# (see the file header).
+juce_add_console_app(nme_theme_export PRODUCT_NAME "nme_theme_export")
+target_sources(nme_theme_export PRIVATE
+    theme_export.cpp
+    ${CMAKE_SOURCE_DIR}/source/ui/ThemeFile.cpp
+    ${CMAKE_SOURCE_DIR}/source/ui/ThemeRegistry.cpp
+    ${CMAKE_SOURCE_DIR}/source/ui/ColorScheme.cpp
+    ${CMAKE_SOURCE_DIR}/source/ui/AppTheme.cpp
+)
+target_include_directories(nme_theme_export PRIVATE ${CMAKE_SOURCE_DIR}/source)
+target_compile_definitions(nme_theme_export PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+target_link_libraries(nme_theme_export PRIVATE
+    juce::juce_core
+    juce::juce_events
+    juce::juce_data_structures
+    juce::juce_graphics
+    juce::juce_gui_basics
     juce::juce_recommended_config_flags
     juce::juce_recommended_warning_flags
 )

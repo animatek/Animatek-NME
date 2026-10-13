@@ -128,3 +128,35 @@ lugar de un relleno plano, más visible en Nord Classic.
 `Ctrl+W` alterna un estilo de módulo en wireframe que funciona con todos los
 temas. Ambos ajustes persisten entre sesiones, igual que el tamaño y posición de
 ventana y la disposición de los flotantes.
+
+### Tus propios temas
+
+**View → Theme → Edit Theme Colours...** abre una ventana con una muestra por
+cada color, agrupadas (LEDs y medidores, cables y jacks, knobs de morph,
+secuenciadores, knobs, módulos y canvas, aplicación). El canvas cambia mientras
+arrastras un color; **Save** lo guarda como tema propio, y cerrar sin guardar
+devuelve el tema elegido. Si marcas **Save the render style with the theme**,
+el tema también enciende o apaga Wireframe, Hardware look y Flat knobs tal como
+están en pantalla cada vez que se elige.
+
+Los temas son archivos JSON pequeños en una carpeta `themes` junto a los ajustes
+(**View → Theme → Open Themes Folder**). **Export Current Theme...** guarda el
+tema en uso en un archivo que puedes pasar a otra persona, e **Import Theme
+File...** instala uno: primero lo comprueba, luego lo copia a tu carpeta de
+temas y lo elige. Un tema tuyo con el mismo nombre solo se sustituye si lo
+confirmas.
+
+**View → Theme → Community Themes...** muestra los temas que la gente comparte
+en [animatek/nme-themes](https://github.com/animatek/nme-themes) en GitHub, con
+la marca **New** en los que no habías visto y **Update** en los que han cambiado
+desde que los instalaste. Un clic instala el tema y lo pone. NME mira esa lista
+como mucho una vez al día al arrancar, y lo avisa en la barra de estado cuando
+hay algo nuevo (un punto en View y en Theme, y la opción dice cuántos); **Check Now** mira en el
+momento. En Editor Options se puede desactivar la comprobación diaria.
+Cualquiera puede añadir un tema allí con un pull request: el README del repo
+explica cómo.
+
+Un tema puede traer su estilo de render. **Animatek Rack** enciende Flat knobs
+al elegirlo; al elegir un tema que no trae ninguno vuelves al estilo que tenías
+antes. Mientras estás en ese tema, Editor Options y los atajos lo siguen
+cambiando como siempre.

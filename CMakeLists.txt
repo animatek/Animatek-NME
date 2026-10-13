@@ -103,6 +103,8 @@ set(NME_SHARED_SOURCES
     source/ui/ThemeRegistry.cpp
     source/ui/ThemeFile.cpp
     source/ui/ThemeEditorWindow.cpp
+    source/ui/CommunityThemes.cpp
+    source/ui/CommunityThemesWindow.cpp
     source/ui/InspectorPanel.cpp
     source/ui/StatusBar.cpp
     source/ui/PatchHeaderBar.cpp
@@ -302,6 +304,7 @@ foreach(target ${NME_TARGETS})
     target_link_libraries(${target} PRIVATE
         NmeData
         juce::juce_core
+        juce::juce_cryptography   # SHA-256 of community theme files (#91)
         juce::juce_events
         juce::juce_data_structures
         juce::juce_graphics

@@ -286,20 +286,22 @@ AppThemePalette makeNordClassicApp()
 std::vector<EditorTheme>& builtinList()
 {
     static std::vector<EditorTheme> list = {
-        { "Nomad",            AppTheme::palette(AppThemeId::SoftDarkGrey), createClassicTheme },
-        { "Dark",             AppTheme::palette(AppThemeId::SoftDarkGrey), createDarkTheme },
-        { "Deep Dark",        AppTheme::palette(AppThemeId::DeepDarkGrey), createDarkTheme },
-        { "Tokyo Night",      makeApp(kTokyoNight),      []{ return makeCanvas(kTokyoNight); } },
-        { "Gruvbox Dark",     makeApp(kGruvboxDark),     []{ return makeCanvas(kGruvboxDark); } },
-        { "Dracula",          makeApp(kDracula),         []{ return makeCanvas(kDracula); } },
-        { "Nord",             makeApp(kNord),            []{ return makeCanvas(kNord); } },
-        { "Ghosty",           makeApp(kGhosty),          []{ return makeCanvas(kGhosty); } },
-        { "Magnetic Revival", makeApp(kMagneticRevival), []{ return makeCanvas(kMagneticRevival); } },
-        { "MothWig",          makeApp(kMothWig),         []{ return makeCanvas(kMothWig); } },
-        { "Macchiato",        makeApp(kMacchiato),       []{ return makeCanvas(kMacchiato); } },
-        { "Cubitwig",         makeApp(kCubitwig),        []{ return makeCanvas(kCubitwig); } },
-        { "Nord Classic",     makeNordClassicApp(),      makeNordClassic },
-        { "Animatek Rack",    makeApp(kAnimatekRack),    makeAnimatekRack },
+        { "Nomad",            AppTheme::palette(AppThemeId::SoftDarkGrey), createClassicTheme, {}, false },
+        { "Dark",             AppTheme::palette(AppThemeId::SoftDarkGrey), createDarkTheme, {}, false },
+        { "Deep Dark",        AppTheme::palette(AppThemeId::DeepDarkGrey), createDarkTheme, {}, false },
+        { "Tokyo Night",      makeApp(kTokyoNight),      []{ return makeCanvas(kTokyoNight); }, {}, false },
+        { "Gruvbox Dark",     makeApp(kGruvboxDark),     []{ return makeCanvas(kGruvboxDark); }, {}, false },
+        { "Dracula",          makeApp(kDracula),         []{ return makeCanvas(kDracula); }, {}, false },
+        { "Nord",             makeApp(kNord),            []{ return makeCanvas(kNord); }, {}, false },
+        { "Ghosty",           makeApp(kGhosty),          []{ return makeCanvas(kGhosty); }, {}, false },
+        { "Magnetic Revival", makeApp(kMagneticRevival), []{ return makeCanvas(kMagneticRevival); }, {}, false },
+        { "MothWig",          makeApp(kMothWig),         []{ return makeCanvas(kMothWig); }, {}, false },
+        { "Macchiato",        makeApp(kMacchiato),       []{ return makeCanvas(kMacchiato); }, {}, false },
+        { "Cubitwig",         makeApp(kCubitwig),        []{ return makeCanvas(kCubitwig); }, {}, false },
+        { "Nord Classic",     makeNordClassicApp(),      makeNordClassic, {}, false },
+        // Drawn for flat knobs, as on the Rack modules, so it turns them on when chosen.
+        { "Animatek Rack",    makeApp(kAnimatekRack),    makeAnimatekRack,
+          ThemeRender { {}, {}, true, {} }, false },
     };
     return list;
 }
@@ -310,12 +312,7 @@ std::vector<EditorTheme>& allThemes()
     static std::vector<EditorTheme> all = [] {
         auto v = builtinList();
         const auto base = v[1];   // "Dark"
-        for (auto& t : ThemeFile::loadFolder(ThemeFile::userFolder(), base))
-        {
-            for (const auto& other : v)
-                if (other.name.equalsIgnoreCase(t.name)) { t.name += " (user)"; break; }
-            v.push_back(std::move(t));
-        }
+        ThemeRegistry::mergeUserThemes(v, ThemeFile::loadFolder(ThemeFile::userFolder(), base));
         return v;
     }();
     return all;
@@ -333,9 +330,23 @@ void ThemeRegistry::reloadUserThemes()
 {
     auto& all = allThemes();
     all.resize(static_cast<size_t>(builtinCount()));
+    for (size_t i = 0; i < all.size(); ++i)   // put back built-ins an official file replaced
+        all[i] = builtinList()[i];
     const auto base = all[1];
-    for (auto& t : ThemeFile::loadFolder(ThemeFile::userFolder(), base))
+    mergeUserThemes(all, ThemeFile::loadFolder(ThemeFile::userFolder(), base));
+}
+
+void ThemeRegistry::mergeUserThemes(std::vector<EditorTheme>& all, std::vector<EditorTheme> user)
+{
+    const auto builtins = static_cast<size_t>(builtinCount());
+    for (auto& t : user)
     {
+        bool placed = false;
+        if (t.official)
+            for (size_t i = 0; i < builtins && i < all.size(); ++i)
+                if (all[i].name == t.name) { all[i] = std::move(t); placed = true; break; }
+        if (placed)
+            continue;
         for (const auto& other : all)
             if (other.name.equalsIgnoreCase(t.name)) { t.name += " (user)"; break; }
         all.push_back(std::move(t));
@@ -378,4 +389,23 @@ juce::StringArray ThemeRegistry::names()
     for (const auto& t : themes())
         out.add(t.name);
     return out;
+}
+
+RenderStyle ThemeRegistry::switchRender(const RenderStyle& current, std::optional<RenderStyle>& saved,
+                                        const ThemeRender& next)
+{
+    if (next.any())
+    {
+        if (!saved)
+            saved = current;
+        // Over the user's own style, so one theme's keys never carry into the next.
+        return next.over(*saved);
+    }
+    if (saved)
+    {
+        const auto mine = *saved;
+        saved.reset();
+        return mine;
+    }
+    return current;
 }

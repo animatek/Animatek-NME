@@ -132,3 +132,33 @@ following the theme, with the value drawn as an arc on its rim) for when the har
 theme uses the colours of the Animatek modules for VCV Rack. These
 settings persist across sessions, as do the window size/position and floater
 layouts.
+
+### Your own themes
+
+**View → Theme → Edit Theme Colours...** opens a window with a swatch for every
+colour, grouped (LEDs and meters, cables and jacks, morph knobs, sequencers,
+knobs, modules and canvas, application). The canvas follows while you drag a
+colour; **Save** writes it as a theme of your own, and closing without saving
+puts the chosen theme back. Tick **Save the render style with the theme** and
+the theme also turns Wireframe, Hardware look and Flat knobs on or off as they
+are on screen whenever it is chosen.
+
+Themes are small JSON files in a `themes` folder next to the settings
+(**View → Theme → Open Themes Folder**). **Export Current Theme...** writes the
+theme in use to a file you can send to someone, and **Import Theme File...**
+installs one: it is checked first, then copied into your themes folder and
+chosen. A theme of yours with the same name is only replaced if you say so.
+
+**View → Theme → Community Themes...** lists the themes people share in
+[animatek/nme-themes](https://github.com/animatek/nme-themes) on GitHub, with a
+**New** badge on the ones you had not seen and **Update** on those changed since
+you installed them. One click installs a theme and switches to it. NME looks at
+that list once a day at most when it starts, and says so in the status bar when
+there is something new (a dot on View and Theme, and the item says how many); **Check Now** looks at
+once. Editor Options can turn the daily look off. Anyone can add a theme there
+by pull request: the repository's README says how.
+
+A theme can set the render style. **Animatek Rack** turns Flat knobs on when you
+choose it; choosing a theme that sets none gives you back the style you had
+before. While on such a theme, Editor Options and the shortcuts still change
+it as usual.

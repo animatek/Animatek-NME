@@ -124,3 +124,71 @@ TEST_CASE("the theme editor's entries edit a doc and the sequencer colours survi
     CHECK(cs.morphColor[2] == juce::Colour(0xffabcdef));
     CHECK(cs.sliderGrip.isTransparent());   // left automatic
 }
+
+TEST_CASE("a theme's render style is written and read back, only the keys it sets")
+{
+    const auto* dark = ThemeRegistry::findBuiltin("Dark");
+    REQUIRE(dark != nullptr);
+
+    EditorTheme t;
+    juce::String error;
+    REQUIRE(ThemeFile::fromJson(R"({ "format": 1, "name": "Flat", "base": "Dark",
+                                     "render": { "flatKnobs": true, "knobStyle": 7, "wireframe": "yes" } })",
+                                *dark, t, error));
+    CHECK(t.render.flatKnobs == std::optional<bool>(true));
+    CHECK_FALSE(t.render.knobStyle.has_value());   // out of range
+    CHECK_FALSE(t.render.wireframe.has_value());   // not a bool
+    CHECK_FALSE(t.render.hardwareLook.has_value());
+
+    EditorTheme back;
+    REQUIRE(ThemeFile::fromJson(ThemeFile::toJson(t, "Dark"), *dark, back, error));
+    CHECK(back.render.flatKnobs == std::optional<bool>(true));
+    CHECK_FALSE(back.render.hardwareLook.has_value());
+
+    // A theme that sets none writes no "render", and a file without one sets none.
+    CHECK_FALSE(ThemeFile::toJson(*dark).contains("\"render\""));
+    REQUIRE(ThemeFile::fromJson(R"({ "format": 1, "name": "Plain", "base": "Animatek Rack" })", *dark, t, error));
+    CHECK_FALSE(t.render.any());   // not inherited from the base
+}
+
+TEST_CASE("Animatek Rack turns flat knobs on, and leaving it gives the user's style back")
+{
+    const auto* rack = ThemeRegistry::findBuiltin("Animatek Rack");
+    const auto* nord = ThemeRegistry::findBuiltin("Nord");
+    REQUIRE(rack != nullptr);
+    REQUIRE(nord != nullptr);
+    CHECK(rack->render.flatKnobs == std::optional<bool>(true));
+    CHECK_FALSE(nord->render.any());
+
+    RenderStyle mine;
+    mine.hardwareLook = true;
+    mine.knobStyle = 1;
+    std::optional<RenderStyle> saved;
+
+    auto s = ThemeRegistry::switchRender(mine, saved, rack->render);
+    CHECK(s.flatKnobs);
+    CHECK(s.hardwareLook);          // a key the theme leaves out stays the user's
+    CHECK(s.knobStyle == 1);
+    REQUIRE(saved.has_value());
+    CHECK(*saved == mine);
+
+    // Toggled by hand while on the theme, then another theme that sets none.
+    s.wireframe = true;
+    s = ThemeRegistry::switchRender(s, saved, nord->render);
+    CHECK(s == mine);
+    CHECK_FALSE(saved.has_value());
+
+    // From one theme that sets a style to another: the first one's keys do not carry over.
+    ThemeRender wire;
+    wire.wireframe = true;
+    s = ThemeRegistry::switchRender(mine, saved, rack->render);
+    s = ThemeRegistry::switchRender(s, saved, wire);
+    CHECK(s.wireframe);
+    CHECK_FALSE(s.flatKnobs);
+    CHECK(*saved == mine);
+
+    // No theme involved: nothing changes.
+    std::optional<RenderStyle> none;
+    CHECK(ThemeRegistry::switchRender(mine, none, nord->render) == mine);
+    CHECK_FALSE(none.has_value());
+}

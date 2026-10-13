@@ -112,6 +112,33 @@ void readColours(const juce::var& json, const Fields& fields, Obj& dst)
         }
 }
 
+// "render": only the keys the theme sets, so a file that leaves one out keeps the user's.
+juce::var writeRender(const ThemeRender& r)
+{
+    auto* o = new juce::DynamicObject();
+    if (r.wireframe)    o->setProperty("wireframe", *r.wireframe);
+    if (r.hardwareLook) o->setProperty("hardwareLook", *r.hardwareLook);
+    if (r.knobStyle)    o->setProperty("knobStyle", *r.knobStyle);
+    if (r.flatKnobs)    o->setProperty("flatKnobs", *r.flatKnobs);
+    return juce::var(o);
+}
+
+ThemeRender readRender(const juce::var& json)
+{
+    ThemeRender r;
+    auto flag = [&](const char* key, std::optional<bool>& dst) {
+        const auto v = json.getProperty(key, {});
+        if (v.isBool()) dst = static_cast<bool>(v);
+    };
+    flag("wireframe", r.wireframe);
+    flag("hardwareLook", r.hardwareLook);
+    flag("flatKnobs", r.flatKnobs);
+    const auto k = json.getProperty("knobStyle", {});
+    if ((k.isInt() || k.isInt64()) && static_cast<int>(k) >= 0 && static_cast<int>(k) <= 2)
+        r.knobStyle = static_cast<int>(k);
+    return r;
+}
+
 template <class Obj, class Fields>
 juce::var writeColours(const Fields& fields, const Obj& src)
 {
@@ -161,6 +188,8 @@ juce::String ThemeFile::toJson(const EditorTheme& theme, const juce::String& bas
     canvas.getDynamicObject()->setProperty("morphColor", morph);
     canvas.getDynamicObject()->setProperty("canvasTexture", cs.canvasTexture);
     root->setProperty("canvas", canvas);
+    if (theme.render.any())
+        root->setProperty("render", writeRender(theme.render));
 
     return juce::JSON::toString(juce::var(root), false);
 }
@@ -214,7 +243,32 @@ bool ThemeFile::fromJson(const juce::String& text, const EditorTheme& fallbackBa
     out.name = name;
     out.app = app;
     out.makeCanvas = [cs] { return cs; };
+    // Not taken from the base: a file that sets no render style leaves it alone.
+    out.render = readRender(json.getProperty("render", {}));
+    out.official = static_cast<bool>(json.getProperty("official", false));
     return true;
+}
+
+juce::String ThemeFile::officialJson(const EditorTheme& builtin)
+{
+    auto json = juce::JSON::parse(toJson(builtin, builtin.name));
+    json.getDynamicObject()->setProperty("official", true);
+    json.getDynamicObject()->setProperty("author", "Animatek");
+    // juce::newLine is CRLF everywhere; LF keeps the hash the same in git and on every OS.
+    return juce::JSON::toString(json, false).replace("\r\n", "\n") + "\n";
+}
+
+juce::String ThemeFile::slugOf(const juce::String& name)
+{
+    juce::String out;
+    for (auto c : name.toLowerCase())
+    {
+        if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
+            out << juce::String::charToString(c);
+        else if (out.isNotEmpty() && !out.endsWithChar('-'))
+            out << "-";
+    }
+    return out.trimCharactersAtEnd("-");
 }
 
 juce::File ThemeFile::userFolder()
@@ -251,7 +305,7 @@ ThemeFile::Doc ThemeFile::makeDoc(const EditorTheme& theme)
     // The canvas factories read the active app palette, so make it this theme's.
     const auto saved = AppTheme::palette();
     AppTheme::setPalette(theme.app);
-    Doc d { theme.name, theme.app, theme.makeCanvas() };
+    Doc d { theme.name, theme.app, theme.makeCanvas(), theme.render };
     AppTheme::setPalette(saved);
     return d;
 }
@@ -262,6 +316,7 @@ EditorTheme ThemeFile::makeTheme(const Doc& doc)
     t.name = doc.name;
     t.app = doc.app;
     t.makeCanvas = [cs = doc.canvas] { return cs; };
+    t.render = doc.render;
     return t;
 }
 
@@ -304,6 +359,8 @@ const std::vector<ThemeFile::Entry>& ThemeFile::entries()
         cv(kn, "Knob pointer", &C::knobGrip); cv(kn, "Knob value arc (flat knobs)", &C::knobArc);
         const char* mod = "Modules and canvas";
         cv(mod, "Canvas", &C::gridBackground); cv(mod, "Canvas grid", &C::gridLines);
+        // Empty: each module keeps its own type colour, as Nomad and Nord Classic do.
+        cv(mod, "Module panel (empty = each module's own colour)", &C::moduleBg, true);
         cv(mod, "Module border", &C::moduleBorder); cv(mod, "Module text", &C::moduleText);
         cv(mod, "Display", &C::displayBg); cv(mod, "Display text", &C::displayText);
         const char* app = "Application";

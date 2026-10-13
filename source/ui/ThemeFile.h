@@ -11,13 +11,15 @@
 //     "app":    { "backgroundMain": "#323232", ... },
 //     "canvas": { "gridBackground": "#1f2125", ...,
 //                 "morphColor": ["#cb4f4f", "#4fcb4f", "#4f4fcb", "#cbcb4f"],
-//                 "canvasTexture": false }
+//                 "canvasTexture": false },
+//     "render": { "flatKnobs": true }          // optional, see below
 //   }
 //
 // Colours are "#rrggbb" or "#aarrggbb". Every key is optional: a missing or
 // unreadable one keeps the value of the base theme, so a half-written file still
-// loads. Render styles (Wireframe, Hardware look, Flat knobs) are not part of a
-// theme yet; they stay global options.
+// loads. "render" is the render style the theme turns on when it is chosen
+// ("wireframe", "hardwareLook", "flatKnobs": true/false; "knobStyle": 0-2); it is
+// not inherited from the base, and a key left out keeps the user's own setting.
 namespace ThemeFile
 {
     constexpr int kFormat = 1;
@@ -38,6 +40,7 @@ namespace ThemeFile
         juce::String name;
         AppThemePalette app;
         ColorScheme canvas;
+        ThemeRender render;
     };
     Doc makeDoc(const EditorTheme& theme);
     EditorTheme makeTheme(const Doc& doc);
@@ -61,8 +64,18 @@ namespace ThemeFile
     // False when `s` is not a colour.
     bool colourFromString(const juce::String& s, juce::Colour& out);
 
+    // A built-in theme as the official file animatek/nme-themes carries: every colour,
+    // "official": true and Animatek as author, LF line ends. NME hashes this to tell
+    // whether the repository's copy still matches the theme it ships.
+    juce::String officialJson(const EditorTheme& builtin);
+    // "Gruvbox Dark" -> "gruvbox-dark": the file name a theme gets in the repository.
+    juce::String slugOf(const juce::String& name);
+
     // Where the user's theme files live: a "themes" folder next to the settings file.
     juce::File userFolder();
+
+    // A file bigger than this is not a theme: import refuses it before reading it.
+    constexpr juce::int64 kMaxFileBytes = 256 * 1024;
 
     // Every *.json in `folder` that reads as a theme, sorted by name.
     std::vector<EditorTheme> loadFolder(const juce::File& folder, const EditorTheme& fallbackBase);
