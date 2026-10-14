@@ -315,6 +315,7 @@ void ConnectionManager::forgetSynthState(const char* _why)
 
     ++uploadAckGeneration;
     waitingForUploadAck = false;
+    uploadWaitsForEditAck = false;
     uploadPackets.clear();
     uploadPacketIndex = 0;
     uploadKnobAssignments.clear();
@@ -458,6 +459,7 @@ void ConnectionManager::sendPatchRequest(int slot)
             ackedQueue.clear();
             ackedQueueWaiting = false;
             ackedQueueWaitingAllowsNewPatchInSlot = false;
+            uploadWaitsForEditAck = false;
         ++ackedQueueGeneration;
     }
 
@@ -952,9 +954,14 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
         std::cout << "[UPLOAD] Clearing edit queue (" << ackedQueue.size()
                   << " pending messages discarded)" << std::endl;
         ackedQueue.clear();
-        ackedQueueWaiting = false;
-        // Bump generation so any in-flight timeout lambda is invalidated
-        ++ackedQueueGeneration;
+        // The edit already sent cannot be called back: the synth is working on it
+        // and its ACK is on the way. Sent now, the first packet took that ACK for
+        // its own, the second went out while the synth was still on the first, and
+        // the synth rejected the upload (code 3) - adding modules and deleting them
+        // fast, issue #63, at once with an emulator whose ACKs come late. The
+        // upload waits for that ACK, or for its timeout, which stay armed.
+        if (ackedQueueWaiting)
+            uploadWaitsForEditAck = true;
     }
 
     // Serialize the patch into individual PDL2 sections in the Java upload order,
@@ -996,6 +1003,11 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
 
     // Send packets one at a time, waiting for ACK between each (like Java protocol)
     waitingForUploadAck = true;
+    if (uploadWaitsForEditAck)
+    {
+        std::cout << "[UPLOAD] Waiting for the ACK of the edit in flight" << std::endl;
+        return;
+    }
     sendNextUploadPacket();
 }
 
@@ -1394,6 +1406,13 @@ void ConnectionManager::drainAckedQueue()
 
             ackedQueueWaiting = false;
             ackedQueueWaitingAllowsNewPatchInSlot = false;
+            if (uploadWaitsForEditAck)
+            {
+                uploadWaitsForEditAck = false;
+                if (waitingForUploadAck)
+                    sendNextUploadPacket();
+                return;
+            }
             drainAckedQueue();
         }
     });
@@ -1422,6 +1441,24 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
             if (bankLocationCallback)
                 bankLocationCallback(slot);
         }
+    }
+
+    if (uploadWaitsForEditAck)
+    {
+        // The ACK of the edit that was in flight when the upload began: not the
+        // upload's. Its pid is the synth's patch now, which the upload goes on from.
+        uploadWaitsForEditAck = false;
+        ackedQueueWaiting = false;
+        ackedQueueWaitingAllowsNewPatchInSlot = false;
+        if (msg.type == 0x7f && msg.pid1 != currentPatchId)
+        {
+            currentPatchId = msg.pid1;
+            slotPatchIds[static_cast<size_t>(currentSlot & 0x03)] = msg.pid1;
+        }
+        std::cout << "[UPLOAD] Edit in flight ACKed, starting the upload" << std::endl;
+        if (waitingForUploadAck)
+            sendNextUploadPacket();
+        return;
     }
 
     if (waitingForUploadAck)

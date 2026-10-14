@@ -387,6 +387,7 @@ private:
     void replayPanelAssignments();
 
     bool waitingForUploadAck = false;      // True while waiting for synth ACK after uploadPatch
+    bool uploadWaitsForEditAck = false;    // Upload held until the edit already sent is ACKed (#63)
     bool suppressNextAutoFetch = false;    // Set after upload completes; clears on next NewPatchInSlot
     bool suppressNewPatchInSlot_ = false;  // Set during upload-in-progress
     int pendingSyncEchoes_ = 0;            // Count of expected NewPatchInSlot echoes from sync edits

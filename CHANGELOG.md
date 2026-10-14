@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Adding and deleting modules fast no longer gets the patch rejected** (2026-10-14, G1-Emu #63,
+  reported by Nocticore). A delete is synced by a full upload 80 ms later; the upload dropped the
+  queued edits but not the one already sent, whose ACK then arrived and was taken for the first
+  packet's. The second packet went out while the synth was still on the first, it answered
+  "Error in synth" (code 3), the slot went LOCAL and later edits never reached it. It showed with
+  G1-Emu, whose ACKs for a new module come late (the DSP code is rewritten), and more on a loaded
+  Mac. The upload now waits for that ACK, or for its 3 s timeout, before its first packet
+  (`ConnectionManager::uploadPatch`). Checked against G1-Emu through the MCP bridge with
+  Nocticore's patch: eight Compressors added and deleted in bursts failed on the first burst
+  before, 20 bursts pass after, and a fetch from the synth matches the editor's patch; the unit
+  tests pass. Against a real G1 (rack, OS 3.03) the same bursts fail on the first one with 0.22.0
+  (code 3, and the synth's slot ends up empty while the editor shows the patch), and pass 10 of 10
+  with this fix, the synth's patch matching the editor's after them.
+
 ## 0.22.0 — 2026-10-13
 
 ### Added
