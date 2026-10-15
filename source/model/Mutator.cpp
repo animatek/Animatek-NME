@@ -171,6 +171,41 @@ ParamSnapshot randomize(const ParamSnapshot& src, const Patch& patch,
     return out;
 }
 
+ModuleTypes moduleTypes(const Patch& patch)
+{
+    ModuleTypes types;
+    for (int section : { 0, 1 })
+        for (const auto& m : patch.getContainer(section).getModules())
+            if (m && m->getDescriptor())
+                types[{ section, m->getContainerIndex() }] = m->getDescriptor()->index;
+    return types;
+}
+
+ParamSnapshot conform(const ParamSnapshot& snap, const ParamSnapshot& current,
+                      const ModuleTypes& before, const ModuleTypes& now)
+{
+    if (!snap.filled)
+        return snap;
+
+    auto kept = [&](int section, int moduleId) {
+        const auto b = before.find({ section, moduleId });
+        const auto n = now.find({ section, moduleId });
+        return b != before.end() && n != now.end() && b->second == n->second;
+    };
+
+    const auto values = valueMap(snap);
+    ParamSnapshot out = current;
+    out.morphValues = snap.morphValues;
+    for (auto& e : out.entries)
+    {
+        if (!kept(e.section, e.moduleId)) continue;
+        const auto it = values.find({ e.section, e.moduleId, e.paramId });
+        if (it != values.end())
+            e.value = it->second;
+    }
+    return out;
+}
+
 std::vector<std::pair<float, float>> chromosomePath(const ParamSnapshot& snap)
 {
     std::vector<std::pair<float, float>> path;

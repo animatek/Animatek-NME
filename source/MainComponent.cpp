@@ -4227,6 +4227,21 @@ void MainComponent::toggleMutatorWindow() {
         applySnapshot(snap, "Mutator Audition");
     };
 
+    panel.onModuleTypes = [this]() -> Mutator::ModuleTypes {
+      if (!currentPatch()) return {};
+      return Mutator::moduleTypes(*currentPatch());
+    };
+
+    // The G2 keeps its variations in line with the patch too
+    panel.onLayoutChanged = [this](const Mutator::ModuleTypes& before,
+                                   const Mutator::ModuleTypes& now) {
+      if (!currentPatch()) return;
+      const auto current = Mutator::captureCurrent(*currentPatch());
+      for (auto& slot : variations[activeSlot].slots)
+        slot = Mutator::conform(slot, current, before, now);
+      mutatorWindow->getPanel().setVariations(variations[activeSlot]);
+    };
+
     panel.onStoreToVariation = [this](int index, const ParamSnapshot& snap) {
       if (!currentPatch() || index < 0 || index >= PatchVariations::kNumSlots || !snap.filled)
         return;

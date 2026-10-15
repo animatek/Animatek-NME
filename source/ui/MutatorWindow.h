@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../model/PatchVariations.h"
 #include "../model/MutationCategories.h"
+#include "../model/Mutator.h"
 #include <functional>
 #include <vector>
 #include <memory>
@@ -17,7 +18,8 @@
  * into MainComponent (safe across slot switches and patch loads).
  */
 class MutatorPanel : public juce::Component,
-                     public juce::DragAndDropContainer
+                     public juce::DragAndDropContainer,
+                     private juce::Timer
 {
 public:
     enum class GenOp { Mutate, Randomize, Interpolate, Cross };
@@ -42,6 +44,12 @@ public:
                                 const GenParams&)> onGenerate;
     std::function<void(const ParamSnapshot&, float auditionSeconds)> onAudition;
     std::function<void(int index, const ParamSnapshot&)> onStoreToVariation;
+    // Which module type sits where in the patch now. Polled while the panel is
+    // shown: when it changes, every stored sound is brought in line (G2-style),
+    // and onLayoutChanged lets the owner do the same with the variations.
+    std::function<Mutator::ModuleTypes()> onModuleTypes;
+    std::function<void(const Mutator::ModuleTypes& before,
+                       const Mutator::ModuleTypes& now)> onLayoutChanged;
 
     void clearAll();      // call when the underlying patch changes
     void setVariations(const PatchVariations& vars);  // sync the Variations row
@@ -74,9 +82,11 @@ private:
     void saveFocusedToTemp();
     void generate(GenOp op);
     void ensureMother();
+    void timerCallback() override;
 
     std::vector<std::unique_ptr<SnapshotBox>> boxes;
     int focusedIndex = -1;
+    Mutator::ModuleTypes layout;   // the layout the stored sounds follow
 
     std::unique_ptr<KnobLookAndFeel> knobLnF;
 

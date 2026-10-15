@@ -23,8 +23,15 @@
   - **The boxes draw the sound as a path**: a turtle reads the parameters in pairs, turning by
     one and walking the other, so a mother's children draw alike and adding a module bends it
     (`Mutator::chromosomePath`). Before, it was a bar per sampled parameter.
-  Checked with `tests/test_mutator.cpp` (7 cases: shapes of real G1 parameters, the tie, edges,
-  switches, the turtle) and the whole suite; still to be tried by ear on the G1. Not done yet:
+  - **Stored sounds follow the patch**: adding, deleting or replacing a module brings every
+    box (Mother, Children, Father, storage) and the variations in line at once, the new
+    module with its current values, as the G2 does; the drawings change with it. The panel
+    looks at the module layout five times a second while it is shown (`Mutator::conform`),
+    since undo goes around the add/delete callbacks.
+  - **Mother and Father start as the patch**, as on the G2: Mutate works straight away,
+    without dragging a sound into Mother first.
+  Checked with `tests/test_mutator.cpp` (8 cases: shapes of real G1 parameters, the tie, edges,
+  switches, the turtle, following the patch) and the whole suite; still to be tried by ear on the G1. Not done yet:
   Cross and Interpolate do not carry per-parameter morph ranges, which the G2 does, because the
   variations do not store them.
 

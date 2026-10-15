@@ -163,6 +163,7 @@ private:
 MutatorPanel::MutatorPanel()
 {
     setWantsKeyboardFocus(true);
+    startTimerHz(5);   // follows the patch layout while shown (timerCallback)
     knobLnF = std::make_unique<KnobLookAndFeel>();
 
     auto addBox = [this](int i, const juce::String& lbl) {
@@ -293,6 +294,7 @@ MutatorPanel::MutatorPanel()
 
 MutatorPanel::~MutatorPanel()
 {
+    stopTimer();
     for (auto* s : { &probSlider, &rangeSlider, &crossProbSlider })
         s->setLookAndFeel(nullptr);
 }
@@ -332,6 +334,43 @@ void MutatorPanel::clearAll()
 {
     for (auto& b : boxes) { b->snap = ParamSnapshot(); b->focused = false; b->repaint(); }
     focusedIndex = -1;
+    layout.clear();   // a new patch: the next look takes its layout as it is
+}
+
+// The G2 adds a new module to every stored sound and drops a deleted one from
+// all of them, so the drawings follow the patch at once. NME's add/delete
+// callbacks belong to the synth link and undo goes around them, so the panel
+// looks at the layout instead.
+void MutatorPanel::timerCallback()
+{
+    if (!isShowing() || !onModuleTypes || !onCaptureCurrent) return;
+    auto now = onModuleTypes();
+    if (now == layout) return;
+
+    if (layout.empty())
+    {
+        // A patch just arrived (or the panel just opened): as on the G2, Mother and
+        // Father start as the patch itself, so Mutate works without setting them
+        const auto current = onCaptureCurrent();
+        for (int parent : { kMother, kFather })
+            if (!box(parent).snap.filled && current.filled)
+            {
+                box(parent).snap = current;
+                box(parent).repaint();
+            }
+    }
+    else
+    {
+        const auto current = onCaptureCurrent();
+        for (int i = 0; i < kVarFirst; ++i)
+        {
+            if (!box(i).snap.filled) continue;
+            box(i).snap = Mutator::conform(box(i).snap, current, layout, now);
+            box(i).repaint();
+        }
+        if (onLayoutChanged) onLayoutChanged(layout, now);
+    }
+    layout = std::move(now);
 }
 
 void MutatorPanel::setVariations(const PatchVariations& vars)
@@ -484,11 +523,14 @@ void MutatorPanel::saveFocusedToTemp()
 
 void MutatorPanel::ensureMother()
 {
-    if (!box(kMother).snap.filled && onCaptureCurrent)
-    {
-        box(kMother).snap = onCaptureCurrent();
-        box(kMother).repaint();
-    }
+    // Both parents are the patch until something else is put there (G2)
+    if (!onCaptureCurrent) return;
+    for (int parent : { kMother, kFather })
+        if (!box(parent).snap.filled)
+        {
+            box(parent).snap = onCaptureCurrent();
+            box(parent).repaint();
+        }
 }
 
 void MutatorPanel::generate(GenOp op)

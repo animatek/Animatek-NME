@@ -4,6 +4,7 @@
 #include "MutationCategories.h"
 #include <juce_core/juce_core.h>
 #include <functional>
+#include <map>
 #include <utility>
 #include <vector>
 
@@ -48,6 +49,19 @@ namespace Mutator
         parameters keep their value from src. */
     ParamSnapshot randomize(const ParamSnapshot& src, const Patch& patch,
                             juce::Random& rng, const LockPredicate& isLocked);
+
+    /** What sits where: {section, module index} -> module type. Two patches with
+        the same map have the same parameters in the same places. */
+    using ModuleTypes = std::map<std::pair<int, int>, int>;
+    ModuleTypes moduleTypes(const Patch& patch);
+
+    /** Bring a stored sound in line with the patch as it is now, as the G2 does
+        when a module is added or deleted: the patch's order, a new module with its
+        current values, a deleted one gone. `before` is the layout the sound was
+        taken from, so a module replaced by another type at the same index starts
+        from the current values too. An empty sound stays empty. */
+    ParamSnapshot conform(const ParamSnapshot& snap, const ParamSnapshot& current,
+                          const ModuleTypes& before, const ModuleTypes& now);
 
     /** The sound drawn as a path: a turtle reads the parameters in pairs, the
         first turning it (value − 63 degrees) and the second walking that far.

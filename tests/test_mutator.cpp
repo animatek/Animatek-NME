@@ -137,3 +137,28 @@ TEST_CASE("Mutator: the chromosome walks the parameters in pairs")
     CHECK(path[2].first == doctest::Approx(10.0f).epsilon(0.001));
     CHECK(path[2].second == doctest::Approx(20.0f));
 }
+
+TEST_CASE("Mutator: a stored sound follows the patch when modules come and go")
+{
+    // The sound was taken with modules 1 (type 7) and 2 (type 9)
+    ParamSnapshot stored;
+    stored.filled = true;
+    stored.entries = { { 1, 1, 0, 10 }, { 1, 1, 1, 11 }, { 1, 2, 0, 20 } };
+    const Mutator::ModuleTypes before { { { 1, 1 }, 7 }, { { 1, 2 }, 9 } };
+
+    // Now module 2 is gone, 1 is still there, 3 is new and 2's index went to another type
+    ParamSnapshot current;
+    current.filled = true;
+    current.entries = { { 1, 1, 0, 50 }, { 1, 1, 1, 51 }, { 1, 3, 0, 60 }, { 1, 2, 0, 70 } };
+    const Mutator::ModuleTypes now { { { 1, 1 }, 7 }, { { 1, 3 }, 4 }, { { 1, 2 }, 5 } };
+
+    const auto out = Mutator::conform(stored, current, before, now);
+    REQUIRE(out.entries.size() == 4);
+    CHECK(out.entries[0].value == 10);   // kept: its own value
+    CHECK(out.entries[1].value == 11);
+    CHECK(out.entries[2].value == 60);   // new module: the patch's value
+    CHECK(out.entries[3].value == 70);   // another type at index 2: the patch's value
+
+    ParamSnapshot empty;
+    CHECK_FALSE(Mutator::conform(empty, current, before, now).filled);
+}
