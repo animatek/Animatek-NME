@@ -36,6 +36,43 @@ const ParameterDescriptor* findDescriptor(const Patch& patch, const ParamSnapsho
     return nullptr;
 }
 
+// Each shape is a map of the parameter's range [0, top] onto itself; a change is
+// drawn evenly on the map's side, so it comes out finer where the map stretches.
+// The maps are odd around 0, so a span that crosses the bottom edge still maps.
+double toShape(MutCurve curve, double x, double top)
+{
+    const double s = x < 0.0 ? -1.0 : 1.0;
+    const double a = std::abs(x) / top;
+    switch (curve)
+    {
+        case MutCurve::FineLow:  return s * top * std::pow(a, 0.4);
+        case MutCurve::FineHigh: return s * top * std::pow(a, 2.5);
+        case MutCurve::Centered: return top * 0.5 * (1.0 + std::cbrt(2.0 * x / top - 1.0));
+        default:                 return x;
+    }
+}
+
+double fromShape(MutCurve curve, double w, double top)
+{
+    const double s = w < 0.0 ? -1.0 : 1.0;
+    const double a = std::abs(w) / top;
+    switch (curve)
+    {
+        case MutCurve::FineLow:  return s * top * std::pow(a, 2.5);
+        case MutCurve::FineHigh: return s * top * std::pow(a, 0.4);
+        case MutCurve::Centered: { const double u = 2.0 * w / top - 1.0; return top * 0.5 * (1.0 + u * u * u); }
+        default:                 return w;
+    }
+}
+
+MutCurve curveOf(const Patch& patch, const ParamSnapshot::Entry& e, const ParameterDescriptor** pdOut)
+{
+    *pdOut = findDescriptor(patch, e);
+    const auto* mod = patch.getContainer(e.section).getModuleByIndex(e.moduleId);
+    const auto* md = mod ? mod->getDescriptor() : nullptr;
+    return (*pdOut && md) ? getMutationCurve(*md, **pdOut) : MutCurve::Fixed;
+}
+
 std::map<GeneKey, int> valueMap(const ParamSnapshot& snap)
 {
     std::map<GeneKey, int> out;
@@ -55,6 +92,49 @@ ParamSnapshot captureCurrent(const Patch& patch)
     return tmp.slots[0];
 }
 
+float probabilityForRange(float range)
+{
+    const double p = 0.22 - 0.78 * (std::sqrt(static_cast<double>(range)) - 0.7) / 0.53;
+    return static_cast<float>(juce::jlimit(0.0, 1.0, p * p));
+}
+
+float rangeForProbability(float probability)
+{
+    const double r = 0.7 - 0.53 * (std::sqrt(static_cast<double>(probability)) - 0.22) / 0.78;
+    return static_cast<float>(juce::jlimit(0.0, static_cast<double>(kMaxRange), r * r));
+}
+
+int mutateValue(int value, int minValue, int maxValue, MutCurve curve, float range, juce::Random& rng)
+{
+    const int span = maxValue - minValue;
+    if (curve == MutCurve::Fixed || span <= 0)
+        return value;
+
+    // The value is the middle of its step, so truncating back does not drift down.
+    const double top = span + 0.999;
+    const double x = (value - minValue) + 0.5;
+    const double reach = static_cast<double>(range) * span;
+    const double lo = toShape(curve, x - reach, top);
+    const double hi = toShape(curve, x + reach, top);
+    double y = fromShape(curve, lo + (hi - lo) * rng.nextDouble(), top);
+
+    // Past an edge it comes back in, as the G2 does, rather than piling up on the edge.
+    if (y < 0.0)  y = -y;
+    if (y > top)  y = 2.0 * top - y;
+    return juce::jlimit(minValue, maxValue, minValue + static_cast<int>(std::floor(juce::jlimit(0.0, top, y))));
+}
+
+int randomValue(int value, int minValue, int maxValue, MutCurve curve, juce::Random& rng)
+{
+    const int span = maxValue - minValue;
+    if (curve == MutCurve::Fixed || span <= 0)
+        return value;
+    const double top = span + 0.999;
+    const double w = toShape(curve, 0.0, top)
+                   + (toShape(curve, top, top) - toShape(curve, 0.0, top)) * rng.nextDouble();
+    return juce::jlimit(minValue, maxValue, minValue + static_cast<int>(std::floor(fromShape(curve, w, top))));
+}
+
 ParamSnapshot mutate(const ParamSnapshot& src, const Patch& patch,
                      float probability, float range,
                      juce::Random& rng, const LockPredicate& isLocked)
@@ -63,40 +143,13 @@ ParamSnapshot mutate(const ParamSnapshot& src, const Patch& patch,
     for (auto& e : out.entries)
     {
         if (isLocked && isLocked(e.section, e.moduleId, e.paramId)) continue;
+
+        const ParameterDescriptor* pd = nullptr;
+        const auto curve = curveOf(patch, e, &pd);
+        if (curve == MutCurve::Fixed) continue;
         if (rng.nextFloat() >= probability) continue;
 
-        const auto* pd = findDescriptor(patch, e);
-        if (!pd) continue;
-        const int span = pd->maxValue - pd->minValue;
-        if (span <= 0) continue;
-
-        // Check if this parameter is OscFreq for harmonic mutation
-        const auto& container = patch.getContainer(e.section);
-        const auto* mod = container.getModuleByIndex(e.moduleId);
-        const auto* md = mod ? mod->getDescriptor() : nullptr;
-        const bool isOscFreq = md && getCategoryForParam(*md, *pd) == static_cast<int>(MutCategory::OscFreq);
-
-        if (isOscFreq)
-        {
-            // Harmonic intervals (in semitones): prefer musical ratios
-            static const int harmonicIntervals[] = { 0, 7, 12, 19, 24, -7, -12, -5 };
-            const int idx = rng.nextInt(static_cast<int>(std::size(harmonicIntervals)));
-            const int newVal = juce::jlimit(pd->minValue, pd->maxValue,
-                                           e.value + harmonicIntervals[idx]);
-            e.value = newVal;
-        }
-        else
-        {
-            // Standard Gaussian distribution: prefers small mutations to large ones
-            const float u1 = rng.nextFloat() + 1e-7f;  // avoid log(0)
-            const float u2 = rng.nextFloat();
-            const float gauss = std::sqrt(-2.0f * std::log(u1))
-                              * std::cos(2.0f * juce::MathConstants<float>::pi * u2);
-            const float sigma = range * static_cast<float>(span) * 0.5f;
-            const float offset = gauss * sigma;
-            e.value = juce::jlimit(pd->minValue, pd->maxValue,
-                                   e.value + juce::roundToInt(offset));
-        }
+        e.value = mutateValue(e.value, pd->minValue, pd->maxValue, curve, range, rng);
     }
     return out;
 }
@@ -109,14 +162,35 @@ ParamSnapshot randomize(const ParamSnapshot& src, const Patch& patch,
     {
         if (isLocked && isLocked(e.section, e.moduleId, e.paramId)) continue;
 
-        const auto* pd = findDescriptor(patch, e);
-        if (!pd) continue;
-        const int span = pd->maxValue - pd->minValue;
-        if (span <= 0) continue;
+        const ParameterDescriptor* pd = nullptr;
+        const auto curve = curveOf(patch, e, &pd);
+        if (curve == MutCurve::Fixed) continue;
 
-        e.value = pd->minValue + rng.nextInt(span + 1);
+        e.value = randomValue(e.value, pd->minValue, pd->maxValue, curve, rng);
     }
     return out;
+}
+
+std::vector<std::pair<float, float>> chromosomePath(const ParamSnapshot& snap)
+{
+    std::vector<std::pair<float, float>> path;
+    if (!snap.filled || snap.entries.empty())
+        return path;
+
+    path.reserve(snap.entries.size() / 2 + 2);
+    float x = 0.0f, y = 0.0f;
+    float heading = 0.0f;   // degrees
+    path.emplace_back(x, y);
+    for (size_t i = 0; i + 1 < snap.entries.size(); i += 2)
+    {
+        heading += static_cast<float>(snap.entries[i].value - 63);
+        const float step = static_cast<float>(snap.entries[i + 1].value) + 1.0f;
+        const float rad = juce::degreesToRadians(heading);
+        x += step * std::cos(rad);
+        y += step * std::sin(rad);
+        path.emplace_back(x, y);
+    }
+    return path;
 }
 
 ParamSnapshot interpolate(const ParamSnapshot& mother, const ParamSnapshot& father, float t)

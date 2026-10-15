@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+### Changed
+
+- **The Patch Mutator mutates like the G2's** (2026-10-15, branch `mutator-g2`). Javier found
+  the G2's mutations more musical than NME's, so the G2's own mutator was studied in Clavia's G2
+  Demo (notes in `G2-Emu/NOTES.md`) and its ideas rebuilt here, with no code of theirs:
+  - **Every parameter has a shape** (`getMutationCurve`): linear, finer near the bottom (attack,
+    release, times, feedback, FM amount), finer near the top (an oscillator's or drum's own
+    levels) or finer around the middle (coarse/fine tune, detune, pan, EQ gain, decay). A
+    change is drawn evenly within ±range in that shape's space.
+  - **Set-up switches are never mutated**: on/off, mute, bypass, modes, KBT and LFO range
+    switches, pads, input levels, step counts. Waveforms, sequencer steps and key-quantiser
+    notes still are, as on the G2. Before, everything with a range moved, which is what broke
+    sounds apart.
+  - **A change comes back in at the edges** instead of piling up on the minimum or maximum.
+  - **Probability and Range are tied by the G2's curve** (Range 19 % → Probability 37 %), and
+    Range stops at 50 %. Before, they were tied as `1 − x`.
+  - **No more octave jumps** on oscillator pitch: it is a centred knob like the rest.
+  - Randomize draws each parameter over its whole range in its shape, and leaves the switches.
+  - **The boxes draw the sound as a path**: a turtle reads the parameters in pairs, turning by
+    one and walking the other, so a mother's children draw alike and adding a module bends it
+    (`Mutator::chromosomePath`). Before, it was a bar per sampled parameter.
+  Checked with `tests/test_mutator.cpp` (7 cases: shapes of real G1 parameters, the tie, edges,
+  switches, the turtle) and the whole suite; still to be tried by ear on the G1. Not done yet:
+  Cross and Interpolate do not carry per-parameter morph ranges, which the G2 does, because the
+  variations do not store them.
+
 ### Fixed
 
 - **Adding and deleting modules fast no longer gets the patch rejected** (2026-10-14, G1-Emu #63,

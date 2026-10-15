@@ -1,5 +1,6 @@
 #include "MutatorWindow.h"
 #include "AppTheme.h"
+#include "../model/Mutator.h"
 
 #include <cmath>
 
@@ -77,22 +78,34 @@ public:
         g.setColour(snap.filled ? panelBg().brighter(0.06f) : panelBg().darker(0.15f));
         g.fillRoundedRectangle(r, 4.0f);
 
-        // Chromosome graph: one bar per sampled parameter value
+        // Chromosome: the sound walked as a path (Mutator::chromosomePath), fitted
+        // to the box. Children of one mother walk alike; a new module bends it.
         if (snap.filled && !snap.entries.empty())
         {
-            auto plot = r.reduced(4.0f);
-            plot.removeFromTop(12.0f);
-            const int bars = juce::jmin(48, static_cast<int>(snap.entries.size()));
-            const float bw = plot.getWidth() / static_cast<float>(bars);
-            g.setColour(accent().withAlpha(0.75f));
-            for (int i = 0; i < bars; ++i)
+            auto plot = r.reduced(5.0f);
+            plot.removeFromTop(11.0f);
+            const auto points = Mutator::chromosomePath(snap);
+            if (points.size() > 1)
             {
-                const auto& e = snap.entries[static_cast<size_t>(
-                    i * static_cast<int>(snap.entries.size()) / bars)];
-                const float norm = juce::jlimit(0.0f, 1.0f, static_cast<float>(e.value) / 127.0f);
-                const float h = plot.getHeight() * norm;
-                g.fillRect(plot.getX() + bw * static_cast<float>(i),
-                           plot.getBottom() - h, juce::jmax(1.0f, bw - 1.0f), h);
+                float minX = points[0].first, maxX = minX, minY = points[0].second, maxY = minY;
+                for (const auto& p : points)
+                {
+                    minX = juce::jmin(minX, p.first);  maxX = juce::jmax(maxX, p.first);
+                    minY = juce::jmin(minY, p.second); maxY = juce::jmax(maxY, p.second);
+                }
+                const float w = juce::jmax(1.0f, maxX - minX), h = juce::jmax(1.0f, maxY - minY);
+                const float scale = 0.9f * juce::jmin(plot.getWidth() / w, plot.getHeight() / h);
+                const float cx = (minX + maxX) * 0.5f, cy = (minY + maxY) * 0.5f;
+                juce::Path path;
+                for (size_t i = 0; i < points.size(); ++i)
+                {
+                    const juce::Point<float> pt { plot.getCentreX() + (points[i].first - cx) * scale,
+                                                  plot.getCentreY() + (points[i].second - cy) * scale };
+                    if (i == 0) path.startNewSubPath(pt); else path.lineTo(pt);
+                }
+                g.setColour(accent().withAlpha(0.85f));
+                g.strokePath(path, juce::PathStrokeType(1.0f, juce::PathStrokeType::curved,
+                                                        juce::PathStrokeType::rounded));
             }
         }
 
@@ -203,11 +216,15 @@ MutatorPanel::MutatorPanel()
         l.setFont(AppTheme::uiFont(10.5f));
         addAndMakeVisible(l);
     };
-    setupKnob(probSlider, probLabel, "Probability", 0.20, false);
-    setupKnob(rangeSlider, rangeLabel, "Range", 0.40, true);
+    setupKnob(probSlider, probLabel, "Probability", Mutator::probabilityForRange(0.19f), false);
+    setupKnob(rangeSlider, rangeLabel, "Range", 0.19, true);
+    // The G2 stops Range at half the span: past that a mutation is a new sound
+    rangeSlider.setRange(0.0, Mutator::kMaxRange, 0.01);
+    rangeSlider.setValue(0.19, juce::dontSendNotification);
     setupKnob(crossProbSlider, crossProbLabel, "Probability", 0.15, false);
 
-    // Linked (G2 default): low probability <-> large changes
+    // Linked (G2 default): a wide range changes few parameters, a narrow one many,
+    // by the G2's own curve (Mutator::probabilityForRange)
     linkToggle.setToggleState(true, juce::dontSendNotification);
     addAndMakeVisible(linkToggle);
 
@@ -219,7 +236,8 @@ MutatorPanel::MutatorPanel()
         if (linkToggle.getToggleState() && !adjustingLinked)
         {
             adjustingLinked = true;
-            rangeSlider.setValue(1.0 - probSlider.getValue(), juce::sendNotificationSync);
+            rangeSlider.setValue(Mutator::rangeForProbability(static_cast<float>(probSlider.getValue())),
+                                 juce::sendNotificationSync);
             adjustingLinked = false;
         }
     };
@@ -227,7 +245,8 @@ MutatorPanel::MutatorPanel()
         if (linkToggle.getToggleState() && !adjustingLinked)
         {
             adjustingLinked = true;
-            probSlider.setValue(1.0 - rangeSlider.getValue(), juce::sendNotificationSync);
+            probSlider.setValue(Mutator::probabilityForRange(static_cast<float>(rangeSlider.getValue())),
+                                juce::sendNotificationSync);
             adjustingLinked = false;
         }
     };

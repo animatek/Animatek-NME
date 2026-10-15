@@ -41,6 +41,7 @@ target_sources(nme_tests PRIVATE
     test_theme_file.cpp
     test_community_themes.cpp
     test_version_check.cpp
+    test_mutator.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
@@ -89,6 +90,9 @@ target_sources(nme_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/source/model/ModuleReplacement.cpp
     ${CMAKE_SOURCE_DIR}/source/model/KeyQuantScales.cpp
     ${CMAKE_SOURCE_DIR}/source/model/SlotSet.cpp
+    ${CMAKE_SOURCE_DIR}/source/model/Mutator.cpp
+    ${CMAKE_SOURCE_DIR}/source/model/MutationCategories.cpp
+    ${CMAKE_SOURCE_DIR}/source/model/PatchVariations.cpp
 )
 
 target_include_directories(nme_tests PRIVATE

@@ -28,3 +28,20 @@ bool mutCategoryMatches(MutCategory cat,
 
 /** Determine which category (if any) a parameter belongs to. Returns -1 if none. */
 int getCategoryForParam(const ModuleDescriptor& module, const ParameterDescriptor& param);
+
+/**
+ * How the Patch Mutator moves a parameter, after the G2's own mutator: each
+ * parameter has a shape, and the random change is drawn evenly in that shape's
+ * space, so it is finer where the ear is finer.
+ */
+enum class MutCurve
+{
+    Fixed,      // never mutated: on/off, modes, KBT, ranges, pads... the patch's structure
+    Linear,     // even across the range
+    FineLow,    // finer near the bottom: attack, release, hold, times, feedback, FM amount
+    FineHigh,   // finer near the top: the levels of an oscillator's or drum's own mixer
+    Centered,   // finer around the middle: coarse/fine tune, detune, pan, EQ gain, decay
+};
+
+/** The mutation shape of a G1 parameter (rules in MutationCategories.cpp). */
+MutCurve getMutationCurve(const ModuleDescriptor& module, const ParameterDescriptor& param);
