@@ -37,6 +37,13 @@
 
 ### Fixed
 
+- **Linux: no display no longer crashes NME at start-up** (#101, reported by email by the author
+  of PatchHamster G1, on 0.17.0). With `$DISPLAY` unset or unreachable (a stale `xauth` cookie
+  after renaming the machine, in his case), JUCE has no screen, and centring the main window
+  segfaulted. NME now checks for a display before making the window, prints "no display to open
+  the window on" with what to check, and exits with code 1. Checked with `DISPLAY=:99`: before,
+  a segfault (139); now the message and exit 1.
+
 - **MCP: a refused connection says where the bridge is turned on** (#102, reported by email by
   the author of PatchHamster G1). With the bridge off, a refused connection looked exactly like
   "NME isn't running". `mcp-bridge/server.py` now tells the two cases apart from a timeout:

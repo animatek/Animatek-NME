@@ -4,6 +4,7 @@
 #include "ui/PatchCanvasComponent.h"
 #include "ui/ThemeRegistry.h"
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <iostream>
 
 class NmeApplication : public juce::JUCEApplication
 {
@@ -31,6 +32,17 @@ public:
         }
 
         appProperties.setStorageParameters(options);
+
+        // No display to draw on (on Linux: $DISPLAY unset or unreachable, a stale xauth cookie):
+        // JUCE has no screen to put the window on, and centring it crashed (#101). Say so and quit.
+        if (juce::Desktop::getInstance().getDisplays().getPrimaryDisplay() == nullptr)
+        {
+            std::cerr << "Animatek NME: no display to open the window on. "
+                         "On Linux, check that $DISPLAY is set and reachable (xauth, ssh -X)." << std::endl;
+            setApplicationReturnValue(1);
+            quit();
+            return;
+        }
 
         const auto savedOptions = EditorOptions::load(appProperties.getUserSettings());
         AppTheme::setPalette(ThemeRegistry::get(savedOptions.uiThemeIndex).app);
