@@ -40,10 +40,23 @@ def _call(method: str, params: Optional[dict[str, Any]] = None) -> Any:
                 if not chunk:
                     break
                 buf += chunk
-    except (ConnectionRefusedError, socket.timeout, OSError) as exc:
+    except ConnectionRefusedError as exc:
+        # Nothing listening: the editor is closed, or its bridge is off (the default). The two
+        # look the same from here, so the message names both, and where the switch is.
         raise BridgeError(
-            f"Could not reach AnimatekNME's MCP bridge at {HOST}:{PORT} - "
-            "is the editor running, with the bridge enabled?"
+            f"Nothing is listening at {HOST}:{PORT}: either AnimatekNME is not running, or its "
+            "MCP bridge is off (it is off by default). Turn it on in AnimatekNME: Editor Options "
+            "(Ctrl+,) > MCP Bridge > enable; the panel then says 'listening'."
+        ) from exc
+    except socket.timeout as exc:
+        raise BridgeError(
+            f"AnimatekNME's MCP bridge at {HOST}:{PORT} did not answer within {TIMEOUT_SECONDS} s: "
+            "the editor is running but busy (a patch transfer?) or stuck. Try again."
+        ) from exc
+    except OSError as exc:
+        raise BridgeError(
+            f"Could not reach AnimatekNME's MCP bridge at {HOST}:{PORT} ({exc}): is the editor "
+            "running, with Editor Options (Ctrl+,) > MCP Bridge enabled?"
         ) from exc
 
     if not buf:

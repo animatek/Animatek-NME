@@ -42,6 +42,13 @@ El puente MCP está **desactivado por defecto**. Actívalo en Editor Options
 escuchando; el editor tiene que estar abierto para que las herramientas
 funcionen. Mira [El puente MCP](09-mcp-bridge.md).
 
+Una **conexión rechazada en `127.0.0.1:51027`** ("Nothing is listening") quiere
+decir una de dos cosas, que desde el cliente se ven igual: el editor está cerrado,
+o está abierto con el puente apagado. Si el editor está abierto, mira ese panel:
+apagado, o **failed** (ámbar, el puerto lo tiene otro programa), te dice cuál. Una
+conexión que se acepta pero **tarda demasiado** quiere decir que el editor está
+abierto pero ocupado, por ejemplo en medio de una transferencia de patch: prueba otra vez.
+
 ## Notas colgadas
 
 Si se quedan notas sonando (normalmente por MIDI externo yendo directo al

@@ -37,6 +37,14 @@
 
 ### Fixed
 
+- **MCP: a refused connection says where the bridge is turned on** (#102, reported by email by
+  the author of PatchHamster G1). With the bridge off, a refused connection looked exactly like
+  "NME isn't running". `mcp-bridge/server.py` now tells the two cases apart from a timeout:
+  refused says nothing is listening, so either NME is closed or its bridge is off, and names
+  the switch (Editor Options, `Ctrl+,` > MCP Bridge); a timeout says NME is running but busy.
+  The troubleshooting chapter (English and Spanish) explains how to tell which. Checked
+  against a port nobody listens on.
+
 - **MCP: `list_assignments`, `unassign_knob`, `unassign_midi_cc` and `fetch_patch` failed with
   "name 'port' is not defined"** (#99, reported by bacizone, 2026-10-18). Step 7 of the
   multi-synth work gave every tool a `port`, but these four only got it in their body, not in

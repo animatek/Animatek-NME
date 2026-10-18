@@ -40,6 +40,13 @@ The MCP bridge is **off by default**. Enable it in Editor Options (`Ctrl+,`) →
 MCP Bridge and check the status line says it is listening; the editor must be
 running for the tools to work. See [The MCP Bridge](09-mcp-bridge.md).
 
+A **refused connection on `127.0.0.1:51027`** ("Nothing is listening") means one
+of two things, which look the same from the client: the editor is closed, or it
+is open with the bridge off. If the editor is open, look at that panel: off, or
+**failed** (amber, the port taken by something else), tells you which. A
+connection that is accepted but **times out** means the editor is running but
+busy, for example in the middle of a patch transfer: try again.
+
 ## Stuck notes
 
 If notes hang (usually from external MIDI going directly to the synth), use the
