@@ -8,6 +8,7 @@
 #include "../model/LightMeterLayout.h"
 #include "../protocol/KnobAssignmentMessage.h"
 #include "McpRules.h"
+#include "../sync/BankTransferManager.h"
 #include <algorithm>
 #include <limits>
 #include <optional>
@@ -462,6 +463,10 @@ juce::var McpRequestHandler::handle(const juce::var& request)
         else if (method == "set_morph_value")  result = setMorphValue(params);
         else if (method == "play_note")        result = playNote(params);
         else if (method == "list_bank")        result = listBank(params);
+        else if (method == "save_bank")        result = saveBank(params);
+        else if (method == "send_bank")        result = sendBank(params);
+        else if (method == "get_bank_transfer")    result = getBankTransfer(params);
+        else if (method == "cancel_bank_transfer") result = cancelBankTransfer(params);
         else if (method == "replace_module")   result = replaceModule(params);
         else if (method == "list_midi_ports")  result = listMidiPorts(params);
         else if (method == "connect_midi")     result = connectMidi(params);
@@ -2162,5 +2167,129 @@ juce::var McpRequestHandler::listBank(const juce::var& params)
     result->setProperty("used", used);
     result->setProperty("free", 99 - used);
     result->setProperty("positions", positions);
+    return juce::var(result);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Whole banks. A transfer takes seconds and the bridge answers within ten, so
+// these start it and get_bank_transfer follows it. It runs on the synth being
+// edited, exactly as the Device menu's dialogs do, and never touches a slot.
+
+namespace
+{
+int requireBank(const juce::var& params)
+{
+    if (!params.hasProperty("bank"))
+        throw McpError{ "missing_param", "bank is required (1-9)" };
+    const int bank = static_cast<int>(params["bank"]);
+    if (bank < 1 || bank > 9)
+        throw McpError{ "invalid_param", "bank must be 1-9" };
+    return bank;
+}
+
+juce::File requireAbsolutePath(const juce::var& params, const char* key)
+{
+    const auto path = params.getProperty(key, juce::var()).toString().trim();
+    if (path.isEmpty() || !juce::File::isAbsolutePath(path))
+        throw McpError{ "missing_param", juce::String(key) + " must be an absolute path" };
+    return juce::File(path);
+}
+
+juce::var progressToVar(const BankTransferManager& transfer)
+{
+    const auto& p = transfer.getProgress();
+    auto* result = new juce::DynamicObject();
+    result->setProperty("busy", transfer.isBusy());
+    result->setProperty("current", p.current);
+    result->setProperty("total", p.total);
+    result->setProperty("item", p.itemName);
+    result->setProperty("finished", p.finished);
+    result->setProperty("cancelled", p.cancelled);
+    juce::Array<juce::var> failures;
+    for (const auto& f : p.failures)
+        failures.add(f);
+    result->setProperty("failures", failures);
+    return juce::var(result);
+}
+
+void requireIdleConnected(MainComponent& owner)
+{
+    if (!owner.getConnectionManager().isConnected())
+        throw McpError{ "not_connected", "No synth connected" };
+    if (owner.getBankTransfer().isBusy())
+        throw McpError{ "busy", "A bank transfer is already running: follow it with get_bank_transfer" };
+}
+}  // namespace
+
+juce::var McpRequestHandler::saveBank(const juce::var& params)
+{
+    requireIdleConnected(owner_);
+    const int bank = requireBank(params);
+    const auto folder = requireAbsolutePath(params, "folder");
+    if (folder.existsAsFile())
+        throw McpError{ "invalid_param", "folder is a file" };
+
+    auto& transfer = owner_.getBankTransfer();
+    transfer.saveBankToDisk(bank - 1, folder, nullptr);
+
+    auto* result = new juce::DynamicObject();
+    result->setProperty("bank", bank);
+    result->setProperty("folder", folder.getFullPathName());
+    result->setProperty("list", folder.getChildFile("Bank" + juce::String(bank) + ".pchList").getFullPathName());
+    result->setProperty("transfer", progressToVar(transfer));
+    return juce::var(result);
+}
+
+juce::var McpRequestHandler::sendBank(const juce::var& params)
+{
+    requireIdleConnected(owner_);
+    const int bank = requireBank(params);
+    const auto source = requireAbsolutePath(params, "source");
+    if (!source.exists())
+        throw McpError{ "not_found", "No such file or folder: " + source.getFullPathName() };
+
+    juce::StringArray problems;
+    juce::File list;
+    const auto items = BankTransferManager::itemsFrom(source, problems, list);
+    if (items.empty())
+        throw McpError{ "nothing_to_send", problems.isEmpty() ? juce::String("No .pch files there")
+                                                              : problems.joinIntoString("; ") };
+
+    auto& transfer = owner_.getBankTransfer();
+    transfer.sendBankToSynth(items, bank - 1, nullptr);
+
+    juce::Array<juce::var> positions;
+    for (const auto& item : items)
+    {
+        auto* entry = new juce::DynamicObject();
+        entry->setProperty("position", item.position + 1);
+        entry->setProperty("file", item.file.getFileName());
+        positions.add(juce::var(entry));
+    }
+    juce::Array<juce::var> leftOut;
+    for (const auto& p : problems)
+        leftOut.add(p);
+
+    auto* result = new juce::DynamicObject();
+    result->setProperty("bank", bank);
+    result->setProperty("list", list != juce::File() ? juce::var(list.getFullPathName()) : juce::var());
+    result->setProperty("positions", positions);
+    result->setProperty("leftOut", leftOut);
+    result->setProperty("transfer", progressToVar(transfer));
+    return juce::var(result);
+}
+
+juce::var McpRequestHandler::getBankTransfer(const juce::var&)
+{
+    return progressToVar(owner_.getBankTransfer());
+}
+
+juce::var McpRequestHandler::cancelBankTransfer(const juce::var&)
+{
+    auto& transfer = owner_.getBankTransfer();
+    const bool wasBusy = transfer.isBusy();
+    transfer.cancel();
+    auto* result = new juce::DynamicObject();
+    result->setProperty("cancelling", wasBusy);
     return juce::var(result);
 }

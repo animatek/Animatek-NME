@@ -22,6 +22,11 @@
     without a list goes by the files' `NN - ` prefix, as the manual already said it did.
   - The dialog loses its TEMP SLOT box. A single-bank save no longer needs the patch list:
     without it all 99 positions are asked.
+  - **MCP**: `save_bank`, `send_bank`, `get_bank_transfer` and `cancel_bank_transfer`. Tried
+    through the bridge on NME + G1-Emu (direct link): the original's 7-patch bank 8 list in
+    5.6 s and read back in 1.1 s, identical to the files Clavia's editor saved; a full 99-patch
+    bank written in 84 s and read in 17 s, 99/99 identical; an NME folder round trip
+    byte-identical; a cancel stops after the patch in progress; slots untouched throughout.
 
 - **The Patch Mutator mutates like the G2's** (2026-10-15, branch `mutator-g2`). Javier found
   the G2's mutations more musical than NME's, so the G2's own mutator was studied in Clavia's G2

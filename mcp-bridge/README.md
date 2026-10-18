@@ -101,6 +101,13 @@ Reading the synth back (these send nothing):
 - `list_bank(bank, include_empty?)` — the patch name in each position of a synth
   bank, or null when empty, from the list fetched on connect. `store_to_bank`
   overwrites without asking: look here first.
+- `save_bank(bank, folder)` — a whole bank to a folder, read straight from the
+  synth's memory: `NN - Name.pch` files and a `BankN.pchList`. No slot changes.
+- `send_bank(bank, source)` — a `.pchList` (NME's or Clavia's) or a folder into a
+  bank, each patch to its position, straight to memory. Overwrites those
+  positions without asking. No slot changes.
+- `get_bank_transfer()`, `cancel_bank_transfer()` — a bank transfer takes
+  seconds, so the two above only start it: poll this until `finished`.
 
 Assignments (undoable, through the same actions as the canvas):
 

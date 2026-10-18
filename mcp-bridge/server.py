@@ -583,6 +583,50 @@ def store_to_bank(
     return _call("store_to_bank", params)
 
 
+@mcp.tool()
+def save_bank(bank: int, folder: str) -> Any:
+    """Save a whole synth bank to a folder, read straight from the synth's memory.
+
+    bank: 1-9. folder: absolute path; created if missing. Writes every patch as
+    "NN - Name.pch" plus BankN.pchList (Clavia's bank list, which keeps the
+    positions). No slot on the synth is loaded or changed. Runs on the synth
+    being edited and takes a few seconds: this only starts it, so poll
+    get_bank_transfer until finished is true.
+    """
+    return _call("save_bank", {"bank": bank, "folder": folder})
+
+
+@mcp.tool()
+def send_bank(bank: int, source: str) -> Any:
+    """Write patches from disk into a synth bank, straight to its memory.
+
+    bank: 1-9. source: absolute path to a .pchList (NME's or one saved by
+    Clavia's editor: each patch goes to its own position), or to a folder (its
+    .pchList if it has exactly one; else the "NN - " prefix of NME backups; else
+    the .pch files in name order from position 1). OVERWRITES those positions
+    without asking; others are left alone. No slot changes. Check list_bank
+    first if unsure. Returns which file goes where and what was left out; poll
+    get_bank_transfer until finished is true. Stops at the first refused write.
+    """
+    return _call("send_bank", {"bank": bank, "source": source})
+
+
+@mcp.tool()
+def get_bank_transfer() -> Any:
+    """Progress of the running bank transfer (save_bank / send_bank), or the last one's.
+
+    busy, current/total, the item in progress, finished, cancelled, and the
+    failures by name. A save that finds a position empty is not a failure.
+    """
+    return _call("get_bank_transfer")
+
+
+@mcp.tool()
+def cancel_bank_transfer() -> Any:
+    """Stop the running bank transfer after the patch in progress."""
+    return _call("cancel_bank_transfer")
+
+
 # --- Reading the synth back ---------------------------------------------------
 
 

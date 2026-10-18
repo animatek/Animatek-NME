@@ -42,6 +42,8 @@ public:
     ~BankTransferManager();
 
     bool isBusy() const { return busy; }
+    // The running transfer's progress, or the last one's once it has finished.
+    const Progress& getProgress() const { return progress; }
     // Follow the synth being edited. Ignored mid-transfer: a transfer finishes on the synth it began on.
     void retarget(ConnectionManager& cm) { if (!busy) connection = &cm; }
 

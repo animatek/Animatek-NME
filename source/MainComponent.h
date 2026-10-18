@@ -90,6 +90,7 @@ public:
     // asks the synth anything: it is the state the UI was already drawing from,
     // made visible to a client that cannot see the screen.
     const ConnectionManager& getConnectionManager() const { return synthHub.active(); }
+    BankTransferManager& getBankTransfer() { return bankTransfer; }
     bool isSlotLocal(int slot) const { return slot >= 0 && slot < numSlots && slotIsLocal[slot]; }
     bool isSlotEnableStateKnown() const { return activeState().enableStateKnown; }
     const std::array<bool, 4>& getLastEnabledSlots() const { return activeState().lastEnabled; }
