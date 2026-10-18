@@ -272,7 +272,8 @@ void ConnectionManager::forgetSynthState(const char* _why)
     fetchPatchId = -1;
     sectionRetriesLeft = 0;
     patchFetchCompleteCallback = nullptr;
-    bankFetchCallback = nullptr;
+    flashDumpCallback = nullptr;
+    flashDumpAccumulator.clear();
 
     ackedQueue.clear();
     ackedQueueWaiting = false;
@@ -820,7 +821,9 @@ void ConnectionManager::sendNextUploadPacket()
         // currentPatch is already authoritative — it IS the patch we just uploaded.
         // Re-fetching would replace it with a synth copy that may not include
         // morph assignments (the synth's working-slot memory may strip them).
-        suppressNextAutoFetch = true;
+        // A bank upload puts nothing in a slot, so no NewPatchInSlot follows it.
+        if (!uploadToBank)
+            suppressNextAutoFetch = true;
         return;
     }
 
@@ -855,7 +858,8 @@ void ConnectionManager::sendNextUploadPacket()
                           : "(unknown)")
                       << ", aborting upload" << std::endl;
             waitingForUploadAck = false;
-            invalidateParamQueue("upload timeout", uploadSlot);
+            if (!uploadToBank)
+                invalidateParamQueue("upload timeout", uploadSlot);
             closeUploadTransfer("ACK timeout");
             uploadPackets.clear();
             uploadPacketIndex = 0;
@@ -931,16 +935,33 @@ void ConnectionManager::notifyBankUploadResult(bool success)
 
 void ConnectionManager::uploadPatch(int slot, const Patch& patch)
 {
+    startUpload(slot, patch, -1, 0);
+}
+
+// Clavia's editor sends its bank packets with slot 0 in the header, and the
+// PatchName section says where the patch goes. Nothing about the slots changes.
+void ConnectionManager::uploadPatchToBank(int section, int position, const Patch& patch)
+{
+    startUpload(0, patch, juce::jlimit(0, 8, section), juce::jlimit(0, 98, position));
+}
+
+void ConnectionManager::startUpload(int slot, const Patch& patch, int bankSection, int bankPosition)
+{
     if (!isConnected())
         return;
 
-    // Not authoritative again until every section is ACKed.
-    if (slot >= 0 && slot < 4)
-        slotModelDelivered[static_cast<size_t>(slot)] = false;
+    const bool toBank = bankSection >= 0;
 
-    // The full upload supersedes all parameter deltas for the previous synth
-    // patch — for this slot only, other slots' queued edits are unaffected.
-    invalidateParamQueue("full patch upload", slot);
+    if (!toBank)
+    {
+        // Not authoritative again until every section is ACKed.
+        if (slot >= 0 && slot < 4)
+            slotModelDelivered[static_cast<size_t>(slot)] = false;
+
+        // The full upload supersedes all parameter deltas for the previous synth
+        // patch — for this slot only, other slots' queued edits are unaffected.
+        invalidateParamQueue("full patch upload", slot);
+    }
 
     // Don't interleave the upload with the patch list request stream.
     cancelPatchListFetch("patch upload supersedes it");
@@ -967,7 +988,7 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
     // Serialize the patch into individual PDL2 sections in the Java upload order,
     // then lay them end to end and chop the result into packets the synth accepts.
     PatchSerializer serializer;
-    auto sections = serializer.serializeForUpload(patch);
+    auto sections = serializer.serializeForUpload(patch, bankSection, bankPosition);
 
     std::vector<std::string> labels;
     labels.reserve(sections.size());
@@ -981,21 +1002,26 @@ void ConnectionManager::uploadPatch(int slot, const Patch& patch)
     // they were.
     uploadKnobAssignments.clear();
     uploadCtrlAssignments.clear();
-    for (int k = 0; k < 23; ++k)
+    for (int k = 0; k < 23 && !toBank; ++k)
     {
         const auto& ka = patch.knobAssignments[static_cast<size_t>(k)];
         if (ka.assigned)
             uploadKnobAssignments.push_back({ k, ka.section, ka.module, ka.param });
     }
-    for (const auto& ca : patch.ctrlAssignments)
-        uploadCtrlAssignments.push_back({ ca.control, ca.section, ca.module, ca.param });
+    if (!toBank)
+        for (const auto& ca : patch.ctrlAssignments)
+            uploadCtrlAssignments.push_back({ ca.control, ca.section, ca.module, ca.param });
 
     uploadSlot = slot;
+    uploadToBank = toBank;
     uploadPacketIndex = 0;
     ++uploadAckGeneration;
 
-    std::cout << "[UPLOAD] Uploading patch \"" << patch.getName().toStdString()
-              << "\" to slot " << slot << " (" << sections.size() << " sections in "
+    std::cout << "[UPLOAD] Uploading patch \"" << patch.getName().toStdString() << "\" to "
+              << (toBank ? "bank " + std::to_string(bankSection + 1) + " position "
+                               + std::to_string(bankPosition + 1)
+                         : "slot " + std::to_string(slot))
+              << " (" << sections.size() << " sections in "
               << uploadPackets.size() << " packets)" << std::endl;
 
     if (uploadPackets.empty())
@@ -1443,6 +1469,9 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
         }
     }
 
+    if (takeFlashDumpEmpty(msg))
+        return;
+
     if (uploadWaitsForEditAck)
     {
         // The ACK of the edit that was in flight when the upload began: not the
@@ -1461,13 +1490,38 @@ void ConnectionManager::onAckReceived(const AckMessage& msg)
         return;
     }
 
+    // A write to a bank ends with an answer of type 0x18 once the flash is
+    // written (~440 ms on G1-Emu): 00 when it is stored, then the position and
+    // name. Anything else is the synth refusing it (Clavia's editor knows
+    // "Memory protect on" and "Memory full"), and the transfer stops there.
+    if (waitingForUploadAck && uploadToBank && msg.type == 0x18 && msg.pid2 != 0)
+    {
+        std::cout << "[UPLOAD] The synth did not store the patch (code " << msg.pid2
+                  << ")" << std::endl;
+        ++uploadAckGeneration;  // the timeout for this packet has nothing left to do
+        waitingForUploadAck = false;
+        closeUploadTransfer("bank write refused");
+        uploadPackets.clear();
+        uploadPacketIndex = 0;
+        const juce::String reason = "The synth did not store the patch (code "
+                                  + juce::String(msg.pid2) + ")";
+        setStatus(State::Connected, reason);
+        notifyUploadFailed(reason);
+        if (bankUploadResultCallback)
+            notifyBankUploadResult(false);
+        return;
+    }
+
     if (waitingForUploadAck)
     {
         // Upload ACKs belong to uploadSlot, which may differ from the focused
         // slot. Classify them before generic focused-slot PID resynchronization.
-        slotPatchIds[static_cast<size_t>(uploadSlot & 0x03)] = msg.pid1;
-        if (uploadSlot == currentSlot)
-            currentPatchId = msg.pid1;
+        if (!uploadToBank)
+        {
+            slotPatchIds[static_cast<size_t>(uploadSlot & 0x03)] = msg.pid1;
+            if (uploadSlot == currentSlot)
+                currentPatchId = msg.pid1;
+        }
         ++uploadAckGeneration;  // invalidate timeout for the packet just ACKed
         uploadPacketIndex++;
         std::cout << "[UPLOAD] ACK for packet " << (uploadPacketIndex - 1)
@@ -1934,14 +1988,7 @@ void ConnectionManager::finalizePatch()
     // must not hijack where parameter edits are sent. Focus only moves via
     // selectSlot() and the synth's SlotActivated notification.
 
-    if (bankFetchCallback)
-    {
-        // Bank transfer: sections go to disk, the editor model is untouched.
-        auto cb = std::move(bankFetchCallback);
-        bankFetchCallback = nullptr;
-        cb(patchSections, completedSlot);
-    }
-    else if (patchDataCallback)
+    if (patchDataCallback)
     {
         patchDataCallback(patchSections, completedSlot);
 
@@ -2298,6 +2345,9 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
 
 void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
 {
+    if (takeFlashDumpPacket(msg))
+        return;
+
     // In Java protocol, PatchMessage.isreply = true — patch packets unblock the send queue.
     // The synth may respond to some edit commands (NewModule) with a patch confirmation packet.
     if (ackedQueueWaiting)
@@ -2424,6 +2474,69 @@ void ConnectionManager::onPatchPacketReceived(const PatchPacketMessage& msg)
             startSectionStaleTimeout();
         }
     }
+}
+
+void ConnectionManager::requestFlashDump(int section, int position, FlashDumpCallback cb)
+{
+    flashDumpAccumulator.clear();
+    flashDumpCallback = nullptr;
+    if (!isConnected())
+        return;
+
+    flashDumpSection = juce::jlimit(0, 8, section);
+    flashDumpPosition = juce::jlimit(0, 98, position);
+    flashDumpCallback = std::move(cb);
+
+    FlashDumpRequestMessage msg { flashDumpSection, flashDumpPosition };
+    protocol.sendMessage(NmCmd::PatchHandling, 0, msg.encode(), /*expectsReply=*/true,
+                         /*addChecksum=*/true);
+}
+
+// The answer to requestFlashDump() for an occupied position: a PatchPacket whose
+// stream opens with the 0x18 section naming that position. Taken before any
+// other use of patch packets, which would read it as settings or stray data.
+bool ConnectionManager::takeFlashDumpPacket(const PatchPacketMessage& msg)
+{
+    if (!flashDumpCallback)
+        return false;
+
+    if (flashDumpAccumulator.empty())
+    {
+        FlashDumpReply reply;
+        if (!FlashDumpReply::peek(msg.patchData, reply)
+            || reply.section != flashDumpSection || reply.position != flashDumpPosition)
+            return false;
+    }
+
+    flashDumpAccumulator.insert(flashDumpAccumulator.end(),
+                                msg.patchData.begin(), msg.patchData.end());
+    if (msg.isLast)
+    {
+        auto data = std::move(flashDumpAccumulator);
+        flashDumpAccumulator.clear();
+        deliverFlashDump(std::move(data));
+    }
+    return true;
+}
+
+// The answer for an empty position: ACK type 0x18, pid2 04, then bank and position.
+bool ConnectionManager::takeFlashDumpEmpty(const AckMessage& msg)
+{
+    if (!flashDumpCallback || msg.type != 0x18 || msg.pid2 != 0x04 || msg.payload.size() < 2)
+        return false;
+    if ((msg.payload[0] & 0x7F) != flashDumpSection || (msg.payload[1] & 0x7F) != flashDumpPosition)
+        return false;
+
+    deliverFlashDump({});
+    return true;
+}
+
+void ConnectionManager::deliverFlashDump(std::vector<uint8_t> patchData)
+{
+    auto cb = std::move(flashDumpCallback);
+    flashDumpCallback = nullptr;
+    if (cb)
+        cb(flashDumpSection, flashDumpPosition, patchData);
 }
 
 void ConnectionManager::onError(const ErrorMessage& msg)

@@ -4,6 +4,25 @@
 
 ### Changed
 
+- **Banks go to and from the synth's memory directly, as in Clavia's editor** (2026-10-18,
+  branch `bank-flash-transfer`). Read off the wire from editor 3.03 against a real G1
+  (`G1originaleditor/notes/15-bancos-pchlist.md`):
+  - **Save Bank to Disk** asks each position with `41 17 bank position` (FlashDumpRequest);
+    the synth answers with the whole stored patch in one message, opened by a `0x18` section
+    (parsed now), or with an ACK `18 04` for an empty position. Nothing is loaded into a slot.
+    A bank of 99 positions reads in 1.7 s on G1-Emu; the old way loaded each patch into a
+    temp slot and fetched it section by section.
+  - **Send Bank to Synth** sends each patch with the upload NME already had, but its
+    PatchName section reads `37 01 bank position` instead of `37 00 00 00`: the synth writes
+    it to flash and answers `18 00` once written (`18` with anything else stops the transfer
+    as refused). No selectSlot, no Store, no slot left holding the last patch. 7 patches in
+    5.3 s on G1-Emu.
+  - **`.pchList`**, Clavia's bank list: Save writes `BankN.pchList` beside the files, Send
+    reads one (NME's or Clavia's, chosen as a file or found alone in the folder). A folder
+    without a list goes by the files' `NN - ` prefix, as the manual already said it did.
+  - The dialog loses its TEMP SLOT box. A single-bank save no longer needs the patch list:
+    without it all 99 positions are asked.
+
 - **The Patch Mutator mutates like the G2's** (2026-10-15, branch `mutator-g2`). Javier found
   the G2's mutations more musical than NME's, so the G2's own mutator was studied in Clavia's G2
   Demo (notes in `G2-Emu/NOTES.md`) and its ideas rebuilt here, with no code of theirs:

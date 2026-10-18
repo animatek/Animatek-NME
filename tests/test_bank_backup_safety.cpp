@@ -96,7 +96,7 @@ TEST_CASE("An all-banks backup with no patch list leaves the previous one alone"
 
     BankTransferManager transfer(rec.connection, descriptions());
     bool reported = false;
-    transfer.saveAllBanksToDisk(mirror.root, 0, [&](const BankTransferManager::Progress&) {
+    transfer.saveAllBanksToDisk(mirror.root, [&](const BankTransferManager::Progress&) {
         reported = true;
     });
 
@@ -115,7 +115,7 @@ TEST_CASE("An all-banks backup with no connection leaves the previous one alone"
     REQUIRE_FALSE(connection.isConnected());
 
     BankTransferManager transfer(connection, descriptions());
-    transfer.saveAllBanksToDisk(mirror.root, 0, nullptr);
+    transfer.saveAllBanksToDisk(mirror.root, nullptr);
 
     CHECK_FALSE(transfer.isBusy());
     CHECK(mirror.intact());

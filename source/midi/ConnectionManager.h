@@ -59,6 +59,10 @@ public:
     void requestPatch(int slot = 0);
     void loadPatchFromBank(int section, int position, int targetSlot = -1);  // -1 = use current slot
     void uploadPatch(int slot, const Patch& patch);  // Upload full patch to synth working slot
+    // Write a patch straight to a bank position, as Clavia's editor sends a bank:
+    // no slot is focused, loaded or stored from. The result goes to the bank
+    // upload callback.
+    void uploadPatchToBank(int section, int position, const Patch& patch);
     void requestSynthSettings();
     void sendSynthSettings(const SynthSettings& settings);
     // slot is explicit (not the hardware-focused slot) — confirmed on real
@@ -238,16 +242,20 @@ public:
     }
     bool isPatchListLoaded() const { return patchListLoaded; }
 
-    // Bank transfer hooks (one-shot, set by BankTransferManager before each item).
-    // While bankFetchCallback is set, a completed patch fetch is delivered to it
-    // INSTEAD of patchDataCallback, keeping the editor UI out of bulk transfers.
-    using BankFetchCallback = std::function<void(const std::vector<std::vector<uint8_t>>& sections, int slot)>;
-    void setBankFetchCallback(BankFetchCallback cb) { bankFetchCallback = std::move(cb); }
-
+    // Bank transfer hook (one-shot, set by BankTransferManager before each item).
     // While set, upload completion (true) or ACK-timeout abort (false) is
     // delivered here instead of uploadCompleteCallback.
     using BankUploadResultCallback = std::function<void(bool success)>;
     void setBankUploadResultCallback(BankUploadResultCallback cb) { bankUploadResultCallback = std::move(cb); }
+
+    // Ask for the patch stored at a bank position, read from flash without
+    // loading it into a slot. One-shot: the callback gets the patch's 7-bit
+    // stream, or an empty vector when the position holds no patch. A
+    // disconnect drops it without a call; the caller keeps its own watchdog.
+    using FlashDumpCallback = std::function<void(int section, int position,
+                                                 const std::vector<uint8_t>& patchData)>;
+    void requestFlashDump(int section, int position, FlashDumpCallback cb);
+    void cancelFlashDump() { flashDumpCallback = nullptr; flashDumpAccumulator.clear(); }
 
     NmProtocol& getProtocol() { return protocol; }
 
@@ -362,8 +370,15 @@ private:
     SlotsEnabledCallback slotsEnabledCallback;
     UploadCompleteCallback uploadCompleteCallback;
     UploadFailedCallback uploadFailedCallback;
-    BankFetchCallback bankFetchCallback;
     BankUploadResultCallback bankUploadResultCallback;
+    FlashDumpCallback flashDumpCallback;
+    int flashDumpSection = -1;
+    int flashDumpPosition = -1;
+    std::vector<uint8_t> flashDumpAccumulator;
+    bool takeFlashDumpPacket(const PatchPacketMessage& msg);
+    bool takeFlashDumpEmpty(const AckMessage& msg);
+    void deliverFlashDump(std::vector<uint8_t> patchData);
+    void startUpload(int slot, const Patch& patch, int bankSection, int bankPosition);
     LightMeterCallback lightMeterCallback;
     SynthSettingsCallback synthSettingsCallback;
     PatchLoadProgressCallback patchLoadProgressCallback;
@@ -401,6 +416,7 @@ private:
     // deaf to all MIDI until something closes the transfer (issue #40).
     void closeUploadTransfer(const char* reason);
     int uploadSlot = 0;
+    bool uploadToBank = false;             // The upload names a bank position, not uploadSlot
     int uploadPacketIndex = 0;
     int uploadAckGeneration = 0;
     static constexpr int uploadAckTimeoutMs = 5000;

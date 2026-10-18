@@ -24,6 +24,7 @@ target_sources(nme_tests PRIVATE
     test_midi_lifecycle.cpp
     test_synchronizer_new_module.cpp
     test_bank_backup_safety.cpp
+    test_bank_flash.cpp
     test_mcp_event_log.cpp
     test_mcp_rules.cpp
     test_morph_assign_action.cpp
@@ -70,6 +71,7 @@ target_sources(nme_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/source/midi/ConnectionManager.cpp
     ${CMAKE_SOURCE_DIR}/source/sync/PatchSynchronizer.cpp
     ${CMAKE_SOURCE_DIR}/source/sync/BankTransferManager.cpp
+    ${CMAKE_SOURCE_DIR}/source/sync/PchList.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/NewCableMessage.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/DeleteCableMessage.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/RecolorCableMessage.cpp

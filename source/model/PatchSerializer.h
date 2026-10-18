@@ -44,10 +44,19 @@ public:
      * packets, and each packet carries its own 7-bit encoding, so the encoding
      * can only happen once the packet boundaries are known (issue #39).
      *
+     * With a bank position the PatchName section names that position instead
+     * of the working slot (01, section, position in place of three zeros), and
+     * the synth writes the patch straight to flash. That is how Clavia's editor
+     * sends a bank (seen on the wire, 2026-10-18).
+     *
      * @param patch The patch to serialize
+     * @param bankSection Bank 0-8, or -1 for the working slot
+     * @param bankPosition Position 0-98 within that bank
      * @return Vector of 16 sections (raw 8-bit binary data)
      */
-    std::vector<std::vector<uint8_t>> serializeForUpload(const Patch& patch);
+    std::vector<std::vector<uint8_t>> serializeForUpload(const Patch& patch,
+                                                         int bankSection = -1,
+                                                         int bankPosition = 0);
 
     /**
      * Serialize a patch to the 13 sections used by the download protocol
@@ -63,7 +72,8 @@ public:
 
 private:
     // Section serializers
-    std::vector<uint8_t> serializePatchName(const Patch& patch);
+    std::vector<uint8_t> serializePatchName(const Patch& patch, int bankSection = -1,
+                                            int bankPosition = 0);
     std::vector<uint8_t> serializeHeaderAndName(const Patch& patch);  // for legacy serialize()
     std::vector<uint8_t> serializeHeader(const Patch& patch);
     std::vector<uint8_t> serializeModuleDump(const Patch& patch, int section);

@@ -132,6 +132,9 @@ informational.
 
 ## Bank folders
 
-**Save Bank to Disk** writes patches as `NN - Name.pch`; the `NN` prefix
-records the bank position, and **Send Bank to Synth** uses it to restore
-patches to their exact slots.
+**Save Bank to Disk** writes patches as `NN - Name.pch` and a
+`BankN.pchList` beside them: the list Clavia's editor writes, plain text with
+one file per line in bank order, where a number line (`10`) jumps to that
+position. **Send Bank to Synth** takes the list (NME's or Clavia's) and puts
+every patch back at its position. A folder without a list goes by the `NN`
+prefix when every file has one, and otherwise in name order from position 1.

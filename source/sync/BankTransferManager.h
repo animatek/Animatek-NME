@@ -2,24 +2,28 @@
 
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
+#include <array>
 #include <atomic>
 #include <functional>
 #include <memory>
 #include <vector>
+#include "PchList.h"
 
 class ConnectionManager;
 class ModuleDescriptions;
 
-// Orchestrates bulk patch transfers between a synth bank and a disk folder.
+// Orchestrates bulk patch transfers between a synth bank and a disk folder, the
+// way Clavia's editor does it: straight to and from flash, never through a slot.
 //
-// Save direction: each non-empty bank position is loaded into a temp slot,
-// fetched, parsed, and written to disk as "NN - Name.pch".
-// Send direction: each .pch file is parsed, uploaded to the temp slot, and
-// stored to the destination bank at sequential positions.
+// Save direction: each bank position is read from flash (FlashDumpRequest),
+// parsed, and written to disk as "NN - Name.pch", with a BankN.pchList beside
+// them that keeps the positions.
+// Send direction: each .pch file is parsed and written to its bank position
+// (the upload's PatchName section names the position). Positions come from the
+// folder's .pchList when it has one, otherwise from the files' names in order.
 //
 // One transfer runs at a time; all progress callbacks fire on the message
-// thread. The temp slot's synth-side content is overwritten by the transfer —
-// the editor model for that slot is re-fetched when the transfer ends.
+// thread. No slot changes on the synth.
 class BankTransferManager
 {
 public:
@@ -41,10 +45,10 @@ public:
     // Follow the synth being edited. Ignored mid-transfer: a transfer finishes on the synth it began on.
     void retarget(ConnectionManager& cm) { if (!busy) connection = &cm; }
 
-    // Save every non-empty patch of bank `section` (0-8) into destFolder.
-    // Requires the synth patch list to be loaded (to skip empty positions).
-    void saveBankToDisk(int section, const juce::File& destFolder, int tempSlot,
-                        ProgressCallback cb);
+    // Save every patch of bank `section` (0-8) into destFolder, plus its
+    // BankN.pchList. With the patch list loaded only its names are asked for;
+    // without it all 99 positions are, and empty ones answer as such.
+    void saveBankToDisk(int section, const juce::File& destFolder, ProgressCallback cb);
 
     // Mirror-backup all 9 banks into banksRoot/Bank1..Bank9. The download goes
     // to a staging folder and is published over the existing mirror only once
@@ -54,14 +58,28 @@ public:
     // Mirror semantics (dropping patches deleted on the synth) therefore apply
     // at publication, and only for a backup that completed against a loaded
     // patch list.
-    void saveAllBanksToDisk(const juce::File& banksRoot, int tempSlot,
-                            ProgressCallback cb);
+    void saveAllBanksToDisk(const juce::File& banksRoot, ProgressCallback cb);
 
-    // Upload .pch files (sorted by filename) to bank `section`, filling
-    // positions 1..N in order. Existing patches at those positions are
-    // overwritten. Stops cleanly on the first upload failure.
-    void sendBankToSynth(const juce::Array<juce::File>& files, int section,
-                         int tempSlot, ProgressCallback cb);
+    struct SendItem
+    {
+        int position = 0;   // 0-98
+        juce::File file;
+    };
+
+    // What goes to a bank from `source`: a .pchList file, each patch to its
+    // position; or a folder, through its .pchList when it has exactly one, else
+    // by the "NN - " each name starts with in an NME backup, else its .pch files
+    // sorted by name into positions 1..99. A folder with several
+    // lists sends nothing until one is chosen. Files that cannot go (missing,
+    // past position 99, a corrupt list) are named in `problems`.
+    static std::vector<SendItem> itemsFrom(const juce::File& source,
+                                           juce::StringArray& problems,
+                                           juce::File& listUsed);
+
+    // Write each file to its position in bank `section`. Existing patches at
+    // those positions are overwritten; the others are left alone. Stops
+    // cleanly on the first upload failure.
+    void sendBankToSynth(const std::vector<SendItem>& items, int section, ProgressCallback cb);
 
     // Request the running transfer to stop after the current item.
     void cancel() { cancelRequested = true; }
@@ -83,6 +101,9 @@ private:
     void discardStagedMirror();
 
     void saveNextItem();
+    void onFlashDump(const SaveItem& item, const std::vector<uint8_t>& patchData);
+    void advanceSave();
+    void writePchLists(const juce::File& rootOrFolder);
     void sendNextFile();
     void finishTransfer(bool cancelled);
     void reportProgress(const juce::String& itemName);
@@ -96,7 +117,6 @@ private:
     bool cancelRequested = false;
     bool savingToDisk = false;
     int bankSection = 0;
-    int tempSlot = 0;
     int itemIndex = 0;
     int generation = 0;   // invalidates stale fetch callbacks and watchdogs
     std::vector<SaveItem> saveItems;
@@ -105,16 +125,17 @@ private:
     // writes straight to the folder the user picked and adds nothing to delete.
     juce::File mirrorRoot;
     juce::File stagingRoot;
-    juce::Array<juce::File> sendFiles;
+    std::vector<SendItem> sendItems;
+    // File written per bank and position during a save, for the .pchList files.
+    std::array<PchList::Entries, 9> savedEntries;
+    juce::File singleBankFolder;   // set for a single-bank save
     Progress progress;
     ProgressCallback progressCallback;
 
-    // Per-item fetch timeout. Must cover ConnectionManager's worst case of
-    // 1 + maxSectionRetries attempts at patchTimeoutMs each (a slow synth at
-    // full DSP load gets its missing sections re-requested), so the watchdog
-    // never abandons an item whose fetch is still recovering.
-    static constexpr int fetchWatchdogMs = 30000;
-    static constexpr int interItemDelayMs = 150;    // breather between fetches
-    static constexpr int postStoreDelayMs = 500;    // let StorePatch settle
-    static constexpr int slotFocusDelayMs = 200;    // selectSlot → uploadPatch settle
+    // A G1 answers a flash request in 35-100 ms (bank 8, 2026-10-18); this only
+    // has to tell a lost answer from a slow one.
+    static constexpr int fetchWatchdogMs = 3000;
+    // The last ACK of a bank write already waits for the flash, so this is only
+    // a breather before the next patch.
+    static constexpr int postWriteDelayMs = 50;
 };

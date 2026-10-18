@@ -45,12 +45,14 @@ int PatchSerializer::findModuleContainerIndex(const ModuleContainer& container, 
 
 // ---- Public API ----
 
-std::vector<std::vector<uint8_t>> PatchSerializer::serializeForUpload(const Patch& patch)
+std::vector<std::vector<uint8_t>> PatchSerializer::serializeForUpload(const Patch& patch,
+                                                                    int bankSection,
+                                                                    int bankPosition)
 {
     std::vector<std::vector<uint8_t>> sections;
     sections.reserve(16);
 
-    sections.push_back(serializePatchName(patch));           // [0]  PatchName (type 55)
+    sections.push_back(serializePatchName(patch, bankSection, bankPosition)); // [0] PatchName (type 55)
     sections.push_back(serializeHeader(patch));              // [1]  Header (type 33)
     sections.push_back(serializeModuleDump(patch, 1));       // [2]  ModuleDump poly
     sections.push_back(serializeModuleDump(patch, 0));       // [3]  ModuleDump common
@@ -102,13 +104,23 @@ std::vector<std::vector<uint8_t>> PatchSerializer::serialize(const Patch& patch)
 
 // PatchName (type 55): 0:8 0:8 0:8 String$name
 // (used in .pch file format - has 3-byte padding)
-std::vector<uint8_t> PatchSerializer::serializePatchName(const Patch& patch)
+std::vector<uint8_t> PatchSerializer::serializePatchName(const Patch& patch, int bankSection,
+                                                         int bankPosition)
 {
     BitStreamWriter bs;
     bs.writeBits(55, 8);  // section type
-    bs.writeBits(0, 8);   // padding
-    bs.writeBits(0, 8);   // padding
-    bs.writeBits(0, 8);   // padding
+    if (bankSection >= 0)
+    {
+        bs.writeBits(1, 8);                                          // destination: bank
+        bs.writeBits(static_cast<uint32_t>(bankSection & 0x7F), 8);
+        bs.writeBits(static_cast<uint32_t>(bankPosition & 0x7F), 8);
+    }
+    else
+    {
+        bs.writeBits(0, 8);   // padding (destination: working slot)
+        bs.writeBits(0, 8);   // padding
+        bs.writeBits(0, 8);   // padding
+    }
     bs.writeString16(patch.getName().toStdString());
     bs.alignToByte();
     return bs.toBytes();

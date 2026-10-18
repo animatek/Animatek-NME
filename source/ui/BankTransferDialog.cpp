@@ -61,19 +61,8 @@ BankTransferDialog::BankTransferDialog(Mode mode, BankTransferManager& mgr,
     addAndMakeVisible(bankLabel);
     addAndMakeVisible(bankCombo);
 
-    styleLabel(slotLabel);
-    slotCombo.addItem("A  (Slot 1)", 1);
-    slotCombo.addItem("B  (Slot 2)", 2);
-    slotCombo.addItem("C  (Slot 3)", 3);
-    slotCombo.addItem("D  (Slot 4)", 4);
-    slotCombo.setSelectedItemIndex(juce::jlimit(0, 3, connection.getCurrentSlot()),
-                                   juce::dontSendNotification);
-    styleCombo(slotCombo);
-    addAndMakeVisible(slotLabel);
-    addAndMakeVisible(slotCombo);
-
     styleLabel(folderLabel);
-    folderLabel.setText(mode_ == Mode::SendToSynth ? "SOURCE FOLDER" : "DESTINATION FOLDER",
+    folderLabel.setText(mode_ == Mode::SendToSynth ? "SOURCE (.PCHLIST OR FOLDER)" : "DESTINATION FOLDER",
                         juce::dontSendNotification);
     folderField.setFont(juce::Font(AppTheme::uiFont(12.0f)));
     folderField.setColour(juce::Label::textColourId, kText);
@@ -132,14 +121,19 @@ void BankTransferDialog::browseForFolder()
 {
     const auto title = mode_ == Mode::SaveToDisk
         ? "Choose a folder to save the bank into"
-        : "Choose a folder with .pch files to send";
+        : "Choose a .pchList, or a folder with .pch files, to send";
 
     chooser = std::make_unique<juce::FileChooser>(
-        title, juce::File::getSpecialLocation(juce::File::userDocumentsDirectory));
+        title, juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),
+        mode_ == Mode::SendToSynth ? "*.pchList;*.pchlist" : juce::String());
+
+    auto chooserFlags = juce::FileBrowserComponent::openMode
+               | juce::FileBrowserComponent::canSelectDirectories;
+    if (mode_ == Mode::SendToSynth)
+        chooserFlags |= juce::FileBrowserComponent::canSelectFiles;
 
     juce::Component::SafePointer<BankTransferDialog> safeThis(this);
-    chooser->launchAsync(juce::FileBrowserComponent::openMode
-                             | juce::FileBrowserComponent::canSelectDirectories,
+    chooser->launchAsync(chooserFlags,
         [safeThis](const juce::FileChooser& fc) {
             if (safeThis == nullptr || fc.getResult() == juce::File())
                 return;
@@ -150,9 +144,9 @@ void BankTransferDialog::browseForFolder()
 
             if (safeThis->mode_ == Mode::SendToSynth)
             {
-                safeThis->scannedFiles = safeThis->chosenFolder.findChildFiles(
-                    juce::File::findFiles, /*recursive=*/false, "*.pch");
-                safeThis->scannedFiles.sort();
+                safeThis->sendProblems.clear();
+                safeThis->sendItems = BankTransferManager::itemsFrom(
+                    safeThis->chosenFolder, safeThis->sendProblems, safeThis->sendList);
             }
 
             safeThis->updateInfo();
@@ -193,22 +187,34 @@ void BankTransferDialog::updateInfo()
 
         juce::String info;
         if (!connection.isPatchListLoaded())
-            info = "Patch list not loaded yet - connect and let the Synth browser load it first.";
+            info = "All 99 positions of bank " + juce::String(bank)
+                 + " will be read, and the patches saved as .pch files with a Bank"
+                 + juce::String(bank) + ".pchList.";
         else
             info = juce::String(count) + " patches in bank " + juce::String(bank)
-                 + " will be saved as .pch files.\nThe temp slot's content on the synth"
-                 + " will be replaced during the transfer.";
+                 + " will be saved as .pch files, with a Bank" + juce::String(bank)
+                 + ".pchList that keeps their positions.\nNo slot on the synth changes.";
         infoLabel.setText(info, juce::dontSendNotification);
     }
     else
     {
         juce::String info;
-        if (scannedFiles.isEmpty())
-            info = "Select a folder containing .pch files.";
+        const int n = static_cast<int>(sendItems.size());
+        if (chosenFolder == juce::File())
+            info = "Select a .pchList, or a folder with .pch files.";
+        else if (n == 0)
+            info = sendProblems.isEmpty() ? "No .pch files in this folder."
+                                          : sendProblems.joinIntoString(", ").substring(0, 160);
+        else if (sendList != juce::File())
+            info = juce::String(n) + " patches from " + sendList.getFileName()
+                 + ", each to its own position.\n"
+                 + "WARNING: they will OVERWRITE those positions of bank " + juce::String(bank) + ".";
         else
-            info = juce::String(scannedFiles.size()) + " .pch files found (sorted by name).\n"
+            info = juce::String(n) + " .pch files, sorted by name.\n"
                  + "WARNING: they will OVERWRITE bank " + juce::String(bank)
-                 + " positions 1-" + juce::String(juce::jmin(scannedFiles.size(), 99)) + ".";
+                 + " positions 1-" + juce::String(n) + ".";
+        if (n > 0 && !sendProblems.isEmpty())
+            info << " " << sendProblems.size() << " left out.";
         infoLabel.setText(info, juce::dontSendNotification);
     }
 }
@@ -231,9 +237,8 @@ void BankTransferDialog::startTransfer()
     }
 
     const int section = bankCombo.getSelectedItemIndex();
-    const int slot    = slotCombo.getSelectedItemIndex();
 
-    if (mode_ != Mode::SendToSynth && !connection.isPatchListLoaded())
+    if (mode_ == Mode::BackupAllBanks && !connection.isPatchListLoaded())
     {
         statusLabel.setText("Patch list not loaded yet - try again shortly.",
                             juce::dontSendNotification);
@@ -241,7 +246,7 @@ void BankTransferDialog::startTransfer()
         return;
     }
 
-    if (mode_ == Mode::SendToSynth && scannedFiles.isEmpty())
+    if (mode_ == Mode::SendToSynth && sendItems.empty())
     {
         statusLabel.setText("No .pch files in the selected folder.", juce::dontSendNotification);
         return;
@@ -251,7 +256,6 @@ void BankTransferDialog::startTransfer()
     progressValue = 0.0;
     startButton.setEnabled(false);
     bankCombo.setEnabled(false);
-    slotCombo.setEnabled(false);
     browseButton.setEnabled(false);
     cancelButton.setButtonText("Cancel");
 
@@ -262,11 +266,11 @@ void BankTransferDialog::startTransfer()
     };
 
     if (mode_ == Mode::SaveToDisk)
-        manager.saveBankToDisk(section, chosenFolder, slot, progressCb);
+        manager.saveBankToDisk(section, chosenFolder, progressCb);
     else if (mode_ == Mode::BackupAllBanks)
-        manager.saveAllBanksToDisk(chosenFolder, slot, progressCb);
+        manager.saveAllBanksToDisk(chosenFolder, progressCb);
     else
-        manager.sendBankToSynth(scannedFiles, section, slot, progressCb);
+        manager.sendBankToSynth(sendItems, section, progressCb);
 }
 
 void BankTransferDialog::onProgress(const BankTransferManager::Progress& p)
@@ -283,8 +287,7 @@ void BankTransferDialog::onProgress(const BankTransferManager::Progress& p)
 
     running = false;
     startButton.setEnabled(true);
-    bankCombo.setEnabled(true);
-    slotCombo.setEnabled(true);
+    bankCombo.setEnabled(mode_ != Mode::BackupAllBanks);
     browseButton.setEnabled(true);
     cancelButton.setButtonText("Close");
 
@@ -344,10 +347,8 @@ void BankTransferDialog::resized()
     const int w = getWidth() - pad * 2;
 
     bankLabel.setBounds(pad, y, w / 2 - 4, secH);
-    slotLabel.setBounds(pad + w / 2 + 4, y, w / 2 - 4, secH);
     y += secH + 2;
     bankCombo.setBounds(pad, y, w / 2 - 4, rowH);
-    slotCombo.setBounds(pad + w / 2 + 4, y, w / 2 - 4, rowH);
     y += rowH + gap + 4;
 
     folderLabel.setBounds(pad, y, w, secH);
