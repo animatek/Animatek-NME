@@ -139,9 +139,11 @@ void PatchParser::parsePatchName2(BitStream& bs, Patch& patch)
 
 // Header := krangemin:7 krangemax:7 vrangemin:7 vrangemax:7
 //           brange:5 ptime:7 portamento:1 pedalMode:1 voices:5
-//           unknown2:2 sspos:12 octave:3
+//           sspos:14 octave:3
 //           red:1 blue:1 yellow:1 gray:1 green:1 purple:1 white:1
-//           cretrigger:1 pretrigger:1 unknown3:4 unknown4:3
+//           cretrigger:1 pretrigger:1 flags:4 padding:3
+// nmedit splits sspos into unknown2:2 + sspos:12 and calls flags unknown3;
+// Clavia's editor sends sspos as 14 bits and flags as four separate bits (#103).
 void PatchParser::parseHeader(BitStream& bs, Patch& patch)
 {
     auto& h = patch.getHeader();
@@ -154,8 +156,7 @@ void PatchParser::parseHeader(BitStream& bs, Patch& patch)
     h.portamento       = bs.readBits(1) != 0;
     h.pedalMode        = static_cast<int>(bs.readBits(1));
     h.voices           = static_cast<int>(bs.readBits(5)) + 1;  // stored 0-based, display 1-based
-    /*unknown2*/         bs.readBits(2);
-    h.separatorPosition = static_cast<int>(bs.readBits(12));
+    h.separatorPosition = static_cast<int>(bs.readBits(14));
     h.octaveShift      = static_cast<int>(bs.readBits(3));
     h.cableVisRed      = bs.readBits(1) != 0;
     h.cableVisBlue     = bs.readBits(1) != 0;
@@ -166,8 +167,9 @@ void PatchParser::parseHeader(BitStream& bs, Patch& patch)
     h.cableVisWhite         = bs.readBits(1) != 0;
     h.voiceRetriggerCommon  = static_cast<int>(bs.readBits(1));
     h.voiceRetriggerPoly    = static_cast<int>(bs.readBits(1));
-    h.unknown3              = static_cast<int>(bs.readBits(4));
-    h.unknown4              = static_cast<int>(bs.readBits(3));
+    for (auto& flag : h.headerFlags)
+        flag = static_cast<int>(bs.readBits(1));
+    /*padding*/               bs.readBits(3);
 
     DBG("  Header: voices=" + juce::String(h.voices)
         + " keys=" + juce::String(h.keyRangeMin) + "-" + juce::String(h.keyRangeMax)
