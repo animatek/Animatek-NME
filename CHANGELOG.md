@@ -37,6 +37,18 @@
 
 ### Fixed
 
+- **Dialogs and floaters no longer hide behind the main window** (#98, after Javier noticed
+  windows going behind the app). NME's other windows are top-level windows of their own, and
+  JUCE does not tie them to the main one, so a click on it raised it over them. The slot
+  chooser a double-click in the patch browser opens was the one that hurt: it went behind, and
+  NME looked stuck after a patch or two, waiting for an answer nobody could see. The main
+  window is now their owner, so the system keeps them above it: a transient window
+  (`WM_TRANSIENT_FOR`, libX11 opened at run time) on Linux, an owned window on Windows
+  (`ui/WindowOwner.cpp`). Raising them by hand was tried first and fought the menu bar: the
+  raise took the focus, and File or Edit would not open. On macOS, whose menu bar is the
+  system's, they are raised back above the main window when it comes forward. Checked by
+  Javier on Linux (KDE); not tried on Windows or macOS.
+
 - **A cable keeps the colour the patch stores for it** (#100, reported by email). NME threw the
   stored colour away and derived it from the source connector, reading a `.pch` and reading a
   patch from the G1, so a patch came back from NME with other colours: measured over 3,000

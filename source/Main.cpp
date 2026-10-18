@@ -5,6 +5,8 @@
 #include "ui/ThemeRegistry.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <iostream>
+#include <set>
+#include "ui/WindowOwner.h"
 
 class NmeApplication : public juce::JUCEApplication
 {
@@ -95,6 +97,85 @@ public:
         void closeButtonPressed() override
         {
             JUCEApplication::getInstance()->systemRequestedQuit();
+        }
+
+        // NME's other windows (dialogs, floaters) are top-level windows of their own, and JUCE
+        // does not tie them to this one: a click here raised it over them, and a dialog that
+        // had just opened (the slot chooser a double-click in the browser brings up) went
+        // behind, so NME looked stuck waiting for an answer nobody could see (#98).
+       #if JUCE_MAC
+        // macOS: none of the system's own ownership is used. When this window comes forward
+        // the others are put back above it, without the focus, once the button is let go; the
+        // menu bar is the system's there, so no menu of ours is in the way.
+        void activeWindowStatusChanged() override
+        {
+            DocumentWindow::activeWindowStatusChanged();
+            if (isActiveWindow())
+                raiseOwnWindowsWhenFree (0);
+        }
+
+        void raiseOwnWindowsWhenFree (int tries)
+        {
+            juce::Component::SafePointer<MainWindow> self (this);
+            juce::Timer::callAfterDelay (40, [self, tries]
+            {
+                if (self == nullptr)
+                    return;
+                if (juce::ModifierKeys::currentModifiers.isAnyMouseButtonDown())
+                {
+                    if (tries < 250)
+                        self->raiseOwnWindowsWhenFree (tries + 1);
+                    return;
+                }
+                auto& desktop = juce::Desktop::getInstance();
+                for (int i = 0; i < desktop.getNumComponents(); ++i)
+                    if (auto* c = desktop.getComponent (i);
+                        c != nullptr && c != self.getComponent() && c->isVisible() && !c->isAlwaysOnTop()
+                        && !isTemporaryWindow (*c))
+                        c->toFront (false);
+            });
+        }
+       #else
+        // Windows and Linux: this window becomes their owner (an owned window, a transient one
+        // for the window manager), and the system keeps them above it, as it does any app's
+        // dialogs. Raising them by hand fought the menu bar: the raise took the focus, and the
+        // next click on File or Edit only brought this window back. They are looked for a few
+        // times a second, as they come and go on their own.
+        struct OwnerTimer : juce::Timer
+        {
+            MainWindow& owner;
+            std::set<void*> owned;
+            explicit OwnerTimer (MainWindow& w) : owner (w) { startTimer (250); }
+            void timerCallback() override
+            {
+                auto* mainPeer = owner.getPeer();
+                if (mainPeer == nullptr)
+                    return;
+                std::set<void*> seen;
+                auto& desktop = juce::Desktop::getInstance();
+                for (int i = 0; i < desktop.getNumComponents(); ++i)
+                {
+                    auto* c = desktop.getComponent (i);
+                    if (c == nullptr || c == &owner || isTemporaryWindow (*c) || c->getPeer() == nullptr)
+                        continue;
+                    void* handle = c->getPeer()->getNativeHandle();
+                    seen.insert (handle);
+                    if (owned.count (handle) == 0
+                        && WindowOwner::setOwner (handle, mainPeer->getNativeHandle()))
+                        owned.insert (handle);
+                }
+                for (auto it = owned.begin(); it != owned.end();)   // gone: forget them
+                    it = seen.count (*it) ? std::next (it) : owned.erase (it);
+            }
+        };
+        OwnerTimer ownerTimer { *this };
+       #endif
+
+        // Menus, tooltips and Quick Add: they come and go on their own, and are left alone.
+        static bool isTemporaryWindow (juce::Component& c)
+        {
+            auto* peer = c.getPeer();
+            return peer != nullptr && (peer->getStyleFlags() & juce::ComponentPeer::windowIsTemporary) != 0;
         }
 
         // Closing a component leaves JUCE with nothing focused, and keys then

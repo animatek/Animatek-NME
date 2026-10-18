@@ -114,6 +114,7 @@ set(NME_SHARED_SOURCES
     source/ui/PatchLocationDialog.cpp
     source/ui/AboutDialog.cpp
     source/ui/SlotSelectDialog.cpp
+    source/ui/WindowOwner.cpp
     source/ui/SaveSlotSetDialog.cpp
     source/ui/PatchSettingsDialog.cpp
     source/ui/MidiSettingsDialog.cpp
@@ -317,6 +318,7 @@ foreach(target ${NME_TARGETS})
         juce::juce_audio_utils
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags
+        ${CMAKE_DL_LIBS}          # dlopen of libX11 (ui/WindowOwner.cpp, Linux)
     )
 endforeach()
 
