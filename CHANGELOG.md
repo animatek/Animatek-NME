@@ -37,6 +37,13 @@
 
 ### Fixed
 
+- **MCP: `list_assignments`, `unassign_knob`, `unassign_midi_cc` and `fetch_patch` failed with
+  "name 'port' is not defined"** (#99, reported by bacizone, 2026-10-18). Step 7 of the
+  multi-synth work gave every tool a `port`, but these four only got it in their body, not in
+  their signature. They take `port` now, as the rest do; a check of every tool for names it
+  never defines found no others. Checked by calling the four with `slot` and `port` against a
+  stubbed bridge: each sends both.
+
 - **Adding and deleting modules fast no longer gets the patch rejected** (2026-10-14, G1-Emu #63,
   reported by Nocticore). A delete is synced by a full upload 80 ms later; the upload dropped the
   queued edits but not the one already sent, whose ACK then arrived and was taken for the first

@@ -688,7 +688,7 @@ def _assign_target(
 
 
 @mcp.tool()
-def list_assignments(slot: Optional[int] = None) -> Any:
+def list_assignments(slot: Optional[int] = None, port: Optional[int] = None) -> Any:
     """List a patch's front-panel knob, morph group and MIDI CC assignments.
 
     knobs: each assigned knob, by index and knobName ("Knob 7"), and its target.
@@ -743,10 +743,11 @@ def assign_knob(
 
 
 @mcp.tool()
-def unassign_knob(knob: int | str, slot: Optional[int] = None) -> Any:
+def unassign_knob(knob: int | str, slot: Optional[int] = None, port: Optional[int] = None) -> Any:
     """Free a front-panel knob, whatever it drives. Undoable.
 
     knob: an index 0-22 or a name, as for assign_knob.
+    port: 1-8, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
     """
     params: dict[str, Any] = {"knob": knob}
     if slot is not None:
@@ -832,8 +833,11 @@ def assign_midi_cc(
 
 
 @mcp.tool()
-def unassign_midi_cc(cc: int, slot: Optional[int] = None) -> Any:
-    """Free a MIDI CC, whatever it drives. Undoable."""
+def unassign_midi_cc(cc: int, slot: Optional[int] = None, port: Optional[int] = None) -> Any:
+    """Free a MIDI CC, whatever it drives. Undoable.
+
+    port: 1-8, the synth (as MIDI Setup numbers its ports); defaults to the one being edited.
+    """
     params: dict[str, Any] = {"cc": cc}
     if slot is not None:
         params["slot"] = slot
@@ -910,7 +914,7 @@ def disconnect_midi() -> Any:
 
 
 @mcp.tool()
-def fetch_patch(slot: Optional[int] = None) -> Any:
+def fetch_patch(slot: Optional[int] = None, port: Optional[int] = None) -> Any:
     """Ask the synth for the patch in a slot again and load it into the editor.
 
     slot: 0-3 (A-D); defaults to the slot the synth has focused.
