@@ -20,6 +20,7 @@ private:
     void parseSection(BitStream& bs, Patch& patch);
     void parsePatchName(BitStream& bs, Patch& patch);
     void parsePatchName2(BitStream& bs, Patch& patch);
+    void parseFlashDumpMarker(BitStream& bs, Patch& patch);
     void parseHeader(BitStream& bs, Patch& patch);
     void parseModuleDump(BitStream& bs, Patch& patch);
     void parseCableDump(BitStream& bs, Patch& patch);

@@ -103,6 +103,9 @@ vez de cargarse a medias. `bank` es solo informativo.
 
 ## Carpetas de banco
 
-**Save Bank to Disk** escribe los patches como `NN - Nombre.pch`; el prefijo
-`NN` registra la posición dentro del banco, y **Send Bank to Synth** lo usa para
-restaurar cada patch a su posición exacta.
+**Save Bank to Disk** escribe los patches como `NN - Nombre.pch` y, al lado, un
+`BankN.pchList`: la lista que escribe el editor de Clavia, texto plano con un
+archivo por línea en el orden del banco, donde una línea con un número (`10`)
+salta a esa posición. **Send Bank to Synth** toma la lista (de NME o de Clavia)
+y devuelve cada patch a su posición. Una carpeta sin lista va por el prefijo
+`NN` si todos los archivos lo tienen, y si no, por orden de nombre desde la 1.

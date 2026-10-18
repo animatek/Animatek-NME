@@ -98,6 +98,7 @@ void PatchParser::parseSection(BitStream& bs, Patch& patch)
     {
         case 55:  parsePatchName(bs, patch);      break;
         case 39:  parsePatchName2(bs, patch);     break;
+        case 24:  parseFlashDumpMarker(bs, patch); break;
         case 33:  parseHeader(bs, patch);          break;
         case 74:  parseModuleDump(bs, patch);      break;
         case 82:  parseCableDump(bs, patch);       break;
@@ -127,6 +128,18 @@ void PatchParser::parsePatchName(BitStream& bs, Patch& patch)
     auto name = bs.readString16();
     patch.setName(juce::String(name));
     DBG("  PatchName: \"" + patch.getName() + "\"");
+}
+
+// FlashDumpMarker := 02:8 section:8 position:8 String$name — opens the synth's
+// answer to a FlashDumpRequest (a patch read from a bank position).
+void PatchParser::parseFlashDumpMarker(BitStream& bs, Patch& patch)
+{
+    bs.readBits(8); // 02 = a patch follows
+    bs.readBits(8); // section
+    bs.readBits(8); // position
+    auto name = bs.readString16();
+    patch.setName(juce::String(name));
+    DBG("  FlashDumpMarker: \"" + patch.getName() + "\"");
 }
 
 // PatchName2 := String$name  (no padding, used by synth PatchPacket responses)

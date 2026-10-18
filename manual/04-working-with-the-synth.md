@@ -191,14 +191,17 @@ The manifest also records each patch's bank location when the editor knew it
 
 ## Bank transfers (Device menu)
 
-- **Save Bank to Disk**: dump a whole synth bank to a folder; position
-  metadata is preserved in the `NN - Name.pch` filenames.
-- **Send Bank to Synth**: upload a folder of patches into a bank, with an
-  overwrite warning; a failed transfer stops cleanly.
+- **Save Bank to Disk**: dump a whole synth bank to a folder, as
+  `NN - Name.pch` files plus a `BankN.pchList` that keeps their positions.
+- **Send Bank to Synth**: write a `.pchList` (yours, or one saved by Clavia's
+  editor) or a folder of patches into a bank, with an overwrite warning; a
+  failed transfer stops cleanly.
 - **Backup All Banks to Library**: mirror all 9 banks into your preset
   library's `Banks/Bank1`–`Bank9` folders in one action.
 
-All transfers show progress and can be cancelled.
+Like Clavia's editor, transfers go straight to and from the synth's memory:
+no slot is loaded or changed, and a bank takes seconds. All transfers show
+progress and can be cancelled.
 
 ## Controller snapshot (Device menu)
 

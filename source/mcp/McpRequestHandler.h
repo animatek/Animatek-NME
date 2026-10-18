@@ -63,6 +63,12 @@ private:
     // What a synth bank holds, so a store can pick a free position.
     juce::var listBank(const juce::var& params);
 
+    // Whole banks to and from disk, straight from and to the synth's flash.
+    juce::var saveBank(const juce::var& params);
+    juce::var sendBank(const juce::var& params);
+    juce::var getBankTransfer(const juce::var& params);
+    juce::var cancelBankTransfer(const juce::var& params);
+
     int resolveSlot(const juce::var& params) const;
 
     MainComponent& owner_;

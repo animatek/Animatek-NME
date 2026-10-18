@@ -62,6 +62,7 @@ return a clear error if it isn't.
 | `mutate_patch` | Run the editor's own Mutator as one undoable, throttled step |
 | `save_patch` | Write a slot's patch (and its `.var`) to a `.pch` |
 | `store_to_bank` | Upload a slot's patch and store it to a synth bank position |
+| `save_bank`, `send_bank`, `get_bank_transfer`, `cancel_bank_transfer` | A whole bank to a folder and back (`.pch` files plus a `.pchList`), straight to and from the synth's memory; start one, then follow it |
 | `get_synth_status`, `get_events`, `read_lights`, `list_bank` | Read the synth back: connection and slots, what happened since the last look, LEDs and meters, what a bank holds |
 | `list_assignments`, `assign_knob`, `assign_morph`, `assign_midi_cc` (and their `unassign_` twins) | Put parameters under front-panel knobs, morph groups and MIDI CCs |
 | `set_morph_value`, `play_note` | Turn a morph dial; play a note to hear or meter the result |

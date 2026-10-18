@@ -64,6 +64,7 @@ las herramientas devuelven un error claro si no lo está.
 | `mutate_patch` | Ejecutar el propio Mutator del editor como un solo paso deshacible y regulado |
 | `save_patch` | Escribir el patch de un slot (y su `.var`) a un `.pch` |
 | `store_to_bank` | Subir el patch de un slot y almacenarlo en una posición de banco |
+| `save_bank`, `send_bank`, `get_bank_transfer`, `cancel_bank_transfer` | Un banco entero a una carpeta y de vuelta (archivos `.pch` y un `.pchList`), directo a la memoria del sinte; se arranca y luego se sigue |
 | `get_synth_status`, `get_events`, `read_lights`, `list_bank` | Leer el sintetizador: conexión y slots, qué ha pasado desde la última consulta, LEDs y medidores, qué hay en un banco |
 | `list_assignments`, `assign_knob`, `assign_morph`, `assign_midi_cc` (y sus parejas `unassign_`) | Poner parámetros bajo los knobs del panel, los grupos de morph y los CC MIDI |
 | `set_morph_value`, `play_note` | Girar un dial de morph; tocar una nota para oír o medir el resultado |

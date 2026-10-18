@@ -45,8 +45,6 @@ private:
 
     juce::Label    bankLabel   { {}, "BANK" };
     juce::ComboBox bankCombo;
-    juce::Label    slotLabel   { {}, "TEMP SLOT" };
-    juce::ComboBox slotCombo;
     juce::Label    folderLabel { {}, "FOLDER" };
     juce::Label    folderField;
     juce::TextButton browseButton { "Browse..." };
@@ -61,7 +59,9 @@ private:
 
     juce::File chosenFolder;
     juce::File fixedFolder_;                // BackupAllBanks: locked destination
-    juce::Array<juce::File> scannedFiles;   // SendToSynth: .pch files found
+    std::vector<BankTransferManager::SendItem> sendItems;   // SendToSynth: what goes where
+    juce::StringArray sendProblems;                         // files that cannot go
+    juce::File sendList;                                    // the .pchList giving positions, if any
     bool running = false;
     std::unique_ptr<juce::FileChooser> chooser;
 

@@ -165,6 +165,7 @@ set(NME_SHARED_SOURCES
     # Synchronization
     source/sync/PatchSynchronizer.cpp
     source/sync/BankTransferManager.cpp
+    source/sync/PchList.cpp
 
     # Swapping a module for another of its family, in place
     source/model/ModuleReplacement.cpp

@@ -145,14 +145,17 @@ copias, nunca el banco.
 
 ## Transferencia de bancos (menú Device)
 
-- **Save Bank to Disk**: vuelca un banco entero del sintetizador a una carpeta;
-  la posición se conserva en los nombres de archivo `NN - Nombre.pch`.
-- **Send Bank to Synth**: sube una carpeta de patches a un banco, con aviso de
-  sobrescritura; una transferencia fallida se detiene limpiamente.
+- **Save Bank to Disk**: vuelca un banco entero del sintetizador a una carpeta,
+  como archivos `NN - Nombre.pch` y un `BankN.pchList` que guarda sus posiciones.
+- **Send Bank to Synth**: escribe en un banco un `.pchList` (tuyo, o guardado
+  por el editor de Clavia) o una carpeta de patches, con aviso de sobrescritura;
+  una transferencia fallida se detiene limpiamente.
 - **Backup All Banks to Library**: replica los 9 bancos en las carpetas
   `Banks/Bank1`–`Bank9` de tu librería en una sola acción.
 
-Todas las transferencias muestran progreso y se pueden cancelar.
+Como el editor de Clavia, las transferencias van directas a la memoria del
+sinte y vuelven de ella: no se carga ni se cambia ningún slot, y un banco tarda
+segundos. Todas muestran progreso y se pueden cancelar.
 
 ## Controller snapshot (menú Device)
 
