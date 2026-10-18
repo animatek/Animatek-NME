@@ -164,7 +164,24 @@ bool ModuleContainer::canAdd(const ModuleDescriptor& desc) const
     return count < desc.limit && desc.instantiable;
 }
 
-void ModuleContainer::addConnection(Connector* output, Connector* input)
+SignalType Connection::colour() const
+{
+    if (storedColor >= 0)
+        return static_cast<SignalType>(storedColor);
+    if (output != nullptr && output->getDescriptor() != nullptr)
+        return output->getDescriptor()->signalType;
+    return SignalType::None;
+}
+
+int ModuleContainer::getStoredColor(const Connector* output, const Connector* input) const
+{
+    for (const auto& c : connections)
+        if (c.output == output && c.input == input)
+            return c.storedColor;
+    return -1;
+}
+
+void ModuleContainer::addConnection(Connector* output, Connector* input, int storedColor)
 {
     if (output == nullptr || input == nullptr)
         return;
@@ -173,7 +190,7 @@ void ModuleContainer::addConnection(Connector* output, Connector* input)
         if (c.output == output && c.input == input)
             return;
 
-    connections.push_back({ output, input });
+    connections.push_back({ output, input, Connection::validColor(storedColor) });
     if (onCableAdded)
         onCableAdded(output, input);
 }

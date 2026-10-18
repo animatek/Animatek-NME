@@ -795,13 +795,14 @@ void PatchCanvas::commitLiftedCableMove(ModuleContainer& container,
     // editor uses and the order the synth is given them in. Both model calls
     // notify the synchronizer; the two undo actions are told the model work is
     // already done, exactly as the right-click delete and the plain cable drag
-    // already do.
-    container.removeConnection(liftedCable.out, liftedCable.in);
-
+    // already do. The delete is reported before the cable goes, as the right-click delete does,
+    // so its undo can read the colour it had (#100).
     if (cableDeletedCallback)
         cableDeletedCallback(liftedCable.section,
                              liftedCable.outModIndex, liftedCable.outConnIndex, liftedCable.outIsOutput,
                              liftedCable.inModIndex,  liftedCable.inConnIndex,  liftedCable.inIsOutput);
+
+    container.removeConnection(liftedCable.out, liftedCable.in);
 
     liftedCable = {};
 

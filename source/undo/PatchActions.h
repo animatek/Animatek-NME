@@ -135,7 +135,7 @@ struct StashedConnection
     bool outIsOutput;
     int inModIndex, inConnIndex;
     bool inIsOutput;
-    SignalType color;
+    int storedColor = -1;   // the cable's stored colour, given back on undo (#100)
 };
 
 class DeleteModuleAction : public juce::UndoableAction
@@ -202,7 +202,7 @@ public:
                                         sc.outModIndex = m2->getContainerIndex();
                                         sc.outConnIndex = c2.getDescriptor()->index;
                                         sc.outIsOutput = c2.getDescriptor()->isOutput;
-                                        sc.color = c2.getDescriptor()->signalType;
+                                        sc.storedColor = conn.storedColor;
                                     }
                                     if (&c2 == conn.input)
                                     {
@@ -338,7 +338,7 @@ public:
                     { inConn = &c; break; }
 
                 if (outConn && inConn)
-                    container.addConnection(outConn, inConn);
+                    container.addConnection(outConn, inConn, sc.storedColor);
             }
         }
 
@@ -419,7 +419,7 @@ public:
                 continue;
             if (sc.outModIndex != index_ && sc.inModIndex != index_)
                 continue;
-            sc.color = conn.output->getDescriptor()->signalType;
+            sc.storedColor = conn.storedColor;
             oldCables_.push_back(sc);
             if (sc.outModIndex == index_) used.push_back({ sc.outConnIndex, sc.outIsOutput });
             if (sc.inModIndex == index_)  used.push_back({ sc.inConnIndex, sc.inIsOutput });
@@ -584,7 +584,7 @@ public:
             auto* outConn = outMod ? outMod->getConnector(sc.outConnIndex, sc.outIsOutput) : nullptr;
             auto* inConn = inMod ? inMod->getConnector(sc.inConnIndex, sc.inIsOutput) : nullptr;
             if (outConn && inConn)
-                container.addConnection(outConn, inConn);
+                container.addConnection(outConn, inConn, sc.storedColor);
         }
 
         for (auto& ma : oldMorphs_)
@@ -1061,7 +1061,15 @@ public:
         : ctx_(ctx), section_(section),
           outModIndex_(outModIndex), outConnIndex_(outConnIndex), outIsOutput_(outIsOutput),
           inModIndex_(inModIndex), inConnIndex_(inConnIndex), inIsOutput_(inIsOutput),
-          alreadyDone_(alreadyDone) {}
+          alreadyDone_(alreadyDone)
+    {
+        // The cable's stored colour, given back on undo (#100). The canvas reports a delete
+        // before it removes the cable, so it is still there to read even when alreadyDone.
+        auto& container = ctx_.patch.getContainer(section_);
+        auto [outConn, inConn] = findConnectors(container);
+        if (outConn && inConn)
+            storedColor_ = container.getStoredColor(outConn, inConn);
+    }
 
     bool perform() override
     {
@@ -1069,6 +1077,7 @@ public:
         auto& container = ctx_.patch.getContainer(section_);
         auto [outConn, inConn] = findConnectors(container);
         if (!outConn || !inConn) return false;
+        storedColor_ = container.getStoredColor(outConn, inConn);
         container.removeConnection(outConn, inConn);
         ctx_.repaint();
         return true;
@@ -1079,7 +1088,7 @@ public:
         auto& container = ctx_.patch.getContainer(section_);
         auto [outConn, inConn] = findConnectors(container);
         if (!outConn || !inConn) return false;
-        container.addConnection(outConn, inConn);
+        container.addConnection(outConn, inConn, storedColor_);
         ctx_.repaint();
         return true;
     }
@@ -1111,6 +1120,7 @@ private:
     int outModIndex_, outConnIndex_; bool outIsOutput_;
     int inModIndex_, inConnIndex_; bool inIsOutput_;
     bool alreadyDone_ = false;
+    int storedColor_ = -1;
 };
 
 // ============================================================================

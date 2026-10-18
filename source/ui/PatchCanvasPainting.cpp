@@ -862,7 +862,7 @@ bool PatchCanvas::hasHiddenCable(const Connector& conn, const ModuleContainer& c
                 continue;
 
             bool visible = true;
-            switch (connection.output->getDescriptor()->signalType)
+            switch (connection.colour())
             {
                 case SignalType::Audio:       visible = hdr.cableVisRed;    break;
                 case SignalType::Control:     visible = hdr.cableVisBlue;   break;
@@ -4424,7 +4424,7 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
         if (patch != nullptr)
         {
             const auto& hdr = patch->getHeader();
-            switch (conn.output->getDescriptor()->signalType)
+            switch (conn.colour())
             {
                 case SignalType::Audio:       if (!hdr.cableVisRed)    continue; break;
                 case SignalType::Control:     if (!hdr.cableVisBlue)   continue; break;
@@ -4460,7 +4460,7 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
         }
 
         juce::Colour cableCol = activeScheme_.cableAudio;
-        switch (conn.output->getDescriptor()->signalType)
+        switch (conn.colour())
         {
             case SignalType::Audio:       cableCol = activeScheme_.cableAudio;       break;
             case SignalType::Control:     cableCol = activeScheme_.cableControl;     break;
@@ -4468,7 +4468,7 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
             case SignalType::MasterSlave: cableCol = activeScheme_.cableMasterSlave; break;
             case SignalType::User1:       cableCol = activeScheme_.cableUser1;       break;
             case SignalType::User2:       cableCol = activeScheme_.cableUser2;       break;
-            default: cableCol = getSignalColour(conn.output->getDescriptor()->signalType); break;
+            default: cableCol = getSignalColour(conn.colour()); break;
         }
 
         // Build path — curved or straight depending on style

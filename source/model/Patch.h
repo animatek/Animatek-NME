@@ -63,6 +63,14 @@ struct Connection
 {
     Connector* output = nullptr;
     Connector* input = nullptr;
+    // The colour the patch stores for this cable (0-6, as SignalType), as read from a .pch or
+    // from the synth, and written back unchanged, as Clavia's editor does; -1 for a cable made in
+    // NME, coloured by where it starts. A stored colour says what the connection is (a master-
+    // slave cable from an audio output is grey), and user1/user2 can only be stored (#100).
+    int storedColor = -1;
+    SignalType colour() const;   // the stored one, or the source connector's signal type
+
+    static int validColor(int c) { return c >= 0 && c <= static_cast<int>(SignalType::None) ? c : -1; }
 };
 
 class Module
@@ -171,7 +179,8 @@ public:
 
     bool canAdd(const ModuleDescriptor& desc) const;
 
-    void addConnection(Connector* output, Connector* input);
+    void addConnection(Connector* output, Connector* input, int storedColor = -1);
+    int getStoredColor(const Connector* output, const Connector* input) const;   // -1: none
     void removeConnection(Connector* output, Connector* input);
     void removeConnectionsForConnector(Connector* conn);
 

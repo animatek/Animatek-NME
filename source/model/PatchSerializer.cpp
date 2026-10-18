@@ -230,7 +230,7 @@ std::vector<uint8_t> PatchSerializer::serializeCableDump(const Patch& patch, int
     {
         int srcModule  = findModuleContainerIndex(container, conn.output);
         int dstModule  = findModuleContainerIndex(container, conn.input);
-        int color      = static_cast<int>(conn.output->getDescriptor()->signalType);
+        int color      = static_cast<int>(conn.colour());   // as it came, or derived (#100)
         int srcConnIdx = conn.output->getDescriptor()->index;
         int dstConnIdx = conn.input->getDescriptor()->index;
 

@@ -727,7 +727,6 @@ void PchFileIO::parseCableDump(const juce::StringArray& lines, Patch& patch)
         int secondMod  = tokens[4].getIntValue();
         int secondConn = tokens[5].getIntValue();
         int secondType = tokens[6].getIntValue();  // 0=input, 1=output
-        (void)color;
 
         auto* firstModule = container.getModuleByIndex(firstMod);
         auto* secondModule = container.getModuleByIndex(secondMod);
@@ -751,7 +750,8 @@ void PchFileIO::parseCableDump(const juce::StringArray& lines, Patch& patch)
 
         Connector* outputConnector = (firstType != 0) ? firstConnector : secondConnector;
         Connector* inputConnector  = (firstType != 0) ? secondConnector : firstConnector;
-        container.addConnection(outputConnector, inputConnector);
+        // The stored colour is kept and written back as it came (#100)
+        container.addConnection(outputConnector, inputConnector, color);
     }
 }
 
@@ -1059,8 +1059,8 @@ void PchFileIO::writeCableDump(juce::String& out, const ModuleContainer& contain
 
         if (srcModule == nullptr || dstModule == nullptr) continue;
 
-        // Color comes from the source connector's signal type
-        int color = static_cast<int>(conn.output->getDescriptor()->signalType);
+        // The colour the cable came with, or, for one made here, its source connector's (#100)
+        int color = static_cast<int>(conn.colour());
 
         out += juce::String(color) + " "
             + juce::String(dstModule->getContainerIndex()) + " "

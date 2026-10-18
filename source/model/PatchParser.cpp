@@ -238,7 +238,6 @@ void PatchParser::parseCableDump(BitStream& bs, Patch& patch)
         int firstConnectorType = static_cast<int>(bs.readBits(1));  // 0=input, 1=output
         int secondModuleIndex = static_cast<int>(bs.readBits(7));
         int secondConnectorIndex = static_cast<int>(bs.readBits(6));
-        (void)color; // stored implicitly through connector signal types
 
         // Binary cable record (per jpatch BitstreamPatchParser): the type bit
         // belongs to the FIRST (source) end — 1 = output, 0 = a chained input
@@ -269,8 +268,9 @@ void PatchParser::parseCableDump(BitStream& bs, Patch& patch)
         }
 
         // Connection's "output" slot holds the source end — for a chained
-        // cable (type bit 0) that is itself an input connector.
-        container.addConnection(firstConn, secondConn);
+        // cable (type bit 0) that is itself an input connector. The colour
+        // the synth stores is kept, and sent back as it came (#100).
+        container.addConnection(firstConn, secondConn, color);
     }
 }
 

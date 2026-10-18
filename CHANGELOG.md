@@ -37,15 +37,26 @@
 
 ### Fixed
 
-- **Linux: no display no longer crashes NME at start-up** (#101, reported by email by the author
-  of PatchHamster G1, on 0.17.0). With `$DISPLAY` unset or unreachable (a stale `xauth` cookie
-  after renaming the machine, in his case), JUCE has no screen, and centring the main window
+- **A cable keeps the colour the patch stores for it** (#100, reported by email). NME threw the
+  stored colour away and derived it from the source connector, reading a `.pch` and reading a
+  patch from the G1, so a patch came back from NME with other colours: measured over 3,000
+  archive patches, 8 % of cables (22 % of chained ones), and user1/user2, on no connector,
+  could not come back at all; an OscC out into an OscSlvE's Mst, stored grey (master-slave),
+  turned red. Now each cable keeps its stored colour (`Connection::storedColor`), the canvas
+  draws it and hides it by it, and the `.pch` writer and the upload to the synth write it back
+  unchanged, as Clavia's editor 3.03 does; undo of a deleted cable or module gives it back.
+  Only a cable made in NME is coloured by where it starts. Tests: `test_cable_colours` (a
+  `.pch` with user1 and grey on an audio out: read, written back, and sent and parsed back
+  from the synth's format, all unchanged; a cable made anew derives).
+
+- **Linux: no display no longer crashes NME at start-up** (#101, reported by email, on
+  0.17.0). With `$DISPLAY` unset or unreachable (a stale `xauth` cookie
+  after renaming the machine, in that case), JUCE has no screen, and centring the main window
   segfaulted. NME now checks for a display before making the window, prints "no display to open
   the window on" with what to check, and exits with code 1. Checked with `DISPLAY=:99`: before,
   a segfault (139); now the message and exit 1.
 
-- **MCP: a refused connection says where the bridge is turned on** (#102, reported by email by
-  the author of PatchHamster G1). With the bridge off, a refused connection looked exactly like
+- **MCP: a refused connection says where the bridge is turned on** (#102, reported by email). With the bridge off, a refused connection looked exactly like
   "NME isn't running". `mcp-bridge/server.py` now tells the two cases apart from a timeout:
   refused says nothing is listening, so either NME is closed or its bridge is off, and names
   the switch (Editor Options, `Ctrl+,` > MCP Bridge); a timeout says NME is running but busy.
