@@ -143,8 +143,7 @@ std::vector<uint8_t> PatchSerializer::serializeHeaderAndName(const Patch& patch)
     bs.writeBits(h.portamento ? 1 : 0, 1);
     bs.writeBits(h.pedalMode, 1);
     bs.writeBits(h.voices - 1, 5);  // stored 0-based
-    bs.writeBits(h.unknown2, 2);
-    bs.writeBits(h.separatorPosition, 12);
+    bs.writeBits(static_cast<uint32_t>(h.separatorPosition), 14);
     bs.writeBits(h.octaveShift, 3);
     bs.writeBits(h.cableVisRed ? 1 : 0, 1);
     bs.writeBits(h.cableVisBlue ? 1 : 0, 1);
@@ -155,8 +154,9 @@ std::vector<uint8_t> PatchSerializer::serializeHeaderAndName(const Patch& patch)
     bs.writeBits(h.cableVisWhite ? 1 : 0, 1);
     bs.writeBits(h.voiceRetriggerCommon, 1);
     bs.writeBits(h.voiceRetriggerPoly, 1);
-    bs.writeBits(h.unknown3, 4);
-    bs.writeBits(h.unknown4, 3);
+    for (const auto flag : h.headerFlags)
+        bs.writeBits(flag != 0 ? 1u : 0u, 1);
+    bs.writeBits(0, 3);                    // padding
     bs.alignToByte();
 
     // PatchName2 (type 39): no 3-byte padding, just name
@@ -183,8 +183,7 @@ std::vector<uint8_t> PatchSerializer::serializeHeader(const Patch& patch)
     bs.writeBits(h.portamento ? 1 : 0, 1);
     bs.writeBits(1, 1);                    // pedalMode: Java always sends 1
     bs.writeBits(h.voices - 1, 5);        // 0-based
-    bs.writeBits(0, 2);                    // unknown2: Java always sends 0
-    bs.writeBits(h.separatorPosition, 12);
+    bs.writeBits(static_cast<uint32_t>(h.separatorPosition), 14);
     bs.writeBits(h.octaveShift, 3);
     bs.writeBits(h.cableVisRed ? 1 : 0, 1);
     bs.writeBits(h.cableVisBlue ? 1 : 0, 1);
@@ -195,8 +194,11 @@ std::vector<uint8_t> PatchSerializer::serializeHeader(const Patch& patch)
     bs.writeBits(h.cableVisWhite ? 1 : 0, 1);
     bs.writeBits(h.voiceRetriggerCommon, 1);
     bs.writeBits(h.voiceRetriggerPoly, 1);
-    bs.writeBits(0xF, 4);                  // unknown3: Java always sends 0xF
-    bs.writeBits(0, 3);                    // unknown4: Java always sends 0
+    // The four flags, as Clavia's editor sends them (all on unless a file says
+    // otherwise, which is what nmedit's constant 0xF amounted to), then padding.
+    for (const auto flag : h.headerFlags)
+        bs.writeBits(flag != 0 ? 1u : 0u, 1);
+    bs.writeBits(0, 3);
     bs.alignToByte();
 
     return bs.toBytes();

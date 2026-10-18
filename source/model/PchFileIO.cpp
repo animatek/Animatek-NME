@@ -644,10 +644,8 @@ void PchFileIO::parseHeader(const juce::StringArray& lines, Patch& patch)
     h.octaveShift        = allTokens[9].getIntValue();
     h.voiceRetriggerPoly = allTokens[10].getIntValue();
     h.voiceRetriggerCommon = allTokens[11].getIntValue();
-    h.unknown1           = allTokens[12].getIntValue();
-    h.unknown2           = allTokens[13].getIntValue();
-    h.unknown3           = allTokens[14].getIntValue();
-    h.unknown4           = allTokens[15].getIntValue();
+    for (size_t i = 0; i < h.headerFlags.size(); ++i)
+        h.headerFlags[i] = allTokens[static_cast<int>(12 + i)].getIntValue() != 0 ? 1 : 0;
     h.cableVisRed        = allTokens[16].getIntValue() != 0;
     h.cableVisBlue       = allTokens[17].getIntValue() != 0;
     h.cableVisYellow     = allTokens[18].getIntValue() != 0;
@@ -989,10 +987,10 @@ void PchFileIO::writeHeader(juce::String& out, const Patch& patch)
         + juce::String(h.octaveShift) + " "
         + juce::String(h.voiceRetriggerPoly) + " "
         + juce::String(h.voiceRetriggerCommon) + " "
-        + juce::String(h.unknown1) + " "
-        + juce::String(h.unknown2) + " "
-        + juce::String(h.unknown3) + " "
-        + juce::String(h.unknown4) + " "
+        + juce::String(h.headerFlags[0]) + " "
+        + juce::String(h.headerFlags[1]) + " "
+        + juce::String(h.headerFlags[2]) + " "
+        + juce::String(h.headerFlags[3]) + " "
         + juce::String(h.cableVisRed ? 1 : 0) + " "
         + juce::String(h.cableVisBlue ? 1 : 0) + " "
         + juce::String(h.cableVisYellow ? 1 : 0) + " "

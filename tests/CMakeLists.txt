@@ -10,6 +10,7 @@ target_sources(nme_tests PRIVATE
     test_recolor_cable_message.cpp
     test_upload_packetizer.cpp
     test_patch_roundtrip.cpp
+    test_pch_header_flags.cpp
     test_module_placement.cpp
     test_light_meter_layout.cpp
     test_module_ref.cpp

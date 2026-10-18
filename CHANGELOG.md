@@ -61,6 +61,17 @@
 
 ### Fixed
 
+- **A saved .pch has the same [Header] line as one saved by Clavia's editor** (#103,
+  2026-10-18, branch `pch-header-flags-103`). Four fields of that line held what the synth sent
+  (`0 0 15 7`) where Clavia's editor 3.03 writes `1 1 1 1`. Read in the original
+  (`0x004d87e0`, `0x00431980`): they are four one-bit flags of unknown meaning, on by default,
+  four numbers in the file and four bits on the wire; nmedit's `unknown3:4` is those four bits,
+  `unknown4:3` is padding, and `unknown2:2` is the top of the separator position, which the
+  original sends as 14 bits. Now `PatchHeader::headerFlags` carries them both ways, and the
+  13-section header no longer puts a file's numbers into the separator's bits. The 205 .pch
+  files Clavia's editor saved here come out of NME with their header line unchanged, and a
+  G1's header read from flash writes the exact line the original wrote for that patch.
+
 - **Dialogs and floaters no longer hide behind the main window** (#98, after Javier noticed
   windows going behind the app). NME's other windows are top-level windows of their own, and
   JUCE does not tie them to the main one, so a click on it raised it over them. The slot

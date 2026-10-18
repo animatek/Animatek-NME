@@ -260,8 +260,11 @@ struct PatchHeader
     // Voice retrigger
     int voiceRetriggerPoly = 1;
     int voiceRetriggerCommon = 1;
-    // Unknown fields (preserved for round-trip fidelity)
-    int unknown1 = 0, unknown2 = 0, unknown3 = 0, unknown4 = 0;
+    // Four one-bit flags of unknown meaning, on by default. Clavia's editor 3.03
+    // keeps them as an array of four (0x00418b00/0x00418b20), writes them as
+    // four numbers in a .pch's [Header] (0x004d87e0) and sends them as four
+    // bits after the retriggers (0x00431980, nmedit's "unknown3:4") (#103).
+    std::array<int, 4> headerFlags { 1, 1, 1, 1 };
     // Cable visibility flags
     bool cableVisRed = true;
     bool cableVisBlue = true;
