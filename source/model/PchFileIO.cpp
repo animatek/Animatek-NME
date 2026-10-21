@@ -1058,7 +1058,7 @@ void PchFileIO::writeCableDump(juce::String& out, const ModuleContainer& contain
         if (srcModule == nullptr || dstModule == nullptr) continue;
 
         // The colour the cable came with, or, for one made here, its source connector's (#100)
-        int color = static_cast<int>(conn.colour());
+        int color = static_cast<int>(container.colourOf(conn));
 
         out += juce::String(color) + " "
             + juce::String(dstModule->getContainerIndex()) + " "
