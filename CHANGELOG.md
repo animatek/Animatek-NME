@@ -566,6 +566,11 @@ entries below are in the order they were made, newest first; the redesign ones s
 
 ### Fixed
 
+- **The macOS build compiles again** (2026-10-24). The Disk tab's fast scan used `std::filesystem`
+  directory iterators, which the macOS 10.13 target does not have (they came with 10.15), so the macOS
+  job of the build workflow stopped. On macOS the scan uses JUCE's iterator (slower on a huge library);
+  Linux and Windows keep the fast one.
+
 - **Daisy-chained cables take the colour of the net's source output** (#108, teezdalien). A cable chained
   from an input took the colour of the input it starts at, so a chain from a blue source showed a green
   cable. `ModuleContainer::colourOf`: a stored colour still wins, a cable from an output is unchanged, and

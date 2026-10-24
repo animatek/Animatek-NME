@@ -1,6 +1,8 @@
 #include "PresetBrowserWindow.h"
 #include <algorithm>
-#include <filesystem>
+#if !JUCE_MAC
+ #include <filesystem>
+#endif
 #include "../model/PchFileIO.h"
 #include "AppTheme.h"
 
@@ -338,11 +340,34 @@ void DiskPresetBrowserPanel::scanFolder(const juce::File& root, const juce::File
     if (!folder.isDirectory())
         return;
 
+    const juce::String wanted = type == Entry::Type::Set ? ".nmset" : ".pch";
+
+    auto add = [&](juce::File file)
+    {
+        if (std::any_of(skipFolders.begin(), skipFolders.end(),
+                        [&file](const juce::File& skip) { return file.isAChildOf(skip); }))
+            return;
+
+        Entry entry;
+        entry.type = type;
+        entry.displayName = type == Entry::Type::Bank
+            ? file.getRelativePathFrom(folder).dropLastCharacters(4)
+            : file.getFileNameWithoutExtension();
+        entry.relativePath = file.getRelativePathFrom(root);
+        entry.file = std::move(file);
+        out.push_back(std::move(entry));
+    };
+
+#if JUCE_MAC
+    // The macOS build targets 10.13, where std::filesystem's directory iterators do not exist (they
+    // came with 10.15): the JUCE iterator, which is slower on a library of tens of thousands of patches
+    for (const auto& info : juce::RangedDirectoryIterator(folder, true, "*" + wanted, juce::File::findFiles))
+        add(info.getFile());
+#else
     // std::filesystem reads the type of each entry from the directory listing itself, where the
     // JUCE iterator stats every file: on a library of 50,000 patches that is ten seconds against
     // a fraction of one.
     namespace fs = std::filesystem;
-    const juce::String wanted = type == Entry::Type::Set ? ".nmset" : ".pch";
     std::error_code ec;
     fs::recursive_directory_iterator it(fs::u8path(folder.getFullPathName().toStdString()),
                                         fs::directory_options::skip_permission_denied, ec);
@@ -358,20 +383,9 @@ void DiskPresetBrowserPanel::scanFolder(const juce::File& root, const juce::File
         if (!ext.equalsIgnoreCase(wanted))
             continue;
 
-        juce::File file(juce::String::fromUTF8(it->path().u8string().c_str()));
-        if (std::any_of(skipFolders.begin(), skipFolders.end(),
-                        [&file](const juce::File& skip) { return file.isAChildOf(skip); }))
-            continue;
-
-        Entry entry;
-        entry.type = type;
-        entry.displayName = type == Entry::Type::Bank
-            ? file.getRelativePathFrom(folder).dropLastCharacters(4)
-            : file.getFileNameWithoutExtension();
-        entry.relativePath = file.getRelativePathFrom(root);
-        entry.file = std::move(file);
-        out.push_back(std::move(entry));
+        add(juce::File(juce::String::fromUTF8(it->path().u8string().c_str())));
     }
+#endif
 }
 
 void DiskPresetBrowserPanel::rebuildVisibleEntries()
