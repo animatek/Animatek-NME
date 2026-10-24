@@ -333,6 +333,47 @@ public:
         }
     }
 
+    // The alert windows: JUCE's own icon is a huge triangle that the window clips. A small ring with a
+    // mark in it (! warning, ? question, i info) in the accent says the same, and the text sits as before
+    void drawAlertBox(juce::Graphics& g, juce::AlertWindow& alert, const juce::Rectangle<int>& textArea,
+                      juce::TextLayout& textLayout) override
+    {
+        const auto& pal = AppTheme::palette();
+        g.fillAll(pal.backgroundMain);
+
+        juce::String mark;
+        juce::Colour ink = pal.accentActive;
+        switch (alert.getAlertType())
+        {
+            case juce::MessageBoxIconType::WarningIcon:  mark = "!"; ink = pal.accentWarning; break;
+            case juce::MessageBoxIconType::QuestionIcon: mark = "?"; break;
+            case juce::MessageBoxIconType::InfoIcon:     mark = "i"; ink = pal.accentInfo; break;
+            default: break;
+        }
+        if (mark.isNotEmpty())
+        {
+            const auto ring = juce::Rectangle<float>(22.0f, static_cast<float>(textArea.getY()) + 2.0f, 36.0f, 36.0f);
+            g.setColour(ink);
+            g.drawEllipse(ring.reduced(1.0f), 2.0f);
+            g.setFont(juce::Font(AppTheme::uiFont(20.0f)).boldened());
+            g.drawText(mark, ring.toNearestInt(), juce::Justification::centred, false);
+        }
+
+        // JUCE counts 80px at the left for the icon in the window's size; the text starts after it
+        const int iconSpace = mark.isNotEmpty() ? 80 : 0;
+        g.setColour(pal.textSecondary);
+        textLayout.draw(g, juce::Rectangle<int>(textArea.getX() + iconSpace, textArea.getY(),
+                                                textArea.getWidth() - iconSpace, textArea.getHeight()).toFloat());
+        g.setColour(pal.borderColor.brighter(0.6f));
+        g.drawRect(alert.getLocalBounds(), 1);
+    }
+
+    // The alert windows (confirmations, renames): type a size up from JUCE's, taller buttons
+    juce::Font getAlertWindowTitleFont() override   { return juce::Font(AppTheme::uiFont(16.0f)).boldened(); }
+    juce::Font getAlertWindowMessageFont() override { return juce::Font(AppTheme::uiFont(14.0f)); }
+    juce::Font getAlertWindowFont() override        { return juce::Font(AppTheme::uiFont(13.0f)); }
+    int getAlertWindowButtonHeight() override       { return 36; }
+
     // The title bar of the windows JUCE draws itself (the floaters, the browser window, About): the
     // same as the dialogs', the ground colour, the title bold at the left, a rule under it
     void drawDocumentWindowTitleBar(juce::DocumentWindow& window, juce::Graphics& g, int w, int h, int, int,

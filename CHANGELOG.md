@@ -8,6 +8,17 @@
   instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
   to yours and quit without a picture. That run now counts as its own instance.
 
+- **Alert windows: a small icon instead of JUCE's triangle** (2026-10-24, branch `ui-redesign`). The
+  default warning mark is a huge red triangle that the window clips. A ring with a mark in it (! warning,
+  ? question, i info) in the theme's accent replaces it, and the window has a thin outline.
+
+- **The first-start Beta warning, the shortcuts window and the alert windows** (2026-10-24, branch
+  `ui-redesign`). Found by opening the menus and a fresh start for the final review. The Beta warning
+  that a clean install shows still wore the old look (gold title, boxed x, a tiny line under it): it is now a
+  540x468 dialog with Editor Options' title bar and footer, the text in 14px with room round it, and the
+  button filled with the accent. The Keyboard Shortcuts window keeps its text 20px from the edge. And the
+  alert windows (delete a patch, rename...) have a size more of type and 36px buttons.
+
 - **A/B crossfade: bigger, between the snapshots and the Mutator, resting in the middle**
   (2026-10-24, branch `ui-redesign`). It moves to the right of the eight snapshots and the left of
   MUTATOR; it is 150px wide (it was 104) and 26px tall, with 28px of room at each end for its letters (13px

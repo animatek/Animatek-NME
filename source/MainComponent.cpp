@@ -8,6 +8,7 @@
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
 #include "ui/AboutDialog.h"
+#include "ui/FlatCloseButton.h"
 #include "ui/EditorOptionsDialog.h"
 #include "ui/SaveSlotSetDialog.h"
 #include "ui/SelfOwnedDialog.h"
@@ -1120,7 +1121,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     // NME_SNAPSHOT_DIR=<folder>: save pictures of the editor and its floaters, then quit
     if (const auto snapDir = juce::SystemStats::getEnvironmentVariable("NME_SNAPSHOT_DIR", {}); snapDir.isNotEmpty())
       juce::Timer::callAfterDelay(3500, [safeThis, snapDir]() {
-        if (safeThis) safeThis->saveSnapshotsAndQuit(juce::File(snapDir));
+        if (safeThis) safeThis->snapshotMenus(juce::File(snapDir), 0);
       });
 
     // Community themes (#91): the cached list now, the repository at most once a day.
@@ -3297,6 +3298,82 @@ void MainComponent::applyUiTheme(int index, bool persist) {
     editorOptions.save(appProperties.getUserSettings());
 }
 
+void MainComponent::snapshotMenus(const juce::File& dir, int index)
+{
+  const auto names = getMenuBarNames();
+  dir.createDirectory();
+  auto shootWindow = [dir](juce::Component& c, const juce::String& name) {
+    const auto img = c.createComponentSnapshot(c.getLocalBounds(), true, 1.0f);
+    juce::FileOutputStream out(dir.getChildFile(name + ".png"));
+    if (out.openedOk())
+    {
+      out.setPosition(0);
+      out.truncate();
+      juce::PNGImageFormat().writeImageToStream(img, out);
+    }
+  };
+
+  if (index == 0)
+  {
+    // A clean start shows the Beta warning: picture it, then take it away so it is not in the menus' way
+    auto& desktop = juce::Desktop::getInstance();
+    for (int i = desktop.getNumComponents(); --i >= 0;)
+      if (auto* c = desktop.getComponent(i); c != nullptr && c->getName() == "beta-warning")
+      {
+        shootWindow(*c, "dialog-beta");
+        c->removeFromDesktop();
+        delete c;
+      }
+  }
+
+  if (index == names.size())
+  {
+    // The Keyboard Shortcuts window, then on to the rest
+    showKeyboardShortcutsDialog();
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::Timer::callAfterDelay(500, [safeThis, dir, shootWindow]() mutable {
+      if (!safeThis) return;
+      auto& desktop = juce::Desktop::getInstance();
+      for (int i = 0; i < desktop.getNumComponents(); ++i)
+        if (auto* dw = dynamic_cast<juce::DialogWindow*>(desktop.getComponent(i)))
+        {
+          shootWindow(*dw, "dialog-shortcuts");
+          dw->exitModalState(0);
+          break;
+        }
+      juce::Timer::callAfterDelay(250, [safeThis, dir]() { if (safeThis) safeThis->saveSnapshotsAndQuit(dir); });
+    });
+    return;
+  }
+  if (index > names.size()) { saveSnapshotsAndQuit(dir); return; }
+
+  // Open the menu as the bar would, give it a moment to appear, picture the window it opens (the only
+  // top-level one besides the editor's own), close it and go on to the next
+  getMenuForIndex(index, names[index]).showMenuAsync(juce::PopupMenu::Options());
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  juce::Timer::callAfterDelay(500, [safeThis, dir, index, names]() {
+    if (!safeThis) return;
+    auto* mine = safeThis->getTopLevelComponent();
+    auto& desktop = juce::Desktop::getInstance();
+    for (int i = 0; i < desktop.getNumComponents(); ++i)
+      if (auto* c = desktop.getComponent(i); c != nullptr && c != mine && c->isVisible() && c->getWidth() > 40
+                                             && c->getName() != "beta-warning")
+      {
+        const auto img = c->createComponentSnapshot(c->getLocalBounds(), true, 1.0f);
+        juce::FileOutputStream out(dir.getChildFile("menu-" + juce::String(index) + "-" + names[index].retainCharacters("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") + ".png"));
+        if (out.openedOk())
+        {
+          out.setPosition(0);
+          out.truncate();
+          juce::PNGImageFormat().writeImageToStream(img, out);
+        }
+        break;
+      }
+    juce::PopupMenu::dismissAllActiveMenus();
+    juce::Timer::callAfterDelay(250, [safeThis, dir, index]() { if (safeThis) safeThis->snapshotMenus(dir, index + 1); });
+  });
+}
+
 void MainComponent::saveSnapshotsAndQuit(const juce::File& dir)
 {
   dir.createDirectory();
@@ -3376,6 +3453,12 @@ void MainComponent::saveSnapshotsAndQuit(const juce::File& dir)
       SlotSelectDialog d("Open \"Fractura\" into...", { "Fractura", "", "", "A Nucleo Duro" }, 0, 0,
                          [](const SlotSelectDialog::Result&) {});
       shoot(d, "dialog-slot-select");
+    }
+    {
+      juce::AlertWindow d("Delete Patch", "Delete \"Fractura\" from location 101?", juce::MessageBoxIconType::WarningIcon);
+      d.addButton("Delete", 1, juce::KeyPress(juce::KeyPress::returnKey));
+      d.addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+      shoot(d, "dialog-alert");
     }
 
     juce::JUCEApplication::getInstance()->quit();
@@ -5248,22 +5331,12 @@ public:
     {
         setOpaque(true);
 
-        titleLabel.setFont(juce::Font(AppTheme::uiFont(15.0f)).boldened());
-        titleLabel.setColour(juce::Label::textColourId, AppTheme::palette().accentActive);
-        titleLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
-        titleLabel.setText("Animatek NME - Beta", juce::dontSendNotification);
-        addAndMakeVisible(titleLabel);
-
-        closeButton.setButtonText("x");
-        closeButton.setColour(juce::TextButton::buttonColourId,   AppTheme::palette().backgroundPanel);
-        closeButton.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().inputBackground);
-        closeButton.setColour(juce::TextButton::textColourOffId,  AppTheme::palette().accentActive);
-        closeButton.setColour(juce::TextButton::textColourOnId,   juce::Colours::white);
+        setName("beta-warning");   // the picture-taking run knows it by this
         closeButton.onClick = [this]() { removeFromDesktop(); delete this; };
         addAndMakeVisible(closeButton);
 
-        bodyText.setFont(juce::Font(AppTheme::uiFont(13.0f)));
-        bodyText.setColour(juce::Label::textColourId, juce::Colour(0xffdddddd));
+        bodyText.setFont(juce::Font(AppTheme::uiFont(14.0f)));
+        bodyText.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
         bodyText.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
         bodyText.setText(
             "Welcome to Animatek NME (Nord Modular Editor G1) Beta!\n\n"
@@ -5282,12 +5355,12 @@ public:
         bodyText.setMinimumHorizontalScale(1.0f);
         addAndMakeVisible(bodyText);
 
-        suppressToggle.setColour(juce::ToggleButton::textColourId, juce::Colour(0xffaaaacc));
+        suppressToggle.setColour(juce::ToggleButton::textColourId, AppTheme::palette().textMuted);
         addAndMakeVisible(suppressToggle);
 
         okButton.setButtonText("I understand, let me in!");
-        okButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().buttonActive);
-        okButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+        okButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().accentActive);   // the one thing to press
+        okButton.setColour(juce::TextButton::textColourOffId, AppTheme::palette().backgroundMain);
         okButton.onClick = [this]() {
             if (suppressToggle.getToggleState()) {
                 auto* s = appProperties.getUserSettings();
@@ -5298,13 +5371,13 @@ public:
         };
         addAndMakeVisible(okButton);
 
-        setSize(440, 340);
+        setSize(540, 468);
 
         if (relativeTo) {
             auto* top = relativeTo->getTopLevelComponent();
             auto screen = top->localAreaToGlobal(top->getLocalBounds());
-            setTopLeftPosition(screen.getX() + (screen.getWidth() - 440) / 2,
-                               screen.getY() + (screen.getHeight() - 340) / 2);
+            setTopLeftPosition(screen.getX() + (screen.getWidth() - getWidth()) / 2,
+                               screen.getY() + (screen.getHeight() - getHeight()) / 2);
         }
 
         addToDesktop(juce::ComponentPeer::windowHasDropShadow);
@@ -5313,18 +5386,14 @@ public:
         grabKeyboardFocus();
     }
 
-    void paint(juce::Graphics& g) override {
-        g.fillAll(AppTheme::palette().backgroundPanel);
-        g.setColour(AppTheme::palette().buttonActive);
-        g.fillRect(0, 31, getWidth(), 1);
-    }
+    void paint(juce::Graphics& g) override { AppTheme::drawDialogChrome(g, getLocalBounds(), "Animatek NME - Beta", 40, 68); }
+    void paintOverChildren(juce::Graphics& g) override { AppTheme::drawWindowFrame(g, getLocalBounds()); }
 
     void resized() override {
-        titleLabel.setBounds(8, 0, getWidth() - 40, 32);
-        closeButton.setBounds(getWidth() - 32, 2, 28, 28);
-        bodyText.setBounds(12, 38, getWidth() - 24, 210);
-        suppressToggle.setBounds(12, getHeight() - 68, getWidth() - 24, 24);
-        okButton.setBounds((getWidth() - 200) / 2, getHeight() - 38, 200, 30);
+        closeButton.setBounds(getWidth() - 36, 6, 28, 28);
+        bodyText.setBounds(24, 52, getWidth() - 48, 300);
+        suppressToggle.setBounds(24, getHeight() - 68 - 40, getWidth() - 48, 28);
+        okButton.setBounds(getWidth() - 24 - 220, getHeight() - 68 + 16, 220, 36);
     }
 
     bool keyPressed(const juce::KeyPress& key) override {
@@ -5335,13 +5404,14 @@ public:
         return false;
     }
 
-    void mouseDown(const juce::MouseEvent& e) override { dragger.startDraggingComponent(this, e); }
-    void mouseDrag(const juce::MouseEvent& e) override { dragger.dragComponent(this, e, nullptr); }
+    void mouseDown(const juce::MouseEvent& e) override { if (e.getPosition().getY() < 40) dragger.startDraggingComponent(this, e); }
+    void mouseDrag(const juce::MouseEvent& e) override { if (e.getMouseDownPosition().getY() < 40) dragger.dragComponent(this, e, nullptr); }
 
 private:
     juce::ApplicationProperties& appProperties;
-    juce::Label titleLabel, bodyText;
-    juce::TextButton closeButton, okButton;
+    juce::Label bodyText;
+    FlatCloseButton closeButton;
+    juce::TextButton okButton;
     juce::ToggleButton suppressToggle { "Don't show this warning at startup" };
     juce::ComponentDragger dragger;
 };
@@ -5458,7 +5528,8 @@ void MainComponent::showKeyboardShortcutsDialog() {
   editor->setColour(juce::TextEditor::textColourId, AppTheme::palette().textPrimary);
   editor->setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
   editor->setText(juce::String::fromUTF8(shortcutsText));
-  editor->setSize(440, 560);
+  editor->setIndents(20, 16);   // the text keeps its distance from the edge of the window
+  editor->setSize(480, 600);
 
   juce::DialogWindow::LaunchOptions opts;
   opts.content.setOwned(editor);
