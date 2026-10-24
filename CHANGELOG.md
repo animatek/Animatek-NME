@@ -4,6 +4,16 @@
 
 ### Changed
 
+- **Disk list: it appears at once, from one scan, in a third of the time** (2026-10-24, branch
+  `ui-redesign`). The first background version showed an empty list with "Hide 2.10" on: two scans
+  started (the panel was asked for the same folder twice) and each opened all 53,759 files before
+  showing anything. Now the scan reads only names, so the list shows as soon as it is read; which
+  patches are old is found out afterwards, in the background, and only then are they hidden. The
+  same folder asked for again while it is being read is ignored. And the tree is walked with
+  `std::filesystem`, which reads each entry's type from the directory listing, where the JUCE
+  iterator asks about every file: 3.2s instead of 10.5s on the real library (53,797 patches).
+  While it reads, the status line says "Reading the library...".
+
 - **The Disk list is read on a background thread** (2026-10-24, branch `ui-redesign`). With a library
   of tens of thousands of patches (53,759 here) the editor froze at startup and on Refresh: the
   recursive scan ran on the message thread and, with "Hide 2.10" on (which is now remembered, and made

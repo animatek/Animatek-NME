@@ -109,6 +109,7 @@ private:
     void scanFinished(std::vector<Entry> entries);
     void sniffLegacyInBackground();
     std::atomic<int> scanGeneration { 0 };
+    bool scanning = false;   // a read of the library is under way (message thread only)
     juce::String getTypeLabel(Entry::Type type) const;
     juce::String getTypeLabel(Entry& entry) const;
     // Sniffs the file on first use and caches the result on the entry, so
