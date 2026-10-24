@@ -394,7 +394,7 @@ public:
 
     // ── Layout constants ──
     static constexpr int topPad       = 4;
-    static constexpr int sectionTitleH = 22;
+    static constexpr int sectionTitleH = 30;
     static constexpr int groupHeaderH = 22;
     static constexpr int rowH         = 26;
     static constexpr int xBtnW        = 20;
@@ -629,7 +629,7 @@ public:
         // divide the panel up. textPrimary is near-white on the dark themes and
         // near-black on the light ones, which is the same rule the macro
         // captions follow (AppTheme::macroLabelInk).
-        const juce::Colour sectionInk = AppTheme::palette().textPrimary;
+        const juce::Colour sectionInk = AppTheme::palette().textSecondary;
 
         for (const auto& row : layout)
         {
@@ -1167,10 +1167,11 @@ private:
     // ── Paint helpers ──
     void paintSectionTitle(juce::Graphics& g, int y, const juce::String& title, juce::Colour col)
     {
-        g.setColour(col.withAlpha(0.12f));
-        g.fillRect(0, y, getWidth(), sectionTitleH);
-        g.setColour(col);
+        // A title and a hairline above it: no wash, so the sections divide the panel without
+        // shouting over the rows they hold.
+        g.setColour(AppTheme::palette().borderColor);
         g.fillRect(0, y, getWidth(), 1);
+        g.setColour(col);
         g.setFont(AppTheme::uiFont(fontTitle).withStyle("Bold"));
         g.drawText(title.toUpperCase(), marginX, y, getWidth() - marginX * 2, sectionTitleH,
                    juce::Justification::centredLeft);
@@ -1812,7 +1813,7 @@ void InspectorPanel::paint(juce::Graphics& g)
 
     if (currentModule() != nullptr)
     {
-        g.setColour(theme.inputBackground);
+        g.setColour(theme.borderColor);
         g.fillRect(0, margin + rowH + 2 + 14 + 14 + margin * 2 + rowH + 4, getWidth(), 1);
     }
 }

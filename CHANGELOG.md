@@ -4,6 +4,11 @@
 
 ### Changed
 
+- **Inspector section titles restyled** (2026-10-24, branch `ui-redesign`). Parameters, Morphs,
+  Knobs, MIDI CC and Presets lose their coloured wash and strong rule: a small uppercase title
+  (in the theme's secondary ink, still readable) with a hairline above it and more air (30px, was
+  22). The rows, the knob map and the name field are unchanged.
+
 - **Synth list restyled** (2026-10-24, branch `ui-redesign`). Same one-row-per-synth list at the
   bottom of the inspector, in the new look: the synth's number (lit when it is the one being
   edited), the four slot buttons as rounded squares, the name as a pill with a connection dot and
