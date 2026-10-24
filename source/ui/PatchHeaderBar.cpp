@@ -514,27 +514,42 @@ void PatchHeaderBar::drawMorphKnob(juce::Graphics& g, float cx, float cy, float 
                                     float normalized, const juce::String& label,
                                     juce::Colour colour)
 {
-    // Body always filled with the morph colour so the macro reads at a glance,
-    // regardless of the theme background; a black outline + pointer define the dial.
-    g.setColour(colour);
-    g.fillEllipse(cx, cy, size, size);
+    juce::ignoreUnused(label);
+    // The dial the Knob Floater and the modules wear, in the macro's own colour: a track, the value
+    // as an arc of that colour from the left stop, a dark face and a light pointer. Strokes
+    // are paths with round ends, so it stays smooth at this size.
+    const auto& pal = AppTheme::palette();
+    const float pi = juce::MathConstants<float>::pi;
+    const float centerX = cx + size * 0.5f;
+    const float centerY = cy + size * 0.5f;
+    const float thick = juce::jmax(2.5f, size * 0.1f);
+    const float arcR = size * 0.5f - thick * 0.5f - 0.5f;
+    const float a0 = -0.75f * pi, sweep = 1.5f * pi;
+    const float t = juce::jlimit(0.0f, 1.0f, normalized);
 
-    // Contrast against the dial itself; the four morph fills span both light
-    // and dark colours independently of the selected UI theme.
-    const auto ink = contrastingInk(colour);
-    g.setColour(ink);
-    g.drawEllipse(cx + 1.0f, cy + 1.0f, size - 2.0f, size - 2.0f, 1.5f);
+    juce::Path track;
+    track.addCentredArc(centerX, centerY, arcR, arcR, 0.0f, a0, a0 + sweep, true);
+    g.setColour(pal.borderColor);
+    g.strokePath(track, juce::PathStrokeType(thick, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
-    // Grip line
-    float angle = (-135.0f + normalized * 270.0f) * (juce::MathConstants<float>::pi / 180.0f);
-    float centerX = cx + size * 0.5f;
-    float centerY = cy + size * 0.5f;
-    float sinA = std::sin(angle);
-    float cosA = std::cos(angle);
+    if (t > 0.002f)
+    {
+        juce::Path value;
+        value.addCentredArc(centerX, centerY, arcR, arcR, 0.0f, a0, a0 + t * sweep, true);
+        g.setColour(colour);
+        g.strokePath(value, juce::PathStrokeType(thick, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
 
-    g.setColour(ink);
-    g.drawLine(centerX + sinA * size * 0.15f, centerY - cosA * size * 0.15f,
-               centerX + sinA * size * 0.4f, centerY - cosA * size * 0.4f, 2.0f);
+    const float faceR = arcR - thick * 0.5f - 2.0f;
+    g.setColour(pal.backgroundMain);
+    g.fillEllipse(centerX - faceR, centerY - faceR, faceR * 2.0f, faceR * 2.0f);
+    g.setColour(pal.borderColor);
+    g.drawEllipse(centerX - faceR, centerY - faceR, faceR * 2.0f, faceR * 2.0f, 1.0f);
+
+    const float a = a0 + t * sweep;
+    g.setColour(pal.textPrimary);
+    g.drawLine(centerX + std::sin(a) * faceR * 0.2f, centerY - std::cos(a) * faceR * 0.2f,
+               centerX + std::sin(a) * faceR * 0.78f, centerY - std::cos(a) * faceR * 0.78f, 2.0f);
 }
 
 void PatchHeaderBar::drawLoadBar(juce::Graphics& g, juce::Rectangle<float> r,

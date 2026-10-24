@@ -4,6 +4,11 @@
 
 ### Changed
 
+- **The four macro knobs of the header bar, redrawn** (2026-10-24, branch `ui-redesign`). They were flat
+  coloured discs with a thick outline that looked pixelated at 24px. They are now 32px dials: a track, the
+  value as an arc in the macro's colour (red, green, blue, yellow) with round ends, a dark face and a
+  light pointer. Hit tests and spacing follow the new size.
+
 - **Knob Floater: the flat knob, as in the modules** (2026-10-24, branch `ui-redesign`). The knob was not
   the one the modules wear (the dark disc with a rim, a pointer and the value arc in the theme's blue):
   the floater now draws that very one (`skeuo::drawFlatKnob`) in the canvas theme's colours, with the arc

@@ -248,8 +248,8 @@ private:
     };
     Layout L;
 
-    static constexpr int morphKnobSize = 24;
-    static constexpr int morphKnobSpacing = 8;
+    static constexpr int morphKnobSize = 32;
+    static constexpr int morphKnobSpacing = 10;
     static constexpr int cableToggleSize = 16;
     static constexpr int cableToggleSpacing = 6;
     static constexpr int numCableTypes = 7;
