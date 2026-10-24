@@ -365,7 +365,8 @@ void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, i
         const float cy = static_cast<float>(height) * 0.5f;
         const float s = 3.5f;
         juce::Path chevron;
-        if (!isOpen())
+        // Folded: pointing down, "open me"; open: pointing up, "fold me away"
+        if (isOpen())
         {
             chevron.startNewSubPath(cx - s * 1.4f, cy + s * 0.7f);
             chevron.lineTo(cx, cy - s * 0.7f);

@@ -8,6 +8,10 @@
   instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
   to yours and quit without a picture. That run now counts as its own instance.
 
+- **Fold arrows the right way round** (2026-10-24, branch `ui-redesign`). The banks of the patch browser
+  and the inspector's sections pointed up while folded and down while open. They now point down when
+  folded (open me) and up when open (fold me away).
+
 - **Inspector and browser switches as icons in the status bar** (2026-10-24, branch `ui-redesign`).
   The two thin strips with a chevron at the edges of the window, which were hard to read as buttons, are
   gone. As in Bitwig, an **"i"** at the left of the status bar opens and closes the inspector and a

@@ -700,8 +700,8 @@ public:
         }
     }
 
-    // Same shape as the main window's panel chevrons: pointing down while the
-    // section is open, up while it is folded away.
+    // Pointing down while the section is folded ("open me"), up while it is open ("fold me away"),
+    // as in the patch browser's banks.
     void paintCollapseChevron(juce::Graphics& g, int y, juce::Colour col,
                               bool collapsed, int height)
     {
@@ -710,7 +710,7 @@ public:
         const float s  = 3.5f;
 
         juce::Path chevron;
-        if (collapsed)
+        if (!collapsed)
         {
             chevron.startNewSubPath(cx - s * 1.4f, cy + s * 0.7f);
             chevron.lineTo(cx, cy - s * 0.7f);
