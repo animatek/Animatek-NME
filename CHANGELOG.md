@@ -8,6 +8,10 @@
   instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
   to yours and quit without a picture. That run now counts as its own instance.
 
+- **Tabs: the word centred in its box, and a hairline between tabs** (2026-10-24, branch `ui-redesign`).
+  The titles of the tabs (Synth, Disk of the browser) rode high above the underline: they sit in the
+  middle of the room above it now, and a thin rule between one tab and the next tells them apart.
+
 - **Alert windows: a small icon instead of JUCE's triangle** (2026-10-24, branch `ui-redesign`). The
   default warning mark is a huge red triangle that the window clips. A ring with a mark in it (! warning,
   ? question, i info) in the theme's accent replaces it, and the window has a thin outline.

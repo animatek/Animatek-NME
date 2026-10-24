@@ -84,8 +84,15 @@ public:
         const bool front = button.isFrontTab();
         g.setColour(front || isMouseOver ? pal.textPrimary : pal.textSecondary);
         g.setFont(tabFont());
-        // The word sits above the underline with air under it, not on top of the rule
-        g.drawText(button.getButtonText(), r.withTrimmedBottom(10), juce::Justification::centred, false);
+        // The word sits in the middle of the room above the underline
+        g.drawText(button.getButtonText(), r.withTrimmedBottom(4), juce::Justification::centred, false);
+        // A hairline between one tab and the next (Synth | Disk), level with the word
+        if (button.getIndex() < button.getTabbedButtonBar().getNumTabs() - 1)
+        {
+            g.setColour(pal.borderColor.brighter(0.4f));
+            const float cy = static_cast<float>(r.getHeight() - 4) * 0.5f;
+            g.fillRect(static_cast<float>(r.getRight()) - 1.0f, cy - 8.0f, 1.0f, 16.0f);
+        }
         if (front)
         {
             g.setColour(pal.accentActive);
