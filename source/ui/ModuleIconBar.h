@@ -12,15 +12,16 @@
 // original shows and what this will eventually show, but only once the artwork
 // is ours and follows the theme (issue #52); recycling Nomad's coloured discs in
 // the meantime would have looked like someone else's editor.
-class ModuleIconBar : public juce::Component
+class ModuleIconBar : public juce::Component,
+                      public juce::TooltipClient
 {
 public:
-    static constexpr int tabRowHeight  = 20;
-    static constexpr int chipRowHeight = 27;
-    static constexpr int chipHeight    = 18;
-    static constexpr int chipPadding   = 9;   // each side of the label
+    static constexpr int tabRowHeight  = 28;
+    static constexpr int chipRowHeight = 34;
+    static constexpr int chipHeight    = 24;
+    static constexpr int chipPadding   = 12;  // each side of the label
     static constexpr int chipGap       = 4;
-    static constexpr int chipTopGap    = 3;   // the rest falls below, so the bar breathes
+    static constexpr int chipTopGap    = 5;   // the rest falls below, so the bar breathes
     static constexpr int separatorHeight = 1; // hairline between the bar and the canvas
     /** Height the bar wants: one tab row, one row of chips, and the separator. */
     static constexpr int preferredHeight = tabRowHeight + chipRowHeight + separatorHeight;
@@ -38,6 +39,14 @@ public:
     void paint(juce::Graphics& g) override;
     void resized() override;
     void applyTheme();
+
+    /** ABCD: put the slot sub-windows back in order (#51). It sits at the left of the chip
+        row, outside the scrolling strip, so it stays put when the chips are scrolled. Greyed
+        out when there is nothing to put back in order. */
+    std::function<void()> onRetile;
+    void setRetileEnabled(bool enabled);
+
+    juce::String getTooltip() override;
 
 private:
     // The chips live in a viewport so a narrow window scrolls rather than
@@ -91,6 +100,11 @@ private:
     std::vector<juce::Rectangle<int>> tabBounds;
     int selectedTab = 0;
     int hoverTab = -1;
+
+    static constexpr int retileColW = 58;     // the ABCD button and the room around it
+    juce::Rectangle<int> retileBounds;
+    bool retileEnabled = false;
+    bool retileHover = false;
 
     juce::Viewport viewport;
     ChipStrip strip { *this };

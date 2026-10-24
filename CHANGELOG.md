@@ -4,6 +4,15 @@
 
 ### Changed
 
+- **Header bar redesign, step 2** (2026-10-24, branch `ui-redesign`). ABCD moves out of the
+  header to the left of the module chips (fixed, outside the scrolling strip). The module bar is
+  restyled: flat tabs with an underline under the one showing, and the module chips as pills.
+  **Store** is as wide as its text really is, so the word and the bank location no longer overlap
+  (they did at the 1.15 font scale). Every part of the header now has a tooltip (name, voices,
+  load, store, morph, snapshots, crossfader, cable colours, shake, Mutator, donate, Patreon), and
+  so does the ABCD button. The module bar is a little taller (63px instead of 48). Not looked at
+  on screen yet.
+
 - **Header bar redesign, step 1** (2026-10-24, branch `ui-redesign`). Flat bar with no boxes
   or group titles, in the order: patch name, Voices (number with its arrows), Load (PVA and E,
   each with its bar and number), Store, the four morph dials, the eight snapshots, the A/B

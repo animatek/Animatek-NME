@@ -223,7 +223,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     saveMdiLayout();
     // The ABCD button greys out when the layout is already the canonical one,
     // and this is the only place that knows the layout moved.
-    mainLayout->getHeaderBar().setRetileEnabled(
+    mainLayout->getModuleIconBar().setRetileEnabled(
         mainLayout->getPatchArea().canResetTileOrder());
   };
 
@@ -795,8 +795,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       [this]() { toggleMutatorWindow(); });
   mainLayout->getHeaderBar().setSupportCallback(
       [this](const juce::String& url) { openURL(url); });
-  mainLayout->getHeaderBar().setRetileButtonCallback(
-      [this]() { mainLayout->getPatchArea().resetTileOrder(); });
+  mainLayout->getModuleIconBar().onRetile =
+      [this]() { mainLayout->getPatchArea().resetTileOrder(); };
 
   // Wire the Morph A/B fader
   mainLayout->getHeaderBar().setMorphFaderCallback(

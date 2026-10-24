@@ -159,20 +159,23 @@ void ModuleIconBar::resized()
 
     tabBounds.clear();
     const auto font = chipFont();
-    int x = tabRow.getX() + 4;
+    int x = tabRow.getX() + 10;
     for (const auto& label : tabLabels)
     {
-        const int w = juce::jmax(30, static_cast<int>(font.getStringWidthFloat(label)) + 16);
+        const int w = juce::jmax(34, static_cast<int>(font.getStringWidthFloat(label)) + 24);
         tabBounds.push_back({ x, tabRow.getY(), w, tabRow.getHeight() });
-        x += w;
+        x += w + 2;
     }
 
     // Keep the last pixel row for the separator below, or the viewport paints
     // over it and the bar runs straight into the canvas.
     area.removeFromBottom(separatorHeight);
 
-    viewport.setBounds(area);
-    strip.setSize(juce::jmax(area.getWidth(), strip.getWidth()), area.getHeight());
+    // ABCD at the left of the chip row, level with the chips; the strip scrolls to its right
+    retileBounds = { 10, area.getY() + chipTopGap, retileColW - 22, chipHeight };
+    auto stripArea = area.withTrimmedLeft(retileColW);
+    viewport.setBounds(stripArea);
+    strip.setSize(juce::jmax(stripArea.getWidth(), strip.getWidth()), stripArea.getHeight());
 }
 
 void ModuleIconBar::applyTheme()
@@ -189,6 +192,7 @@ void ModuleIconBar::paint(juce::Graphics& g)
     g.setColour(p.borderColor);
     g.drawHorizontalLine(getHeight() - 1, 0.0f, static_cast<float>(getWidth()));
 
+    // Tabs: just the word, with an underline under the one that is showing
     g.setFont(chipFont());
     for (size_t i = 0; i < tabBounds.size(); ++i)
     {
@@ -196,20 +200,80 @@ void ModuleIconBar::paint(juce::Graphics& g)
         const bool active = (static_cast<int>(i) == selectedTab);
         const bool hovered = (static_cast<int>(i) == hoverTab);
 
-        g.setColour(active ? p.backgroundElevated
-                           : hovered ? p.buttonHover
-                                     : p.backgroundSecondary);
-        g.fillRect(r.reduced(1, 2));
-        g.setColour(p.borderColor);
-        g.drawRect(r.reduced(1, 2), 1);
+        if (hovered && !active)
+        {
+            g.setColour(p.buttonHover);
+            g.fillRoundedRectangle(r.reduced(1, 4).toFloat(), 4.0f);
+        }
 
         g.setColour(active ? p.textPrimary : p.textSecondary);
         g.drawText(tabLabels[static_cast<int>(i)], r, juce::Justification::centred, false);
+
+        if (active)
+        {
+            g.setColour(p.accentActive);
+            g.fillRect(r.getX() + 6, r.getBottom() - 2, r.getWidth() - 12, 2);
+        }
     }
+
+    // ABCD: the four slot windows as they land (A B over C D)
+    {
+        const auto rb = retileBounds.toFloat();
+        g.setColour(retileEnabled && retileHover ? p.buttonHover : p.buttonBackground);
+        g.fillRoundedRectangle(rb, 5.0f);
+        g.setColour(p.borderColor);
+        g.drawRoundedRectangle(rb.reduced(0.5f), 5.0f, 1.0f);
+
+        const auto ink = retileEnabled ? p.textSecondary : p.textMuted;
+        auto cells = rb.reduced(5.0f, 3.0f);
+        g.setColour(ink.withAlpha(0.35f));
+        g.drawLine(cells.getCentreX(), cells.getY(), cells.getCentreX(), cells.getBottom(), 1.0f);
+        g.drawLine(cells.getX(), cells.getCentreY(), cells.getRight(), cells.getCentreY(), 1.0f);
+
+        g.setColour(ink);
+        g.setFont(AppTheme::uiFont(8.0f).withStyle("Bold"));
+        static const char* const tileLetters[] = { "A", "B", "C", "D" };
+        for (int i = 0; i < 4; ++i)
+        {
+            juce::Rectangle<float> cell(
+                cells.getX() + static_cast<float>(i % 2) * cells.getWidth()  * 0.5f,
+                cells.getY() + static_cast<float>(i / 2) * cells.getHeight() * 0.5f,
+                cells.getWidth() * 0.5f, cells.getHeight() * 0.5f);
+            g.drawText(tileLetters[i], cell.toNearestInt(), juce::Justification::centred, false);
+        }
+
+        // A hairline between the tile and the chips
+        g.setColour(p.borderColor);
+        const float lx = static_cast<float>(retileColW) - 7.0f;
+        g.drawLine(lx, rb.getY() + 2.0f, lx, rb.getBottom() - 2.0f, 1.0f);
+    }
+}
+
+void ModuleIconBar::setRetileEnabled(bool enabled)
+{
+    if (retileEnabled == enabled)
+        return;
+    retileEnabled = enabled;
+    repaint(retileBounds);
+}
+
+juce::String ModuleIconBar::getTooltip()
+{
+    if (retileBounds.contains(getMouseXYRelative()))
+        return retileEnabled ? "Put the slot windows back in order: A B over C D"
+                             : "The slot windows are already in order";
+    return {};
 }
 
 void ModuleIconBar::mouseDown(const juce::MouseEvent& e)
 {
+    if (retileBounds.contains(e.getPosition()))
+    {
+        if (retileEnabled && onRetile)
+            onRetile();
+        return;
+    }
+
     for (size_t i = 0; i < tabBounds.size(); ++i)
         if (tabBounds[i].contains(e.getPosition()))
         {
@@ -227,18 +291,21 @@ void ModuleIconBar::mouseMove(const juce::MouseEvent& e)
         if (tabBounds[i].contains(e.getPosition()))
             found = static_cast<int>(i);
 
-    if (found != hoverTab)
+    const bool overRetile = retileBounds.contains(e.getPosition());
+    if (found != hoverTab || overRetile != retileHover)
     {
         hoverTab = found;
+        retileHover = overRetile;
         repaint();
     }
 }
 
 void ModuleIconBar::mouseExit(const juce::MouseEvent&)
 {
-    if (hoverTab != -1)
+    if (hoverTab != -1 || retileHover)
     {
         hoverTab = -1;
+        retileHover = false;
         repaint();
     }
 }
@@ -310,9 +377,9 @@ void ModuleIconBar::ChipStrip::paint(juce::Graphics& g)
         // A different fill from the tabs above: both being backgroundSecondary
         // made the row of modules read as a second row of tabs.
         g.setColour(hovered ? pal.buttonHover : pal.buttonBackground);
-        g.fillRect(r);
+        g.fillRoundedRectangle(r, r.getHeight() * 0.5f);
         g.setColour(hovered ? pal.accentActive : pal.borderColor);
-        g.drawRect(r, 1.0f);
+        g.drawRoundedRectangle(r.reduced(0.5f), r.getHeight() * 0.5f, 1.0f);
         g.setColour(hovered ? pal.textPrimary : pal.textSecondary);
         g.drawText(chip.label, chip.bounds, juce::Justification::centred, false);
     }
@@ -329,9 +396,9 @@ juce::Image ModuleIconBar::ChipStrip::renderChipImage(const Chip& chip) const
 
     const auto r = image.getBounds().toFloat().reduced(0.5f);
     g.setColour(pal.backgroundElevated);
-    g.fillRect(r);
+    g.fillRoundedRectangle(r, r.getHeight() * 0.5f);
     g.setColour(pal.accentActive);
-    g.drawRect(r, 1.0f);
+    g.drawRoundedRectangle(r, r.getHeight() * 0.5f, 1.0f);
     g.setColour(pal.textPrimary);
     g.setFont(chipFont());
     g.drawText(chip.label, image.getBounds(), juce::Justification::centred, false);

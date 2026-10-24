@@ -34,7 +34,6 @@ namespace
     // Layout constants (see resized())
     constexpr int nameW = 176;
     constexpr float loadW = 104.0f;
-    constexpr float storeW = 92.0f;
     constexpr float snapSize = 24.0f;
     constexpr float snapGap = 4.0f;
     constexpr float xfadeW = 112.0f;
@@ -99,13 +98,39 @@ void PatchHeaderBar::setPatch(Patch* p)
 juce::String PatchHeaderBar::getTooltip()
 {
     const auto p = getMouseXYRelative();
-    if (isMutatorButtonAt(p))
+    const auto pf = p.toFloat();
+    auto over = [&pf](juce::Rectangle<float> r) { return r.expanded(2.0f).contains(pf); };
+
+    if (L.name.contains(p))
+        return "Patch name: click to rename";
+    if (over(L.voicesField) || over(L.voicesUp) || over(L.voicesDown))
+        return "Voices: how many notes the patch can play at once";
+    if (over(L.loadPva) || over(L.loadE))
+        return "DSP load: PVA is the polyphonic area, E the common one";
+    if (over(L.store))
+        return "Store the patch back to its bank location";
+    for (int i = 0; i < 4; ++i)
+        if (over(L.morph[static_cast<size_t>(i)]))
+            return "Morph " + juce::String(i + 1) + ": drag to change, right-click to assign";
+    for (int i = 0; i < 8; ++i)
+        if (over(L.snap[static_cast<size_t>(i)]))
+            return "Snapshot " + juce::String(i + 1) + ": click to recall, Shift+click to save, right-click for more";
+    if (over(L.xfade))
+        return "Crossfade between snapshots A and B; right-click to choose them";
+    if (L.cablesCompact && over(L.cablesBtn))
+        return "Show or hide cables by colour, or shake them";
+    static const char* const colourNames[numCableTypes] = { "red", "blue", "yellow", "grey", "green", "purple", "white" };
+    for (int i = 0; i < numCableTypes; ++i)
+        if (over(L.cable[static_cast<size_t>(i)]))
+            return "Click to " + juce::String(getCableVisibility(i) ? "hide" : "show") + " the "
+                 + colourNames[i] + " cables";
+    if (over(L.shake))
+        return "Shake the cables so overlapping runs spread out";
+    if (over(L.mutator))
         return "Patch Mutator: breed new sounds from this patch";
-    if (getRetileButtonBounds().expanded(2.0f).contains(p.toFloat()))
-        return "Put the slot windows back in order: A B over C D";
-    if (getDonateButtonBounds().expanded(2.0f).contains(p.toFloat()))
+    if (over(L.donate))
         return "Donate with PayPal";
-    if (getPatreonButtonBounds().expanded(2.0f).contains(p.toFloat()))
+    if (over(L.patreon))
         return "Support Animatek NME on Patreon";
     return {};
 }
@@ -200,7 +225,10 @@ void PatchHeaderBar::resized()
     x += loadW + gap;
     sep(x - gap * 0.5f);
 
-    // Store
+    // Store: icon, the word and the location, each as wide as its text really is
+    L.storeWordW = juce::Font(AppTheme::uiFont(12.0f).withStyle("Bold")).getStringWidthFloat("Store");
+    const float locW = juce::Font(AppTheme::uiFont(11.0f)).getStringWidthFloat("00:00");
+    const float storeW = 9.0f + 11.0f + 6.0f + L.storeWordW + 10.0f + locW + 9.0f;
     L.store = { x, cy - 15.0f, storeW, 30.0f };
     x += storeW + gap;
     sep(x - gap * 0.5f);
@@ -233,8 +261,6 @@ void PatchHeaderBar::resized()
     rx -= supportButtonSize;
     sep(rx - gap * 0.5f);
     rx -= gap;
-    L.retile = { rx - 34.0f, cy - 11.0f, 34.0f, 22.0f };
-    rx -= 34.0f + 6.0f;
     L.mutator = { rx - mutatorW, cy - 14.0f, mutatorW, 28.0f };
     rx -= mutatorW;
     sep(rx - gap * 0.5f);
@@ -395,16 +421,6 @@ juce::Rectangle<float> PatchHeaderBar::getMutatorButtonBounds() const
 bool PatchHeaderBar::isMutatorButtonAt(juce::Point<int> pos) const
 {
     return getMutatorButtonBounds().expanded(2.0f).contains(pos.toFloat());
-}
-
-juce::Rectangle<float> PatchHeaderBar::getRetileButtonBounds() const
-{
-    return L.retile;
-}
-
-bool PatchHeaderBar::isRetileButtonAt(juce::Point<int> pos) const
-{
-    return retileEnabled && getRetileButtonBounds().expanded(2.0f).contains(pos.toFloat());
 }
 
 // Heart and Patreon sit in the far right corner, clear of the ABCD button, and the
@@ -627,7 +643,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         g.fillRect(dx + 2.0f, dy + ds * 0.58f, ds - 4.0f, ds * 0.32f);    // label
 
         g.setFont(AppTheme::uiFont(12.0f).withStyle("Bold"));
-        g.drawText("Store", juce::Rectangle<float>(dx + ds + 6.0f, sb.getY(), 38.0f, sb.getHeight()),
+        g.drawText("Store", juce::Rectangle<float>(dx + ds + 6.0f, sb.getY(), L.storeWordW + 2.0f, sb.getHeight()),
                    juce::Justification::centredLeft, false);
 
         g.setColour(live ? (known ? pal.textSecondary : pal.textMuted) : pal.textMuted);
@@ -772,30 +788,6 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         g.drawText("MUTATOR", mb.toNearestInt(), juce::Justification::centred, false);
     }
 
-    // --- ABCD: put the slot sub-windows back in order (#51) ---
-    {
-        auto rb = L.retile;
-        flatButton(rb, false, true);
-        const auto ink = retileEnabled ? pal.textSecondary : pal.textMuted;
-
-        auto cells = rb.reduced(3.0f, 2.0f);
-        g.setColour(ink.withAlpha(0.35f));
-        g.drawLine(cells.getCentreX(), cells.getY(), cells.getCentreX(), cells.getBottom(), 1.0f);
-        g.drawLine(cells.getX(), cells.getCentreY(), cells.getRight(), cells.getCentreY(), 1.0f);
-
-        g.setColour(ink);
-        g.setFont(AppTheme::uiFont(8.0f).withStyle("Bold"));
-        static const char* const tileLetters[] = { "A", "B", "C", "D" };
-        for (int i = 0; i < 4; ++i)
-        {
-            juce::Rectangle<float> cell(
-                cells.getX() + static_cast<float>(i % 2) * cells.getWidth()  * 0.5f,
-                cells.getY() + static_cast<float>(i / 2) * cells.getHeight() * 0.5f,
-                cells.getWidth() * 0.5f, cells.getHeight() * 0.5f);
-            g.drawText(tileLetters[i], cell.toNearestInt(), juce::Justification::centred, false);
-        }
-    }
-
     // --- Donate (heart) and Patreon, like GitHub's Sponsor button ---
     {
         auto db = L.donate;
@@ -932,14 +924,6 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
     {
         if (mutatorButtonCallback)
             mutatorButtonCallback();
-        return;
-    }
-
-    // ABCD re-tile button
-    if (isRetileButtonAt(pos))
-    {
-        if (retileButtonCallback)
-            retileButtonCallback();
         return;
     }
 

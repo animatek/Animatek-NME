@@ -58,21 +58,10 @@ public:
     void setMutatorButtonCallback(MutatorButtonCallback cb) { mutatorButtonCallback = std::move(cb); }
     void setMutatorOpen(bool open) { mutatorOpen = open; repaint(); }
 
-    // ABCD: re-tile the open slot sub-windows into A|B / C|D (right of MUT).
-    // Greyed out when there is nothing to put back in order, which is one slot
-    // open or a layout that is already canonical.
-    using RetileButtonCallback = std::function<void()>;
-    void setRetileButtonCallback(RetileButtonCallback cb) { retileButtonCallback = std::move(cb); }
     // Heart (donate) and Patreon, right of ABCD. Each opens its page through
     // the callback, which is MainComponent's openURL.
     using SupportCallback = std::function<void(const juce::String& url)>;
     void setSupportCallback(SupportCallback cb) { supportCallback = std::move(cb); }
-    void setRetileEnabled(bool enabled)
-    {
-        if (retileEnabled == enabled) return;
-        retileEnabled = enabled;
-        repaint();
-    }
 
     // Snapshot buttons (click=recall, shift+click=save, right-click=copy/init/interpolation menu)
     using SnapshotClickCallback = std::function<void(int index, bool isShiftClick)>;
@@ -179,8 +168,6 @@ private:
     SnapshotInitCallback snapshotInitCallback;
     MutatorButtonCallback mutatorButtonCallback;
     bool mutatorOpen = false;
-    RetileButtonCallback retileButtonCallback;
-    bool retileEnabled = false;
     SupportCallback supportCallback;
     // Top-level (no parent): the bar is 48px tall and would clip a child tip.
     juce::TooltipWindow tooltipWindow { nullptr, 600 };
@@ -197,8 +184,6 @@ private:
     int getSnapshotButtonAt(juce::Point<int> pos) const;  // -1 if none
     juce::Rectangle<float> getMutatorButtonBounds() const;
     bool isMutatorButtonAt(juce::Point<int> pos) const;
-    juce::Rectangle<float> getRetileButtonBounds() const;
-    bool isRetileButtonAt(juce::Point<int> pos) const;
     static constexpr float supportButtonSize = 22.0f;
     static constexpr float supportEdge = 10.0f;      // gap to the bar's right edge
     static constexpr int supportBlockW = 56;         // both buttons, the gap and a margin
@@ -255,7 +240,8 @@ private:
         std::array<juce::Rectangle<float>, 4> morph;
         std::array<juce::Rectangle<float>, 8> snap;
         std::array<juce::Rectangle<float>, 7> cable;
-        juce::Rectangle<float> shake, mutator, retile, donate, patreon;
+        juce::Rectangle<float> shake, mutator, donate, patreon;
+        float storeWordW = 0.0f;   // measured in resized(), so the word and the location never overlap
         std::vector<float> seps;   // x of each hairline between groups
         bool cablesCompact = false;  // too narrow for the dots: one "Cables" button and a menu
         juce::Rectangle<float> cablesBtn;
