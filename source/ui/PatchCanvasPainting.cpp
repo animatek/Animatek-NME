@@ -867,7 +867,7 @@ bool PatchCanvas::hasHiddenCable(const Connector& conn, const ModuleContainer& c
                 continue;
 
             bool visible = true;
-            switch (connection.colour())
+            switch (container.colourOf(connection))
             {
                 case SignalType::Audio:       visible = hdr.cableVisRed;    break;
                 case SignalType::Control:     visible = hdr.cableVisBlue;   break;
@@ -919,12 +919,23 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
         else if (tc.cssClass == "cUSER1")   connColour = activeScheme_.cableUser1;
         else if (tc.cssClass == "cUSER2")   connColour = activeScheme_.cableUser2;
 
-        // Hardware look: the ring takes the theme's cable colour for its signal
-        // type, so the theme editor's "... cable and jack" swatches recolour the
-        // jacks as well as the cords, and a jack still matches its cable.
+        // Hardware look: the ring takes the theme's cable colour, so the theme
+        // editor's "... cable and jack" swatches recolour the jacks as well as the
+        // cords. An input with a cable plugged in takes that cable's colour (which
+        // follows a daisy chain back to its source, and a colour set by hand); an
+        // empty input, and every output, keeps its own signal type.
         if (activeScheme_.skeuomorphic && !activeScheme_.wireframe && actualConnector != nullptr)
         {
-            switch (actualConnector->getDescriptor()->signalType)
+            SignalType ringType = actualConnector->getDescriptor()->signalType;
+            if (!isOutput)
+                for (auto& connection : container.getConnections())
+                    if (connection.input == actualConnector)
+                    {
+                        ringType = container.colourOf(connection);
+                        break;
+                    }
+
+            switch (ringType)
             {
                 case SignalType::Audio:       connColour = activeScheme_.cableAudio;       break;
                 case SignalType::Control:     connColour = activeScheme_.cableControl;     break;
@@ -932,7 +943,7 @@ void PatchCanvas::paintConnectors(juce::Graphics& g, const Module& m, juce::Rect
                 case SignalType::MasterSlave: connColour = activeScheme_.cableMasterSlave; break;
                 case SignalType::User1:       connColour = activeScheme_.cableUser1;       break;
                 case SignalType::User2:       connColour = activeScheme_.cableUser2;       break;
-                default: break;
+                default: connColour = getSignalColour(ringType); break;
             }
         }
 
@@ -4429,7 +4440,7 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
         if (patch != nullptr)
         {
             const auto& hdr = patch->getHeader();
-            switch (conn.colour())
+            switch (container.colourOf(conn))
             {
                 case SignalType::Audio:       if (!hdr.cableVisRed)    continue; break;
                 case SignalType::Control:     if (!hdr.cableVisBlue)   continue; break;
@@ -4464,8 +4475,9 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
                 continue;
         }
 
+        const SignalType cableType = container.colourOf(conn);
         juce::Colour cableCol = activeScheme_.cableAudio;
-        switch (conn.colour())
+        switch (cableType)
         {
             case SignalType::Audio:       cableCol = activeScheme_.cableAudio;       break;
             case SignalType::Control:     cableCol = activeScheme_.cableControl;     break;
@@ -4473,7 +4485,7 @@ void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& containe
             case SignalType::MasterSlave: cableCol = activeScheme_.cableMasterSlave; break;
             case SignalType::User1:       cableCol = activeScheme_.cableUser1;       break;
             case SignalType::User2:       cableCol = activeScheme_.cableUser2;       break;
-            default: cableCol = getSignalColour(conn.colour()); break;
+            default: cableCol = getSignalColour(cableType); break;
         }
 
         // Build path — curved or straight depending on style

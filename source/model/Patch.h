@@ -196,6 +196,13 @@ public:
                              const Connector* ignoreOutput = nullptr,
                              const Connector* ignoreInput = nullptr);
 
+    /** The colour of `c` as the editor draws it, saves it and sends it: a stored
+     *  colour wins; a cable straight from an output has that output's signal type;
+     *  a daisy-chained cable (input to input) has the signal type of the output
+     *  driving the net, the original source, so a chain keeps one colour all the
+     *  way along. A chain with no driver yet falls back to `c.colour()`. */
+    SignalType colourOf(const Connection& c) const;
+
     Module* getModuleByIndex(int containerIndex);
     const Module* getModuleByIndex(int containerIndex) const;
 

@@ -173,6 +173,41 @@ SignalType Connection::colour() const
     return SignalType::None;
 }
 
+SignalType ModuleContainer::colourOf(const Connection& c) const
+{
+    // A stored colour says what the connection is; it is never second-guessed.
+    if (c.storedColor >= 0)
+        return c.colour();
+
+    // From an output, the cable starts where its signal is: nothing to look up.
+    const Connector* start = c.output;
+    if (start == nullptr || start->getDescriptor() == nullptr || start->getDescriptor()->isOutput)
+        return c.colour();
+
+    // Chained from an input: walk the net, as findNetOutput does, for its driver.
+    std::vector<const Connector*> stack { start };
+    std::set<const Connector*> visited { start };
+    while (!stack.empty())
+    {
+        const Connector* cur = stack.back();
+        stack.pop_back();
+
+        for (const auto& conn : connections)
+        {
+            const Connector* other = nullptr;
+            if (conn.output == cur)      other = conn.input;
+            else if (conn.input == cur)  other = conn.output;
+
+            if (other == nullptr || !visited.insert(other).second)
+                continue;
+            if (other->getDescriptor() != nullptr && other->getDescriptor()->isOutput)
+                return other->getDescriptor()->signalType;
+            stack.push_back(other);
+        }
+    }
+    return c.colour();   // no output drives this net yet
+}
+
 int ModuleContainer::getStoredColor(const Connector* output, const Connector* input) const
 {
     for (const auto& c : connections)
