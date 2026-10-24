@@ -45,6 +45,7 @@ SlotSelectDialog::SlotSelectDialog(const juce::String& title,
     }
 
     styleToggle (localButton);
+    localButton.setShowRule (false);   // the footer's rule is right under it
     addAndMakeVisible (localButton);
 
     slotButtons[static_cast<size_t> (currentSlot_)].setToggleState (true, juce::dontSendNotification);
@@ -58,7 +59,7 @@ SlotSelectDialog::SlotSelectDialog(const juce::String& title,
     addAndMakeVisible (okButton);
     addAndMakeVisible (cancelButton);
 
-    setSize (400, 40 + 12 + 4 * 48 + 76 + 20 + 68);
+    setSize (400, 40 + 12 + 4 * 48 + 68 + 8 + 68);
     setWantsKeyboardFocus (true);
 }
 
@@ -80,7 +81,7 @@ void SlotSelectDialog::resized()
         b.setBounds (side, y, getWidth() - side * 2, 48);
         y += 48;
     }
-    localButton.setBounds (side, y, getWidth() - side * 2, 76);   // room for its two lines of text, and a gap above the footer
+    localButton.setBounds (side, y, getWidth() - side * 2, 68);   // room for its two lines of text
 
     const int btnW = 100, btnH = 36;
     const int btnY = getHeight() - footerH + (footerH - btnH) / 2;

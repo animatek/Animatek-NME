@@ -21,8 +21,11 @@ public:
         const bool on = getToggleState();
         const float fade = isEnabled() ? 1.0f : 0.45f;
     
-        g.setColour (pal.borderColor.withAlpha (0.5f * fade));
-        g.fillRect (0, r.getBottom() - 1, r.getWidth(), 1);
+        if (showRule_)
+        {
+            g.setColour (pal.borderColor.withAlpha (0.5f * fade));
+            g.fillRect (0, r.getBottom() - 1, r.getWidth(), 1);
+        }
     
         // The control at the right: a switch, or a round radio
         const float cy = static_cast<float> (r.getCentreY());
@@ -68,7 +71,11 @@ public:
     }
 
 
+    // The rule under the row; the last row of a list has the footer's below it instead
+    void setShowRule (bool show) { showRule_ = show; repaint(); }
+
 private:
+    bool showRule_ = true;
     juce::String description_;
     bool radio_;
 };

@@ -4,6 +4,9 @@
 
 ### Changed
 
+- **Slot Select: no rule under "Local"** (2026-10-24, branch `ui-redesign`). The footer already draws one:
+  the last row leaves its own out (`OptionRow::setShowRule`) and the dialog is shorter again.
+
 - **Slot Select: room under "Local"** (2026-10-24, branch `ui-redesign`). The last row's text sat on its
   own rule and that rule on the footer's: the row is taller and there is a gap before the footer.
 
