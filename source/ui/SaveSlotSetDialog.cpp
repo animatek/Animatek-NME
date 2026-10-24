@@ -23,8 +23,8 @@ void styleEditor (juce::TextEditor& e)
 
 void styleLabel (juce::Label& l)
 {
-    l.setFont (juce::Font (AppTheme::uiFont (12.0f)));
-    l.setColour (juce::Label::textColourId, AppTheme::palette().textSecondary);
+    l.setFont (juce::Font (AppTheme::uiFont (12.5f)).boldened());
+    l.setColour (juce::Label::textColourId, AppTheme::palette().textMuted);
 }
 }
 
@@ -60,7 +60,7 @@ SaveSlotSetDialog::SaveSlotSetDialog (const juce::String& suggestedName,
         if (info.hasPatch && info.enabledKnown && !info.enabled)
             text << "  (off)";
         label.setText (text, juce::dontSendNotification);
-        label.setFont (juce::Font (AppTheme::uiFont (13.0f)));
+        label.setFont (juce::Font (AppTheme::uiFont (14.0f)));
         label.setColour (juce::Label::textColourId, info.hasPatch ? AppTheme::palette().textPrimary
                                                                   : AppTheme::palette().textMuted);
         addAndMakeVisible (label);
@@ -92,58 +92,56 @@ SaveSlotSetDialog::SaveSlotSetDialog (const juce::String& suggestedName,
 
     styleButton (saveButton);
     styleButton (cancelButton);
+    saveButton.setColour (juce::TextButton::buttonColourId,  AppTheme::palette().accentActive);   // Save does the thing
+    saveButton.setColour (juce::TextButton::textColourOffId, AppTheme::palette().backgroundMain);
     saveButton.onClick   = [this] { confirm(); };
     cancelButton.onClick = [this] { cancel();  };
     addAndMakeVisible (saveButton);
     addAndMakeVisible (cancelButton);
 
-    setSize (440, 360);
+    setSize (520, 480);
     setWantsKeyboardFocus (true);
     updateSaveButton();
 }
 
 void SaveSlotSetDialog::paint (juce::Graphics& g)
 {
-    g.fillAll (AppTheme::palette().backgroundMain);
+    AppTheme::drawDialogChrome (g, getLocalBounds(), "Save Slot Set", 40, 68);
 
-    g.setColour (AppTheme::palette().textPrimary);
-    g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
-    g.drawText ("Save Slot Set", 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
-
-    g.setColour (AppTheme::palette().buttonActive);
-    g.fillRect (0, 31, getWidth(), 1);
-
-    const int sepY = getHeight() - 50;
-    g.drawHorizontalLine (sepY, 14.0f, static_cast<float> (getWidth() - 14));
+    // A rule between slot rows
+    const auto& pal = AppTheme::palette();
+    g.setColour (pal.borderColor.withAlpha (0.5f));
+    for (size_t i = 0; i < 4; ++i)
+        g.fillRect (24, slotLabels[i].getBottom() + 5, getWidth() - 48, 1);
 }
 
 void SaveSlotSetDialog::resized()
 {
-    constexpr int titleH = 32, pad = 14, rowH = 26, gap = 4, labelW = 52, modeW = 150;
+    constexpr int titleH = 40, footerH = 68, side = 24, fieldH = 36, rowH = 40, modeW = 170;
 
-    closeButton.setBounds (getWidth() - 32, 2, 28, 28);
+    closeButton.setBounds (getWidth() - 36, 6, 28, 28);
 
-    int y = titleH + 10;
-    nameLabel .setBounds (pad, y, labelW, rowH);
-    nameEditor.setBounds (pad + labelW, y, getWidth() - pad * 2 - labelW, rowH);
-    y += rowH + 12;
+    int y = titleH + 16;
+    nameLabel .setBounds (side, y, getWidth() - side * 2, 18);
+    nameEditor.setBounds (side, y + 22, getWidth() - side * 2, fieldH);
+    y += 22 + fieldH + 16;
 
     for (size_t i = 0; i < 4; ++i)
     {
-        slotModes[i] .setBounds (getWidth() - pad - modeW, y, modeW, rowH);
-        slotLabels[i].setBounds (pad, y, getWidth() - pad * 2 - modeW - 8, rowH);
-        y += rowH + gap;
+        slotModes[i] .setBounds (getWidth() - side - modeW, y, modeW, 32);
+        slotLabels[i].setBounds (side, y, getWidth() - side * 2 - modeW - 8, 32);
+        y += rowH;
     }
-    y += 8;
+    y += 6;
 
-    notesLabel.setBounds (pad, y, labelW, 20);
-    y += 20;
-    const int btnW = 80, btnH = 26;
-    const int btnY = getHeight() - pad - btnH;
-    notesEditor.setBounds (pad, y, getWidth() - pad * 2, (getHeight() - 50 - 10) - y);
+    notesLabel.setBounds (side, y, getWidth() - side * 2, 18);
+    y += 22;
+    notesEditor.setBounds (side, y, getWidth() - side * 2, getHeight() - footerH - 16 - y);
 
-    cancelButton.setBounds (getWidth() - pad - btnW,         btnY, btnW, btnH);
-    saveButton  .setBounds (getWidth() - pad - btnW * 2 - 8, btnY, btnW, btnH);
+    const int btnW = 100, btnH = 36;
+    const int btnY = getHeight() - footerH + (footerH - btnH) / 2;
+    cancelButton.setBounds (getWidth() - side - btnW,          btnY, btnW, btnH);
+    saveButton  .setBounds (getWidth() - side - btnW * 2 - 12, btnY, btnW, btnH);
 }
 
 bool SaveSlotSetDialog::keyPressed (const juce::KeyPress& key)

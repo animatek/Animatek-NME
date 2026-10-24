@@ -4,6 +4,11 @@
 
 ### Changed
 
+- **Save Slot Set redesigned** (2026-10-24, branch `ui-redesign`). 520x480: the set's name over a full-width
+  field, the four slots as rows with a rule between and their mode list at the right, the notes field below
+  and the footer band with Cancel and **Save** (filled with the accent). Same rules as before for when
+  Save is enabled.
+
 - **Slot Select redesigned** (2026-10-24, branch `ui-redesign`). The dialog that asks which slot to open a
   patch into: the four slots and the "Local" choice (a name and a line saying it is editor-only) are
   rows with a round radio at the right, the title bar is Editor Options' and the footer band has Cancel and
