@@ -4,6 +4,16 @@
 
 ### Changed
 
+- **The plugin keeps its patches in the DAW project** (2026-10-24, #94). `getStateInformation` /
+  `setStateInformation` were empty, so a reopened project showed an empty editor. Now the project
+  keeps the patch of every slot (as the .pch and .var the editor would save, in `model/SessionState`)
+  and the slot on screen; reopening puts them back. They come back **LOCAL** (editor only): nothing
+  is sent to the synth, since opening a project must not overwrite what is on a real G1. The MIDI
+  ports and G1-Emu links were already remembered by the editor's settings. What the editor holds is
+  also kept when its window is closed, and a host asking from another thread gets the last state
+  seen. Tests for the format; the plugin builds (VST3); capture and restore checked in the app
+  (two slots out, empty app, two slots back, B active). Not tried inside a DAW.
+
 - **UI size: the whole interface scales for 4K screens** (2026-10-24, #105). A new **UI size**
   choice in Editor Options (100%-300%) sets JUCE's global scale factor, so every window, menu,
   dialog and the module help (F1) grow together; it applies when OK is pressed and at startup.

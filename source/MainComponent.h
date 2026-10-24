@@ -55,6 +55,13 @@ public:
 
     ModuleDescriptions& getModuleDescriptions() { return moduleDescs; }
 
+    // DAW project recall (the plugin, #94): the patch in every slot and the slot on screen,
+    // as a block the host keeps in the project. Restoring puts the patches back in the
+    // editor only (LOCAL): nothing is sent to the synth, because a project opening is not a
+    // reason to overwrite what is on a real G1.
+    juce::MemoryBlock captureSessionState();
+    void restoreSessionState(const juce::MemoryBlock& block);
+
     // Small slot-indexed accessors for McpRequestHandler (source/mcp/), which
     // needs to reach a specific slot's model/undo state without duplicating
     // MainComponent's own slot-lookup logic or requiring friend access.

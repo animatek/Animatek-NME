@@ -3,6 +3,7 @@
 #include "ui/KnobDrag.h"
 #include "model/PatchParser.h"
 #include "model/PchFileIO.h"
+#include "model/SessionState.h"
 #include "ui/BankTransferDialog.h"
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
@@ -3683,6 +3684,75 @@ void MainComponent::choosePresetLibraryFolder() {
         if (safeThis->presetBrowserWindow)
           safeThis->presetBrowserWindow->setLibraryRoot(folder);
       });
+}
+
+juce::MemoryBlock MainComponent::captureSessionState() {
+  SessionState state;
+  state.activeSlot = activeSlot;
+
+  // The same files "Save patch" writes, so what comes back is what would have been
+  // saved: the .pch, and the .var when there are variations.
+  const auto dir = juce::File::getSpecialLocation(juce::File::tempDirectory)
+                       .getNonexistentChildFile("nme-session", {}, false);
+  if (!dir.createDirectory().wasOk())
+    return state.toBlock();
+
+  for (int slot = 0; slot < numSlots; ++slot) {
+    if (slotPatches[slot] == nullptr)
+      continue;
+    flushExtras(slot);   // comments typed a moment ago are not in the patch yet
+    const auto file = dir.getChildFile("slot" + juce::String(slot) + ".pch");
+    if (!saveSlotPatchToFile(slot, file))
+      continue;
+    SessionSlot s;
+    s.slot = slot;
+    s.name = slotPatches[slot]->getName();
+    file.loadFileAsData(s.pch);
+    const auto var = file.withFileExtension("var");
+    if (var.existsAsFile())
+      var.loadFileAsData(s.var);
+    state.slots.push_back(std::move(s));
+  }
+
+  dir.deleteRecursively();
+  return state.toBlock();
+}
+
+void MainComponent::restoreSessionState(const juce::MemoryBlock& block) {
+  SessionState state;
+  if (!SessionState::fromBlock(block.getData(), block.getSize(), state) || state.slots.empty())
+    return;
+
+  const auto dir = juce::File::getSpecialLocation(juce::File::tempDirectory)
+                       .getNonexistentChildFile("nme-session", {}, false);
+  if (!dir.createDirectory().wasOk())
+    return;
+
+  int restored = 0;
+  for (const auto& s : state.slots) {
+    if (s.slot < 0 || s.slot >= numSlots)
+      continue;
+    // A folder per slot, so two patches with the same name do not meet; the file is named
+    // after the patch because a .pch carries no name of its own.
+    const auto folder = dir.getChildFile("slot" + juce::String(s.slot));
+    const auto name = juce::File::createLegalFileName(s.name.isEmpty() ? juce::String("Patch") : s.name);
+    const auto file = folder.getChildFile(name + ".pch");
+    if (!folder.createDirectory().wasOk() || !file.replaceWithData(s.pch.getData(), s.pch.getSize()))
+      continue;
+    if (s.var.getSize() > 0)
+      file.withFileExtension("var").replaceWithData(s.var.getData(), s.var.getSize());
+    loadPatchFromFile(file, s.slot, /*localOnly=*/true);
+    slotPatchFiles[s.slot] = juce::File();   // the temp file is going; Save must ask where
+    ++restored;
+  }
+  dir.deleteRecursively();
+
+  if (state.activeSlot >= 0 && state.activeSlot < numSlots && state.activeSlot != activeSlot)
+    switchToSlot(state.activeSlot);
+  if (restored > 0)
+    mainLayout->getStatusBar().showMessage(
+        "Restored " + juce::String(restored) + (restored == 1 ? " patch" : " patches")
+            + " from the project (editor only: nothing was sent to the synth)", 6000);
 }
 
 // Zoom of the whole interface (#105). Only the standalone app owns the desktop:

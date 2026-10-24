@@ -81,6 +81,7 @@ set(NME_SHARED_SOURCES
     source/model/PchFileIO.cpp
     source/model/SnipFileIO.cpp
     source/model/SlotSet.cpp
+    source/model/SessionState.cpp
     source/model/ThemeData.cpp
 
     # Value Formatters (ported from nmformat.js)
