@@ -34,6 +34,12 @@ static void styleTextEditor (juce::TextEditor& e)
 
 // ─── EditorOptions persistence ───────────────────────────────────────────────
 
+const std::vector<float>& EditorOptions::uiScales()
+{
+    static const std::vector<float> scales { 1.0f, 1.25f, 1.5f, 1.75f, 2.0f, 2.5f, 3.0f };
+    return scales;
+}
+
 const std::vector<EditorOptions::SendRate>& EditorOptions::sendRates()
 {
     // batch params per 'intervalMs' tick. Approx rate = batch * 1000 / intervalMs.
@@ -88,6 +94,7 @@ EditorOptions EditorOptions::load(juce::PropertiesFile* props)
     o.moduleIconBarCategory = props->getValue ("moduleIconBarCategory", "In/Out");
     o.mcpBridgeEnabled = props->getBoolValue("mcpBridgeEnabled", false);
     o.cableOpacity   = static_cast<float>   (props->getDoubleValue("cableOpacity", 0.80));
+    o.uiScale        = juce::jlimit (1.0f, 3.0f, static_cast<float> (props->getDoubleValue ("uiScale", 1.0)));
     o.sendRateIndex  = juce::jlimit (0, static_cast<int> (sendRates().size()) - 1,
                                      props->getIntValue ("sendRateIndex", 1));
     auto libraryPath = props->getValue ("presetLibraryRoot", {});
@@ -131,6 +138,7 @@ void EditorOptions::save(juce::PropertiesFile* props) const
     props->setValue ("mcpBridgeEnabled", mcpBridgeEnabled);
     props->setValue ("cableOpacity",    static_cast<double>(cableOpacity));
     props->setValue ("sendRateIndex",   sendRateIndex);
+    props->setValue ("uiScale",         static_cast<double> (uiScale));
     props->setValue ("presetLibraryRoot", presetLibraryRoot.getFullPathName());
     props->saveIfNeeded();
 }
@@ -230,6 +238,28 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     addAndMakeVisible (flatKnobsToggle);
     addAndMakeVisible (themeLabel);
     addAndMakeVisible (themeSelector);
+
+    // Interface size: the whole UI, for 4K screens where the text is too small to read.
+    styleLabel (uiScaleLabel);
+    {
+        const auto& scales = EditorOptions::uiScales();
+        int selected = 1;
+        for (int i = 0; i < static_cast<int> (scales.size()); ++i)
+        {
+            uiScaleSelector.addItem (juce::String (juce::roundToInt (scales[static_cast<size_t> (i)] * 100.0f)) + "%", i + 1);
+            if (std::abs (scales[static_cast<size_t> (i)] - options.uiScale) < 0.01f)
+                selected = i + 1;
+        }
+        uiScaleSelector.setSelectedId (selected, juce::dontSendNotification);
+    }
+    uiScaleSelector.setColour (juce::ComboBox::backgroundColourId, p().inputBackground);
+    uiScaleSelector.setColour (juce::ComboBox::outlineColourId,    p().borderColor);
+    uiScaleSelector.setColour (juce::ComboBox::textColourId,       p().textSecondary);
+    uiScaleSelector.setColour (juce::ComboBox::arrowColourId,      p().textSecondary);
+    uiScaleSelector.setTooltip ("Makes every window, menu and text bigger, for 4K screens. "
+                                "Applies when you press OK; windows grow with it.");
+    addAndMakeVisible (uiScaleLabel);
+    addAndMakeVisible (uiScaleSelector);
 
     // Cable Style (radio group 1)
     styleLabel (cableStyleLabel, true);
@@ -471,6 +501,9 @@ int EditorOptionsDialog::layoutComponents (bool apply)
     place (themeLabel,    pad + 8,  y, 80, rowH);
     place (themeSelector, pad + 92, y, w - pad * 2 - 100, rowH);
     y += rowH + 2;
+    place (uiScaleLabel,    pad + 8,  y, 80, rowH);
+    place (uiScaleSelector, pad + 92, y, w - pad * 2 - 100, rowH);
+    y += rowH + 2;
     place (hardwareLookToggle, pad + 8, y, w - pad * 2 - 8, rowH);
     y += rowH;
     place (knobStyleLabel,    pad + 8,  y, 80, rowH);
@@ -622,6 +655,9 @@ void EditorOptionsDialog::apply()
     if (knobVertical  .getToggleState()) options.knobControl = EditorOptions::KnobControl::Vertical;
 
     options.uiThemeIndex   = themeSelector.getSelectedId() - 1;
+    options.uiScale        = EditorOptions::uiScales()[static_cast<size_t> (juce::jlimit (
+                                 0, static_cast<int> (EditorOptions::uiScales().size()) - 1,
+                                 uiScaleSelector.getSelectedId() - 1))];
     options.autoUpload     = autoUploadToggle.getToggleState();
     options.wireframe      = wireframeToggle  .getToggleState();
     options.hardwareLook   = hardwareLookToggle.getToggleState();

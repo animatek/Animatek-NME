@@ -113,6 +113,11 @@ de forma selectiva, cambiar el estilo de cable (curvo/recto, grueso/fino) y su
 opacidad, y `S` "sacude" los cables para que los tramos solapados se
 redistribuyan.
 
+En una pantalla 4K el texto puede quedar demasiado pequeño. **UI size** en Editor
+Options (del 100 % al 300 %) escala toda la interfaz: ventanas, menús, diálogos y la
+ayuda de módulos (`F1`). Se aplica al pulsar OK y las ventanas crecen con ella; en 4K,
+un 200 % da el espacio de una pantalla 1080p con el texto nítido.
+
 ## Temas
 
 `Ctrl+T` rota entre los 13 temas de color, o elige uno en **View → Theme** (la

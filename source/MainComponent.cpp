@@ -52,6 +52,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   editorOptions = EditorOptions::load(appProperties.getUserSettings());
   AppTheme::setPalette(ThemeRegistry::get(editorOptions.uiThemeIndex).app);
   editorOptions.ensureLibraryFolders();
+  applyInterfaceScale(editorOptions.uiScale);
   PatchCanvas::setCableStyle   (static_cast<int>(editorOptions.cableStyle));
   KnobDrag::setMode           (static_cast<int>(editorOptions.knobControl));
   PatchCanvas::setAutoUpload   (editorOptions.autoUpload);
@@ -3168,6 +3169,7 @@ void MainComponent::applyEditorOptions(const EditorOptions& opts) {
   // Pointing the library somewhere else moves where presets are read and written.
   modulePresets.setFolder(presetsFolder());
   refreshInspectorPresets();
+  applyInterfaceScale(opts.uiScale);
   PatchCanvas::setCableStyle   (static_cast<int>(opts.cableStyle));
   KnobDrag::setMode           (static_cast<int>(opts.knobControl));
   PatchCanvas::setAutoUpload   (opts.autoUpload);
@@ -3681,6 +3683,13 @@ void MainComponent::choosePresetLibraryFolder() {
         if (safeThis->presetBrowserWindow)
           safeThis->presetBrowserWindow->setLibraryRoot(folder);
       });
+}
+
+// Zoom of the whole interface (#105). Only the standalone app owns the desktop:
+// as a plugin this would rescale the host's windows too.
+void MainComponent::applyInterfaceScale(float scale) {
+  if (juce::JUCEApplicationBase::isStandaloneApp())
+    juce::Desktop::getInstance().setGlobalScaleFactor(scale);
 }
 
 void MainComponent::togglePresetBrowser() {

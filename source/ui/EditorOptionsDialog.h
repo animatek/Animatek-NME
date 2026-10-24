@@ -71,6 +71,10 @@ struct EditorOptions
     float       cableOpacity   = 0.80f;
     int         sendRateIndex  = 1;   // index into sendRates() — synth param throughput
     juce::File  presetLibraryRoot;
+    // Whole-interface zoom for big, high-resolution screens (#105): every window,
+    // dialog and help text, not just the canvas. 1.0 leaves it as it always was.
+    float       uiScale        = 1.0f;
+    static const std::vector<float>& uiScales();   // the choices offered
 
     // Throttled parameter delivery presets (batch sent per tick / tick period).
     // Higher = faster Mutator/Random response but more risk of overrunning the G1.
@@ -146,6 +150,8 @@ private:
     juce::Label    appearanceLabel { {}, "APPEARANCE" };
     juce::Label    themeLabel      { {}, "Theme" };
     juce::ComboBox themeSelector;
+    juce::Label    uiScaleLabel    { {}, "UI size" };
+    juce::ComboBox uiScaleSelector;
     juce::ToggleButton hardwareLookToggle { "Hardware look  (skeuomorphic knobs, jacks, panels and cables)" };
     juce::Label    knobStyleLabel { {}, "Knob style" };
     juce::ComboBox knobStyleSelector;

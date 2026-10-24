@@ -159,6 +159,7 @@ private:
     // Opening a .pch shows the slot chooser (issue #21); the chosen destination
     // and Local flag are then applied by loadPatchFromFile.
     void openPatchFileWithChooser(const juce::File& file);
+    static void applyInterfaceScale(float scale);
     void loadPatchFromFile(const juce::File& file, int targetSlot, bool localOnly);
     bool replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
                             const juce::File& sourceFile, bool activate,

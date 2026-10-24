@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **UI size: the whole interface scales for 4K screens** (2026-10-24, #105). A new **UI size**
+  choice in Editor Options (100%-300%) sets JUCE's global scale factor, so every window, menu,
+  dialog and the module help (F1) grow together; it applies when OK is pressed and at startup.
+  Standalone app only: as a plugin it would rescale the host's windows. Checked in the Release
+  build with 200% in the settings (everything doubled, menus included); the selector in the dialog
+  was built but not clicked through. Manual (EN/ES) updated.
+
 - **The double-click on a module shows the whole "name  cost" badge** (2026-10-24, #104). The
   badge was capped at 110px, so a long module name ("2/24dB Dynamic Multifilter", the slave
   oscillators) cut off the DSP cost at the end. Now up to 240px, the longest name with its cost
