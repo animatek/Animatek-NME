@@ -566,6 +566,26 @@ entries below are in the order they were made, newest first; the redesign ones s
 
 ### Fixed
 
+- **Daisy-chained cables take the colour of the net's source output** (#108, teezdalien). A cable chained
+  from an input took the colour of the input it starts at, so a chain from a blue source showed a green
+  cable. `ModuleContainer::colourOf`: a stored colour still wins, a cable from an output is unchanged, and
+  a chained one takes the signal type of the output driving the net; drawing, the cable filters, saving
+  and the synth messages all use it. In the hardware look, jack rings take the colour of the cable plugged
+  in. Existing patches are unchanged because their colours are stored.
+
+- **Store to Bank is confirmed by the synth, and goes to the right synth** (2026-10-24, #109). On G1-Emu a patch stored from the dialog showed
+  "Stored" but the position was empty after a refresh. Clavia's editor 3.03 captured against G1-Emu
+  (`G1originaleditor/notes/16-store-un-patch.md`):
+  - The store now uploads the patch to the slot first, sends `Store`, waits for the synth's
+    one-entry list reply (bank, position, name) and re-reads the patch list. No reply in 4 s
+    reports "not stored" instead of "Stored"; the name is no longer written locally by guess.
+  - `PatchLocationDialog` deals in local slots A-D, but Store, Copy and Move passed it the global
+    slot and used its answer as global: the store went to the first synth, not the one in use,
+    and with a second synth the SLOT box came up empty. They convert now (`SynthSlot`).
+  - A cable made in NME keeps its colour when it goes to the synth live (`NewCable` carries
+    `colourOf`), so a daisy-chained cable (#108) is no longer recoloured after Store + reload.
+  - `tests/test_store_confirmation.cpp` decodes the captured store reply.
+
 - **A saved .pch has the same [Header] line as one saved by Clavia's editor** (#103,
   2026-10-18, branch `pch-header-flags-103`). Four fields of that line held what the synth sent
   (`0 0 15 7`) where Clavia's editor 3.03 writes `1 1 1 1`. Read in the original

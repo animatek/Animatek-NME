@@ -154,6 +154,7 @@ private:
     void quickStoreToBank();
     // Tell the synth to write a slot's patch into a bank location, remember it
     // as that slot's home, and say so in the status bar.
+    void storeAndReport(int slot, int section, int position);
     void sendStoreToBank(int slot, int section, int position);
     // Work out where a synth-fetched patch lives by looking its name up in the
     // bank list, for the case the synth never told us (a patch already sitting

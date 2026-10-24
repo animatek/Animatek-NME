@@ -1774,7 +1774,22 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
     static const bool verboseLog = (std::getenv("NME_MIDI_LOG") != nullptr);
 
     if (!fetchingPatchList)
+    {
+        // Not a list fetch: the synth's answer to a Store, if one is waiting
+        if (pendingStoreSection >= 0)
+        {
+            auto reply = PatchListResponseMessage::decode(
+                msg.payload.data(), msg.payload.size(), 0, 0);
+            for (const auto& entry : reply.entries)
+                if (entry.section == pendingStoreSection && entry.position == pendingStorePosition
+                    && !entry.name.empty())
+                {
+                    finishStoreConfirmation(true);
+                    break;
+                }
+        }
         return;
+    }
 
     if (verboseLog)
     {
@@ -2696,6 +2711,36 @@ void ConnectionManager::deletePatchInBank(int section, int position)
         if (isConnected())
             requestPatchList();
     });
+}
+
+void ConnectionManager::expectStoreConfirmation(int section, int position,
+                                                StoreConfirmCallback cb, int timeoutMs)
+{
+    // A store still waiting is given up on: its answer would be taken for this one's
+    if (pendingStoreSection >= 0)
+        finishStoreConfirmation(false);
+
+    pendingStoreSection = section;
+    pendingStorePosition = position;
+    storeConfirmCallback = std::move(cb);
+
+    const int generation = ++storeGeneration;
+    auto aliveFlag = alive;
+    juce::Timer::callAfterDelay(timeoutMs, [this, aliveFlag, generation]() {
+        if (*aliveFlag && generation == storeGeneration && pendingStoreSection >= 0)
+            finishStoreConfirmation(false);
+    });
+}
+
+void ConnectionManager::finishStoreConfirmation(bool confirmed)
+{
+    auto cb = std::move(storeConfirmCallback);
+    storeConfirmCallback = nullptr;
+    pendingStoreSection = -1;
+    pendingStorePosition = -1;
+    ++storeGeneration;
+    if (cb)
+        cb(confirmed);
 }
 
 void ConnectionManager::storeLoadedSlotToBank(int slot, int section, int position, std::function<void()> afterStoreQueued)
