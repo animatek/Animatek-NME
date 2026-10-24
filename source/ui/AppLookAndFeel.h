@@ -382,24 +382,57 @@ public:
                                6.0f, focused ? 1.8f : 1.0f);
     }
 
+    // The menu bar: the ground colour with a rule under it, each title a pill that lights up under the
+    // mouse and stays lit while its menu is open; a red dot after a title says something is new there
+    juce::Font getMenuBarFont(juce::MenuBarComponent&, int, const juce::String&) override
+    {
+        return juce::Font(AppTheme::uiFont(14.0f));
+    }
+
+    int getMenuBarItemWidth(juce::MenuBarComponent& bar, int itemIndex, const juce::String& itemText) override
+    {
+        const bool marked = itemText.endsWith(newMarker());
+        const auto plain = marked ? itemText.dropLastCharacters(newMarker().length()) : itemText;
+        const int textW = static_cast<int>(std::ceil(juce::GlyphArrangement::getStringWidth(getMenuBarFont(bar, itemIndex, plain), plain)));
+        return textW + 28 + (marked ? 14 : 0);
+    }
+
+    void drawMenuBarBackground(juce::Graphics& g, int width, int height, bool, juce::MenuBarComponent&) override
+    {
+        const auto& pal = AppTheme::palette();
+        g.fillAll(pal.backgroundMain);
+        g.setColour(pal.borderColor);
+        g.fillRect(0, height - 1, width, 1);
+    }
+
     void drawMenuBarItem(juce::Graphics& g, int width, int height, int itemIndex,
                          const juce::String& itemText, bool isMouseOverItem, bool isMenuOpen,
-                         bool isMouseOverBar, juce::MenuBarComponent& menuBar) override
+                         bool, juce::MenuBarComponent& menuBar) override
     {
-        if (!itemText.endsWith(newMarker()))
+        const auto& pal = AppTheme::palette();
+        const bool marked = itemText.endsWith(newMarker());
+        const auto plain = marked ? itemText.dropLastCharacters(newMarker().length()) : itemText;
+        const bool lit = isMouseOverItem || isMenuOpen;
+
+        if (lit)
         {
-            LookAndFeel_V4::drawMenuBarItem(g, width, height, itemIndex, itemText,
-                                            isMouseOverItem, isMenuOpen, isMouseOverBar, menuBar);
-            return;
+            g.setColour(isMenuOpen ? pal.buttonActive : pal.buttonBackground);
+            g.fillRoundedRectangle(juce::Rectangle<float>(1.0f, 3.0f, static_cast<float>(width) - 2.0f, static_cast<float>(height) - 7.0f), 6.0f);
         }
-        // The title without the marker, centred as usual in the wider item, and the dot after it.
-        const auto plain = itemText.dropLastCharacters(newMarker().length());
-        LookAndFeel_V4::drawMenuBarItem(g, width, height, itemIndex, plain,
-                                        isMouseOverItem, isMenuOpen, isMouseOverBar, menuBar);
-        const auto textW = juce::GlyphArrangement::getStringWidth(getMenuBarFont(menuBar, itemIndex, plain), plain);
-        const float r = 3.5f;
-        const float cx = (static_cast<float>(width) + textW) * 0.5f + 3.0f + r;
-        g.setColour(newColour());
-        g.fillEllipse(cx - r, static_cast<float>(height) * 0.5f - r - 3.0f, r * 2.0f, r * 2.0f);
+
+        g.setColour(lit ? pal.textPrimary : pal.textSecondary);
+        const auto font = getMenuBarFont(menuBar, itemIndex, plain);
+        g.setFont(font);
+        const float textW = juce::GlyphArrangement::getStringWidth(font, plain);
+        const float total = textW + (marked ? 14.0f : 0.0f);
+        const float x = (static_cast<float>(width) - total) * 0.5f;
+        g.drawText(plain, juce::Rectangle<float>(x, 0.0f, textW + 2.0f, static_cast<float>(height) - 1.0f),
+                   juce::Justification::centredLeft, false);
+        if (marked)
+        {
+            const float r = 3.5f;
+            g.setColour(newColour());
+            g.fillEllipse(x + textW + 5.0f, static_cast<float>(height) * 0.5f - r - 3.0f, r * 2.0f, r * 2.0f);
+        }
     }
 };

@@ -4,6 +4,11 @@
 
 ### Changed
 
+- **The menu bar, restyled** (2026-10-24, branch `ui-redesign`). 32px tall (it was 24) in the ground
+  colour with a rule under it; each title (File, Edit, View, Device, Help, About) is a 14px pill that
+  lights up under the mouse and stays lit while its menu is open, with 14px of room either side. The red
+  dot that flags something new in a menu sits after its title as before.
+
 - **Round radios, legible In/Out, air in the options rows** (2026-10-24, branch `ui-redesign`). Found
   with the snapshots. A toggle that belongs to a group (only one can be on) now draws as a round radio
   in every dialog (Octave, Pedal, Portamento, Clock...) while a lone one stays a checkbox; the In and

@@ -1218,7 +1218,7 @@ void MainComponent::resized() {
   auto area = getLocalBounds();
 
 #if !JUCE_MAC
-  menuBar->setBounds(area.removeFromTop(24));
+  menuBar->setBounds(area.removeFromTop(32));
 #endif
 
   mainLayout->setBounds(area);
