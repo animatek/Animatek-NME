@@ -120,9 +120,17 @@ public:
     void drawPopupMenuBackground(juce::Graphics& g, int width, int height) override
     {
         const auto& pal = AppTheme::palette();
-        // A window that cannot be see-through shows square corners: paint them in the ground colour
+        // Where a window cannot be see-through (JUCE on Linux, unless it is built with XRender) its
+        // corners cannot be left clear either, and a rounded box on a square ground reads as a
+        // mistake: there the menu is one clean rectangle, with its rows rounded inside it. Where it
+        // can (macOS, Windows), the rounded box floats inside its window with a margin around it.
         if (!juce::Desktop::getInstance().canUseSemiTransparentWindows())
-            g.fillAll(pal.backgroundMain);
+        {
+            g.fillAll(pal.backgroundPanel);
+            g.setColour(pal.borderColor.brighter(0.2f));
+            g.drawRect(0, 0, width, height, 1);
+            return;
+        }
         const auto box = juce::Rectangle<float>(6.5f, 6.5f, static_cast<float>(width) - 13.0f, static_cast<float>(height) - 13.0f);
         g.setColour(pal.backgroundPanel);
         g.fillRoundedRectangle(box, 9.0f);

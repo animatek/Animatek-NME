@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **Menus on Linux are one clean rectangle** (2026-10-24, branch `ui-redesign`). JUCE can only give a
+  window see-through corners on Linux when it is built with `JUCE_USE_XRENDER`, which this build is
+  not, so a rounded box showed square dark corners behind it (most visible on the right-click menus).
+  Where the window cannot be transparent the menu is now a plain rectangle in the panel colour with a
+  thin border and its rows rounded inside it; where it can (macOS, Windows) the rounded box still
+  floats with its margin.
+
 - **Menus: the highlight is clear of the box's edge** (2026-10-24, branch `ui-redesign`): 6px of room
   between the highlighted row and the rounded box on each side (it was 2), and the words 10px inside the
   highlight; the menus are a little wider for it.
