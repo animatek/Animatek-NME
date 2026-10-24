@@ -32,6 +32,8 @@ the controls where you look for them.
 - **UI size** in Editor Options scales every window, menu and text for 4K screens (#105).
 - **Banks go to and from the synth's memory directly**, as in Clavia's editor.
 - **The Patch Mutator mutates like the G2's.**
+- **Store to Bank is confirmed by the synth** and goes to the right synth when two are connected (#109).
+- **Daisy-chained cables keep the colour of their source** (#108, thanks teezdalien).
 - **Fixed:** the Disk tab now lists every `.pch` under the library folder (#106); Ctrl+B opens the right
   panel if it is folded (#107); the module cost badge shows whole (#104); a cable keeps its stored colour
   (#100); no display no longer crashes NME at start (#101); a refused MCP connection says where the
