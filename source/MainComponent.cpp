@@ -3499,6 +3499,20 @@ void MainComponent::saveSnapshotsAndQuit(const juce::File& dir)
       shoot(d, "dialog-slot-select");
     }
     {
+      // Quick Add, with a search typed, and a tooltip drawn the way the editor draws them
+      auto* q = new QuickAddPopup(safeThis->moduleDescs, { 100, 100 }, 0, 0,
+                                  [](const ModuleDescriptor*, int, int) {}, [] {});
+      q->setSelectedForSnapshot(1);
+      shoot(*q, "popup-quick-add");
+      delete q;
+      juce::Image tip(juce::Image::ARGB, 260, 60, true);
+      juce::Graphics tg(tip);
+      safeThis->getLookAndFeel().drawTooltip(tg, "MIDI Setup (Ctrl+M)", 260, 60);
+      juce::PNGImageFormat png;
+      juce::FileOutputStream out(dir.getChildFile("tooltip.png"));
+      if (out.openedOk()) { out.setPosition(0); out.truncate(); png.writeImageToStream(tip, out); }
+    }
+    {
       ThemeEditorWindow w(ThemeRegistry::get(0), "Nord");
       shoot(w, "window-theme-editor");
     }

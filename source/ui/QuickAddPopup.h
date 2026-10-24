@@ -19,6 +19,7 @@ public:
     QuickAddPopup(const ModuleDescriptions& descs, juce::Point<int> screenPos,
                   int gridX, int gridY, OnSelectCallback cb, OnDismissCallback dismissCb);
     ~QuickAddPopup() override;
+    void setSelectedForSnapshot(int i) { selectedIdx = i; }   // for the picture-taking run
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -50,10 +51,10 @@ public:
     static void setSharedSettings(juce::PropertiesFile* settings);
 
 private:
-    static constexpr int popupWidth  = 320;
-    static constexpr int rowHeight   = 22;
+    static constexpr int popupWidth  = 400;
+    static constexpr int rowHeight   = 30;
     static constexpr int maxVisible  = 12;
-    static constexpr int fieldHeight = 32;
+    static constexpr int fieldHeight = 48;
 
     void rebuildFiltered(const juce::String& text);
     void confirmSelection();

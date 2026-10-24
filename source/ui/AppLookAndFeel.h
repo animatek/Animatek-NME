@@ -23,6 +23,25 @@ public:
     }
 };
 
+// The maximise button of a slot's sub-window: a small rounded square, in the same ink as the cross
+class WindowMaximiseButton : public juce::Button
+{
+public:
+    WindowMaximiseButton() : juce::Button ("maximise") { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
+
+    void paintButton (juce::Graphics& g, bool highlighted, bool) override
+    {
+        if (highlighted)
+        {
+            g.setColour (AppTheme::palette().inputBackground);
+            g.fillRoundedRectangle (getLocalBounds().toFloat().reduced (2.0f), 4.0f);
+        }
+        g.setColour (highlighted ? juce::Colours::white : AppTheme::palette().accentActive);
+        const auto c = getLocalBounds().toFloat().getCentre();
+        g.drawRoundedRectangle (c.x - 5.5f, c.y - 5.5f, 11.0f, 11.0f, 2.0f, 1.6f);
+    }
+};
+
 // A small on/off switch, the way the options pages draw theirs, for a place where a row of text
 // has already said what it is for
 class SwitchButton : public juce::ToggleButton
@@ -340,6 +359,39 @@ public:
         }
     }
 
+    // Tooltips: a rounded box in the panel colour with a hairline, the text in the UI font
+    juce::Rectangle<int> getTooltipBounds (const juce::String& tipText, juce::Point<int> screenPos, juce::Rectangle<int> parentArea) override
+    {
+        const auto font = juce::Font (AppTheme::uiFont (13.0f));
+        juce::AttributedString s;
+        s.setJustification (juce::Justification::centredLeft);
+        s.append (tipText, font, juce::Colours::white);
+        juce::TextLayout tl;
+        tl.createLayoutWithBalancedLineLengths (s, 360.0f);
+        const int w = static_cast<int> (std::ceil (tl.getWidth())) + 24;
+        const int h = static_cast<int> (std::ceil (tl.getHeight())) + 16;
+        return juce::Rectangle<int> (screenPos.x > parentArea.getCentreX() ? screenPos.x - w - 12 : screenPos.x + 24,
+                                     screenPos.y > parentArea.getCentreY() ? screenPos.y - h - 6 : screenPos.y + 18, w, h)
+                   .constrainedWithin (parentArea);
+    }
+
+    void drawTooltip (juce::Graphics& g, const juce::String& text, int width, int height) override
+    {
+        const auto& pal = AppTheme::palette();
+        const auto r = juce::Rectangle<float> (0.0f, 0.0f, static_cast<float> (width), static_cast<float> (height));
+        g.setColour (pal.backgroundElevated);
+        g.fillRoundedRectangle (r, 6.0f);
+        g.setColour (pal.borderColor.brighter (0.4f));
+        g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f);
+
+        juce::AttributedString s;
+        s.setJustification (juce::Justification::centredLeft);
+        s.append (text, juce::Font (AppTheme::uiFont (13.0f)), pal.textPrimary);
+        juce::TextLayout tl;
+        tl.createLayoutWithBalancedLineLengths (s, 360.0f);
+        tl.draw (g, r.reduced (12.0f, 8.0f));
+    }
+
     // The alert windows: JUCE's own icon is a huge triangle that the window clips. A small ring with a
     // mark in it (! warning, ? question, i info) in the accent says the same, and the text sits as before
     void drawAlertBox(juce::Graphics& g, juce::AlertWindow& alert, const juce::Rectangle<int>& textArea,
@@ -399,6 +451,8 @@ public:
     {
         if (buttonType == juce::DocumentWindow::closeButton)
             return new WindowCloseButton();
+        if (buttonType == juce::DocumentWindow::maximiseButton)
+            return new WindowMaximiseButton();
         return LookAndFeel_V4::createDocumentWindowButton(buttonType);
     }
 

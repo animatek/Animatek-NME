@@ -17,7 +17,9 @@ QuickAddPopup::QuickAddPopup(const ModuleDescriptions& descs_, juce::Point<int> 
 
     searchField.setFont(juce::Font(AppTheme::uiFont(14.0f)));
     searchField.setTextToShowWhenEmpty("Type module name...", AppTheme::palette().textMuted);
-    searchField.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().backgroundPanel);
+    searchField.setIndents(12, 0);
+    searchField.setJustification(juce::Justification::centredLeft);
+    searchField.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().inputBackground);
     searchField.setColour(juce::TextEditor::textColourId, AppTheme::palette().textPrimary);
     searchField.setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
     searchField.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::transparentBlack);
@@ -64,14 +66,14 @@ void QuickAddPopup::paint(juce::Graphics& g)
     auto bounds = getLocalBounds().toFloat();
 
     g.setColour(AppTheme::palette().backgroundPanel);
-    g.fillRoundedRectangle(bounds, 6.0f);
+    g.fillRoundedRectangle(bounds, 10.0f);
 
     g.setColour(AppTheme::palette().borderColor);
-    g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.5f);
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 10.0f, 1.0f);
 
     // Separator under search field
-    g.setColour(AppTheme::palette().buttonActive);
-    g.fillRect(0, fieldHeight, popupWidth, 1);
+    g.setColour(AppTheme::palette().borderColor);
+    g.fillRect(10, fieldHeight, popupWidth - 20, 1);
 
     // Module list rows (window of maxVisible rows starting at scrollOffset)
     int y = fieldHeight + 1;
@@ -84,26 +86,26 @@ void QuickAddPopup::paint(juce::Graphics& g)
 
         if (i == selectedIdx)
         {
-            g.setColour(AppTheme::palette().backgroundElevated);
-            g.fillRect(row.reduced(2, 1));
+            g.setColour(AppTheme::palette().buttonBackground);
+            g.fillRoundedRectangle(row.reduced(8, 1).toFloat(), 6.0f);
         }
 
         // Category (dim, left)
-        g.setColour(AppTheme::palette().borderColor);
-        g.setFont(juce::Font(AppTheme::uiFont(10.0f)));
-        g.drawText(entry.category, row.withTrimmedLeft(8).withWidth(80),
+        g.setColour(AppTheme::palette().textMuted);
+        g.setFont(juce::Font(AppTheme::uiFont(11.5f)));
+        g.drawText(entry.category, row.withTrimmedLeft(18).withWidth(86),
                    juce::Justification::centredLeft);
 
         // Module fullname
-        g.setColour(i == selectedIdx ? juce::Colours::white : AppTheme::palette().textSecondary);
-        g.setFont(juce::Font(AppTheme::uiFont(13.0f)));
-        g.drawText(entry.desc->fullname, row.withTrimmedLeft(92).withTrimmedRight(70),
+        g.setColour(i == selectedIdx ? AppTheme::palette().textPrimary : AppTheme::palette().textSecondary);
+        g.setFont(juce::Font(AppTheme::uiFont(14.0f)));
+        g.drawText(entry.desc->fullname, row.withTrimmedLeft(110).withTrimmedRight(84),
                    juce::Justification::centredLeft);
 
         // DSP cost, so the pick can be made on price as well as name (issue #31)
         g.setColour(AppTheme::palette().textMuted);
-        g.setFont(juce::Font(AppTheme::uiFont(10.0f)));
-        g.drawText(formatDspCost(entry.desc->cycles), row.withTrimmedRight(28).withWidth(popupWidth - 28),
+        g.setFont(juce::Font(AppTheme::uiFont(11.5f)));
+        g.drawText(formatDspCost(entry.desc->cycles), row.withTrimmedRight(36).withWidth(popupWidth - 36),
                    juce::Justification::centredRight);
 
         // Favorite star: gold when favorite, outline hint on the selected row
@@ -113,7 +115,7 @@ void QuickAddPopup::paint(juce::Graphics& g)
             g.setColour(fav ? juce::Colour(0xffe8c84a) : AppTheme::palette().textSecondary);
             g.setFont(juce::Font(AppTheme::uiFont(15.0f)));
             g.drawText(juce::String::fromUTF8(fav ? "\xe2\x98\x85" : "\xe2\x98\x86"),
-                       row.removeFromRight(24).withTrimmedRight(6),
+                       row.removeFromRight(30).withTrimmedRight(10),
                        juce::Justification::centred);
         }
 
@@ -135,8 +137,8 @@ void QuickAddPopup::paint(juce::Graphics& g)
 
     if (filtered.empty())
     {
-        g.setColour(AppTheme::palette().borderColor);
-        g.setFont(juce::Font(AppTheme::uiFont(12.0f)));
+        g.setColour(AppTheme::palette().textMuted);
+        g.setFont(juce::Font(AppTheme::uiFont(13.0f)));
         g.drawText("No modules found", 0, fieldHeight + 4, popupWidth, rowHeight,
                    juce::Justification::centred);
     }
@@ -144,7 +146,7 @@ void QuickAddPopup::paint(juce::Graphics& g)
 
 void QuickAddPopup::resized()
 {
-    searchField.setBounds(6, 4, popupWidth - 12, fieldHeight - 8);
+    searchField.setBounds(10, 7, popupWidth - 20, fieldHeight - 14);
 }
 
 void QuickAddPopup::rebuildFiltered(const juce::String& text)

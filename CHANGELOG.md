@@ -566,6 +566,12 @@ entries below are in the order they were made, newest first; the redesign ones s
 
 ### Fixed
 
+- **Found in a last sweep for what the redesign had missed** (2026-10-24, `main`). The **Quick Add**
+  popup (Enter on the canvas) wears the new look: 400px wide, a 48px field, 30px rows with a rounded
+  highlight and 11.5px categories and DSP costs. The **maximise button** of a slot's sub-window is a
+  small rounded square in the accent (it was JUCE's green plus). **Tooltips** are rounded boxes in the
+  panel colour with a hairline and the UI font.
+
 - **Theme editor and Community Themes, in the new look** (2026-10-24, `main`). The two windows still wore
   the system's title bar and the old controls. The **Theme editor** has its own title bar with the gold
   cross, a name field and a **Save** filled with the accent, the colour groups as quiet headings, rows of
