@@ -3684,6 +3684,9 @@ void MainComponent::choosePresetLibraryFolder() {
 }
 
 void MainComponent::togglePresetBrowser() {
+  // The browser is the right panel's Disk tab: with the panel folded away
+  // (Ctrl+Shift+I) choosing the tab showed nothing at all (#107).
+  mainLayout->setRightPanelVisible(true);
   mainLayout->getDiskPresetBrowser().setLibraryRoot(editorOptions.presetLibraryRoot);
   mainLayout->showDiskPresetBrowser();
 }

@@ -4,6 +4,11 @@
 
 ### Changed
 
+- **Ctrl+B opens the right panel if it is folded away** (2026-10-24, #107). The Preset Browser is
+  the right panel's Disk tab; with the panel hidden (Ctrl+Shift+I) Ctrl+B and File > Preset
+  Browser only chose the tab and nothing showed. Now they unfold the panel first. Checked in the
+  Release build: panel folded, then the Ctrl+B action: panel back on the Disk tab with its list.
+
 - **The Disk tab lists every .pch under the library folder** (2026-10-24, #106). It only looked
   inside `Patches/`, `Snippets/`, `Banks/` and `Sets/`, so a library pointed at the folder where
   someone already keeps their patches, spread over other subfolders, showed an empty list. Now any
