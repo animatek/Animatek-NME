@@ -4,6 +4,19 @@
 
 ### Changed
 
+- **Knob Floater restyled** (2026-10-24, branch `ui-redesign`). Bigger cells (112x86) and knobs (46px),
+  18px margins and 22px between the three groups, module names and parameter names in 12px (the
+  parameter in bold), and the lamp and knob number moved with them.
+
+- **Keyboard Floater restyled** (2026-10-24, branch `ui-redesign`). 760x202, 16px margins, 32px controls
+  with a rule under them, bolder Rate and Gate captions, and Drone and Repeat show as an accent fill
+  when on.
+
+- **Patch Notes and SysEx Monitor restyled** (2026-10-24, branch `ui-redesign`). 16px margins instead of
+  6-8, text with room from the edge of its field (indents), the notes field in the input colour with the
+  accent when focused; the monitor's toolbar is 34px with bigger buttons and a rule under it, and the log
+  in 13px.
+
 - **Mutator: the separator dot in the section titles** (2026-10-24, branch `ui-redesign`). It was read as
   Latin-1 and showed as "A" with a stray mark; the titles are read as UTF-8.
 

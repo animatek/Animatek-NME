@@ -73,7 +73,7 @@ KeyboardFloaterPanel::KeyboardFloaterPanel()
     addAndMakeVisible(gateSlider);
 
     applyTheme();
-    setSize(720, 168);
+    setSize(760, 202);
 }
 
 KeyboardFloaterPanel::~KeyboardFloaterPanel()
@@ -212,29 +212,31 @@ void KeyboardFloaterPanel::allNotesOff()
 void KeyboardFloaterPanel::paint(juce::Graphics& g)
 {
     g.fillAll(kBg);
+    g.setColour(kBorder);
+    g.fillRect(0, 16 + 32 + 7, getWidth(), 1);   // under the controls
 }
 
 void KeyboardFloaterPanel::resized()
 {
-    auto area = getLocalBounds().reduced(6);
-    auto controls = area.removeFromTop(26);
+    auto area = getLocalBounds().reduced(16);
+    auto controls = area.removeFromTop(32);
 
-    octDownButton.setBounds(controls.removeFromLeft(52));
-    controls.removeFromLeft(4);
-    octUpButton.setBounds(controls.removeFromLeft(52));
-    controls.removeFromLeft(12);
-    droneButton.setBounds(controls.removeFromLeft(60));
+    octDownButton.setBounds(controls.removeFromLeft(60));
+    controls.removeFromLeft(6);
+    octUpButton.setBounds(controls.removeFromLeft(60));
+    controls.removeFromLeft(18);
+    droneButton.setBounds(controls.removeFromLeft(70));
     controls.removeFromLeft(8);
-    repeatButton.setBounds(controls.removeFromLeft(60));
-    controls.removeFromLeft(8);
-    rateLabel.setBounds(controls.removeFromLeft(34));
-    int sliderWidth = (controls.getWidth() - 42) / 2;  // room for gate label + gap
+    repeatButton.setBounds(controls.removeFromLeft(70));
+    controls.removeFromLeft(18);
+    rateLabel.setBounds(controls.removeFromLeft(40));
+    int sliderWidth = (controls.getWidth() - 62) / 2;  // room for gate label + gap
     rateSlider.setBounds(controls.removeFromLeft(sliderWidth));
-    controls.removeFromLeft(8);
-    gateLabel.setBounds(controls.removeFromLeft(34));
+    controls.removeFromLeft(14);
+    gateLabel.setBounds(controls.removeFromLeft(40));
     gateSlider.setBounds(controls);
 
-    area.removeFromTop(6);
+    area.removeFromTop(15);
     keyboard.setBounds(area);
     if (area.getWidth() > 0)
         keyboard.setKeyWidth(area.getWidth() / 36.0f);  // ~5 octaves of white keys visible
@@ -242,6 +244,8 @@ void KeyboardFloaterPanel::resized()
 
 void KeyboardFloaterPanel::applyTheme()
 {
+    rateLabel.setFont(AppTheme::uiFont(13.0f).withStyle("Bold"));
+    gateLabel.setFont(AppTheme::uiFont(13.0f).withStyle("Bold"));
     rateLabel.setColour(juce::Label::textColourId, kTextDim);
     gateLabel.setColour(juce::Label::textColourId, kTextDim);
 
@@ -250,7 +254,7 @@ void KeyboardFloaterPanel::applyTheme()
         button->setColour(juce::TextButton::buttonColourId, kButton);
         button->setColour(juce::TextButton::buttonOnColourId, kAccent);
         button->setColour(juce::TextButton::textColourOffId, kText);
-        button->setColour(juce::TextButton::textColourOnId, kText);
+        button->setColour(juce::TextButton::textColourOnId, AppTheme::palette().backgroundMain);   // on = accent fill
     }
 
     for (auto* slider : { &rateSlider, &gateSlider })

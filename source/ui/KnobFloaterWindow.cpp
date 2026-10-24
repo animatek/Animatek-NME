@@ -15,11 +15,11 @@
 
 namespace
 {
-    constexpr int kCellW = 100;
-    constexpr int kCellH = 76;
-    constexpr int kMargin = 8;
-    constexpr int kGroupGap = 10;
-    constexpr int kBottomGap = 8;
+    constexpr int kCellW = 112;
+    constexpr int kCellH = 86;
+    constexpr int kMargin = 18;
+    constexpr int kGroupGap = 22;
+    constexpr int kBottomGap = 18;
 
     // Wire indices of the special bottom-row cells, in display order
     constexpr int kSpecialIndices[3] = { 19, 22, 20 };  // Pedal, On/Off switch, After touch
@@ -85,8 +85,8 @@ public:
     {
         moduleLabel.setColour(juce::Label::textColourId, kTextDim);
         paramLabel.setColour(juce::Label::textColourId, kText);
-        moduleLabel.setFont(juce::Font(AppTheme::uiFont(11.0f)));
-        paramLabel.setFont(juce::Font(AppTheme::uiFont(11.0f)));
+        moduleLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
+        paramLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)).boldened());
         knob.setColour(juce::Slider::rotarySliderFillColourId, kAccent);
         knob.setColour(juce::Slider::rotarySliderOutlineColourId, kBorder);
         knob.setColour(juce::Slider::thumbColourId, kText);
@@ -96,7 +96,7 @@ public:
     void paint(juce::Graphics& g) override
     {
         // LED right of the knob, lit when assigned
-        auto led = juce::Rectangle<float>(54.0f, 40.0f, 7.0f, 7.0f);
+        auto led = juce::Rectangle<float>(62.0f, 47.0f, 8.0f, 8.0f);
         g.setColour(assigned ? kLedOn : kPanelBg.darker(0.3f));
         g.fillEllipse(led);
         g.setColour(kBorder);
@@ -105,14 +105,14 @@ public:
         // Knob number / special name
         g.setColour(kTextDim);
         g.setFont(juce::Font(AppTheme::uiFont(knobLabel.length() > 2 ? 10.0f : 14.0f)));
-        g.drawFittedText(knobLabel, 64, 34, getWidth() - 66, 22, juce::Justification::centredLeft, 1);
+        g.drawFittedText(knobLabel, 74, 40, getWidth() - 76, 22, juce::Justification::centredLeft, 1);
     }
 
     void resized() override
     {
-        moduleLabel.setBounds(2, 0, getWidth() - 4, 15);
-        paramLabel.setBounds(2, 15, getWidth() - 4, 15);
-        knob.setBounds(8, 32, 40, 40);
+        moduleLabel.setBounds(2, 2, getWidth() - 4, 16);
+        paramLabel.setBounds(2, 18, getWidth() - 4, 16);
+        knob.setBounds(10, 38, 46, 46);
     }
 
     void mouseDown(const juce::MouseEvent& e) override
