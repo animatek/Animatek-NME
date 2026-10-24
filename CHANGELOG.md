@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Inspector: new order, and what is empty is hidden** (2026-10-24, branch `ui-redesign`). From
+  the top: the knob panel, the **Module** block, its **Parameters**, then **Knobs** (with **MIDI CC**
+  right after), **Macros**, and the module's **Presets** last. With no module selected the Module
+  block is not there at all (no "Nothing selected"), and a section with nothing in it (no knobs, no
+  macros, no CC, no presets) is not drawn either, so an empty panel is just the knob panel.
+
 - **Inspector: the module's name is the title, and the type sits in the accent** (2026-10-24,
   branch `ui-redesign`). In the Module block the bold title line is now the module's **name**
   (FilterC), and clicking it selects the text to rename it in place: no separate Name field. The

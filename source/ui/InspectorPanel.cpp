@@ -421,7 +421,6 @@ public:
     enum class RowKind
     {
         ParamsTitle, ParamRow,
-        AssignmentsNone,
         MorphsTitle, MorphGroupHeader, MorphRow,
         KnobsTitle, KnobRow,
         CtrlsTitle, CtrlRow,
@@ -441,13 +440,51 @@ public:
             y += h;
         };
 
-        // The selected module first: its parameters and its presets...
+        // The selected module's parameters, then the knobs and MIDI CC assigned in the patch,
+        // then its macros, and the module's presets last. A section with nothing in it is not drawn.
         if (!paramRows.empty())
         {
             add(RowKind::ParamsTitle, -1, sectionTitleH);
             if (!paramsSectionCollapsed)
                 for (int i = 0; i < (int)paramRows.size(); ++i)
                     add(RowKind::ParamRow, i, rowH);
+            y += sectionGap;
+        }
+
+        if (!knobRows.empty())
+        {
+            add(RowKind::KnobsTitle, -1, sectionTitleH);
+            if (!knobsSectionCollapsed)
+                for (int i = 0; i < (int)knobRows.size(); ++i)
+                    add(RowKind::KnobRow, i, rowH);
+            y += sectionGap;
+        }
+
+        if (!ctrlRows.empty())
+        {
+            add(RowKind::CtrlsTitle, -1, sectionTitleH);
+            if (!ctrlsSectionCollapsed)
+                for (int i = 0; i < (int)ctrlRows.size(); ++i)
+                    add(RowKind::CtrlRow, i, rowH);
+            y += sectionGap;
+        }
+
+        if (!morphRows.empty())
+        {
+            add(RowKind::MorphsTitle, -1, sectionTitleH);
+            if (!morphsSectionCollapsed)
+            {
+                int prevGroup = -1;
+                for (int i = 0; i < (int)morphRows.size(); ++i)
+                {
+                    if (morphRows[size_t(i)].group != prevGroup)
+                    {
+                        prevGroup = morphRows[size_t(i)].group;
+                        add(RowKind::MorphGroupHeader, i, groupHeaderH);
+                    }
+                    add(RowKind::MorphRow, i, rowH);
+                }
+            }
             y += sectionGap;
         }
 
@@ -463,51 +500,6 @@ public:
                     if (!presetRowHidden(list[size_t(i)]))
                         add(RowKind::PresetRow, i, rowH);
                 add(RowKind::PresetSave, -1, rowH);
-            }
-            y += sectionGap;
-        }
-
-        // ...then the whole patch's macros, knobs and MIDI CC, each its own section
-        if (patch != nullptr)
-        {
-            if (morphRows.empty() && knobRows.empty() && ctrlRows.empty())
-                add(RowKind::AssignmentsNone, -1, rowH + 6);
-
-            if (!morphRows.empty())
-            {
-                add(RowKind::MorphsTitle, -1, sectionTitleH);
-                if (!morphsSectionCollapsed)
-                {
-                    int prevGroup = -1;
-                    for (int i = 0; i < (int)morphRows.size(); ++i)
-                    {
-                        if (morphRows[size_t(i)].group != prevGroup)
-                        {
-                            prevGroup = morphRows[size_t(i)].group;
-                            add(RowKind::MorphGroupHeader, i, groupHeaderH);
-                        }
-                        add(RowKind::MorphRow, i, rowH);
-                    }
-                }
-                y += sectionGap;
-            }
-
-            if (!knobRows.empty())
-            {
-                add(RowKind::KnobsTitle, -1, sectionTitleH);
-                if (!knobsSectionCollapsed)
-                    for (int i = 0; i < (int)knobRows.size(); ++i)
-                        add(RowKind::KnobRow, i, rowH);
-                y += sectionGap;
-            }
-
-            if (!ctrlRows.empty())
-            {
-                add(RowKind::CtrlsTitle, -1, sectionTitleH);
-                if (!ctrlsSectionCollapsed)
-                    for (int i = 0; i < (int)ctrlRows.size(); ++i)
-                        add(RowKind::CtrlRow, i, rowH);
-                y += sectionGap;
             }
         }
 
@@ -596,7 +588,6 @@ public:
                     return { HitType::PresetSave, -1 };
 
                 case RowKind::MorphGroupHeader:
-                case RowKind::AssignmentsNone:
                     return {};
             }
         }
@@ -617,14 +608,12 @@ public:
             return;
 
         bool isGlobal = (patch != nullptr);
-        bool hasAny = patch != nullptr || !paramRows.empty() || hasPresetSection();
+        bool hasAny = !paramRows.empty() || !morphRows.empty() || !knobRows.empty()
+                    || !ctrlRows.empty() || hasPresetSection();
 
         if (!hasAny)
         {
-            g.setColour(AppTheme::palette().borderColor);
-            g.setFont(AppTheme::uiFont(11.0f));
-            g.drawText("No assignments", getLocalBounds().reduced(marginX),
-                       juce::Justification::centredTop);
+            // Nothing to show, and nothing is said about it
             return;
         }
 
@@ -650,13 +639,6 @@ public:
                     break;
                 case RowKind::ParamRow:
                     paintParamRow(g, row.bounds, row.index);
-                    break;
-
-                case RowKind::AssignmentsNone:
-                    g.setColour(AppTheme::palette().textMuted);
-                    g.setFont(AppTheme::uiFont(fontRow));
-                    g.drawText("No macros, knobs or MIDI CC assigned yet", marginX + 4, y,
-                               getWidth() - marginX * 2, rowH + 6, juce::Justification::centredLeft, true);
                     break;
 
                 case RowKind::MorphsTitle:
@@ -1841,7 +1823,9 @@ void InspectorPanel::paint(juce::Graphics& g)
                    juce::Justification::centredLeft, true);
     }
 
-    // The Module block: a heading with the module's own name in the accent, then its facts
+    // The Module block: a heading with the module's type in the accent, then its facts. Not drawn
+    // at all when no module is selected.
+    if (moduleShown)
     {
         const int w = getWidth();
         g.setColour(theme.borderColor);
@@ -1854,12 +1838,7 @@ void InspectorPanel::paint(juce::Graphics& g)
         auto* module = currentModule();
         int y = moduleTopY + moduleHeaderH;
         if (module == nullptr)
-        {
-            g.setColour(theme.textMuted);
-            g.setFont(AppTheme::uiFont(13.0f));
-            g.drawText("Nothing selected", margin + 6, y, w - margin * 2, moduleInfoRowH, juce::Justification::centredLeft);
             return;
-        }
 
         // The module's type, as Clavia calls it and not editable, in the accent. The name is the
         // title below, and says itself once. A long type narrows to fit before it is cut.
@@ -1902,15 +1881,15 @@ void InspectorPanel::paintOverChildren(juce::Graphics& g)
 void InspectorPanel::resized()
 {
     // From the top: the knob panel (its miniature, which has a place of its own and does not
-    // change), the Module block (the selected module: its name, area, DSP cost and the name field),
-    // and then the list: the module's parameters and presets, and the patch's macros, knobs and CC.
+    // change), then the Module block (the selected module's name, type, area and DSP cost), and
+    // then the list. With no module selected there is no Module block: it is simply not there,
+    // as a section of the list is not when it has nothing in it.
     const int x = margin;
     const int w = getWidth() - margin * 2;
     const bool hasMap = currentPatch != nullptr && getWidth() >= 170;
 
     int y = margin + (hasMap ? 38 + 10 : 0);
     moduleTopY = y;
-    y += moduleHeaderH;
 
     // The old header labels hold the texts, and are drawn by paint() now
     titleLabel.setBounds({});
@@ -1918,17 +1897,14 @@ void InspectorPanel::resized()
     dspLabel.setBounds({});
     nameLabel.setBounds({});
 
-    if (currentModule() != nullptr)
+    moduleShown = currentModule() != nullptr;
+    if (moduleShown)
     {
+        y += moduleHeaderH;
         // The module's name is the title: the same text is what gets edited
         nameEditor.setBounds(x, y + 1, juce::jmax(0, w), moduleInfoRowH + 4);
         y += moduleInfoRowH + 6;
-        y += moduleInfoRowH * 2 + 8;             // Type, DSP cost
-    }
-    else
-    {
-        nameRowY = -1;
-        y += moduleInfoRowH + 8;                 // "Nothing selected"
+        y += moduleInfoRowH * 2 + 8;             // Area, DSP cost
     }
     moduleBottomY = y;
 
