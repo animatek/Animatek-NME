@@ -4,6 +4,10 @@
 
 ### Changed
 
+- **Browser search fields: the text is centred and bigger** (2026-10-24, branch `ui-redesign`). The
+  typed text and the hint sat at the top of the field in a small size; both search fields (Disk and
+  Synth) now centre it vertically and use size 15.
+
 - **Browser: more room, and the Synth tab redone** (2026-10-24, branch `ui-redesign`). Both tabs have
   12px margins and 10px between the search, the chips and the list, instead of a squeeze. **Disk:** the
   chips are as wide as their word and sit side by side from the left, no longer stretched across the

@@ -137,8 +137,10 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
 {
     setOpaque(true);
 
-    searchBox.setFont(juce::Font(AppTheme::uiFont(13.0f)));
-    searchBox.setIndents(10, 0);
+    // Centred in the field, both ways, and in a size that fills it
+    searchBox.setFont(juce::Font(AppTheme::uiFont(15.0f)));
+    searchBox.setJustification(juce::Justification::centredLeft);
+    searchBox.setIndents(12, 0);
 
     searchBox.onTextChange = [this]() { rebuildVisibleEntries(); };
     addAndMakeVisible(searchBox);
