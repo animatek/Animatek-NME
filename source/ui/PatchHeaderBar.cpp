@@ -54,9 +54,10 @@ PatchHeaderBar::PatchHeaderBar()
     patchNameEditor = std::make_unique<juce::Label>("PatchName", "");
     patchNameEditor->setEditable(true);
     patchNameEditor->setColour(juce::Label::backgroundColourId, AppTheme::palette().inputBackground);
-    patchNameEditor->setColour(juce::Label::textColourId, juce::Colours::white);
+    patchNameEditor->setColour(juce::Label::textColourId, AppTheme::palette().textPrimary);
     patchNameEditor->setColour(juce::Label::outlineColourId, AppTheme::palette().borderColor);
-    patchNameEditor->setFont(AppTheme::uiFont(12.0f));
+    // The same type as the title it replaces while it is being typed over
+    patchNameEditor->setFont(AppTheme::uiFont(16.0f).withStyle("Bold"));
     patchNameEditor->setJustificationType(juce::Justification::centredLeft);
 
     // CRITICAL: Limit input to 15 characters (16+ hangs the synth!)
@@ -78,7 +79,10 @@ PatchHeaderBar::PatchHeaderBar()
             juce::String newName = patchNameEditor->getText().substring(0, 15);  // CRITICAL: Max 15 chars (16+ hangs synth!)
             nameChangeCallback(newName);
         }
-        repaint();  // Redraw after editing
+        // Editing is over: the label goes, and the bar draws the name as a title again (it used to
+        // stay on screen as a boxed field, with whatever was typed in it)
+        patchNameEditor->setVisible(false);
+        repaint();
     };
     addAndMakeVisible(patchNameEditor.get());
     patchNameEditor->setVisible(false);  // Hidden by default

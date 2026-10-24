@@ -3,6 +3,26 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "AppTheme.h"
 
+// The close button of a floating window: the gold cross of the dialogs' own, as a real Button, which
+// is what a window's title bar takes
+class WindowCloseButton : public juce::Button
+{
+public:
+    WindowCloseButton() : juce::Button ("close") { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
+
+    void paintButton (juce::Graphics& g, bool highlighted, bool) override
+    {
+        if (highlighted)
+        {
+            g.setColour (AppTheme::palette().inputBackground);
+            g.fillRoundedRectangle (getLocalBounds().toFloat().reduced (2.0f), 4.0f);
+        }
+        g.setColour (highlighted ? juce::Colours::white : AppTheme::palette().accentActive);
+        g.setFont (juce::Font (AppTheme::uiFont (15.0f).withStyle ("Bold")));
+        g.drawText ("x", getLocalBounds(), juce::Justification::centred);
+    }
+};
+
 // The app's default LookAndFeel: JUCE's V4, coloured by AppTheme, plus a red dot on a
 // menu bar title that ends in `newMarker()` (View, when there are community themes
 // the user has not seen, #91). The dot as text took the menu's colour and was easy
@@ -241,6 +261,27 @@ public:
         }
 
         g.drawFittedText(text, r.withTrimmedRight(shortcutW + (shortcutW > 0 ? 12 : 0)), juce::Justification::centredLeft, 1);
+    }
+
+    // The title bar of the windows JUCE draws itself (the floaters, the browser window, About): the
+    // same as the dialogs', the ground colour, the title bold at the left, a rule under it
+    void drawDocumentWindowTitleBar(juce::DocumentWindow& window, juce::Graphics& g, int w, int h, int, int,
+                                    const juce::Image*, bool) override
+    {
+        const auto& pal = AppTheme::palette();
+        g.fillAll(pal.backgroundMain);
+        g.setColour(pal.borderColor);
+        g.fillRect(0, h - 1, w, 1);
+        g.setColour(pal.textPrimary);
+        g.setFont(juce::Font(AppTheme::uiFont(14.0f).withStyle("Bold")));
+        g.drawText(window.getName(), 14, 0, w - 60, h, juce::Justification::centredLeft, true);
+    }
+
+    juce::Button* createDocumentWindowButton(int buttonType) override
+    {
+        if (buttonType == juce::DocumentWindow::closeButton)
+            return new WindowCloseButton();
+        return LookAndFeel_V4::createDocumentWindowButton(buttonType);
     }
 
     // Every window of the editor wears a thin outline, so it does not melt into what is behind it

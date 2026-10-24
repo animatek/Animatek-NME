@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **Renaming the patch in the header, and every window's title bar** (2026-10-24, branch `ui-redesign`).
+  After a rename the name label stayed on screen as a boxed field instead of the bar going back to its
+  flat title: it is hidden when the editing ends, and the editor is typed in the title's own size and
+  bold. And the windows JUCE draws (the floaters, the browser window, About) had its default grey title
+  bar with a red cross: they now wear the dialogs' own, the ground colour, the title bold at the left, a
+  rule under it, and the same gold cross.
+
 - **About restyled** (2026-10-24, branch `ui-redesign`). 520x620, a bigger icon, title (25), the subtitle
   in the accent and the version in a quiet line; the credits list in a clean field with breathing room;
   and a footer band with the buttons in two rows: **Donate** (filled with the accent) and **Patreon** on
