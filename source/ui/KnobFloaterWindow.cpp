@@ -28,7 +28,7 @@ namespace
 }
 
 // ============================================================================
-// An arc knob: a dark track, the value drawn over it in the accent, a white pointer
+// The knob the modules wear on the canvas: a plain circle, a grip line, a tick at each end of its travel
 // ============================================================================
 namespace
 {
@@ -38,31 +38,31 @@ public:
     void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height, float pos,
                           float startAngle, float endAngle, juce::Slider& s) override
     {
-        const auto area = juce::Rectangle<float>((float) x, (float) y, (float) width, (float) height).reduced(3.0f);
-        const float radius = juce::jmin(area.getWidth(), area.getHeight()) * 0.5f;
+        const auto area = juce::Rectangle<float>((float) x, (float) y, (float) width, (float) height);
         const auto c = area.getCentre();
-        const float thick = 4.0f;
-        const float arcR = radius - thick * 0.5f;
+        const float sz = juce::jmin(area.getWidth(), area.getHeight()) * 0.78f;
+        const float radius = sz * 0.5f;
         const float angle = startAngle + pos * (endAngle - startAngle);
-        const float fade = s.isEnabled() ? 1.0f : 0.45f;
+        const float fade = s.isEnabled() ? 1.0f : 0.4f;
+        const auto& pal = AppTheme::palette();
 
-        juce::Path track;
-        track.addCentredArc(c.x, c.y, arcR, arcR, 0.0f, startAngle, endAngle, true);
-        g.setColour(AppTheme::palette().borderColor.brighter(0.25f).withAlpha(fade));
-        g.strokePath(track, juce::PathStrokeType(thick, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.setColour(pal.textSecondary.withAlpha(fade));
+        g.fillEllipse(c.x - radius, c.y - radius, sz, sz);
+        g.setColour(pal.borderColor.withAlpha(fade));
+        g.drawEllipse(c.x - radius, c.y - radius, sz, sz, 1.0f);
 
-        if (s.isEnabled() && pos > 0.001f)
+        g.setColour(pal.textMuted.withAlpha(fade));
+        for (float a : { startAngle, endAngle })
         {
-            juce::Path value;
-            value.addCentredArc(c.x, c.y, arcR, arcR, 0.0f, startAngle, angle, true);
-            g.setColour(AppTheme::palette().accentActive);
-            g.strokePath(value, juce::PathStrokeType(thick, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+            const float sa = std::sin(a), ca = std::cos(a);
+            g.drawLine(c.x + sa * radius * 1.08f, c.y - ca * radius * 1.08f,
+                       c.x + sa * radius * 1.45f, c.y - ca * radius * 1.45f, 1.5f);
         }
 
         const float sa = std::sin(angle), ca = std::cos(angle);
-        g.setColour(AppTheme::palette().textPrimary.withAlpha(fade));
-        g.drawLine(c.x + sa * radius * 0.28f, c.y - ca * radius * 0.28f,
-                   c.x + sa * radius * 0.78f, c.y - ca * radius * 0.78f, 2.5f);
+        g.setColour(pal.backgroundMain);
+        g.drawLine(c.x + sa * radius * 0.3f, c.y - ca * radius * 0.3f,
+                   c.x + sa * radius * 0.85f, c.y - ca * radius * 0.85f, 1.5f);
     }
 };
 }

@@ -4,6 +4,10 @@
 
 ### Changed
 
+- **Knob Floater: the modules' own knob** (2026-10-24, branch `ui-redesign`). The arc knob is swapped for
+  the knob the modules wear on the canvas (a plain circle, a grip line, a tick at each end of its
+  travel), the same the Mutator uses. The labels, the formatted value and "Free" stay as they were.
+
 - **Knob Floater, like the mockup** (2026-10-24, branch `ui-redesign`). Each cell reads from the top:
   the module's name (small, muted), the parameter's name (bold), an **arc knob** (dark track, the value
   in the accent, a white pointer; it replaces the old filled blob) and the value as the parameter
