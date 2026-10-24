@@ -89,7 +89,7 @@ void SlotBar::setLoad(int synth, float fraction)
     if (juce::approximatelyEqual(loadFraction[synth], fraction))
         return;
     loadFraction[synth] = fraction;
-    repaint(nameBounds[synth].getUnion(loadBounds[synth]));   // the number is in the name pill
+    repaint(loadBounds[synth]);
 }
 
 void SlotBar::setRowShown(int synth, bool shown)
@@ -239,19 +239,9 @@ void SlotBar::paint(juce::Graphics& g)
         g.fillEllipse(name.getX() + 8.0f, name.getCentreY() - 3.5f, 7.0f, 7.0f);
 
         const float load = loadFraction[synth];
-        const juce::String pct = load >= 0.0f ? juce::String(juce::roundToInt(load * 100.0f)) + "%" : juce::String();
         g.setColour(! hasSynth ? pal.textMuted : beingEdited ? juce::Colours::white : pal.textPrimary);
         g.setFont(AppTheme::uiFont(12.0f));
         auto text = name.withTrimmedLeft(21.0f).withTrimmedRight(6.0f);
-        if (pct.isNotEmpty())
-        {
-            g.setFont(AppTheme::uiFont(10.0f));
-            g.setColour(beingEdited ? juce::Colours::white.withAlpha(0.8f) : pal.textSecondary);
-            g.drawText(pct, text, juce::Justification::centredRight, false);
-            text.removeFromRight(30.0f);
-            g.setColour(beingEdited ? juce::Colours::white : pal.textPrimary);
-            g.setFont(AppTheme::uiFont(12.0f));
-        }
         g.drawText(hasSynth ? synthName[synth] : "No synth", text.toNearestInt(), juce::Justification::centredLeft, true);
 
         // The load: a thin track under the row, green to amber to red
