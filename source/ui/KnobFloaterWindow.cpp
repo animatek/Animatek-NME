@@ -1,6 +1,9 @@
 #include "KnobFloaterWindow.h"
 #include "AppTheme.h"
 #include "../protocol/KnobAssignmentMessage.h"
+#include "../format/ValueFormatters.h"
+#include "SkeuoDraw.h"
+#include <cmath>
 
 #define kBg        (AppTheme::palette().backgroundMain)
 #define kPanelBg   (AppTheme::palette().backgroundPanel)
@@ -15,14 +18,50 @@
 
 namespace
 {
-    constexpr int kCellW = 100;
-    constexpr int kCellH = 76;
-    constexpr int kMargin = 8;
-    constexpr int kGroupGap = 10;
-    constexpr int kBottomGap = 8;
+    constexpr int kCellW = 112;
+    constexpr int kCellH = 112;
+    constexpr int kMargin = 20;
+    constexpr int kGroupGap = 20;
+    constexpr int kBottomGap = 20;
 
     // Wire indices of the special bottom-row cells, in display order
     constexpr int kSpecialIndices[3] = { 19, 22, 20 };  // Pedal, On/Off switch, After touch
+}
+
+// ============================================================================
+// The knob the modules wear on the canvas: a plain circle, a grip line, a tick at each end of its travel
+// ============================================================================
+namespace
+{
+class ArcKnobLookAndFeel : public juce::LookAndFeel_V4
+{
+public:
+    ColorScheme scheme = kDarkTheme;
+    float origin = 0.0f;   // where the value arc starts: 0, or the centre of a bipolar range
+
+    void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height, float pos,
+                          float startAngle, float endAngle, juce::Slider& s) override
+    {
+        juce::ignoreUnused(startAngle, endAngle);
+        const auto area = juce::Rectangle<float>((float) x, (float) y, (float) width, (float) height);
+        const auto c = area.getCentre();
+        const float radius = juce::jmin(area.getWidth(), area.getHeight()) * 0.78f * 0.5f;   // as on the canvas
+        const bool on = s.isEnabled();
+        if (!on) g.beginTransparencyLayer(0.4f);
+
+        const auto col = skeuo::flatKnobColours(scheme.knobBase, scheme.knobBorder, scheme.knobGrip,
+                                                scheme.moduleText, scheme.gridBackground, scheme.knobArc);
+        skeuo::drawFlatKnob(g, c.x, c.y, radius, pos, on ? origin : 0.0f, false, {}, col);
+
+        // Travel-limit ticks at 7 and 5 o'clock, outside the knob
+        const float pi = juce::MathConstants<float>::pi;
+        g.setColour(scheme.knobTickMark);
+        for (float a : { -135.0f * pi / 180.0f, 135.0f * pi / 180.0f })
+            g.drawLine(c.x + std::sin(a) * radius * 1.08f, c.y - std::cos(a) * radius * 1.08f,
+                       c.x + std::sin(a) * radius * 1.45f, c.y - std::cos(a) * radius * 1.45f, 1.5f);
+        if (!on) g.endTransparencyLayer();
+    }
+};
 }
 
 // ============================================================================
@@ -43,6 +82,12 @@ public:
         addAndMakeVisible(moduleLabel);
         addAndMakeVisible(paramLabel);
 
+        valueLabel.setJustificationType(juce::Justification::centred);
+        valueLabel.setInterceptsMouseClicks(false, false);
+        addAndMakeVisible(valueLabel);
+        knob.setLookAndFeel(&arcLnF);
+        knob.setRotaryParameters(juce::MathConstants<float>::pi * 1.2f, juce::MathConstants<float>::pi * 2.8f, true);
+
         knob.cell = this;
         knob.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
         knob.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
@@ -51,6 +96,7 @@ public:
         knob.onDragStart = [this]() { owner.cellDragStart(wireIndex); };
         knob.onValueChange = [this]() {
             owner.cellValueChanged(wireIndex, juce::roundToInt(knob.getValue()));
+            updateValueText();
         };
         knob.onDragEnd = [this]() { owner.cellDragEnd(wireIndex); };
         addAndMakeVisible(knob);
@@ -58,13 +104,35 @@ public:
         applyTheme();
     }
 
+    ~KnobCell() override { knob.setLookAndFeel(nullptr); }
+
+    void setScheme(const ColorScheme& cs) { arcLnF.scheme = cs; knob.repaint(); }
+
+    // What the knob's value reads as: the parameter's own formatter (C4, 340 ms, -6 dB), or the number
     void setInfo(const juce::String& moduleName, const juce::String& paramName,
-                 bool isAssigned, int minValue, int maxValue, int value)
+                 bool isAssigned, int minValue, int maxValue, int value,
+                 const ParameterDescriptor* pd = nullptr)
     {
         assigned = isAssigned;
+        if (pd != nullptr)
+            formatter = [desc = *pd](int v) { return ValueFormatters::format(desc, v); };
+        else
+            formatter = nullptr;
 
-        setLabelText(moduleLabel, moduleName);
-        setLabelText(paramLabel, paramName);
+        // A bipolar range (a negative minimum, or a default at its centre) grows its arc from the middle
+        arcLnF.origin = 0.0f;
+        if (pd != nullptr && pd->maxValue > pd->minValue)
+        {
+            const float range = static_cast<float>(pd->maxValue - pd->minValue);
+            const float def = static_cast<float>(pd->defaultValue - pd->minValue) / range;
+            if (pd->minValue < 0 && pd->maxValue > 0) arcLnF.origin = static_cast<float>(-pd->minValue) / range;
+            else if (std::abs(def - 0.5f) < 0.03f)    arcLnF.origin = def;
+        }
+
+        // An empty knob says "Free", with its number where the module's name goes
+        setLabelText(moduleLabel, isAssigned ? moduleName : knobLabel);
+        setLabelText(paramLabel, isAssigned ? paramName : juce::String("Free"));
+        paramLabel.setColour(juce::Label::textColourId, isAssigned ? kText : kTextDim);
 
         if (assigned && maxValue > minValue)
         {
@@ -78,15 +146,25 @@ public:
             knob.setValue(0.0, juce::dontSendNotification);
             knob.setEnabled(assigned);
         }
+        updateValueText();
         repaint();
+    }
+
+    void updateValueText()
+    {
+        if (!assigned) { valueLabel.setText(juce::String::fromUTF8("\xe2\x80\x93"), juce::dontSendNotification); return; }
+        const int v = juce::roundToInt(knob.getValue());
+        valueLabel.setText(formatter ? formatter(v) : juce::String(v), juce::dontSendNotification);
     }
 
     void applyTheme()
     {
         moduleLabel.setColour(juce::Label::textColourId, kTextDim);
         paramLabel.setColour(juce::Label::textColourId, kText);
-        moduleLabel.setFont(juce::Font(AppTheme::uiFont(11.0f)));
-        paramLabel.setFont(juce::Font(AppTheme::uiFont(11.0f)));
+        moduleLabel.setFont(juce::Font(AppTheme::uiFont(11.5f)));
+        paramLabel.setFont(juce::Font(AppTheme::uiFont(13.5f)).boldened());
+        valueLabel.setFont(juce::Font(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(), 13.0f, juce::Font::plain)));
+        valueLabel.setColour(juce::Label::textColourId, kText);
         knob.setColour(juce::Slider::rotarySliderFillColourId, kAccent);
         knob.setColour(juce::Slider::rotarySliderOutlineColourId, kBorder);
         knob.setColour(juce::Slider::thumbColourId, kText);
@@ -95,24 +173,16 @@ public:
 
     void paint(juce::Graphics& g) override
     {
-        // LED right of the knob, lit when assigned
-        auto led = juce::Rectangle<float>(54.0f, 40.0f, 7.0f, 7.0f);
-        g.setColour(assigned ? kLedOn : kPanelBg.darker(0.3f));
-        g.fillEllipse(led);
-        g.setColour(kBorder);
-        g.drawEllipse(led, 1.0f);
-
-        // Knob number / special name
-        g.setColour(kTextDim);
-        g.setFont(juce::Font(AppTheme::uiFont(knobLabel.length() > 2 ? 10.0f : 14.0f)));
-        g.drawFittedText(knobLabel, 64, 34, getWidth() - 66, 22, juce::Justification::centredLeft, 1);
+        // Nothing to paint by hand: the labels and the knob are children
+        juce::ignoreUnused(g);
     }
 
     void resized() override
     {
-        moduleLabel.setBounds(2, 0, getWidth() - 4, 15);
-        paramLabel.setBounds(2, 15, getWidth() - 4, 15);
-        knob.setBounds(8, 32, 40, 40);
+        moduleLabel.setBounds(0, 0, getWidth(), 15);
+        paramLabel.setBounds(0, 15, getWidth(), 19);
+        knob.setBounds((getWidth() - 56) / 2, 36, 56, 56);
+        valueLabel.setBounds(0, 92, getWidth(), 20);
     }
 
     void mouseDown(const juce::MouseEvent& e) override
@@ -161,7 +231,9 @@ private:
     juce::String knobLabel;
     bool assigned = false;
 
-    juce::Label moduleLabel, paramLabel;
+    ArcKnobLookAndFeel arcLnF;
+    std::function<juce::String(int)> formatter;
+    juce::Label moduleLabel, paramLabel, valueLabel;
     CellSlider knob;
 };
 
@@ -215,7 +287,7 @@ void KnobFloaterPanel::refresh()
         {
             if (ka.param >= 0 && ka.param < 4)
                 cell->setInfo("Morph", "Morph " + juce::String(ka.param + 1),
-                              true, 0, 127, patch->morphValues[static_cast<size_t>(ka.param)]);
+                              true, 0, 127, patch->morphValues[static_cast<size_t>(ka.param)]);   // a plain number
             else
                 cell->setInfo({}, {}, false, 0, 0, 0);
             continue;
@@ -235,7 +307,7 @@ void KnobFloaterPanel::refresh()
                       true,
                       pd != nullptr ? pd->minValue : 0,
                       pd != nullptr ? pd->maxValue : 127,
-                      param->getValue());
+                      param->getValue(), pd);
     }
 }
 
@@ -358,6 +430,12 @@ void KnobFloaterPanel::resized()
     for (int i = 0; i < 3; ++i)
         cells[static_cast<size_t>(18 + i)]->setBounds(
             kMargin + i * spacing + (spacing - kCellW) / 2, y, kCellW, kCellH);
+}
+
+void KnobFloaterPanel::setKnobScheme(const ColorScheme& cs)
+{
+    for (auto& cell : cells)
+        cell->setScheme(cs);
 }
 
 void KnobFloaterPanel::applyTheme()

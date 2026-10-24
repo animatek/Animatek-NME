@@ -9,7 +9,7 @@ if(NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
         "Minimum macOS version supported by Animatek NME")
 endif()
 
-project(AnimatekNME VERSION 0.22.0 LANGUAGES C CXX)
+project(AnimatekNME VERSION 0.23.0 LANGUAGES C CXX)
 
 include(GNUInstallDirs)
 
@@ -81,6 +81,7 @@ set(NME_SHARED_SOURCES
     source/model/PchFileIO.cpp
     source/model/SnipFileIO.cpp
     source/model/SlotSet.cpp
+    source/model/SessionState.cpp
     source/model/ThemeData.cpp
 
     # Value Formatters (ported from nmformat.js)
@@ -120,6 +121,7 @@ set(NME_SHARED_SOURCES
     source/ui/MidiSettingsDialog.cpp
     source/ui/SynthSettingsDialog.cpp
     source/ui/EditorOptionsDialog.cpp
+    source/ui/ShortcutsDialog.cpp
     source/ui/QuickAddPopup.cpp
     source/ui/PatchBrowserPanel.cpp
     source/ui/PresetBrowserWindow.cpp

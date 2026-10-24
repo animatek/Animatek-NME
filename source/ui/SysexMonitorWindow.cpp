@@ -48,14 +48,15 @@ SysexMonitorPanel::SysexMonitorPanel()
     };
 
     statsLabel.setJustificationType(juce::Justification::centredRight);
-    statsLabel.setFont(AppTheme::uiFont(11.0f));
+    statsLabel.setFont(AppTheme::uiFont(13.0f));
     statsLabel.setText("0 messages", juce::dontSendNotification);
 
     logView.setMultiLine(true);
     logView.setReadOnly(true);
     logView.setScrollbarsShown(true);
     logView.setCaretVisible(false);
-    logView.setFont(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(), 12.0f, juce::Font::plain));
+    logView.setFont(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(), 13.0f, juce::Font::plain));
+    logView.setIndents(14, 10);
 
     for (auto* c : { (juce::Component*)&enableToggle, (juce::Component*)&showTxToggle,
                      (juce::Component*)&showRxToggle, (juce::Component*)&autoScroll,
@@ -64,7 +65,7 @@ SysexMonitorPanel::SysexMonitorPanel()
         addAndMakeVisible(*c);
 
     applyTheme();
-    setSize(640, 420);
+    setSize(720, 460);
 }
 
 SysexMonitorPanel::~SysexMonitorPanel()
@@ -100,24 +101,27 @@ void SysexMonitorPanel::applyTheme()
 void SysexMonitorPanel::paint(juce::Graphics& g)
 {
     g.fillAll(bg());
+    // The rule under the toolbar
+    g.setColour(AppTheme::palette().borderColor);
+    g.fillRect(0, 16 + 34 + 8, getWidth(), 1);
 }
 
 void SysexMonitorPanel::resized()
 {
-    auto r = getLocalBounds().reduced(8);
-    auto top = r.removeFromTop(26);
-    enableToggle.setBounds(top.removeFromLeft(74));
-    top.removeFromLeft(8);
-    showTxToggle.setBounds(top.removeFromLeft(50));
-    showRxToggle.setBounds(top.removeFromLeft(50));
-    autoScroll.setBounds(top.removeFromLeft(100));
-    copyButton.setBounds(top.removeFromRight(64));
-    top.removeFromRight(6);
-    clearButton.setBounds(top.removeFromRight(64));
-    top.removeFromRight(10);
+    auto r = getLocalBounds().reduced(16);
+    auto top = r.removeFromTop(34);
+    enableToggle.setBounds(top.removeFromLeft(92));
+    top.removeFromLeft(10);
+    showTxToggle.setBounds(top.removeFromLeft(58));
+    showRxToggle.setBounds(top.removeFromLeft(58));
+    autoScroll.setBounds(top.removeFromLeft(116));
+    copyButton.setBounds(top.removeFromRight(80));
+    top.removeFromRight(8);
+    clearButton.setBounds(top.removeFromRight(80));
+    top.removeFromRight(14);
     statsLabel.setBounds(top);
 
-    r.removeFromTop(6);
+    r.removeFromTop(18);
     logView.setBounds(r);
 }
 

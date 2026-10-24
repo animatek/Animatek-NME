@@ -28,14 +28,37 @@ juce::AudioProcessorEditor* NmePluginProcessor::createEditor()
     return new NmePluginEditor(*this);
 }
 
-void NmePluginProcessor::getStateInformation(juce::MemoryBlock& /*destData*/)
+void NmePluginProcessor::setSessionHooks(std::function<juce::MemoryBlock()> capture,
+                                         std::function<void(const juce::MemoryBlock&)> restore)
 {
-    // TODO: serialize current patch state for DAW session recall
+    captureHook = std::move(capture);
+    restoreHook = std::move(restore);
 }
 
-void NmePluginProcessor::setStateInformation(const void* /*data*/, int /*sizeInBytes*/)
+void NmePluginProcessor::clearSessionHooks()
 {
-    // TODO: restore patch state from DAW session
+    captureHook = nullptr;
+    restoreHook = nullptr;
+}
+
+void NmePluginProcessor::getStateInformation(juce::MemoryBlock& destData)
+{
+    // The editor's patches live in components, which only the message thread may read: a host
+    // that asks from another thread gets the last state seen instead of a race.
+    if (captureHook && juce::MessageManager::getInstance()->isThisTheMessageThread())
+        if (auto block = captureHook(); block.getSize() > 0)   // empty = the editor cannot say yet
+            sessionBlock = std::move(block);
+    destData = sessionBlock;
+}
+
+void NmePluginProcessor::setStateInformation(const void* data, int sizeInBytes)
+{
+    if (data == nullptr || sizeInBytes <= 0)
+        return;
+    sessionBlock.replaceAll(data, static_cast<size_t>(sizeInBytes));
+    // An editor already open takes it now; one opened later reads it as it starts.
+    if (restoreHook)
+        restoreHook(sessionBlock);
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

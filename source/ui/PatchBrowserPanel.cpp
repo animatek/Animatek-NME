@@ -18,17 +18,20 @@ PatchBrowserPanel::PatchBrowserPanel()
     addAndMakeVisible(statusLabel);
 
     // Search label
-    searchLabel.setText("Search:", juce::dontSendNotification);
-    searchLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
-    addAndMakeVisible(searchLabel);
+    // (no label: the hint in the field says it)
+    searchLabel.setVisible(false);
 
     // Search box
-    searchBox.setFont(juce::Font(AppTheme::uiFont(12.0f)));
+    // Centred in the field, both ways, and in a size that fills it
+    searchBox.setFont(juce::Font(AppTheme::uiFont(15.0f)));
+    searchBox.setJustification(juce::Justification::centredLeft);
+    searchBox.setIndents(12, 0);
+    searchBox.setTextToShowWhenEmpty("Search patch...", AppTheme::palette().textMuted);
     searchBox.onTextChange = [this]() { onSearchTextChanged(); };
     addAndMakeVisible(searchBox);
 
     // Hide empty button
-    hideEmptyButton.setButtonText("Hide Empty");
+    hideEmptyButton.setButtonText("Hide empty");
     hideEmptyButton.onClick = [this]() { onHideEmptyToggled(); };
     addAndMakeVisible(hideEmptyButton);
 
@@ -40,7 +43,11 @@ PatchBrowserPanel::PatchBrowserPanel()
     // TreeView for patch browser
     treeView = std::make_unique<juce::TreeView>();
     treeView->setDefaultOpenness(false);  // Banks start collapsed
-    treeView->setIndentSize(20);
+    // A bank is a section heading with its own mark at the right (the same as the inspector's
+    // sections), so the tree draws no open/close button of its own and no indentation to speak of:
+    // the patches sit just under their bank, the way a section's rows do.
+    treeView->setOpenCloseButtonsVisible(false);
+    treeView->setIndentSize(6);
     addAndMakeVisible(*treeView);
 
     applyTheme();
@@ -94,26 +101,23 @@ void PatchBrowserPanel::resized()
         statusLabel.setVisible(false);
 
         // Header area with search and filters
-        auto headerArea = bounds.removeFromTop(70);
-        headerArea.reduce(8, 8);
+        auto headerArea = bounds.removeFromTop(98);
+        headerArea.reduce(12, 10);
 
         // First row: Search
-        auto searchRow = headerArea.removeFromTop(24);
-        searchLabel.setBounds(searchRow.removeFromLeft(50));
-        searchBox.setBounds(searchRow.withTrimmedLeft(4));
+        auto searchRow = headerArea.removeFromTop(36);
+        searchBox.setBounds(searchRow);
 
-        headerArea.removeFromTop(4);  // Spacing
+        headerArea.removeFromTop(10);  // Spacing
 
-        // Second row: Hide empty + Refresh
-        auto filterRow = headerArea.removeFromTop(24);
-        hideEmptyButton.setBounds(filterRow.removeFromLeft(100));
-        filterRow.removeFromLeft(8);  // Spacing
-        refreshButton.setBounds(filterRow.removeFromLeft(80));
+        // Second row: Hide empty on the left, Refresh on the right
+        auto filterRow = headerArea.removeFromTop(28);
+        refreshButton.setBounds(filterRow.removeFromRight(84));
+        hideEmptyButton.setBounds(filterRow.removeFromLeft(juce::jmin(130, filterRow.getWidth())));
 
         // TreeView gets remaining space
-        treeView->setBounds(bounds.withTrimmedTop(4));
+        treeView->setBounds(bounds.withTrimmedTop(2));
         treeView->setVisible(true);
-        searchLabel.setVisible(true);
         searchBox.setVisible(true);
         hideEmptyButton.setVisible(true);
         refreshButton.setVisible(true);
@@ -147,6 +151,8 @@ void PatchBrowserPanel::onSearchTextChanged()
 void PatchBrowserPanel::onHideEmptyToggled()
 {
     hideEmptySlots = hideEmptyButton.getToggleState();
+    if (onHideEmptyChanged)
+        onHideEmptyChanged(hideEmptySlots);
     applyFilters();
 }
 
@@ -322,21 +328,19 @@ void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, i
                        && section == panel->selectedSection
                        && position == panel->selectedPosition);
 
-    if (isSelected)
+    // A rounded row: raised for the one selected, and tinted with the accent for the patch
+    // that is loaded in the slot
+    if (isSelected || isLoaded)
     {
-        g.setColour(isLoaded ? juce::Colour(0x44ffaa00)
-                             : AppTheme::palette().backgroundElevated.withAlpha(0.33f));
-        g.fillRect(0, 0, width, height);
-
-        g.setColour(isLoaded ? AppTheme::palette().accentActive
-                             : AppTheme::palette().textPrimary);
-        g.drawRect(0, 0, width, height);
-    }
-    else if (isLoaded)
-    {
-        // Subtle highlight background for the loaded patch
-        g.setColour(juce::Colour(0x33ffaa00));
-        g.fillRect(0, 0, width, height);
+        const auto row = juce::Rectangle<float>(2.0f, 1.0f, static_cast<float>(width) - 4.0f, static_cast<float>(height) - 2.0f);
+        g.setColour(isLoaded ? AppTheme::palette().accentActive.withAlpha(0.18f)
+                             : AppTheme::palette().backgroundElevated);
+        g.fillRoundedRectangle(row, 5.0f);
+        if (isLoaded)
+        {
+            g.setColour(AppTheme::palette().accentActive.withAlpha(0.6f));
+            g.drawRoundedRectangle(row.reduced(0.5f), 5.0f, 1.0f);
+        }
     }
 
     juce::Colour textColor = isLoaded ? AppTheme::palette().accentActive
@@ -345,28 +349,61 @@ void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, i
 
     if (section >= 0 && position == -1)
     {
-        // Bank node — bold
-        g.setColour(textColor);
-        g.setFont(juce::Font(AppTheme::uiFont(13.0f)).boldened());
-        g.drawText(itemName, 4, 0, width - 4, height, juce::Justification::centredLeft, true);
-    }
-    else
-    {
-        g.setColour(textColor);
-        g.setFont(juce::Font(AppTheme::uiFont(isLoaded ? 12.5f : 12.0f)));
+        // A bank, drawn as a section heading like the inspector's: a rule above it, its name in
+        // small capitals, and the fold mark at the right (pointing up when folded, down when open)
+        const int paren = itemName.indexOfChar('(');
+        const auto bankName = (paren > 0 ? itemName.substring(0, paren).trim() : itemName).toUpperCase();
 
-        if (isLoaded)
+        g.setColour(AppTheme::palette().borderColor);
+        g.fillRect(0, 0, width, 1);
+
+        g.setColour(AppTheme::palette().textSecondary);
+        g.setFont(juce::Font(AppTheme::uiFont(12.0f)).boldened());
+        g.drawText(bankName, 14, 0, width - 40, height, juce::Justification::centredLeft, true);
+
+        const float cx = static_cast<float>(width) - 18.0f;
+        const float cy = static_cast<float>(height) * 0.5f;
+        const float s = 3.5f;
+        juce::Path chevron;
+        // Folded: pointing down, "open me"; open: pointing up, "fold me away"
+        if (isOpen())
         {
-            // Draw play indicator
-            g.setFont(juce::Font(AppTheme::uiFont(10.0f)));
-            g.drawText(juce::CharPointer_UTF8("\xe2\x96\xb6"), 2, 0, 12, height, juce::Justification::centredLeft);
-            g.setFont(juce::Font(AppTheme::uiFont(12.5f)));
-            g.drawText(itemName, 16, 0, width - 16, height, juce::Justification::centredLeft, true);
+            chevron.startNewSubPath(cx - s * 1.4f, cy + s * 0.7f);
+            chevron.lineTo(cx, cy - s * 0.7f);
+            chevron.lineTo(cx + s * 1.4f, cy + s * 0.7f);
         }
         else
         {
-            g.drawText(itemName, 4, 0, width - 4, height, juce::Justification::centredLeft, true);
+            chevron.startNewSubPath(cx - s * 1.4f, cy - s * 0.7f);
+            chevron.lineTo(cx, cy + s * 0.7f);
+            chevron.lineTo(cx + s * 1.4f, cy - s * 0.7f);
         }
+        g.setColour(AppTheme::palette().textSecondary);
+        g.strokePath(chevron, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
+    else
+    {
+        // A patch: its location in the bank as a pill, like the type tags of the Disk list, then
+        // its name, both centred in the row
+        const int colon = itemName.indexOf(": ");
+        const auto location = colon > 0 ? itemName.substring(0, colon) : juce::String();
+        const auto name = colon > 0 ? itemName.substring(colon + 2) : itemName;
+
+        const auto pill = juce::Rectangle<float>(6.0f, (static_cast<float>(height) - 20.0f) * 0.5f, 42.0f, 20.0f);
+        const auto tag = isLoaded ? AppTheme::palette().accentActive
+                       : empty    ? AppTheme::palette().textMuted
+                                  : AppTheme::palette().accentInfo;
+        g.setColour(tag.withAlpha(empty ? 0.14f : 0.22f));
+        g.fillRoundedRectangle(pill, 4.0f);
+        g.setColour(tag);
+        g.setFont(juce::Font(AppTheme::uiFont(10.5f)).boldened());
+        g.drawText(location, pill.toNearestInt(), juce::Justification::centred, false);
+
+        g.setColour(empty ? AppTheme::palette().textMuted : isLoaded ? AppTheme::palette().accentActive
+                                                                    : AppTheme::palette().textPrimary.withAlpha(0.92f));
+        g.setFont(juce::Font(AppTheme::uiFont(13.0f)));
+        g.drawText(name, static_cast<int>(pill.getRight()) + 10, 0, width - static_cast<int>(pill.getRight()) - 16, height,
+                   juce::Justification::centredLeft, true);
     }
 }
 

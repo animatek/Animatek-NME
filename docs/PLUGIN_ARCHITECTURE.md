@@ -51,3 +51,11 @@ DAW MIDI track       -> MIDI standard             -> Nord Modular
 - VST3/CLAP build targets exist.
 - The desktop editor remains the primary supported product.
 - Plugin work should be treated as a separate productization track after the editor is stable.
+
+## Project Recall (#94)
+
+The plugin saves the patch of every slot and the slot on screen in the DAW project
+(`source/model/SessionState`, written by `MainComponent::captureSessionState`, read by
+`restoreSessionState`). Patches come back as LOCAL: nothing is sent to the synth when a project
+opens. The connection is not in the project: the MIDI ports and the G1-Emu links come from the
+editor's own settings and are found again on their own.

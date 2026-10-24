@@ -39,6 +39,7 @@ target_sources(nme_tests PRIVATE
     test_direct_link.cpp
     test_keyquant_scales.cpp
     test_slot_set.cpp
+    test_session_state.cpp
     test_pch_area_rows.cpp
     test_pch_macbinary.cpp
     test_pch_legacy210.cpp
@@ -95,6 +96,7 @@ target_sources(nme_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/source/model/ModuleReplacement.cpp
     ${CMAKE_SOURCE_DIR}/source/model/KeyQuantScales.cpp
     ${CMAKE_SOURCE_DIR}/source/model/SlotSet.cpp
+    ${CMAKE_SOURCE_DIR}/source/model/SessionState.cpp
     ${CMAKE_SOURCE_DIR}/source/model/Mutator.cpp
     ${CMAKE_SOURCE_DIR}/source/model/MutationCategories.cpp
     ${CMAKE_SOURCE_DIR}/source/model/PatchVariations.cpp

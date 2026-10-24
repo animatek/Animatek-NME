@@ -2,23 +2,512 @@
 
 ## Unreleased
 
-### Fixed
+## 0.23.0 — 2026-10-24
 
-- **Store to Bank is confirmed by the synth, and goes to the right synth** (2026-10-24, branch
-  `store-confirmed`). On G1-Emu a patch stored from the dialog showed "Stored" but the position
-  was empty after a refresh. Clavia's editor 3.03 captured against G1-Emu
-  (`G1originaleditor/notes/16-store-un-patch.md`):
-  - The store now uploads the patch to the slot first, sends `Store`, waits for the synth's
-    one-entry list reply (bank, position, name) and re-reads the patch list. No reply in 4 s
-    reports "not stored" instead of "Stored"; the name is no longer written locally by guess.
-  - `PatchLocationDialog` deals in local slots A-D, but Store, Copy and Move passed it the global
-    slot and used its answer as global: the store went to the first synth, not the one in use,
-    and with a second synth the SLOT box came up empty. They convert now (`SynthSlot`).
-  - A cable made in NME keeps its colour when it goes to the synth live (`NewCable` carries
-    `colourOf`), so a daisy-chained cable (#108) is no longer recoloured after Store + reload.
-  - `tests/test_store_confirmation.cpp` decodes the captured store reply.
+The new look. The whole interface is redrawn in a flat, dark style with one amber accent: the header
+bar, the module bar, the inspector, both browsers, every menu, every dialog and floater, and a status bar
+with the inspector, browser, MIDI and options buttons. Underneath: the plugin keeps its patches in the
+DAW project (#94), a UI size option for 4K screens (#105), banks that go straight to the synth's memory,
+a Mutator that mutates like the G2's, and a handful of fixes reported by email and by issue. The
+entries below are in the order they were made, newest first; the redesign ones say "branch
+`ui-redesign`", which was merged into `main` on 2026-10-24.
 
 ### Changed
+
+- **Snapshot run beside a running editor** (2026-10-24, branch `ui-redesign`). The editor allows one
+  instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
+  to yours and quit without a picture. That run now counts as its own instance.
+
+- **Keyboard Shortcuts, like Editor Options** (2026-10-24, `main`). The window was a plain block of
+  monospaced text. It is now 880x640 with the groups (File, Edit, Canvas, Slots, Floaters, Sub-window,
+  Mutator) in a list at the left, the action at the left of each row and its keys as key caps at the right,
+  and a **filter** on top that searches the action and the keys of every group at once (grouped under
+  the name of each group that matches). It toggles like the other dialogs: asking again closes it. The list is
+  data in `ui/ShortcutsDialog.cpp`, and Ctrl+M (MIDI setup) is in it.
+
+- **Patch name field without the outline** (2026-10-24, `main`). The grey line round the name field is
+  gone: only the darker ground says it is a field (a touch darker still), in the resting state and
+  while typing.
+
+- **Header bar: the patch name is a field, and the elements sit closer** (2026-10-24, `main`). The name
+  was bare text, with nothing to say it can be edited: it is in a field now (the input colour, darker than
+  the bar, with a thin border and 11px of room), 150px wide (it was 168), and the editor that replaces it
+  while typing has the same size and margin. The most the gaps between groups can grow is 30px (it was
+  48), so the voices and everything after them sit nearer the name and further left on a wide window.
+
+- **Tabs: the word centred in its box, and a hairline between tabs** (2026-10-24, branch `ui-redesign`).
+  The titles of the tabs (Synth, Disk of the browser) rode high above the underline: they sit in the
+  middle of the room above it now, and a thin rule between one tab and the next tells them apart.
+
+- **Alert windows: a small icon instead of JUCE's triangle** (2026-10-24, branch `ui-redesign`). The
+  default warning mark is a huge red triangle that the window clips. A ring with a mark in it (! warning,
+  ? question, i info) in the theme's accent replaces it, and the window has a thin outline.
+
+- **The first-start Beta warning, the shortcuts window and the alert windows** (2026-10-24, branch
+  `ui-redesign`). Found by opening the menus and a fresh start for the final review. The Beta warning
+  that a clean install shows still wore the old look (gold title, boxed x, a tiny line under it): it is now a
+  540x468 dialog with Editor Options' title bar and footer, the text in 14px with room round it, and the
+  button filled with the accent. The Keyboard Shortcuts window keeps its text 20px from the edge. And the
+  alert windows (delete a patch, rename...) have a size more of type and 36px buttons.
+
+- **A/B crossfade: bigger, between the snapshots and the Mutator, resting in the middle**
+  (2026-10-24, branch `ui-redesign`). It moves to the right of the eight snapshots and the left of
+  MUTATOR; it is 150px wide (it was 104) and 26px tall, with 28px of room at each end for its letters (13px
+  bold), a 5px track and a 10x20 thumb. While there is no A and B captured, the thumb sits in the middle
+  instead of hard against the A; the value behind it is untouched.
+
+- **Snapshot run: a patch and every options page** (2026-10-24, branch `ui-redesign`). With
+  `NME_SNAPSHOT_PATCH=<file.pch>` the picture-taking run opens that patch first, and Editor Options is
+  pictured page by page (22 images in all). The A/B crossfade keeps 20px at each end for its letters, in
+  the drawing and in the hit test alike (they differed: 14 and 11).
+
+- **Header bar: nothing runs under the heart at 1280px** (2026-10-24, branch `ui-redesign`). Found in the
+  final review with the snapshots. With the bigger macro dials the bar no longer fitted a 1280px window,
+  and the crossfader ran under the heart and Patreon buttons. The patch name now gives way last (down to
+  104px) and the dials are 8px apart again, so it fits.
+
+- **The A/B crossfade, as in the mockup** (2026-10-24, branch `ui-redesign`). The boxed fader with a
+  thin bar becomes an "A" and a "B" at the ends of a slim track filled in the accent up to a tall rounded
+  thumb. The old box border that said "armed to learn" or "already on a knob" is a ring round the thumb now
+  (yellow while armed, accent once assigned). Same hit area and behaviour.
+
+- **Module bar: a rule under the categories and room round ABCD** (2026-10-24, branch `ui-redesign`).
+  A horizontal rule runs between the row of categories (In/Out, Osc, LFO...) and the row of module chips,
+  and the ABCD button has 16px more room before the chips (the column is 74px, it was 58), with its
+  hairline in the middle of the gap, as in the mockup.
+
+- **Status bar: hairlines and the link text against the buttons** (2026-10-24, branch `ui-redesign`).
+  A thin vertical rule after the "i" of the inspector, as in Bitwig, and another between the text on the
+  right ("Real G1 (UM-ONE MIDI 1)") and the lens. The text is now as wide as it needs and sits against
+  the buttons: the hidden Voices and DSP labels used to keep 200px free in between, which left it
+  floating in the middle.
+
+- **One window each: asking again closes it** (2026-10-24, branch `ui-redesign`). Pressing the MIDI
+  button (or Ctrl+M) several times opened one MIDI Setup after another, and so did the other dialogs.
+  MIDI Setup, Editor Options, Patch Settings and Synth Settings now toggle: the second press closes the
+  window that is open (Editor Options puts the cable opacity back, as Cancel does). About is modal, so
+  it cannot be asked twice; Slot Select and the location and set dialogs belong to an action in progress
+  and are left as they were.
+
+- **MIDI and Options buttons in the status bar** (2026-10-24, branch `ui-redesign`). At the right of the
+  status bar, after the lens of the browser, a little **keyboard** opens MIDI Setup and a **cogwheel**
+  opens Editor Options: lens, keyboard, cogwheel. Same dialogs as Ctrl+M and Ctrl+, and the menus;
+  their tooltips say so.
+
+- **Fold arrows the right way round** (2026-10-24, branch `ui-redesign`). The banks of the patch browser
+  and the inspector's sections pointed up while folded and down while open. They now point down when
+  folded (open me) and up when open (fold me away).
+
+- **Inspector and browser switches as icons in the status bar** (2026-10-24, branch `ui-redesign`).
+  The two thin strips with a chevron at the edges of the window, which were hard to read as buttons, are
+  gone. As in Bitwig, an **"i"** at the left of the status bar opens and closes the inspector and a
+  **magnifying glass** at the right does the same for the patch browser; each lights in the accent while
+  its panel is open and has a tooltip with its shortcut. The status bar is 30px tall (it was 24) and the
+  canvas gets the 14px at each edge back. Ctrl+I and Ctrl+Shift+I are unchanged.
+
+- **The menu bar, restyled** (2026-10-24, branch `ui-redesign`). 32px tall (it was 24) in the ground
+  colour with a rule under it; each title (File, Edit, View, Device, Help, About) is a 14px pill that
+  lights up under the mouse and stays lit while its menu is open, with 14px of room either side. The red
+  dot that flags something new in a menu sits after its title as before.
+
+- **Round radios, legible In/Out, air in the options rows** (2026-10-24, branch `ui-redesign`). Found
+  with the snapshots. A toggle that belongs to a group (only one can be on) now draws as a round radio
+  in every dialog (Octave, Pedal, Portamento, Clock...) while a lone one stays a checkbox; the In and
+  Out captions of MIDI Setup are 13px bold in the normal text colour instead of nearly invisible; and the
+  Editor Options rows are 74px tall with the description pushed down so its second line no longer
+  touches the rule under it.
+
+- **Developer aid: the editor can picture itself** (2026-10-24, branch `ui-redesign`). With
+  `NME_SNAPSHOT_DIR=<folder>` set, three and a half seconds after start NME saves PNGs of the window, the
+  header bar (3x), the five floaters and eight dialogs (About, Editor Options, MIDI Setup, Patch Settings,
+  Synth Settings, Patch Location, Save Slot Set, Slot Select), and quits. JUCE draws them offscreen, so nothing on the desktop
+  is captured, Wayland included. Meant for checking a restyle without a screen grab; with a throwaway
+  `HOME`, so the real settings are not touched.
+
+- **The four macro knobs of the header bar, redrawn** (2026-10-24, branch `ui-redesign`). They were flat
+  coloured discs with a thick outline that looked pixelated at 24px. They are now 32px dials: a track, the
+  value as an arc in the macro's colour (red, green, blue, yellow) with round ends, a dark face and a
+  light pointer. Hit tests and spacing follow the new size.
+
+- **Knob Floater: the flat knob, as in the modules** (2026-10-24, branch `ui-redesign`). The knob was not
+  the one the modules wear (the dark disc with a rim, a pointer and the value arc in the theme's blue):
+  the floater now draws that very one (`skeuo::drawFlatKnob`) in the canvas theme's colours, with the arc
+  growing from the centre on bipolar ranges and the ticks at 7 and 5 o'clock. It follows the theme when
+  it changes.
+
+- **Knob Floater: the modules' own knob** (2026-10-24, branch `ui-redesign`). The arc knob is swapped for
+  the knob the modules wear on the canvas (a plain circle, a grip line, a tick at each end of its
+  travel), the same the Mutator uses. The labels, the formatted value and "Free" stay as they were.
+
+- **Knob Floater, like the mockup** (2026-10-24, branch `ui-redesign`). Each cell reads from the top:
+  the module's name (small, muted), the parameter's name (bold), an **arc knob** (dark track, the value
+  in the accent, a white pointer; it replaces the old filled blob) and the value as the parameter
+  formats it (C4, 340 ms, -6 dB) in a monospaced line. An empty knob says "Free" (its number where the
+  module's name goes) with a dimmed knob and a dash; the assignment lamp is gone, since the colour of the
+  arc says it already.
+
+- **Knob Floater restyled** (2026-10-24, branch `ui-redesign`). Bigger cells (112x86) and knobs (46px),
+  18px margins and 22px between the three groups, module names and parameter names in 12px (the
+  parameter in bold), and the lamp and knob number moved with them.
+
+- **Keyboard Floater restyled** (2026-10-24, branch `ui-redesign`). 760x202, 16px margins, 32px controls
+  with a rule under them, bolder Rate and Gate captions, and Drone and Repeat show as an accent fill
+  when on.
+
+- **Patch Notes and SysEx Monitor restyled** (2026-10-24, branch `ui-redesign`). 16px margins instead of
+  6-8, text with room from the edge of its field (indents), the notes field in the input colour with the
+  accent when focused; the monitor's toolbar is 34px with bigger buttons and a rule under it, and the log
+  in 13px.
+
+- **Mutator: the separator dot in the section titles** (2026-10-24, branch `ui-redesign`). It was read as
+  Latin-1 and showed as "A" with a stray mark; the titles are read as UTF-8.
+
+- **Patch Mutator restyled** (2026-10-24, branch `ui-redesign`). Same controls and keys, new layout: more
+  air (24px margins, 10px gaps), a rule between sections, muted section titles, rounder sound boxes with
+  Mother and Father named in the accent, bigger knob captions, **Mutate** filled with the accent first in
+  the row of operations and Mother = Patch at its right end. The panel measures its own height now
+  (`layoutAll`), so it is no longer a fixed number.
+
+- **Slot Select: no rule under "Local"** (2026-10-24, branch `ui-redesign`). The footer already draws one:
+  the last row leaves its own out (`OptionRow::setShowRule`) and the dialog is shorter again.
+
+- **Slot Select: room under "Local"** (2026-10-24, branch `ui-redesign`). The last row's text sat on its
+  own rule and that rule on the footer's: the row is taller and there is a gap before the footer.
+
+- **Synth Settings redesigned** (2026-10-24, branch `ui-redesign`). 720x640: the same controls (name and
+  master tune, MIDI channels, velocity scale and switches, clock, knob, pedal and keyboard behaviour) on
+  34px rows with bigger type, muted section titles and rules between sections, and Editor Options' title
+  bar and footer with Cancel and **OK** (filled with the accent).
+
+- **Patch Settings redesigned** (2026-10-24, branch `ui-redesign`). 620x572: the same controls (voices,
+  velocity and keyboard ranges, pedal and bend, portamento, octave and retrigger) with much more air, 34px
+  rows, bigger type, muted section titles, a rule between sections and Editor Options' title bar and
+  footer with Cancel and **OK** (filled with the accent).
+
+- **Ctrl+T works whatever has the keyboard, and the progress bars are thicker** (2026-10-24, branch
+  `ui-redesign`). A menu that is open, or a dialog, swallowed the key press, so Ctrl+T did nothing: a
+  light timer now watches the keyboard and cycles the theme then too (only when no window took the press
+  a moment before, so it never fires twice). The progress bars (the bank transfer ones) were a thin
+  strip with a tiny percentage: they are 26px tall, rounded, with the fill in the accent and the
+  percentage in 13px bold.
+
+- **Bank Transfer redesigned** (2026-10-24, branch `ui-redesign`). Save Bank to Disk, Backup All Banks and
+  Send Bank to Synth: 520x440, muted section labels, taller fields with larger type, a thinner progress
+  bar, Editor Options' title bar and a footer band with Cancel and **Start** (filled with the accent).
+
+- **Patch Location redesigned** (2026-10-24, branch `ui-redesign`). The dialog that asks where a patch goes
+  (Slot, Bank, Position): 440px wide, muted section labels over taller lists, Editor Options' title bar
+  and a footer band with Cancel and **OK** (filled with the accent).
+
+- **Save Slot Set redesigned** (2026-10-24, branch `ui-redesign`). 520x480: the set's name over a full-width
+  field, the four slots as rows with a rule between and their mode list at the right, the notes field below
+  and the footer band with Cancel and **Save** (filled with the accent). Same rules as before for when
+  Save is enabled.
+
+- **Slot Select redesigned** (2026-10-24, branch `ui-redesign`). The dialog that asks which slot to open a
+  patch into: the four slots and the "Local" choice (a name and a line saying it is editor-only) are
+  rows with a round radio at the right, the title bar is Editor Options' and the footer band has Cancel and
+  **OK** (filled with the accent). The OptionRow control moves to its own header (`OptionRow.h`) so
+  the dialogs can share it, and `AppTheme::drawDialogChrome` draws the title bar and footer common to them.
+
+- **MIDI Setup redesigned** (2026-10-24, branch `ui-redesign`). The framed groups become **one card per
+  port** (640px wide): its number and name, the connection status in words with a dot (green when
+  connected) and the **switch** that enables it, and below it the In and Out ports, one under the other,
+  each a full-width list. The title bar is Editor Options' (40px, bold title, rule), and the buttons sit
+  at the right of a footer band: Apply, **OK** (filled with the accent) and Cancel. The same ports,
+  statuses, retries and Apply/OK/Cancel as before; only the layout is new.
+
+- **Renaming the patch in the header, and every window's title bar** (2026-10-24, branch `ui-redesign`).
+  After a rename the name label stayed on screen as a boxed field instead of the bar going back to its
+  flat title: it is hidden when the editing ends, and the editor is typed in the title's own size and
+  bold. And the windows JUCE draws (the floaters, the browser window, About) had its default grey title
+  bar with a red cross: they now wear the dialogs' own, the ground colour, the title bold at the left, a
+  rule under it, and the same gold cross.
+
+- **About restyled** (2026-10-24, branch `ui-redesign`). 520x620, a bigger icon, title (25), the subtitle
+  in the accent and the version in a quiet line; the credits list in a clean field with breathing room;
+  and a footer band with the buttons in two rows: **Donate** (filled with the accent) and **Patreon** on
+  top, **Website**, **GitHub** and **Copy version** below.
+
+- **The other dialogs: no stray window drag, and readable text fields** (2026-10-24, branch
+  `ui-redesign`). MIDI Setup, Bank Transfer, Patch Location, Patch Settings and Synth Settings dragged
+  the window on any mouse movement with the anchor of the last title-bar drag, the same fault as Editor
+  Options had: they now drag only when the press began on the title bar (the press position tells).
+  The name field of Synth Settings and the name and notes fields of Save Slot Set use size 14, centred
+  in the field.
+
+- **Editor Options: the window no longer moves by itself, and its text fields read better**
+  (2026-10-24, branch `ui-redesign`). Picking a page in the sidebar could carry the whole dialog across
+  the screen: `mouseDrag` dragged the window on any movement, with the anchor of the last time the
+  title bar was dragged. Now only a press that starts on the title bar drags. The library path and the
+  MCP command fields use size 14 with the text centred in the field (it sat small at the top).
+
+- **Every window wears a thin outline** (2026-10-24, branch `ui-redesign`). A dialog or a floater on
+  the same dark ground as what is behind it melted into it. The dialogs (Editor Options, About, MIDI
+  Setup, Bank Transfer, Patch and Synth Settings, Patch Location, Save Slot Set, Slot Select) draw a 1px
+  frame over everything they hold, and the windows JUCE draws itself (the floaters, the browser window,
+  the About box) get it from the look and feel's window border. The line is the theme's border colour,
+  lightened.
+
+- **Editor Options redesigned** (2026-10-24, branch `ui-redesign`). The one long list becomes a dialog
+  (860x640) with a **sidebar of eight pages**: Appearance (theme, UI size, hardware look, knob style,
+  flat knobs, wireframe), Cables (style, opacity), Knobs (drag mode), Behaviour (ask slot, animate
+  tiling, reopen windows, note names), Synth link (auto upload, synth display, send speed), Library,
+  Updates (community themes, new version) and Advanced (MCP bridge). Each setting is a row with its name and
+  a line saying what it does, instead of a tooltip; the check boxes become **switches** and the
+  one-among-several choices **round radios**. The page's name is a heading, and the dialog does not
+  change size when a page is picked. The settings, their saving and Cancel (which puts the cable
+  opacity back) work as before; only the layout is new. Not looked at on screen yet.
+
+- **Menus: the section heading is no longer stretched, and the check column is narrower**
+  (2026-10-24, branch `ui-redesign`). The 32px minimum row height applied to a menu's section heading
+  as well (the "value" over a parameter's right-click menu), which JUCE then enlarges by half again, so
+  it had a big gap above it. The heading keeps its natural height now and is drawn level with the
+  words, and the column reserved on the left for the check marks is 20px (was 24+).
+
+- **Menus on Linux are one clean rectangle** (2026-10-24, branch `ui-redesign`). JUCE can only give a
+  window see-through corners on Linux when it is built with `JUCE_USE_XRENDER`, which this build is
+  not, so a rounded box showed square dark corners behind it (most visible on the right-click menus).
+  Where the window cannot be transparent the menu is now a plain rectangle in the panel colour with a
+  thin border and its rows rounded inside it; where it can (macOS, Windows) the rounded box still
+  floats with its margin.
+
+- **Menus: the highlight is clear of the box's edge** (2026-10-24, branch `ui-redesign`): 6px of room
+  between the highlighted row and the rounded box on each side (it was 2), and the words 10px inside the
+  highlight; the menus are a little wider for it.
+
+- **Menus: the highlighted row stays inside the box** (2026-10-24, branch `ui-redesign`): the rows are
+  given the whole width of the window, margin included, so the highlight stuck out of the rounded box
+  by the margin on each side; the rows are now drawn 6px in.
+
+- **Menus float a little away from the menu bar** (2026-10-24, branch `ui-redesign`): the rounded box
+  is drawn 6px inside the menu window, so there is a gap between it and the bar (and a margin on every
+  side) instead of touching it.
+
+- **Menus restyled** (2026-10-24, branch `ui-redesign`). Every drop-down and context menu (File, Edit, View,
+  Device, the right-click menus, the Cables menu) gets rounded corners and a thin border, 6px of
+  padding, 32px rows, a rounded highlight under the pointer, a hairline for a separator, a check
+  mark in the accent for what is on, a chevron for a sub-menu and the shortcut at the right, quiet
+  and in monospaced type. The menu bar itself (File, Edit... along the top) is unchanged for now.
+
+- **Disk list: it appears at once, from one scan, in a third of the time** (2026-10-24, branch
+  `ui-redesign`). The first background version showed an empty list with "Hide 2.10" on: two scans
+  started (the panel was asked for the same folder twice) and each opened all 53,759 files before
+  showing anything. Now the scan reads only names, so the list shows as soon as it is read; which
+  patches are old is found out afterwards, in the background, and only then are they hidden. The
+  same folder asked for again while it is being read is ignored. And the tree is walked with
+  `std::filesystem`, which reads each entry's type from the directory listing, where the JUCE
+  iterator asks about every file: 3.2s instead of 10.5s on the real library (53,797 patches).
+  While it reads, the status line says "Reading the library...".
+
+- **The Disk list is read on a background thread** (2026-10-24, branch `ui-redesign`). With a library
+  of tens of thousands of patches (53,759 here) the editor froze at startup and on Refresh: the
+  recursive scan ran on the message thread and, with "Hide 2.10" on (which is now remembered, and made
+  this much worse), every patch file was opened to tell an old one from a modern one. Now the scan, and
+  that check, run on a background thread; the status line says "Reading the library..." and the list
+  appears when it is ready. A scan overtaken by a newer one (Refresh again, another folder) is dropped.
+  Switching "Hide 2.10" on later does the check in the background too, and the list is rebuilt when
+  it is known. Nothing is hidden until then.
+
+- **Browser tabs: more room under the words** (2026-10-24, branch `ui-redesign`). The "Synth" and "Disk"
+  titles were touching the rule below them. The tab bar is 40px (was 28) and the word is lifted so
+  there is air between it and the underline.
+
+- **Disk tab: hairlines between the search and filters, the count row and the list** (2026-10-24,
+  branch `ui-redesign`), edge to edge like the rules of the inspector and of the Synth banks; and
+  "Hide 2.10" gets enough room to read in full (it was cut to "Hide 2....").
+
+- **The browsers remember "Hide empty" and "Hide 2.10"** (2026-10-24, branch `ui-redesign`). Both
+  switches went back to off every time the editor was opened. They are now saved in the editor's
+  settings (`browserHideEmpty`, `browserHidePch2`) and set again at startup.
+
+- **Synth tab: the banks as section headings** (2026-10-24, branch `ui-redesign`). Each bank is drawn
+  like the inspector's sections: a rule above it, its name in small capitals ("BANK 1", the 101-199
+  range is gone), and the fold mark at the right edge (up when folded, down when open). The tree draws
+  no open/close button of its own, so the patches sit right under their bank; a click anywhere on the
+  bank's row folds or unfolds it, as before.
+
+- **Synth tab: patch locations as pills, and the list closer to the left** (2026-10-24, branch
+  `ui-redesign`). Each patch shows its location (101, 102...) as a pill in the style of the Disk
+  list's type tags, blue for a patch, muted for an empty slot and in the accent for the one loaded
+  in the slot, with the name after it, both centred in a 32px row. The tree's indentation drops to
+  14px (room for the chevron only), so the patches sit close to their bank instead of far to the right.
+
+- **Browser search fields: the text is centred and bigger** (2026-10-24, branch `ui-redesign`). The
+  typed text and the hint sat at the top of the field in a small size; both search fields (Disk and
+  Synth) now centre it vertically and use size 15.
+
+- **Browser: more room, and the Synth tab redone** (2026-10-24, branch `ui-redesign`). Both tabs have
+  12px margins and 10px between the search, the chips and the list, instead of a squeeze. **Disk:** the
+  chips are as wide as their word and sit side by side from the left, no longer stretched across the
+  panel; the count row says "N files" (or "N of M" when filtered), with Hide 2.10 and the two arrows on
+  its right; 32px rows. **Synth:** a bank is its name in bold with its range ("101 - 199") quietly on the
+  right, the open/close mark is a chevron (the app-wide tree look), each patch is its location in a
+  muted mono number and then its name, rows are 30px (banks 36px), and the Hide empty check box and
+  the Refresh button share one row. **App-wide:** check boxes are rounded and fill with the accent when on.
+
+- **Browser (right panel) restyled** (2026-10-24, branch `ui-redesign`). The **Synth / Disk tabs** are
+  flat now: just the word, with an underline in the accent under the front one (`AppLookAndFeel`).
+  **Text fields app-wide get rounded corners** (6px, the focus ring too), so the search fields, the
+  dialogs and the inspector's editors match the buttons. **Disk tab:** no "Search" label (the field's
+  hint says it), a taller search row with a rounded refresh button, the filter chips (All, Patch, Snip,
+  Bank, Set) as pills with the chosen one filled in the accent, 30px rows with no hairline between them,
+  the selected one a raised rounded row, and the type tag (PATCH, SNIP, BANK, SET) a pill. **Synth tab:**
+  the same search field, and the selected and the loaded patch as rounded rows (the loaded one tinted
+  with the accent) instead of a boxed outline.
+
+- **Inspector: no hairline under the last assignment of a section** (2026-10-24, branch
+  `ui-redesign`): the next section's title already draws its own rule, so two lines in a row read as noise.
+
+- **Inspector: with a module selected, only its own knobs, MIDI CC and macros** (2026-10-24,
+  branch `ui-redesign`). The Knobs, MIDI CC and Macros sections listed the whole patch whichever module
+  was selected. Now, with a module selected they show that module's assignments only; with none
+  selected, all of the patch's, as before. A section left empty by that is not drawn.
+
+- **Inspector: assignment rows as in the mockup** (2026-10-24, branch `ui-redesign`). Macros,
+  knobs and MIDI CC share one look, told apart by their icon: an arch in the macro's colour, a knob
+  glyph, a "CC" pill. Each row reads "parameter -> target" with a drawn arrow (e.g. "Coarse -> Macro 1",
+  "Res -> Knob 3", "Freq -> CC 74"), the module it belongs to in small type under it, a hairline between
+  rows (40px high) and the cross at the right edge, with the macro's amount bar just left of it. The
+  coloured band per macro is gone: the icon colour and the target say which one it is. The cross and
+  the amount bar keep working; only their place moved.
+
+- **Inspector: new order, and what is empty is hidden** (2026-10-24, branch `ui-redesign`). From
+  the top: the knob panel, the **Module** block, its **Parameters**, then **Knobs** (with **MIDI CC**
+  right after), **Macros**, and the module's **Presets** last. With no module selected the Module
+  block is not there at all (no "Nothing selected"), and a section with nothing in it (no knobs, no
+  macros, no CC, no presets) is not drawn either, so an empty panel is just the knob panel.
+
+- **Inspector: the module's name is the title, and the type sits in the accent** (2026-10-24,
+  branch `ui-redesign`). In the Module block the bold title line is now the module's **name**
+  (FilterC), and clicking it selects the text to rename it in place: no separate Name field. The
+  module's **type** as Clavia calls it ("12dB Static Multimode Filter"), not editable, is the accent
+  text on the right of the "MODULE" heading (a long one narrows to fit). Below: Area and DSP cost.
+  The name no longer appears twice.
+
+- **Inspector: knob panel, Module, then Macros and Knobs** (2026-10-24, branch `ui-redesign`).
+  The panel is now laid out from the top as: the knob panel (its miniature, untouched, with a
+  "KNOB PANEL" label), a **Module** block (a "MODULE" heading with the module's own name in the
+  accent, the module type in full, its area, its DSP cost and a Name field), the module's
+  **Parameters** and **Presets**, and then the whole patch's **Macros** (the morph groups, renamed
+  from "Morphs"), **Knobs** and **MIDI CC**. The umbrella "Assignments" heading is gone, and with
+  nothing selected the Module block says "Nothing selected" while the macros, knobs and CC still show.
+  This replaces the entry below, which was the first attempt.
+
+- **Inspector: the module and the assignments are two sections, shown together** (2026-10-24,
+  branch `ui-redesign`). Selecting a module used to swap the patch's assignments for that module's
+  own, so the module's name took over the "Assignments" heading. Now the header and the list top
+  show the module (name, area, DSP cost, its Parameters, its Presets) and, below, a section of its own,
+  **Assignments**, with the morph, knob and MIDI CC rows of the whole patch (with the number of
+  them), each naming the module it belongs to. With nothing selected the header says "Inspector /
+  Nothing selected" and only the assignments show. The section label ("ALL MOD...") no longer gets
+  cut off: it has the whole row when there is no DSP cost to share it with.
+
+- **Inspector rows and header restyled** (2026-10-24, branch `ui-redesign`). Flat rows with no
+  zebra stripes: the parameter's name on the left in the secondary ink and its value on the right
+  in a monospaced field (rows 30px, were 26); morph, knob and MIDI CC rows lose the boxed "x" for a
+  light cross, and their badge ("Knob 3", "CC 74") becomes a pill; a morph group shows its colour as
+  a dot with its name instead of a coloured band. The header gets a bigger title (15), and the area
+  and DSP cost as bold small labels ("POLY AREA", "COMMON AREA", "ALL MODULES"). Same controls and
+  behaviour underneath: dragging values, typing over the cell, folding the sections, presets.
+
+- **Inspector section titles restyled** (2026-10-24, branch `ui-redesign`). Parameters, Morphs,
+  Knobs, MIDI CC and Presets lose their coloured wash and strong rule: a small uppercase title
+  (in the theme's secondary ink, still readable) with a hairline above it and more air (30px, was
+  22). The rows, the knob map and the name field are unchanged.
+
+- **Synth list restyled** (2026-10-24, branch `ui-redesign`). Same one-row-per-synth list at the
+  bottom of the inspector, in the new look: the synth's number (lit when it is the one being
+  edited), the four slot buttons as rounded squares, the name as a pill with a connection dot and
+  and the load as a thin bar under the row (no number: the header's PVA/E show it). Rows are
+  42px (were 30). Click, drag-and-drop, rename and Ctrl+click behave as before.
+
+- **Header bar: MUTATOR sits between the snapshots and the A/B crossfader** (2026-10-24, branch
+  `ui-redesign`), with a hairline on each side. Order: ... cable colours | snapshots | MUTATOR |
+  A/B | free room | heart, Patreon.
+
+- **Header bar: the gap between groups grows with the window** (2026-10-24, branch
+  `ui-redesign`). The room the window has left over is shared out between the nine groups, from
+  18px (the minimum, narrow windows) up to 48px (a very wide one), instead of one fixed 12 or 18.
+  At 1920px the groups breathe and the free space on the right shrinks to what the 48px cap leaves.
+
+- **Header bar: more room between groups, and MUTATOR after the crossfader** (2026-10-24,
+  branch `ui-redesign`). The gap between groups goes from 12 to 18px, with the hairline in the
+  middle, and MUTATOR follows the A/B crossfader instead of sitting in the right-hand corner,
+  which now holds only the heart and Patreon. The cable colours fold into "Cables" under about
+  1385px (the default plugin width, 1280px, still fits with them folded).
+
+- **Header bar: the cable colours move between the morph dials and the snapshots** (2026-10-24,
+  branch `ui-redesign`), with a hairline on each side. The order is now: name, Voices, Load,
+  Store | morph | cable colours and S | snapshots, crossfader ... MUTATOR | heart, Patreon. Under
+  about 1355px they fold into the "Cables" button, in that same place. The free room is now between
+  the crossfader and MUTATOR.
+
+- **Header bar redesign, step 2** (2026-10-24, branch `ui-redesign`). ABCD moves out of the
+  header to the left of the module chips (fixed, outside the scrolling strip). The module bar is
+  restyled: flat tabs with an underline under the one showing, and the module chips as pills.
+  **Store** is as wide as its text really is, so the word and the bank location no longer overlap
+  (they did at the 1.15 font scale). Every part of the header now has a tooltip (name, voices,
+  load, store, morph, snapshots, crossfader, cable colours, shake, Mutator, donate, Patreon), and
+  so does the ABCD button. The module bar is a little taller (63px instead of 48). Not looked at
+  on screen yet.
+
+- **Header bar redesign, step 1** (2026-10-24, branch `ui-redesign`). Flat bar with no boxes
+  or group titles, in the order: patch name, Voices (number with its arrows), Load (PVA and E,
+  each with its bar and number), Store, the four morph dials, the eight snapshots, the A/B
+  crossfader, the cable colours with the shake key (centred in the room that is left),
+  MUTATOR, ABCD, and the heart and Patreon at the right edge. Every rectangle is now worked
+  out once in `resized()` and the paint and hit tests only read it. "Report a bug" left the bar
+  (Help > Report a Bug has it) and so did the synth name box (the synth list shows it). Too
+  narrow for the seven dots (under about 1376px) they become one "Cables" button with a menu.
+  ABCD moves to the module bar in the next step. Checked in the Release build at 1920px;
+  the narrow mode is built but was not looked at.
+
+- **The plugin keeps its patches in the DAW project** (2026-10-24, #94). `getStateInformation` /
+  `setStateInformation` were empty, so a reopened project showed an empty editor. Now the project
+  keeps the patch of every slot (as the .pch and .var the editor would save, in `model/SessionState`)
+  and the slot on screen; reopening puts them back. They come back **LOCAL** (editor only): nothing
+  is sent to the synth, since opening a project must not overwrite what is on a real G1. The MIDI
+  ports and G1-Emu links were already remembered by the editor's settings. What the editor holds is
+  also kept when its window is closed, and a host asking from another thread gets the last state
+  seen. Tests for the format; the plugin builds (VST3); capture and restore checked in the app
+  (two slots out, empty app, two slots back, B active). Not tried inside a DAW.
+
+- **UI size: the whole interface scales for 4K screens** (2026-10-24, #105). A new **UI size**
+  choice in Editor Options (100%-300%) sets JUCE's global scale factor, so every window, menu,
+  dialog and the module help (F1) grow together; it applies when OK is pressed and at startup.
+  Standalone app only: as a plugin it would rescale the host's windows. Checked in the Release
+  build with 200% in the settings (everything doubled, menus included); the selector in the dialog
+  was built but not clicked through. Manual (EN/ES) updated.
+
+- **The double-click on a module shows the whole "name  cost" badge** (2026-10-24, #104). The
+  badge was capped at 110px, so a long module name ("2/24dB Dynamic Multifilter", the slave
+  oscillators) cut off the DSP cost at the end. Now up to 240px, the longest name with its cost
+  being about 206px; a badge wider than its module starts at the module's left edge instead of
+  sticking out past the canvas. Checked in the Release build with the longest module name.
+
+- **Ctrl+B opens the right panel if it is folded away** (2026-10-24, #107). The Preset Browser is
+  the right panel's Disk tab; with the panel hidden (Ctrl+Shift+I) Ctrl+B and File > Preset
+  Browser only chose the tab and nothing showed. Now they unfold the panel first. Checked in the
+  Release build: panel folded, then the Ctrl+B action: panel back on the Disk tab with its list.
+
+- **The Disk tab lists every .pch under the library folder** (2026-10-24, #106). It only looked
+  inside `Patches/`, `Snippets/`, `Banks/` and `Sets/`, so a library pointed at the folder where
+  someone already keeps their patches, spread over other subfolders, showed an empty list. Now any
+  `.pch` under the library root is a patch; `Snippets/`, `Banks/`, `Sets/` and `Presets/` keep their
+  own meaning and are not listed twice. The options hint says so. Checked in the Release build with
+  a library of `Leads/`, `Antiguos/Bass/` and `Snippets/`: 3 of 3 files, two patches and a snippet.
+
+- **Heart and Patreon buttons in the patch bar** (2026-10-24). Two small icon buttons in the far
+  right corner, like GitHub's Sponsor button: a heart that opens the PayPal donation page and
+  Patreon's mark that opens the Patreon page. The synth name box moves left to make room. The
+  heart, Patreon, MUT and ABCD buttons get tooltips (the bar has its own top-level tooltip
+  window, as the 48px bar would clip a child one). Release build checked by eye.
+
+- **Donate button next to Patreon** (2026-10-24, branch `apoyo-donar`). The About box gets a
+  Donate button (five buttons across now), the About menu a "Donate (PayPal)..." item, and the
+  repo a `.github/FUNDING.yml` (GitHub's Sponsor button) plus a "Support the project" section
+  in the README. The PayPal link lives once, in `VersionCheck.h`. Release build compiles.
 
 - **Banks go to and from the synth's memory directly, as in Clavia's editor** (2026-10-18,
   branch `bank-flash-transfer`). Read off the wire from editor 3.03 against a real G1
@@ -76,6 +565,26 @@
   variations do not store them.
 
 ### Fixed
+
+- **Daisy-chained cables take the colour of the net's source output** (#108, teezdalien). A cable chained
+  from an input took the colour of the input it starts at, so a chain from a blue source showed a green
+  cable. `ModuleContainer::colourOf`: a stored colour still wins, a cable from an output is unchanged, and
+  a chained one takes the signal type of the output driving the net; drawing, the cable filters, saving
+  and the synth messages all use it. In the hardware look, jack rings take the colour of the cable plugged
+  in. Existing patches are unchanged because their colours are stored.
+
+- **Store to Bank is confirmed by the synth, and goes to the right synth** (2026-10-24, #109). On G1-Emu a patch stored from the dialog showed
+  "Stored" but the position was empty after a refresh. Clavia's editor 3.03 captured against G1-Emu
+  (`G1originaleditor/notes/16-store-un-patch.md`):
+  - The store now uploads the patch to the slot first, sends `Store`, waits for the synth's
+    one-entry list reply (bank, position, name) and re-reads the patch list. No reply in 4 s
+    reports "not stored" instead of "Stored"; the name is no longer written locally by guess.
+  - `PatchLocationDialog` deals in local slots A-D, but Store, Copy and Move passed it the global
+    slot and used its answer as global: the store went to the first synth, not the one in use,
+    and with a second synth the SLOT box came up empty. They convert now (`SynthSlot`).
+  - A cable made in NME keeps its colour when it goes to the synth live (`NewCable` carries
+    `colourOf`), so a daisy-chained cable (#108) is no longer recoloured after Store + reload.
+  - `tests/test_store_confirmation.cpp` decodes the captured store reply.
 
 - **A saved .pch has the same [Header] line as one saved by Clavia's editor** (#103,
   2026-10-18, branch `pch-header-flags-103`). Four fields of that line held what the synth sent

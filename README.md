@@ -6,7 +6,7 @@ to run on current macOS, Windows, and Linux systems without requiring an old Jav
 
 ## Status and how to get it
 
-**Animatek NME is in active beta** (current version 0.22.0, see
+**Animatek NME is in active beta** (current version 0.23.0, see
 [CHANGELOG.md](CHANGELOG.md)). There are two ways to get it, and both give you the
 same application:
 
@@ -19,6 +19,17 @@ same application:
 
 That is why the repo has no GitHub Releases: binaries are distributed through Patreon,
 while the code stays GPLv3 for anyone who wants to compile it, fork it, or read it.
+
+## Support the project
+
+NME is free and open source, built in spare time. If it is useful to you and you want it
+to keep going:
+
+[![Patreon](https://img.shields.io/badge/Patreon-support-f96854?logo=patreon&logoColor=white)](https://www.patreon.com/c/animatek)
+[![Donate](https://img.shields.io/badge/Donate-PayPal-0070ba?logo=paypal&logoColor=white)](https://www.paypal.com/donate/?hosted_button_id=YATW56VC46ENE)
+
+Patreon gives you the ready-to-run builds and the guides; a one-off donation is just a
+thank-you, nothing is locked behind it.
 
 > Nord Modular is a trademark of Clavia DMI AB. This project is an independent,
 > community-developed editor and is not affiliated with or endorsed by Clavia.

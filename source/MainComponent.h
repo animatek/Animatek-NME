@@ -20,6 +20,8 @@
 #include "undo/PatchActions.h"
 #include "ui/MainLayout.h"
 #include "ui/EditorOptionsDialog.h"
+#include "ui/PatchSettingsDialog.h"
+#include "ui/ShortcutsDialog.h"
 #include "ui/ThemeEditorWindow.h"
 #include "ui/CommunityThemesWindow.h"
 #include "ui/PresetBrowserWindow.h"
@@ -54,6 +56,13 @@ public:
     void menuItemSelected(int menuItemID, int topLevelMenuIndex) override;
 
     ModuleDescriptions& getModuleDescriptions() { return moduleDescs; }
+
+    // DAW project recall (the plugin, #94): the patch in every slot and the slot on screen,
+    // as a block the host keeps in the project. Restoring puts the patches back in the
+    // editor only (LOCAL): nothing is sent to the synth, because a project opening is not a
+    // reason to overwrite what is on a real G1.
+    juce::MemoryBlock captureSessionState();
+    void restoreSessionState(const juce::MemoryBlock& block);
 
     // Small slot-indexed accessors for McpRequestHandler (source/mcp/), which
     // needs to reach a specific slot's model/undo state without duplicating
@@ -160,6 +169,7 @@ private:
     // Opening a .pch shows the slot chooser (issue #21); the chosen destination
     // and Local flag are then applied by loadPatchFromFile.
     void openPatchFileWithChooser(const juce::File& file);
+    static void applyInterfaceScale(float scale);
     void loadPatchFromFile(const juce::File& file, int targetSlot, bool localOnly);
     bool replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
                             const juce::File& sourceFile, bool activate,
@@ -213,6 +223,17 @@ private:
     void applyUiTheme(int index, bool persist);
     // The user picks a theme: applyUiTheme plus the render style the theme sets (#90).
     void chooseUiTheme(int index);
+    // Ctrl+T, whoever has the keyboard: the main window and the floaters take it as a key press; an open
+    // menu or a dialog swallows it, so a light timer watches the keyboard for those
+    void cycleUiThemeFromKey();
+    // Developer aid: with NME_SNAPSHOT_DIR set, the editor saves PNGs of its own windows (drawn by JUCE,
+    // so nothing on the desktop is captured, on Wayland too) and quits
+    void saveSnapshotsAndQuit(const juce::File& dir);
+    // The menu bar's menus, one after another, then on to saveSnapshotsAndQuit
+    void snapshotMenus(const juce::File& dir, int index);
+    std::unique_ptr<juce::Timer> themeKeyTimer;
+    juce::uint32 lastThemeKeyMs = 0;
+    bool themeKeyWasDown = false;
     void importThemeFile();
     void exportCurrentTheme();
     void loadCommunityIndexCache();
@@ -456,6 +477,10 @@ private:
     juce::Component::SafePointer<SynthSettingsDialog> synthSettingsDialog;
     // Open while the MIDI settings dialog is; told of every connection change.
     juce::Component::SafePointer<MidiSettingsDialog> midiSettingsDialog;
+    // The same for the other windows a button or a shortcut opens: asking again closes it, not a second one
+    juce::Component::SafePointer<PatchSettingsDialog> patchSettingsDialog;
+    juce::Component::SafePointer<EditorOptionsDialog> editorOptionsDialog;
+    juce::Component::SafePointer<ShortcutsDialog> shortcutsDialog;
 
     // Convenience accessors for current slot
     std::unique_ptr<Patch>& currentPatch() { return slotPatches[activeSlot]; }

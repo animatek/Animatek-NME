@@ -112,6 +112,11 @@ The View menu and header tools let you hide cable colors selectively, and `S`
 the canvas follows the opacity slider while you drag it, and Cancel puts the
 old value back.
 
+On a 4K screen the text can be too small to read. **UI size** in Editor Options
+(100% to 300%) scales the whole interface: windows, menus, dialogs and the module
+help (`F1`). It applies when you press OK, and the windows grow with it, so on a 4K
+screen 200% gives the room of a 1080p one with sharp text.
+
 ## Themes
 
 `Ctrl+T` cycles the 13 color themes, or pick one from **View → Theme** (the

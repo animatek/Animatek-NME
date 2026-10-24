@@ -1,6 +1,6 @@
 # Animatek NME Status
 
-Current version: **0.19.0** (released 2026-09-27)
+Current version: **0.23.0** (released 2026-10-24)
 
 The project was renamed from **Nomad2026** to **Animatek NME — Nord Modular Editor G1** in 0.6.0.
 
@@ -44,6 +44,27 @@ This file tracks the current project state at a practical level. Detailed versio
 - `MODULE_CHECKLIST.md` remains the detailed source of truth for per-module visual/behavior review.
 
 ## Recent Milestones
+
+- **0.23.0**: the new look. The whole interface is redrawn flat and dark with one amber accent:
+  the header bar (name field, macro dials, cable colours, snapshots, A/B crossfade, MUTATOR), the
+  module bar, the inspector (the module and its own knobs, macros and CCs), both browsers, every menu,
+  every dialog and floater, Keyboard Shortcuts as a searchable window, and a status bar with the
+  inspector, browser, MIDI and options buttons. Also: the plugin keeps the slots' patches in the DAW
+  project (#94), a UI size option for 4K screens (#105), banks that go straight to the synth's memory,
+  a Mutator that mutates like the G2's, and fixes from emails and issues (#98, #100-#107).
+  The editor can picture itself (`NME_SNAPSHOT_DIR`) for checking a restyle without a screen grab.
+
+- **0.22.0**: shared themes and old patches that sound. Community themes from
+  `animatek/nme-themes`, theme import and export, themes that bring their render style, old 2.10 patches
+  converted the way Clavia's editor does it, NME telling you when a new version is out, and a Windows
+  installer.
+
+- **0.21.0**: several synths at once, the way the original editor does it, a G1-Emu found and connected
+  on its own through a direct link, renaming a synth by double-click, and the hardware look following the
+  theme editor.
+
+- **0.20.0**: the slot panel as a synth row, the theme editor and theme files, an optional hardware look,
+  flat knobs and an "Animatek Rack" theme, and the connection shown in the status bar.
 
 - **0.19.0**: the one that stops pretending. Tested for the first time against G1-Emu, the
   emulated G1, which turned up every place the editor believed a slot matched the synth when

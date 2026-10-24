@@ -13,7 +13,12 @@ class NmeApplication : public juce::JUCEApplication
 public:
     const juce::String getApplicationName() override    { return "Animatek NME"; }
     const juce::String getApplicationVersion() override { return JUCE_APPLICATION_VERSION_STRING; }
-    bool moreThanOneInstanceAllowed() override           { return false; }
+    // One editor at a time, except for the picture-taking run (NME_SNAPSHOT_DIR), which must not hand
+    // over to the editor you are using
+    bool moreThanOneInstanceAllowed() override
+    {
+        return juce::SystemStats::getEnvironmentVariable("NME_SNAPSHOT_DIR", {}).isNotEmpty();
+    }
 
     void initialise(const juce::String&) override
     {

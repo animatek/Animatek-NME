@@ -1,5 +1,7 @@
 #pragma once
 
+#include "AppTheme.h"
+
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
 
@@ -14,6 +16,7 @@ public:
     explicit AboutDialog(UrlCallback openUrl);
 
     void paint(juce::Graphics& g) override;
+    void paintOverChildren (juce::Graphics& g) override { AppTheme::drawWindowFrame (g, getLocalBounds()); }
     void resized() override;
 
     // Launches it as a modal dialog window, styled like the other dialogs.
@@ -33,6 +36,7 @@ private:
 
     juce::TextButton websiteButton { "Website" };
     juce::TextButton patreonButton { "Patreon" };
+    juce::TextButton donateButton  { "Donate" };
     juce::TextButton githubButton  { "GitHub" };
     juce::TextButton copyButton    { "Copy version" };
 

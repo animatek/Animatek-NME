@@ -13,8 +13,8 @@
 #define kBtnOn  (AppTheme::palette().buttonActive)
 static void styleLabel(juce::Label& l)
 {
-    l.setFont(juce::Font(AppTheme::uiFont(10.0f).withStyle("Bold")));
-    l.setColour(juce::Label::textColourId,       kGold);
+    l.setFont(juce::Font(AppTheme::uiFont(12.5f).withStyle("Bold")));
+    l.setColour(juce::Label::textColourId,       AppTheme::palette().textMuted);
     l.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
 
@@ -64,7 +64,8 @@ BankTransferDialog::BankTransferDialog(Mode mode, BankTransferManager& mgr,
     styleLabel(folderLabel);
     folderLabel.setText(mode_ == Mode::SendToSynth ? "SOURCE (.PCHLIST OR FOLDER)" : "DESTINATION FOLDER",
                         juce::dontSendNotification);
-    folderField.setFont(juce::Font(AppTheme::uiFont(12.0f)));
+    folderField.setFont(juce::Font(AppTheme::uiFont(14.0f)));
+    folderField.setBorderSize(juce::BorderSize<int>(0, 10, 0, 10));
     folderField.setColour(juce::Label::textColourId, kText);
     folderField.setColour(juce::Label::backgroundColourId, kCtrlBg);
     folderField.setColour(juce::Label::outlineColourId, kCtrlBd);
@@ -82,13 +83,13 @@ BankTransferDialog::BankTransferDialog(Mode mode, BankTransferManager& mgr,
     addAndMakeVisible(folderField);
     addAndMakeVisible(browseButton);
 
-    infoLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
+    infoLabel.setFont(juce::Font(AppTheme::uiFont(13.0f)));
     infoLabel.setColour(juce::Label::textColourId,
                         mode_ == Mode::SaveToDisk ? kText : kAmber);
     infoLabel.setJustificationType(juce::Justification::topLeft);
     addAndMakeVisible(infoLabel);
 
-    statusLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
+    statusLabel.setFont(juce::Font(AppTheme::uiFont(13.0f)));
     statusLabel.setColour(juce::Label::textColourId, kText);
     addAndMakeVisible(statusLabel);
 
@@ -98,6 +99,8 @@ BankTransferDialog::BankTransferDialog(Mode mode, BankTransferManager& mgr,
 
     styleBtn(startButton);
     styleBtn(cancelButton);
+    startButton.setColour(juce::TextButton::buttonColourId,  kGold);   // Start does the thing
+    startButton.setColour(juce::TextButton::textColourOffId, AppTheme::palette().backgroundMain);
     startButton.onClick  = [this]() { startTransfer(); };
     cancelButton.onClick = [this]()
     {
@@ -113,7 +116,7 @@ BankTransferDialog::BankTransferDialog(Mode mode, BankTransferManager& mgr,
     addAndMakeVisible(cancelButton);
 
     updateInfo();
-    setSize(440, 332);
+    setSize(520, 440);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -315,60 +318,50 @@ bool BankTransferDialog::keyPressed(const juce::KeyPress& key)
 }
 
 void BankTransferDialog::mouseDown(const juce::MouseEvent& e)
-    { if (e.getPosition().getY() < 32) dragger.startDraggingComponent(this, e); }
+    { if (e.getPosition().getY() < 40) dragger.startDraggingComponent(this, e); }
 void BankTransferDialog::mouseDrag(const juce::MouseEvent& e)
-    { dragger.dragComponent(this, e, nullptr); }
+    { if (e.getMouseDownPosition().getY() < 40) dragger.dragComponent(this, e, nullptr); }  // only a drag that began on the title bar moves the window (the press position says where it began)
 
 void BankTransferDialog::paint(juce::Graphics& g)
 {
-    g.fillAll(kBg);
-
-    g.setColour(kGold);
-    g.setFont(juce::Font(AppTheme::uiFont(14.0f)).boldened());
     const auto title = mode_ == Mode::SaveToDisk    ? "Save Bank to Disk"
                      : mode_ == Mode::BackupAllBanks ? "Backup All Banks"
                                                      : "Send Bank to Synth";
-    g.drawText(title, 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
-
-    g.setColour(kSep);
-    g.fillRect(0, 31, getWidth(), 1);
-
-    const int sepY = getHeight() - 50;
-    g.drawHorizontalLine(sepY, 14.0f, static_cast<float>(getWidth() - 14));
+    AppTheme::drawDialogChrome(g, getLocalBounds(), title, 40, 68);
 }
 
 void BankTransferDialog::resized()
 {
-    constexpr int titleH = 32, pad = 14, secH = 14, rowH = 28, gap = 6;
+    constexpr int titleH = 40, footerH = 68, pad = 24, secH = 18, rowH = 36, gap = 10;
 
-    closeButton.setBounds(getWidth() - 32, 2, 28, 28);
+    closeButton.setBounds(getWidth() - 36, 6, 28, 28);
 
-    int y = titleH + gap;
+    int y = titleH + 16;
     const int w = getWidth() - pad * 2;
 
-    bankLabel.setBounds(pad, y, w / 2 - 4, secH);
-    y += secH + 2;
-    bankCombo.setBounds(pad, y, w / 2 - 4, rowH);
-    y += rowH + gap + 4;
+    bankLabel.setBounds(pad, y, w / 2 - 6, secH);
+    y += secH + 4;
+    bankCombo.setBounds(pad, y, w / 2 - 6, rowH);
+    y += rowH + 18;
 
     folderLabel.setBounds(pad, y, w, secH);
-    y += secH + 2;
-    folderField.setBounds(pad, y, w - 90, rowH);
-    browseButton.setBounds(pad + w - 84, y, 84, rowH);
-    y += rowH + gap + 4;
+    y += secH + 4;
+    folderField.setBounds(pad, y, w - 104, rowH);
+    browseButton.setBounds(pad + w - 96, y, 96, rowH);
+    y += rowH + 18;
 
-    infoLabel.setBounds(pad, y, w, 44);
-    y += 44 + gap;
+    infoLabel.setBounds(pad, y, w, 48);
+    y += 48 + gap;
 
-    progressBar.setBounds(pad, y, w, 18);
-    y += 18 + gap;
+    progressBar.setBounds(pad, y, w, 26);
+    y += 26 + gap;
 
     statusLabel.setBounds(pad, y, w, 40);
 
-    const int btnW = 80, btnH = 26;
-    const int btnY = getHeight() - pad - btnH;
-    cancelButton.setBounds(getWidth() - pad - btnW,         btnY, btnW, btnH);
-    startButton .setBounds(getWidth() - pad - btnW * 2 - 8, btnY, btnW, btnH);
+    const int btnW = 100, btnH = 36;
+    const int btnY = getHeight() - footerH + (footerH - btnH) / 2;
+    cancelButton.setBounds(getWidth() - pad - btnW,          btnY, btnW, btnH);
+    startButton .setBounds(getWidth() - pad - btnW * 2 - 12, btnY, btnW, btnH);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ColorScheme.h"
+
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../model/Patch.h"
 
@@ -20,6 +22,8 @@ public:
     void setPatch(Patch* p);   // nullptr-safe, refreshes all cells
     void refresh();            // re-resolve assignments/values from the patch
     void applyTheme();
+    // The canvas theme the knobs are drawn in, the same as the modules wear
+    void setKnobScheme(const ColorScheme& cs);
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -57,6 +61,7 @@ public:
     void refresh();
     void closeButtonPressed() override;
     void applyTheme();
+    void setKnobScheme(const ColorScheme& cs) { panel.setKnobScheme(cs); }
 
     std::function<void(int section, int moduleId, int paramId, int value)> onParameterChanged;
     std::function<void(int section, int moduleId, int paramId, int oldValue, int newValue)> onParameterDragComplete;
