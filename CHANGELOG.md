@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Developer aid: the editor can picture itself** (2026-10-24, branch `ui-redesign`). With
+  `NME_SNAPSHOT_DIR=<folder>` set, three and a half seconds after start NME saves PNGs of the window, the
+  header bar (3x) and the five floaters, and quits. JUCE draws them offscreen, so nothing on the desktop
+  is captured, Wayland included. Meant for checking a restyle without a screen grab; with a throwaway
+  `HOME`, so the real settings are not touched.
+
 - **The four macro knobs of the header bar, redrawn** (2026-10-24, branch `ui-redesign`). They were flat
   coloured discs with a thick outline that looked pixelated at 24px. They are now 32px dials: a track, the
   value as an arc in the macro's colour (red, green, blue, yellow) with round ends, a dark face and a

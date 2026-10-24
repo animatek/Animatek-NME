@@ -223,6 +223,9 @@ private:
     // Ctrl+T, whoever has the keyboard: the main window and the floaters take it as a key press; an open
     // menu or a dialog swallows it, so a light timer watches the keyboard for those
     void cycleUiThemeFromKey();
+    // Developer aid: with NME_SNAPSHOT_DIR set, the editor saves PNGs of its own windows (drawn by JUCE,
+    // so nothing on the desktop is captured, on Wayland too) and quits
+    void saveSnapshotsAndQuit(const juce::File& dir);
     std::unique_ptr<juce::Timer> themeKeyTimer;
     juce::uint32 lastThemeKeyMs = 0;
     bool themeKeyWasDown = false;

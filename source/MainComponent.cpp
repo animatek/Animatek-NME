@@ -1106,6 +1106,12 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     // Reopen floater windows that were open last session
     juce::Timer::callAfterDelay(600, [safeThis]() { if (safeThis) safeThis->restoreFloaterWindows(); });
 
+    // NME_SNAPSHOT_DIR=<folder>: save pictures of the editor and its floaters, then quit
+    if (const auto snapDir = juce::SystemStats::getEnvironmentVariable("NME_SNAPSHOT_DIR", {}); snapDir.isNotEmpty())
+      juce::Timer::callAfterDelay(3500, [safeThis, snapDir]() {
+        if (safeThis) safeThis->saveSnapshotsAndQuit(juce::File(snapDir));
+      });
+
     // Community themes (#91): the cached list now, the repository at most once a day.
     loadCommunityIndexCache();
     const auto dayMs = juce::int64(24) * 60 * 60 * 1000;
@@ -3270,6 +3276,43 @@ void MainComponent::applyUiTheme(int index, bool persist) {
   applyThemeLive(ThemeRegistry::get(index));
   if (persist)
     editorOptions.save(appProperties.getUserSettings());
+}
+
+void MainComponent::saveSnapshotsAndQuit(const juce::File& dir)
+{
+  dir.createDirectory();
+  auto save = [dir](juce::Component& c, juce::Rectangle<int> area, const juce::String& name, float scale) {
+    if (area.isEmpty()) return;
+    const auto img = c.createComponentSnapshot(area, true, scale);
+    juce::FileOutputStream out(dir.getChildFile(name + ".png"));
+    if (out.openedOk())
+    {
+      out.setPosition(0);
+      out.truncate();
+      juce::PNGImageFormat().writeImageToStream(img, out);
+    }
+  };
+
+  save(*this, getLocalBounds(), "main", 1.0f);
+  auto& header = mainLayout->getHeaderBar();
+  save(header, header.getLocalBounds(), "header", 3.0f);
+
+  // The floaters: open each, give it a moment to lay out, picture it, close it
+  toggleKnobFloater();
+  toggleKeyboardFloater();
+  togglePatchNotesFloater();
+  toggleMutatorWindow();
+  toggleSysexMonitor();
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  juce::Timer::callAfterDelay(800, [safeThis, dir, save]() mutable {
+    if (!safeThis) return;
+    if (safeThis->knobFloaterWindow)     save(*safeThis->knobFloaterWindow,     safeThis->knobFloaterWindow->getLocalBounds(),     "knob-floater", 1.0f);
+    if (safeThis->keyboardFloaterWindow) save(*safeThis->keyboardFloaterWindow, safeThis->keyboardFloaterWindow->getLocalBounds(), "keyboard-floater", 1.0f);
+    if (safeThis->patchNotesFloaterWindow) save(*safeThis->patchNotesFloaterWindow, safeThis->patchNotesFloaterWindow->getLocalBounds(), "notes-floater", 1.0f);
+    if (safeThis->mutatorWindow)         save(*safeThis->mutatorWindow,         safeThis->mutatorWindow->getLocalBounds(),         "mutator", 1.0f);
+    if (safeThis->sysexMonitorWindow)    save(*safeThis->sysexMonitorWindow,    safeThis->sysexMonitorWindow->getLocalBounds(),    "sysex-monitor", 1.0f);
+    juce::JUCEApplication::getInstance()->quit();
+  });
 }
 
 void MainComponent::cycleUiThemeFromKey()
