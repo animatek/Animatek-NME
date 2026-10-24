@@ -8,6 +8,8 @@
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
 #include "ui/AboutDialog.h"
+#include "ui/EditorOptionsDialog.h"
+#include "ui/SaveSlotSetDialog.h"
 #include "ui/SelfOwnedDialog.h"
 #include "ui/SlotSelectDialog.h"
 #include "ui/PatchSettingsDialog.h"
@@ -3311,6 +3313,50 @@ void MainComponent::saveSnapshotsAndQuit(const juce::File& dir)
     if (safeThis->patchNotesFloaterWindow) save(*safeThis->patchNotesFloaterWindow, safeThis->patchNotesFloaterWindow->getLocalBounds(), "notes-floater", 1.0f);
     if (safeThis->mutatorWindow)         save(*safeThis->mutatorWindow,         safeThis->mutatorWindow->getLocalBounds(),         "mutator", 1.0f);
     if (safeThis->sysexMonitorWindow)    save(*safeThis->sysexMonitorWindow,    safeThis->sysexMonitorWindow->getLocalBounds(),    "sysex-monitor", 1.0f);
+
+    // The dialogs: built off the desktop, pictured at their own size, dropped. (Bank Transfer needs a
+    // live synth link and is left out.)
+    auto shoot = [&save](juce::Component& c, const juce::String& name) { save(c, c.getLocalBounds(), name, 1.0f); };
+    {
+      AboutDialog d([](const juce::String&) {});
+      shoot(d, "dialog-about");
+    }
+    {
+      EditorOptionsDialog d(EditorOptions{}, McpBridgeStatusKind::Disabled, "MCP bridge is off", "");
+      shoot(d, "dialog-options");
+    }
+    {
+      MidiSettingsDialog d;
+      d.setPorts({});
+      shoot(d, "dialog-midi");
+    }
+    {
+      PatchSettingsDialog d(PatchHeader{}, [](const PatchSettingsDialog::Result&) {});
+      shoot(d, "dialog-patch-settings");
+    }
+    {
+      SynthSettingsDialog d(SynthSettings{}, [](const SynthSettings&) {});
+      shoot(d, "dialog-synth-settings");
+    }
+    {
+      std::vector<std::string> names(99 * 9);
+      names[0] = "Fractura";
+      PatchLocationDialog d("Store patch to...", names, true, 0, [](const PatchLocationDialog::Result&) {}, 0, 0);
+      shoot(d, "dialog-patch-location");
+    }
+    {
+      std::array<SaveSlotSetDialog::SlotInfo, 4> slots;
+      slots[0].patchName = "Fractura"; slots[0].hasPatch = true;
+      slots[3].patchName = "A Nucleo Duro"; slots[3].hasPatch = true;
+      SaveSlotSetDialog d("Directo", slots, [](const SaveSlotSetDialog::Result&) {});
+      shoot(d, "dialog-save-slot-set");
+    }
+    {
+      SlotSelectDialog d("Open \"Fractura\" into...", { "Fractura", "", "", "A Nucleo Duro" }, 0, 0,
+                         [](const SlotSelectDialog::Result&) {});
+      shoot(d, "dialog-slot-select");
+    }
+
     juce::JUCEApplication::getInstance()->quit();
   });
 }

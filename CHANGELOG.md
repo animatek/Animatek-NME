@@ -6,7 +6,8 @@
 
 - **Developer aid: the editor can picture itself** (2026-10-24, branch `ui-redesign`). With
   `NME_SNAPSHOT_DIR=<folder>` set, three and a half seconds after start NME saves PNGs of the window, the
-  header bar (3x) and the five floaters, and quits. JUCE draws them offscreen, so nothing on the desktop
+  header bar (3x), the five floaters and eight dialogs (About, Editor Options, MIDI Setup, Patch Settings,
+  Synth Settings, Patch Location, Save Slot Set, Slot Select), and quits. JUCE draws them offscreen, so nothing on the desktop
   is captured, Wayland included. Meant for checking a restyle without a screen grab; with a throwaway
   `HOME`, so the real settings are not touched.
 
