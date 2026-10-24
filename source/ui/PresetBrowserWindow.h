@@ -124,6 +124,7 @@ private:
     juce::Rectangle<int> filterRowArea;
     juce::File libraryRoot;
     TypeFilter typeFilter = TypeFilter::All;
+    int rule1Y = 0, rule2Y = 0;   // the two hairlines: under the filters, and over the list
     bool hidePch2 = false;   // when true, legacy 2.10 (.pch2) patches are hidden
     std::vector<Entry> allEntries;
     std::vector<int> visibleEntryIndices;

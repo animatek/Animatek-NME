@@ -4,6 +4,10 @@
 
 ### Changed
 
+- **Disk tab: hairlines between the search and filters, the count row and the list** (2026-10-24,
+  branch `ui-redesign`), edge to edge like the rules of the inspector and of the Synth banks; and
+  "Hide 2.10" gets enough room to read in full (it was cut to "Hide 2....").
+
 - **The browsers remember "Hide empty" and "Hide 2.10"** (2026-10-24, branch `ui-redesign`). Both
   switches went back to off every time the editor was opened. They are now saved in the editor's
   settings (`browserHideEmpty`, `browserHidePch2`) and set again at startup.

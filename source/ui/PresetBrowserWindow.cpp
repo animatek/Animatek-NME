@@ -205,6 +205,11 @@ void DiskPresetBrowserPanel::applyTheme()
 void DiskPresetBrowserPanel::paint(juce::Graphics& g)
 {
     g.fillAll(kPanel);
+
+    // The two hairlines, edge to edge, like the rules between the inspector's sections
+    g.setColour(AppTheme::palette().borderColor);
+    g.fillRect(0, rule1Y, getWidth(), 1);
+    g.fillRect(0, rule2Y, getWidth(), 1);
 }
 
 void DiskPresetBrowserPanel::setLibraryRoot(const juce::File& root)
@@ -315,14 +320,19 @@ void DiskPresetBrowserPanel::resized()
     layoutFilterRow();
     area.removeFromTop(10);
 
-    auto statusRow = area.removeFromTop(28);
+    // A hairline under the search and the filters, then the count row, then another over the list
+    rule1Y = area.getY();
+    area.removeFromTop(1 + 5);
+    auto statusRow = area.removeFromTop(30);
     nextButton.setBounds(statusRow.removeFromRight(28));
     statusRow.removeFromRight(4);
     prevButton.setBounds(statusRow.removeFromRight(28));
-    statusRow.removeFromRight(12);
-    hidePch2Button.setBounds(statusRow.removeFromRight(juce::jmin(92, statusRow.getWidth() / 2)));
+    statusRow.removeFromRight(8);
+    hidePch2Button.setBounds(statusRow.removeFromRight(juce::jmin(116, statusRow.getWidth() * 3 / 5)));
     statusLabel.setBounds(statusRow);
-    area.removeFromTop(8);
+    area.removeFromTop(5);
+    rule2Y = area.getY();
+    area.removeFromTop(1 + 2);
     listBox.setBounds(area.withX(0).withWidth(getWidth()));
 }
 
