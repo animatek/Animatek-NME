@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <vector>
 #include <juce_gui_basics/juce_gui_basics.h>
 
@@ -28,6 +29,8 @@ public:
         hidePch2 = hide;
         hidePch2Button.setToggleState(hide, juce::dontSendNotification);
         rebuildVisibleEntries();
+        if (hide)
+            sniffLegacyInBackground();
     }
     std::function<void(bool)> onHidePch2Changed;
 
@@ -96,8 +99,16 @@ private:
 
     void rebuildVisibleEntries();
     void layoutFilterRow();
-    void scanFolder(const juce::File& folder, Entry::Type type,
-                    const std::vector<juce::File>& skipFolders = {});
+    // The library is read on a background thread: it can hold tens of thousands of files, and
+    // reading it (and opening each one to tell a 2.10 patch from a modern one) on the message
+    // thread froze the editor at startup and on Refresh. A scan that was started and then
+    // overtaken by a newer one is dropped when it finishes.
+    static void scanFolder(const juce::File& root, const juce::File& folder, Entry::Type type,
+                           const std::vector<juce::File>& skipFolders, std::vector<Entry>& out);
+    static std::vector<Entry> scanLibrary(const juce::File& root, bool sniffLegacy);
+    void scanFinished(std::vector<Entry> entries);
+    void sniffLegacyInBackground();
+    std::atomic<int> scanGeneration { 0 };
     juce::String getTypeLabel(Entry::Type type) const;
     juce::String getTypeLabel(Entry& entry) const;
     // Sniffs the file on first use and caches the result on the entry, so

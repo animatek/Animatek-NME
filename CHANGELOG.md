@@ -4,6 +4,15 @@
 
 ### Changed
 
+- **The Disk list is read on a background thread** (2026-10-24, branch `ui-redesign`). With a library
+  of tens of thousands of patches (53,759 here) the editor froze at startup and on Refresh: the
+  recursive scan ran on the message thread and, with "Hide 2.10" on (which is now remembered, and made
+  this much worse), every patch file was opened to tell an old one from a modern one. Now the scan, and
+  that check, run on a background thread; the status line says "Reading the library..." and the list
+  appears when it is ready. A scan overtaken by a newer one (Refresh again, another folder) is dropped.
+  Switching "Hide 2.10" on later does the check in the background too, and the list is rebuilt when
+  it is known. Nothing is hidden until then.
+
 - **Browser tabs: more room under the words** (2026-10-24, branch `ui-redesign`). The "Synth" and "Disk"
   titles were touching the rule below them. The tab bar is 40px (was 28) and the word is lifted so
   there is air between it and the underline.

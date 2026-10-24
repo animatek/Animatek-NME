@@ -168,6 +168,8 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
         if (onHidePch2Changed)
             onHidePch2Changed(hidePch2);
         rebuildVisibleEntries();
+        if (hidePch2)
+            sniffLegacyInBackground();
     };
     addAndMakeVisible(hidePch2Button);
 
@@ -220,38 +222,109 @@ void DiskPresetBrowserPanel::setLibraryRoot(const juce::File& root)
 
 void DiskPresetBrowserPanel::refresh()
 {
-    allEntries.clear();
-
     if (libraryRoot == juce::File() || !libraryRoot.isDirectory())
     {
+        ++scanGeneration;   // whatever was being read is no longer wanted
+        allEntries.clear();
         statusLabel.setText("Choose a preset library folder first.", juce::dontSendNotification);
         rebuildVisibleEntries();
         return;
     }
+
+    // The list on screen stays as it is until the new one is ready
+    statusLabel.setText("Reading the library...", juce::dontSendNotification);
+
+    const int generation = ++scanGeneration;
+    const auto root = libraryRoot;
+    const bool sniffLegacy = hidePch2;   // only worth opening every file when it will be used
+    juce::Component::SafePointer<DiskPresetBrowserPanel> safeThis(this);
+    juce::Thread::launch([safeThis, root, sniffLegacy, generation]()
+    {
+        auto entries = scanLibrary(root, sniffLegacy);
+        juce::MessageManager::callAsync([safeThis, generation, entries = std::move(entries)]() mutable
+        {
+            if (safeThis != nullptr && safeThis->scanGeneration.load() == generation)
+                safeThis->scanFinished(std::move(entries));
+        });
+    });
+}
+
+std::vector<DiskPresetBrowserPanel::Entry> DiskPresetBrowserPanel::scanLibrary(const juce::File& root, bool sniffLegacy)
+{
+    std::vector<Entry> entries;
 
     // A patch is any .pch under the library folder, not only what is inside
     // Patches/: people point the library at the folder they already keep their
     // patches in (#106). The folders with a meaning of their own are left out,
     // so a snippet or a bank backup is not listed twice.
     const std::vector<juce::File> ownFolders {
-        libraryRoot.getChildFile("Snippets"), libraryRoot.getChildFile("Banks"),
-        libraryRoot.getChildFile("Sets"),     libraryRoot.getChildFile("Presets") };
-    scanFolder(libraryRoot, Entry::Type::Patch, ownFolders);
-    scanFolder(libraryRoot.getChildFile("Snippets"), Entry::Type::Snippet);
-    scanFolder(libraryRoot.getChildFile("Banks"), Entry::Type::Bank);
-    scanFolder(libraryRoot.getChildFile("Sets"), Entry::Type::Set);
+        root.getChildFile("Snippets"), root.getChildFile("Banks"),
+        root.getChildFile("Sets"),     root.getChildFile("Presets") };
+    scanFolder(root, root, Entry::Type::Patch, ownFolders, entries);
+    scanFolder(root, root.getChildFile("Snippets"), Entry::Type::Snippet, {}, entries);
+    scanFolder(root, root.getChildFile("Banks"), Entry::Type::Bank, {}, entries);
+    scanFolder(root, root.getChildFile("Sets"), Entry::Type::Set, {}, entries);
 
-    std::sort(allEntries.begin(), allEntries.end(), [](const Entry& a, const Entry& b) {
+    std::sort(entries.begin(), entries.end(), [](const Entry& a, const Entry& b) {
         if (a.type != b.type)
             return static_cast<int>(a.type) < static_cast<int>(b.type);
         return a.displayName.compareIgnoreCase(b.displayName) < 0;
     });
 
-    rebuildVisibleEntries();
+    if (sniffLegacy)
+        for (auto& e : entries)
+            if (e.type == Entry::Type::Patch)
+                e.legacyPatch210 = PchFileIO::isLegacyPatch210(e.file) ? 1 : 0;
+
+    return entries;
 }
 
-void DiskPresetBrowserPanel::scanFolder(const juce::File& folder, Entry::Type type,
-                                        const std::vector<juce::File>& skipFolders)
+void DiskPresetBrowserPanel::scanFinished(std::vector<Entry> entries)
+{
+    allEntries = std::move(entries);
+    rebuildVisibleEntries();
+    // "Hide 2.10" may have been switched on after this scan began: find out about what it missed
+    if (hidePch2)
+        sniffLegacyInBackground();
+}
+
+// Switching "Hide 2.10" on needs to know which patches are old, which means opening them: done
+// off the message thread too, and the list is rebuilt when it is known. Until then nothing is hidden.
+void DiskPresetBrowserPanel::sniffLegacyInBackground()
+{
+    std::vector<juce::File> files;
+    std::vector<size_t> indices;
+    for (size_t i = 0; i < allEntries.size(); ++i)
+        if (allEntries[i].type == Entry::Type::Patch && allEntries[i].legacyPatch210 < 0)
+        {
+            files.push_back(allEntries[i].file);
+            indices.push_back(i);
+        }
+    if (files.empty())
+        return;
+
+    const int generation = scanGeneration.load();
+    juce::Component::SafePointer<DiskPresetBrowserPanel> safeThis(this);
+    juce::Thread::launch([safeThis, generation, files = std::move(files), indices = std::move(indices)]()
+    {
+        std::vector<int> result;
+        result.reserve(files.size());
+        for (const auto& f : files)
+            result.push_back(PchFileIO::isLegacyPatch210(f) ? 1 : 0);
+
+        juce::MessageManager::callAsync([safeThis, generation, indices, result]()
+        {
+            if (safeThis == nullptr || safeThis->scanGeneration.load() != generation)
+                return;   // the list was read again meanwhile: the indices mean something else now
+            for (size_t k = 0; k < indices.size() && indices[k] < safeThis->allEntries.size(); ++k)
+                safeThis->allEntries[indices[k]].legacyPatch210 = result[k];
+            safeThis->rebuildVisibleEntries();
+        });
+    });
+}
+
+void DiskPresetBrowserPanel::scanFolder(const juce::File& root, const juce::File& folder, Entry::Type type,
+                                        const std::vector<juce::File>& skipFolders, std::vector<Entry>& out)
 {
     if (!folder.isDirectory())
         return;
@@ -270,8 +343,8 @@ void DiskPresetBrowserPanel::scanFolder(const juce::File& folder, Entry::Type ty
         entry.displayName = type == Entry::Type::Bank
             ? file.getRelativePathFrom(folder).dropLastCharacters(4)
             : file.getFileNameWithoutExtension();
-        entry.relativePath = file.getRelativePathFrom(libraryRoot);
-        allEntries.push_back(std::move(entry));
+        entry.relativePath = file.getRelativePathFrom(root);
+        out.push_back(std::move(entry));
     }
 }
 
@@ -283,7 +356,7 @@ void DiskPresetBrowserPanel::rebuildVisibleEntries()
     for (int i = 0; i < static_cast<int>(allEntries.size()); ++i)
     {
         auto& e = allEntries[static_cast<size_t>(i)];
-        if (hidePch2 && isLegacyPatch210(e))
+        if (hidePch2 && e.legacyPatch210 == 1)
             continue;
 
         auto haystack = (e.displayName + " " + e.relativePath).toLowerCase();
