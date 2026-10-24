@@ -137,6 +137,7 @@ void StatusBar::setSynthLink(const juce::String& text)
 {
     linkLabel.setText(text, juce::dontSendNotification);
     linkLabel.setTooltip(text);
+    resized();   // the label is as wide as its text, right against the buttons
 }
 
 void StatusBar::setVoiceCount(int count)
@@ -195,6 +196,13 @@ void StatusBar::paint(juce::Graphics& g)
     g.setColour(AppTheme::palette().buttonActive);
     g.drawLine(0.0f, 0.0f, static_cast<float>(getWidth()), 0.0f, 1.0f);
 
+    // The hairlines between the buttons and the text
+    g.setColour(AppTheme::palette().borderColor.brighter(0.4f));
+    const float sy = (static_cast<float>(getHeight()) - 14.0f) * 0.5f;
+    for (int x : { sepLeftX, sepRightX })
+        if (x >= 0)
+            g.fillRect(static_cast<float>(x), sy, 1.0f, 14.0f);
+
     // Draw LED indicator
     if (!ledBounds.isEmpty())
     {
@@ -247,11 +255,15 @@ void StatusBar::resized()
     auto area = getLocalBounds().reduced(8, 0);
     inspectorButton.setBounds(area.removeFromLeft(32));
     area.removeFromLeft(8);
+    sepLeftX = area.getX();             // the hairline after the "i", as in Bitwig
+    area.removeFromLeft(12);
     // From the right: Settings, MIDI, Browser (so, left to right, the lens, the keyboard, the cogwheel)
     settingsButton.setBounds(area.removeFromRight(32));
     midiButton.setBounds(area.removeFromRight(32));
     browserButton.setBounds(area.removeFromRight(32));
     area.removeFromRight(8);
+    sepRightX = area.getRight();        // and one between them and the text
+    area.removeFromRight(12);
 
     // LED indicator (small circle on the left)
     auto ledSize = 10.0f;
@@ -263,10 +275,11 @@ void StatusBar::resized()
     connectionArea.removeFromLeft(20);  // Space for LED
     connectionLabel.setBounds(connectionArea);
 
-    // Right-aligned labels
-    dspLabel.setBounds(area.removeFromRight(100));
-    voiceLabel.setBounds(area.removeFromRight(100));
-    linkLabel.setBounds(area.removeFromRight(juce::jmin(260, area.getWidth() / 3)));
+    // Right-aligned labels, each only as wide as it needs: the hidden ones take no room
+    if (dspLabel.isVisible())   dspLabel.setBounds(area.removeFromRight(100));
+    if (voiceLabel.isVisible()) voiceLabel.setBounds(area.removeFromRight(100));
+    const int linkW = static_cast<int>(std::ceil(linkLabel.getFont().getStringWidthFloat(linkLabel.getText()))) + 12;
+    linkLabel.setBounds(area.removeFromRight(juce::jmin(juce::jmin(320, area.getWidth() / 2), linkW)));
 
     // Message label in the center (takes remaining space), shared with the
     // progress bar

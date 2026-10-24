@@ -60,6 +60,7 @@ private:
 
     bool isConnected = false;
     juce::Rectangle<float> ledBounds;
+    int sepLeftX = -1, sepRightX = -1;   // x of the two hairlines between the buttons and the text
 
     bool progressVisible = false;
     double progressFraction = 0.0;

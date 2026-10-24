@@ -8,6 +8,12 @@
   instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
   to yours and quit without a picture. That run now counts as its own instance.
 
+- **Status bar: hairlines and the link text against the buttons** (2026-10-24, branch `ui-redesign`).
+  A thin vertical rule after the "i" of the inspector, as in Bitwig, and another between the text on the
+  right ("Real G1 (UM-ONE MIDI 1)") and the lens. The text is now as wide as it needs and sits against
+  the buttons: the hidden Voices and DSP labels used to keep 200px free in between, which left it
+  floating in the middle.
+
 - **One window each: asking again closes it** (2026-10-24, branch `ui-redesign`). Pressing the MIDI
   button (or Ctrl+M) several times opened one MIDI Setup after another, and so did the other dialogs.
   MIDI Setup, Editor Options, Patch Settings and Synth Settings now toggle: the second press closes the
