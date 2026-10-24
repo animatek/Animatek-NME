@@ -4,6 +4,16 @@
 
 ### Changed
 
+- **Editor Options redesigned** (2026-10-24, branch `ui-redesign`). The one long list becomes a dialog
+  (860x640) with a **sidebar of eight pages**: Appearance (theme, UI size, hardware look, knob style,
+  flat knobs, wireframe), Cables (style, opacity), Knobs (drag mode), Behaviour (ask slot, animate
+  tiling, reopen windows, note names), Synth link (auto upload, synth display, send speed), Library,
+  Updates (community themes, new version) and Advanced (MCP bridge). Each setting is a row with its name and
+  a line saying what it does, instead of a tooltip; the check boxes become **switches** and the
+  one-among-several choices **round radios**. The page's name is a heading, and the dialog does not
+  change size when a page is picked. The settings, their saving and Cancel (which puts the cable
+  opacity back) work as before; only the layout is new. Not looked at on screen yet.
+
 - **Menus: the section heading is no longer stretched, and the check column is narrower**
   (2026-10-24, branch `ui-redesign`). The 32px minimum row height applied to a menu's section heading
   as well (the "value" over a parameter's right-click menu), which JUCE then enlarges by half again, so

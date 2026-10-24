@@ -96,6 +96,24 @@ struct EditorOptions
 // ConnectionManager::Status snapshot at open time, not a live subscription).
 enum class McpBridgeStatusKind { Disabled, Listening, Failed };
 
+// A row of the options pages: the setting's name and what it does on the left, the switch (or the
+// round radio, for a choice of one among several) on the right. The whole row is the button.
+class OptionRow : public juce::ToggleButton
+{
+public:
+    OptionRow (const juce::String& title, const juce::String& description = {}, bool radioStyle = false)
+        : juce::ToggleButton (title), description_ (description), radio_ (radioStyle)
+    {
+        setMouseCursor (juce::MouseCursor::PointingHandCursor);
+    }
+
+    void paintButton (juce::Graphics& g, bool highlighted, bool down) override;
+
+private:
+    juce::String description_;
+    bool radio_;
+};
+
 class EditorOptionsDialog : public juce::Component
 {
 public:
@@ -140,7 +158,23 @@ private:
     // time to size the dialog before the first real resized() call.
     int layoutComponents(bool apply);
     std::vector<int> sectionSeparatorsY;
-    static constexpr int dialogWidth = 560;
+    static constexpr int dialogWidth = 860;
+    static constexpr int dialogHeight = 640;
+    static constexpr int titleBarH = 40;
+    static constexpr int sidebarW = 200;
+    static constexpr int footerH = 68;
+
+    // The pages in the sidebar, and which one is showing
+    static const char* pageName (int page);
+    static constexpr int numPages = 8;
+    int page = 0;
+    void showPage (int newPage);
+    juce::Rectangle<int> pageButtonBounds (int index) const;
+
+    // The rows that are not an OptionRow (a name and what it does, then a control on the right):
+    // worked out by layoutComponents() and drawn by paint()
+    struct InfoRow { int page; juce::Rectangle<int> rect; juce::String title, description; int controlW; };
+    std::vector<InfoRow> infoRows;
 
     EditorOptions options;
     juce::ComponentDragger dragger;
@@ -152,17 +186,18 @@ private:
     juce::ComboBox themeSelector;
     juce::Label    uiScaleLabel    { {}, "UI size" };
     juce::ComboBox uiScaleSelector;
-    juce::ToggleButton hardwareLookToggle { "Hardware look  (skeuomorphic knobs, jacks, panels and cables)" };
+    OptionRow hardwareLookToggle { "Hardware look", "Draws knobs, jacks, panels, displays and cables like physical hardware. Works with any theme." };
     juce::Label    knobStyleLabel { {}, "Knob style" };
     juce::ComboBox knobStyleSelector;
-    juce::ToggleButton flatKnobsToggle { "Flat knobs  (dark disc, value arc on the rim; not with Hardware look)" };
+    OptionRow flatKnobsToggle { "Flat knobs", "A dark disc with the value arc on the rim, like the Animatek modules for VCV Rack. Not with Hardware look." };
+    OptionRow wireframeToggle { "Wireframe modules", "Outlines only, whatever the theme. Handy for very big patches." };
 
     // Cable Style
     juce::Label    cableStyleLabel   { {}, "CABLE STYLE" };
-    juce::ToggleButton cableCurvedThick   { "Curved (thick, default)" };
-    juce::ToggleButton cableStraightThick { "Straight (thick)" };
-    juce::ToggleButton cableCurvedThin    { "Curved (thin)" };
-    juce::ToggleButton cableStraightThin  { "Straight (thin)" };
+    OptionRow cableCurvedThick   { "Curved, thick (default)", {}, true };
+    OptionRow cableStraightThick { "Straight, thick", {}, true };
+    OptionRow cableCurvedThin    { "Curved, thin", {}, true };
+    OptionRow cableStraightThin  { "Straight, thin", {}, true };
     juce::Label    cableOpacityLabel  { {}, "Opacity" };
     juce::Slider   cableOpacitySlider;
     const float    openingOpacity = 0.80f;  // what to restore on Cancel
@@ -170,27 +205,26 @@ private:
 
     // Knob Control
     juce::Label    knobControlLabel  { {}, "KNOB CONTROL" };
-    juce::ToggleButton knobHorizontal { "Horizontal drag (default)" };
-    juce::ToggleButton knobCircular   { "Circular drag" };
-    juce::ToggleButton knobVertical   { "Vertical drag" };
+    OptionRow knobHorizontal { "Horizontal drag (default)", "Drag left and right to turn a knob.", true };
+    OptionRow knobCircular   { "Circular drag", "Drag around the knob, as on a real one.", true };
+    OptionRow knobVertical   { "Vertical drag", "Drag up and down to turn a knob.", true };
 
     // Behaviour
     juce::Label    behaviourLabel    { {}, "BEHAVIOUR" };
-    juce::ToggleButton autoUploadToggle   { "Auto Upload  (send parameter changes to synth immediately)" };
-    juce::ToggleButton askSlotToggle      { "Ask which slot when opening a patch  (off: open into the current slot)" };
-    juce::ToggleButton wireframeToggle    { "Wireframe modules  (outline only, works with any theme)" };
-    juce::ToggleButton animateTilingToggle { "Animate Slot Tiling  (slide sub-windows into place)" };
-    juce::ToggleButton restoreWindowsToggle { "Reopen Every Slot Window of the Last Session  (not only the synths connected)" };
-    juce::ToggleButton synthCaptionToggle { "Show the editor on the synth display  (borrows the patch name while a dialog is open)" };
-    juce::ToggleButton communityThemesToggle { "Look for new community themes once a day  (animatek/nme-themes on GitHub)" };
-    juce::ToggleButton newVersionToggle { "Tell me when a new version of NME is out  (checks GitHub once a day)" };
-    juce::ToggleButton seqNoteNamesToggle { "Read sequencer steps as note names  (NoteSeqB in pitches, NoteSeqA in intervals)" };
+    OptionRow autoUploadToggle   { "Auto upload", "Send each parameter change to the synth as it is made." };
+    OptionRow askSlotToggle      { "Ask which slot when opening a patch", "Off: every open goes to the slot on screen." };
+    OptionRow animateTilingToggle { "Animate slot tiling", "Slide the slot windows into place when they are put back in order." };
+    OptionRow restoreWindowsToggle { "Reopen every slot window of the last session", "Off: only Port 1's come back, and another synth's open when it connects. On: all of them, and they stay open." };
+    OptionRow synthCaptionToggle { "Show the editor on the synth display", "Borrows the patch name while a dialog is open." };
+    OptionRow communityThemesToggle { "Look for new community themes", "Once a day, reads the list in animatek/nme-themes on GitHub. Nothing is sent but the request." };
+    OptionRow newVersionToggle { "Tell me when a new version of NME is out", "Checks GitHub once a day. It never downloads anything." };
+    OptionRow seqNoteNamesToggle { "Read sequencer steps as note names", "NoteSeqB in pitches, NoteSeqA in intervals." };
     juce::Label    sendRateLabel     { {}, "Send speed" };
     juce::ComboBox sendRateSelector;
 
     // MCP Bridge
     juce::Label    mcpBridgeLabel    { {}, "MCP BRIDGE" };
-    juce::ToggleButton mcpBridgeToggle { "Enable MCP bridge" };
+    OptionRow mcpBridgeToggle { "Enable the MCP bridge", "Lets an MCP client (an AI agent, say) add modules and connect cables in the live patch, over a localhost-only socket." };
     juce::Label    mcpBridgeStatusLabel;
     juce::TextEditor mcpBridgeCommand;  // read-only, selectable - the stdio command to register a client
     juce::TextButton mcpBridgeCopyButton { "Copy" };

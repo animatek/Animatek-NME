@@ -426,6 +426,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     addAndMakeVisible (cancelButton);
 
     setSize (dialogWidth, layoutComponents (false));
+    showPage (0);
 }
 
 void EditorOptionsDialog::populateThemeSelector()
@@ -444,22 +445,115 @@ void EditorOptionsDialog::populateThemeSelector()
 
 void EditorOptionsDialog::paint (juce::Graphics& g)
 {
-    g.fillAll (p().backgroundMain);
+    const auto& pal = p();
+    g.fillAll (pal.backgroundMain);
 
-    g.setColour (p().textPrimary);
+    // Title bar
+    g.setColour (pal.textPrimary);
+    g.setFont (juce::Font (AppTheme::uiFont (15.0f)).boldened());
+    g.drawText ("Editor Options", 18, 0, getWidth() - 60, titleBarH, juce::Justification::centredLeft);
+    g.setColour (pal.borderColor);
+    g.fillRect (0, titleBarH - 1, getWidth(), 1);
+
+    // Sidebar
+    g.setColour (pal.backgroundPanel);
+    g.fillRect (0, titleBarH, sidebarW, getHeight() - titleBarH);
+    g.setColour (pal.borderColor);
+    g.fillRect (sidebarW - 1, titleBarH, 1, getHeight() - titleBarH);
+    for (int i = 0; i < numPages; ++i)
+    {
+        const auto r = pageButtonBounds (i).toFloat();
+        const bool on = (i == page);
+        if (on)
+        {
+            g.setColour (pal.buttonBackground);
+            g.fillRoundedRectangle (r, 7.0f);
+            g.setColour (pal.accentActive);
+            g.fillRoundedRectangle (r.getX(), r.getY() + 8.0f, 3.0f, r.getHeight() - 16.0f, 1.5f);
+        }
+        g.setColour (on ? pal.textPrimary : pal.textSecondary);
+        g.setFont (juce::Font (AppTheme::uiFont (14.0f).withStyle (on ? "Bold" : "Regular")));
+        g.drawText (pageName (i), r.toNearestInt().withTrimmedLeft (18), juce::Justification::centredLeft, false);
+    }
+
+    // The page: its name, and the rows that are a name and a control
+    const int x0 = sidebarW + 32;
+    g.setColour (pal.textPrimary);
+    g.setFont (juce::Font (AppTheme::uiFont (20.0f)).boldened());
+    g.drawText (pageName (page), x0, titleBarH + 16, 400, 36, juce::Justification::centredLeft);
+
+    for (const auto& row : infoRows)
+    {
+        if (row.page != page)
+            continue;
+        const int textW = row.rect.getWidth() - row.controlW - 28;
+        g.setColour (pal.borderColor.withAlpha (0.5f));
+        g.fillRect (row.rect.getX(), row.rect.getBottom() - 1, row.rect.getWidth(), 1);
+        g.setColour (pal.textPrimary);
+        g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
+        g.drawText (row.title, row.rect.getX(), row.rect.getY() + 10, textW, 22, juce::Justification::centredLeft, true);
+        g.setColour (pal.textMuted);
+        g.setFont (juce::Font (AppTheme::uiFont (12.5f)));
+        g.drawFittedText (row.description, row.rect.getX(), row.rect.getY() + 32, textW, row.rect.getHeight() - 34,
+                          juce::Justification::topLeft, 2, 1.0f);
+    }
+
+    // Footer
+    g.setColour (pal.borderColor);
+    g.fillRect (sidebarW, getHeight() - footerH, getWidth() - sidebarW, 1);
+}
+
+void OptionRow::paintButton (juce::Graphics& g, bool highlighted, bool)
+{
+    const auto& pal = AppTheme::palette();
+    const auto r = getLocalBounds();
+    const bool on = getToggleState();
+    const float fade = isEnabled() ? 1.0f : 0.45f;
+
+    g.setColour (pal.borderColor.withAlpha (0.5f * fade));
+    g.fillRect (0, r.getBottom() - 1, r.getWidth(), 1);
+
+    // The control at the right: a switch, or a round radio
+    const float cy = static_cast<float> (r.getCentreY());
+    if (radio_)
+    {
+        const auto ring = juce::Rectangle<float> (static_cast<float> (r.getRight()) - 28.0f, cy - 10.0f, 20.0f, 20.0f);
+        g.setColour ((on ? pal.accentActive : highlighted ? pal.textSecondary : pal.borderColor).withAlpha (fade));
+        g.drawEllipse (ring.reduced (1.0f), 2.0f);
+        if (on)
+        {
+            g.setColour (pal.accentActive.withAlpha (fade));
+            g.fillEllipse (ring.reduced (6.0f));
+        }
+    }
+    else
+    {
+        const auto track = juce::Rectangle<float> (static_cast<float> (r.getRight()) - 52.0f, cy - 11.0f, 44.0f, 22.0f);
+        g.setColour ((on ? pal.accentActive : pal.inputBackground).withAlpha (fade));
+        g.fillRoundedRectangle (track, 11.0f);
+        if (! on)
+        {
+            g.setColour (pal.borderColor.withAlpha (fade));
+            g.drawRoundedRectangle (track.reduced (0.5f), 11.0f, 1.0f);
+        }
+        const float thumbX = on ? track.getRight() - 20.0f : track.getX() + 2.0f;
+        g.setColour ((on ? pal.backgroundMain : pal.textSecondary).withAlpha (fade));
+        g.fillEllipse (thumbX, cy - 9.0f, 18.0f, 18.0f);
+    }
+
+    // The words
+    const int textW = r.getWidth() - 80;
+    g.setColour (pal.textPrimary.withAlpha (fade));
     g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
-    g.drawText ("Editor Options", 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
-
-    g.setColour (p().buttonActive);
-    g.fillRect (0, 31, getWidth(), 1);
-
-    // Separators are computed by layoutComponents() (the same pass that
-    // places every component), never hand-copied here - so a line can never
-    // drift out of sync with what resized() actually did.
-    const float x0 = 14.0f, x1 = static_cast<float> (getWidth() - 14);
-    g.setColour (p().buttonActive);
-    for (int sy : sectionSeparatorsY)
-        g.drawHorizontalLine (sy, x0, x1);
+    if (description_.isEmpty())
+    {
+        g.drawText (getButtonText(), 0, 0, textW, r.getHeight() - 1, juce::Justification::centredLeft, true);
+        return;
+    }
+    g.drawText (getButtonText(), 0, 10, textW, 22, juce::Justification::centredLeft, true);
+    g.setColour (pal.textMuted.withAlpha (fade));
+    g.setFont (juce::Font (AppTheme::uiFont (12.5f)));
+    g.drawFittedText (description_, 0, 32, textW, r.getHeight() - 34, juce::Justification::topLeft, 2, 1.0f);
 }
 
 // ─── resized ─────────────────────────────────────────────────────────────────
@@ -469,128 +563,125 @@ void EditorOptionsDialog::resized()
     layoutComponents (true);
 }
 
+const char* EditorOptionsDialog::pageName (int page)
+{
+    static const char* const names[numPages] = { "Appearance", "Cables", "Knobs", "Behaviour",
+                                                 "Synth link", "Library", "Updates", "Advanced" };
+    return names[juce::jlimit (0, numPages - 1, page)];
+}
+
+juce::Rectangle<int> EditorOptionsDialog::pageButtonBounds (int index) const
+{
+    return { 8, titleBarH + 14 + index * 42, sidebarW - 16, 38 };
+}
+
+// Only the controls of the page that is showing are on screen; every page is laid out all the
+// same, so the dialog does not change size and nothing jumps when one is picked.
+void EditorOptionsDialog::showPage (int newPage)
+{
+    page = juce::jlimit (0, numPages - 1, newPage);
+    auto only = [this] (std::initializer_list<juce::Component*> controls, int forPage)
+    {
+        for (auto* c : controls)
+            c->setVisible (page == forPage);
+    };
+    only ({ &themeSelector, &uiScaleSelector, &hardwareLookToggle, &knobStyleSelector, &flatKnobsToggle, &wireframeToggle }, 0);
+    only ({ &cableCurvedThick, &cableStraightThick, &cableCurvedThin, &cableStraightThin, &cableOpacitySlider }, 1);
+    only ({ &knobHorizontal, &knobCircular, &knobVertical }, 2);
+    only ({ &askSlotToggle, &animateTilingToggle, &restoreWindowsToggle, &seqNoteNamesToggle }, 3);
+    only ({ &autoUploadToggle, &synthCaptionToggle, &sendRateSelector }, 4);
+    only ({ &libraryPath, &browseLibraryButton }, 5);
+    only ({ &communityThemesToggle, &newVersionToggle }, 6);
+    only ({ &mcpBridgeToggle, &mcpBridgeStatusLabel, &mcpBridgeCommand, &mcpBridgeCopyButton }, 7);
+
+    // The old section and row labels are drawn by paint() now
+    for (auto* l : { &appearanceLabel, &themeLabel, &uiScaleLabel, &knobStyleLabel, &cableStyleLabel,
+                     &cableOpacityLabel, &knobControlLabel, &behaviourLabel, &sendRateLabel,
+                     &mcpBridgeLabel, &libraryLabel })
+        l->setVisible (false);
+
+    repaint();
+}
+
 int EditorOptionsDialog::layoutComponents (bool apply)
 {
-    constexpr int pad   = 14;
-    constexpr int rowH  = 22;
-    constexpr int secH  = 16;
-    constexpr int secGap = 8;   // padding before/after a section label
-    constexpr int sepGap = 8;   // padding before a separator line
-    const int w = dialogWidth;
+    const int w = dialogWidth, h = dialogHeight;
+    const int x0 = sidebarW + 32;
+    const int cw = w - x0 - 32;                  // width of a page's rows
+    const int top = titleBarH + 70;              // under the page's name
+    constexpr int rowD = 66;                     // a row with a name and a line saying what it does
+    constexpr int rowS = 48;                     // a row with just a name
 
-    sectionSeparatorsY.clear();
-    auto place = [apply] (juce::Component& c, int x, int y, int cw, int ch) {
-        if (apply) c.setBounds (x, y, cw, ch);
+    infoRows.clear();
+    auto place = [apply] (juce::Component& c, juce::Rectangle<int> r) { if (apply) c.setBounds (r); };
+
+    if (apply) closeButton.setBounds (w - 36, 6, 28, 28);
+
+    // A switch or radio row is the whole row
+    auto option = [&] (OptionRow& o, int y, int rowH) { place (o, { x0, y, cw, rowH }); return y + rowH; };
+    // A row of text on the left and a control on the right
+    auto info = [&] (int pg, const juce::String& title, const juce::String& description, int y, int rowH,
+                     juce::Component& control, int controlW, int controlH)
+    {
+        const juce::Rectangle<int> r (x0, y, cw, rowH);
+        infoRows.push_back ({ pg, r, title, description, controlW });
+        place (control, { r.getRight() - controlW, r.getCentreY() - controlH / 2, controlW, controlH });
+        return y + rowH;
     };
-    // Marks a section boundary: adds the gap, records where the divider
-    // line goes, and returns the (possibly updated) y - call right before
-    // laying out each section's header label (except the very first one).
-    auto sectionSep = [this, &sepGap] (int yIn) {
-        int y = yIn + sepGap;
-        sectionSeparatorsY.push_back (y);
-        return y + 4;
-    };
 
-    if (apply) closeButton.setBounds (w - 32, 2, 28, 28);
+    int y = top;   // Appearance
+    y = info (0, "Theme", "Colours of the editor and the modules.", y, rowD, themeSelector, 230, 34);
+    y = info (0, "UI size", "Makes every window, menu and text bigger, for 4K screens. Applies when you press OK.", y, rowD, uiScaleSelector, 140, 34);
+    y = option (hardwareLookToggle, y, rowD);
+    y = info (0, "Knob style", "Used by the hardware look.", y, rowD, knobStyleSelector, 210, 34);
+    y = option (flatKnobsToggle, y, rowD);
+    y = option (wireframeToggle, y, rowD);
 
-    int y = 32 + secGap;  // below title bar
-
-    // ── Appearance ───────────────────────────────────────────
-    place (appearanceLabel, pad, y, w - pad * 2, secH);
-    y += secH + 6;
-    place (themeLabel,    pad + 8,  y, 80, rowH);
-    place (themeSelector, pad + 92, y, w - pad * 2 - 100, rowH);
-    y += rowH + 2;
-    place (uiScaleLabel,    pad + 8,  y, 80, rowH);
-    place (uiScaleSelector, pad + 92, y, w - pad * 2 - 100, rowH);
-    y += rowH + 2;
-    place (hardwareLookToggle, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH;
-    place (knobStyleLabel,    pad + 8,  y, 80, rowH);
-    place (knobStyleSelector, pad + 92, y, w - pad * 2 - 100, rowH);
-    y += rowH;
-    place (flatKnobsToggle, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH + secGap;
-
-    // ── Cable Style ──────────────────────────────────────────
-    y = sectionSep (y);
-    place (cableStyleLabel, pad, y, w - pad * 2, secH);
-    y += secH + 2;
+    y = top;       // Cables
     for (auto* b : { &cableCurvedThick, &cableStraightThick, &cableCurvedThin, &cableStraightThin })
-    {
-        place (*b, pad + 8, y, w - pad * 2 - 8, rowH);
-        y += rowH;
-    }
-    y += 4;
-    place (cableOpacityLabel,  pad + 8,  y, 80, rowH);
-    place (cableOpacitySlider, pad + 92, y, w - pad * 2 - 100, rowH);
-    y += rowH + secGap;
+        y = option (*b, y, rowS);
+    y = info (1, "Opacity", "How solid the cables are. The canvas follows the slider; Cancel puts it back.", y + 10, rowD,
+              cableOpacitySlider, 280, 28);
 
-    // ── Knob Control ─────────────────────────────────────────
-    y = sectionSep (y);
-    place (knobControlLabel, pad, y, w - pad * 2, secH);
-    y += secH + 2;
+    y = top;       // Knobs
     for (auto* b : { &knobHorizontal, &knobCircular, &knobVertical })
-    {
-        place (*b, pad + 8, y, w - pad * 2 - 8, rowH);
-        y += rowH;
-    }
-    y += secGap;
+        y = option (*b, y, rowD);
 
-    // ── Behaviour ────────────────────────────────────────────
-    y = sectionSep (y);
-    place (behaviourLabel, pad, y, w - pad * 2, secH);
-    y += secH + 2;
-    place (autoUploadToggle, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH;
-    place (wireframeToggle, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH;
-    place (animateTilingToggle, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH;
-    place (restoreWindowsToggle, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH;
-    place (askSlotToggle, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH;
-    place (synthCaptionToggle, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH;
-    place (seqNoteNamesToggle, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH;
-    place (communityThemesToggle, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH;
-    place (newVersionToggle, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH + 4;
-    place (sendRateLabel,    pad + 8,  y, 80, rowH);
-    place (sendRateSelector, pad + 92, y, w - pad * 2 - 100, rowH);
-    y += rowH + 12;
+    y = top;       // Behaviour
+    y = option (askSlotToggle, y, rowD);
+    y = option (animateTilingToggle, y, rowD);
+    y = option (restoreWindowsToggle, y, rowD);
+    y = option (seqNoteNamesToggle, y, rowD);
 
-    // ── MCP Bridge ────────────────────────────────────────────
-    y = sectionSep (y);
-    place (mcpBridgeLabel, pad, y, w - pad * 2, secH);
-    y += secH + 2;
-    place (mcpBridgeToggle, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH;
-    place (mcpBridgeStatusLabel, pad + 8, y, w - pad * 2 - 8, rowH);
-    y += rowH + 6;
-    place (mcpBridgeCopyButton, w - pad - 72, y, 72, 26);
-    place (mcpBridgeCommand,    pad + 8, y, w - pad * 2 - 8 - 72 - 8, 26);
-    y += 26 + secGap;
+    y = top;       // Synth link
+    y = option (autoUploadToggle, y, rowD);
+    y = option (synthCaptionToggle, y, rowD);
+    y = info (4, "Send speed", "How fast parameter changes are streamed to the synth. Lower it if the connection drops.", y, rowD,
+              sendRateSelector, 230, 34);
 
-    // ── Preset Library ───────────────────────────────────────
-    y = sectionSep (y);
-    place (libraryLabel, pad, y, w - pad * 2, secH);
-    y += secH + 2;
-    place (browseLibraryButton, w - pad - 92, y, 92, 26);
-    place (libraryPath,         pad + 8, y, w - pad * 2 - 8 - 92 - 8, 26);
-    y += 26 + 12;
+    y = top;       // Library
+    y = info (5, "Preset library", "Every .pch under this folder shows in the Disk tab. Snippets, banks and sets get their own folders in it.",
+              y, rowD, browseLibraryButton, 120, 34);
+    place (libraryPath, { x0, y + 4, cw, 38 });
 
-    // ── OK / Cancel ──────────────────────────────────────────
-    y += 10;
-    const int btnW = 80, btnH = 26;
-    place (cancelButton, w - pad - btnW,         y, btnW, btnH);
-    place (okButton,     w - pad - btnW * 2 - 8, y, btnW, btnH);
-    y += btnH;
+    y = top;       // Updates
+    y = option (communityThemesToggle, y, rowD);
+    y = option (newVersionToggle, y, rowD);
 
-    return y + pad;
+    y = top;       // Advanced
+    y = option (mcpBridgeToggle, y, rowD);
+    place (mcpBridgeStatusLabel, { x0, y + 2, cw, 24 });
+    y += 36;
+    y = info (7, "Command for your MCP client", "Register this in Claude Code, Claude Desktop or any client that speaks MCP.", y, rowD,
+              mcpBridgeCopyButton, 100, 34);
+    place (mcpBridgeCommand, { x0, y + 2, cw, 38 });
+
+    // OK and Cancel, at the right of the footer
+    const int by = h - footerH + (footerH - 36) / 2;
+    place (cancelButton, { w - 32 - 100, by, 100, 36 });
+    place (okButton,     { w - 32 - 100 - 12 - 100, by, 100, 36 });
+
+    return h;
 }
 
 // ─── interaction ─────────────────────────────────────────────────────────────
@@ -603,7 +694,17 @@ bool EditorOptionsDialog::keyPressed (const juce::KeyPress& key)
 }
 
 void EditorOptionsDialog::mouseDown (const juce::MouseEvent& e)
-    { if (e.getPosition().getY() < 32) dragger.startDraggingComponent (this, e); }
+{
+    for (int i = 0; i < numPages; ++i)
+        if (pageButtonBounds (i).contains (e.getPosition()))
+        {
+            showPage (i);
+            return;
+        }
+
+    if (e.getPosition().getY() < titleBarH)
+        dragger.startDraggingComponent (this, e);
+}
 void EditorOptionsDialog::mouseDrag (const juce::MouseEvent& e)
     { dragger.dragComponent (this, e, nullptr); }
 
