@@ -4,6 +4,10 @@
 
 ### Changed
 
+- **Header bar: MUTATOR sits between the snapshots and the A/B crossfader** (2026-10-24, branch
+  `ui-redesign`), with a hairline on each side. Order: ... cable colours | snapshots | MUTATOR |
+  A/B | free room | heart, Patreon.
+
 - **Header bar: the gap between groups grows with the window** (2026-10-24, branch
   `ui-redesign`). The room the window has left over is shared out between the nine groups, from
   18px (the minimum, narrow windows) up to 48px (a very wide one), instead of one fixed 12 or 18.

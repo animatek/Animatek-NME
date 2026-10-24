@@ -294,11 +294,11 @@ void PatchHeaderBar::resized()
     x += snapsW + gap;
     sep(x - gap * 0.5f);
 
-    // Crossfader A/B, and the Mutator right after it
-    L.xfade = { x, cy - 11.0f, xfadeW, 22.0f };
-    x += xfadeW + gap;
-    sep(x - gap * 0.5f);
+    // The Mutator, then the A/B crossfader: both act on the sounds the snapshots hold
     L.mutator = { x, cy - 14.0f, mutatorW, 28.0f };
+    x += mutatorW + gap;
+    sep(x - gap * 0.5f);
+    L.xfade = { x, cy - 11.0f, xfadeW, 22.0f };
 
     // Patch name editor
     if (patchNameEditor)
