@@ -383,6 +383,22 @@ public:
             return a.paramIndex < b.paramIndex;
         });
 
+        // With a module selected, the knobs, MIDI CC and macros shown are that module's own;
+        // with none selected they are all of the patch's.
+        if (module != nullptr)
+        {
+            const auto isThisModule = [this](const HwRow& r)
+            {
+                return r.section == moduleRef.section && r.moduleId == moduleRef.containerIndex;
+            };
+            knobRows.erase(std::remove_if(knobRows.begin(), knobRows.end(),
+                                          [&](const HwRow& r) { return !isThisModule(r); }), knobRows.end());
+            ctrlRows.erase(std::remove_if(ctrlRows.begin(), ctrlRows.end(),
+                                          [&](const HwRow& r) { return !isThisModule(r); }), ctrlRows.end());
+            morphRows.erase(std::remove_if(morphRows.begin(), morphRows.end(),
+                                           [this](const MorphRow& r) { return r.module != module; }), morphRows.end());
+        }
+
         buildLayout();
         setSize(getWidth() > 0 ? getWidth() : 200, juce::jmax(layoutHeight, 10));
         repaint();

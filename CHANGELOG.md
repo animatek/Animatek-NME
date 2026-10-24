@@ -4,6 +4,11 @@
 
 ### Changed
 
+- **Inspector: with a module selected, only its own knobs, MIDI CC and macros** (2026-10-24,
+  branch `ui-redesign`). The Knobs, MIDI CC and Macros sections listed the whole patch whichever module
+  was selected. Now, with a module selected they show that module's assignments only; with none
+  selected, all of the patch's, as before. A section left empty by that is not drawn.
+
 - **Inspector: assignment rows as in the mockup** (2026-10-24, branch `ui-redesign`). Macros,
   knobs and MIDI CC share one look, told apart by their icon: an arch in the macro's colour, a knob
   glyph, a "CC" pill. Each row reads "parameter -> target" with a drawn arrow (e.g. "Coarse -> Macro 1",
