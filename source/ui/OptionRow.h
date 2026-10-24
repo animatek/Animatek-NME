@@ -64,10 +64,10 @@ public:
             g.drawText (getButtonText(), 0, 0, textW, r.getHeight() - 1, juce::Justification::centredLeft, true);
             return;
         }
-        g.drawText (getButtonText(), 0, 10, textW, 22, juce::Justification::centredLeft, true);
+        g.drawText (getButtonText(), 0, 12, textW, 22, juce::Justification::centredLeft, true);
         g.setColour (pal.textMuted.withAlpha (fade));
         g.setFont (juce::Font (AppTheme::uiFont (12.5f)));
-        g.drawFittedText (description_, 0, 32, textW, r.getHeight() - 34, juce::Justification::topLeft, 2, 1.0f);
+        g.drawFittedText (description_, 0, 35, textW, r.getHeight() - 42, juce::Justification::topLeft, 2, 1.0f);
     }
 
 

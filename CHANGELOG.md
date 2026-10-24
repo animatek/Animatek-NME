@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **Round radios, legible In/Out, air in the options rows** (2026-10-24, branch `ui-redesign`). Found
+  with the snapshots. A toggle that belongs to a group (only one can be on) now draws as a round radio
+  in every dialog (Octave, Pedal, Portamento, Clock...) while a lone one stays a checkbox; the In and
+  Out captions of MIDI Setup are 13px bold in the normal text colour instead of nearly invisible; and the
+  Editor Options rows are 74px tall with the description pushed down so its second line no longer
+  touches the rule under it.
+
 - **Developer aid: the editor can picture itself** (2026-10-24, branch `ui-redesign`). With
   `NME_SNAPSHOT_DIR=<folder>` set, three and a half seconds after start NME saves PNGs of the window, the
   header bar (3x), the five floaters and eight dialogs (About, Editor Options, MIDI Setup, Patch Settings,

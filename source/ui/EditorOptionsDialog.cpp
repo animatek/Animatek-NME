@@ -495,10 +495,10 @@ void EditorOptionsDialog::paint (juce::Graphics& g)
         g.fillRect (row.rect.getX(), row.rect.getBottom() - 1, row.rect.getWidth(), 1);
         g.setColour (pal.textPrimary);
         g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
-        g.drawText (row.title, row.rect.getX(), row.rect.getY() + 10, textW, 22, juce::Justification::centredLeft, true);
+        g.drawText (row.title, row.rect.getX(), row.rect.getY() + 12, textW, 22, juce::Justification::centredLeft, true);
         g.setColour (pal.textMuted);
         g.setFont (juce::Font (AppTheme::uiFont (12.5f)));
-        g.drawFittedText (row.description, row.rect.getX(), row.rect.getY() + 32, textW, row.rect.getHeight() - 34,
+        g.drawFittedText (row.description, row.rect.getX(), row.rect.getY() + 35, textW, row.rect.getHeight() - 42,
                           juce::Justification::topLeft, 2, 1.0f);
     }
 
@@ -561,7 +561,7 @@ int EditorOptionsDialog::layoutComponents (bool apply)
     const int x0 = sidebarW + 32;
     const int cw = w - x0 - 32;                  // width of a page's rows
     const int top = titleBarH + 70;              // under the page's name
-    constexpr int rowD = 66;                     // a row with a name and a line saying what it does
+    constexpr int rowD = 74;                     // a row with a name and a line saying what it does
     constexpr int rowS = 48;                     // a row with just a name
 
     infoRows.clear();

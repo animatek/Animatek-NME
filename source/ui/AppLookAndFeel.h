@@ -131,14 +131,35 @@ public:
         const bool on = button.getToggleState();
         const bool enabled = button.isEnabled();
 
-        g.setColour(on ? pal.accentActive : isMouseOver ? pal.buttonHover : pal.inputBackground);
-        g.fillRoundedRectangle(box, 5.0f);
-        if (!on)
+        // A button in a group where only one can be on is a round radio; a lone one is a checkbox
+        const bool radio = button.getRadioGroupId() != 0;
+        if (radio)
         {
+            g.setColour(on ? pal.accentActive : isMouseOver ? pal.textSecondary : pal.borderColor);
+            g.drawEllipse(box.reduced(1.0f), 2.0f);
+            if (on)
+            {
+                g.setColour(pal.accentActive);
+                g.fillEllipse(box.reduced(5.0f));
+            }
+        }
+        else if (!on)
+        {
+            g.setColour(isMouseOver ? pal.buttonHover : pal.inputBackground);
+            g.fillRoundedRectangle(box, 5.0f);
             g.setColour(pal.borderColor);
             g.drawRoundedRectangle(box.reduced(0.5f), 5.0f, 1.0f);
         }
         else
+        {
+            g.setColour(pal.accentActive);
+            g.fillRoundedRectangle(box, 5.0f);
+        }
+        if (radio)
+        {
+            // nothing more to draw on a radio: its dot is the state
+        }
+        else if (on)
         {
             juce::Path tick;
             tick.startNewSubPath(box.getX() + size * 0.26f, box.getCentreY());

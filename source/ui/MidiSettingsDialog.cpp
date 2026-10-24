@@ -43,8 +43,10 @@ MidiSettingsDialog::MidiSettingsDialog()
         styleLabel (g.outLabel, true);
         styleLabel (g.statusCaption);
         styleLabel (g.status);
-        g.inLabel.setColour (juce::Label::textColourId, kDim);
-        g.outLabel.setColour (juce::Label::textColourId, kDim);
+        g.inLabel.setColour (juce::Label::textColourId, kText);
+        g.outLabel.setColour (juce::Label::textColourId, kText);
+        g.inLabel.setFont (juce::Font (AppTheme::uiFont (13.0f).withStyle ("Bold")));
+        g.outLabel.setFont (juce::Font (AppTheme::uiFont (13.0f).withStyle ("Bold")));
         g.status.setColour (juce::Label::textColourId, kDim);
         g.status.setFont (juce::Font (AppTheme::uiFont (13.0f)));
         g.status.setJustificationType (juce::Justification::centredRight);
