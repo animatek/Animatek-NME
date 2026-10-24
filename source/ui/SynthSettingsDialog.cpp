@@ -21,7 +21,7 @@ static void styleSlider (juce::Slider& s, int tbW = 44)
     s.setColour (juce::Slider::textBoxOutlineColourId,    kCtrlBd);
     s.setColour (juce::Slider::textBoxHighlightColourId,  kBtnOn);
     s.setSliderStyle (juce::Slider::IncDecButtons);
-    s.setTextBoxStyle (juce::Slider::TextBoxLeft, false, tbW, 22);
+    s.setTextBoxStyle (juce::Slider::TextBoxLeft, false, tbW, 30);
 }
 
 static void styleToggle (juce::ToggleButton& b)
@@ -33,9 +33,9 @@ static void styleToggle (juce::ToggleButton& b)
 
 static void styleLabel (juce::Label& l, bool section = false)
 {
-    l.setFont (section ? juce::Font (AppTheme::uiFont (11.0f).withStyle ("Bold"))
-                       : juce::Font (AppTheme::uiFont (12.0f)));
-    l.setColour (juce::Label::textColourId,       section ? AppTheme::palette().textPrimary : kText);
+    l.setFont (section ? juce::Font (AppTheme::uiFont (12.5f).withStyle ("Bold"))
+                       : juce::Font (AppTheme::uiFont (14.0f)));
+    l.setColour (juce::Label::textColourId,       section ? AppTheme::palette().textMuted : kText);
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
 
@@ -159,6 +159,8 @@ SynthSettingsDialog::SynthSettingsDialog (const SynthSettings& current, Callback
 
     // ── OK / Cancel ──────────────────────────────────────────────────────────
     styleBtn (okButton);
+    okButton.setColour (juce::TextButton::buttonColourId,  kGold);   // OK does the thing
+    okButton.setColour (juce::TextButton::textColourOffId, AppTheme::palette().backgroundMain);
     styleBtn (cancelButton);
     okButton.onClick = [this]()
     {
@@ -189,7 +191,7 @@ SynthSettingsDialog::SynthSettingsDialog (const SynthSettings& current, Callback
     addAndMakeVisible (okButton);
     addAndMakeVisible (cancelButton);
 
-    setSize (560, 452);
+    setSize (720, 640);
 }
 
 void SynthSettingsDialog::setSettings (const SynthSettings& settings)
@@ -245,13 +247,13 @@ bool SynthSettingsDialog::keyPressed (const juce::KeyPress& key)
 
 void SynthSettingsDialog::mouseDown (const juce::MouseEvent& e)
 {
-    if (e.getPosition().getY() < 32)
+    if (e.getPosition().getY() < 40)
         dragger.startDraggingComponent (this, e);
 }
 
 void SynthSettingsDialog::mouseDrag (const juce::MouseEvent& e)
 {
-    if (e.getMouseDownPosition().getY() >= 32)
+    if (e.getMouseDownPosition().getY() >= 40)
         return;   // only a drag that began on the title bar moves the window (the press position says where it began)
     dragger.dragComponent (this, e, nullptr);
 }
@@ -259,122 +261,95 @@ void SynthSettingsDialog::mouseDrag (const juce::MouseEvent& e)
 // ─────────────────────────────────────────────────────────────────────────────
 void SynthSettingsDialog::paint (juce::Graphics& g)
 {
-    g.fillAll (kBg);
-    g.setColour (kSep);
-    g.fillRect (0, 31, getWidth(), 1);  // title bar separator
+    AppTheme::drawDialogChrome (g, getLocalBounds(), "Synth Settings", 40, 68);
 
-    const int W = getWidth();
-    auto sep = [&](int y) {
-        g.setColour (kSep);
-        g.drawHorizontalLine (y, 14.0f, static_cast<float>(W - 14));
-    };
-
-    // Title
-    g.setColour (AppTheme::palette().textPrimary);
-    g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
-    g.drawText ("Synth Settings", 10, 0, W - 44, 32, juce::Justification::centredLeft);
-
-    sep (masterTuneSlider.getBottom() + 5);
-    sep (chanSliders[0].getBottom() + 5);
-    sep (localOnTgl.getBottom() + 5);
-    sep (globalSyncSlider.getBottom() + 5);
-    sep (kbSelected.getBottom() + 5);
+    g.setColour (AppTheme::palette().borderColor.withAlpha (0.6f));
+    for (int sy : { masterTuneSlider.getBottom() + 14, chanSliders[0].getBottom() + 14,
+                    localOnTgl.getBottom() + 14, globalSyncSlider.getBottom() + 14 })
+        g.fillRect (28, sy, getWidth() - 56, 1);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 void SynthSettingsDialog::resized()
 {
-    const int titleH = 32;
-    const int pad    = 14;
-    const int rowH   = 24;
+    const int titleH = 40, footerH = 68;
+    const int pad    = 28;
+    const int rowH   = 34;
     const int secH   = 18;
-    const int gap    = 8;
     const int W      = getWidth() - pad * 2;
 
-    closeButton.setBounds (getWidth() - 32, 2, 28, 28);
+    closeButton.setBounds (getWidth() - 36, 6, 28, 28);
 
-    int y = titleH + gap;
+    int y = titleH + 16;
 
     // ── Synth name + tune ────────────────────────────────────────────────────
     synthHdr.setBounds (pad, y, W, secH);
-    y += secH + 4;
+    y += secH + 8;
+    nameLbl.setBounds          (pad,       y, 56,  rowH);
+    nameEditor.setBounds       (pad + 58,  y, 200, rowH);
+    tuneLbl.setBounds          (pad + 282, y, 100, rowH);
+    masterTuneSlider.setBounds (pad + 384, y, 150, rowH);
+    tuneCentsLbl.setBounds     (pad + 540, y, W - 540, rowH);
+    y += rowH + 28;
 
-    nameLbl.setBounds       (pad,      y, 44, rowH);
-    nameEditor.setBounds    (pad + 46, y, 180, rowH);
-    tuneLbl.setBounds       (pad + 240, y, 88, rowH);
-    masterTuneSlider.setBounds (pad + 330, y, 130, rowH);
-    tuneCentsLbl.setBounds  (pad + 464, y, W - 464, rowH);
-    y += rowH + gap + 2;  // → sep 74
-
-    y += gap;
     // ── MIDI channels ────────────────────────────────────────────────────────
     chanHdr.setBounds (pad, y, W, secH);
-    y += secH + 4;
-
-    const int cW = (W - 3 * 8) / 4;
+    y += secH + 8;
+    const int cW = (W - 3 * 12) / 4;
     for (int i = 0; i < 4; ++i)
     {
-        int x = pad + i * (cW + 8);
-        slotLbls[i].setBounds   (x, y, 52, rowH);
+        const int x = pad + i * (cW + 12);
+        slotLbls[i].setBounds    (x, y, 52, rowH);
         chanSliders[i].setBounds (x + 54, y, cW - 54, rowH);
     }
-    y += rowH + gap + 2;  // → sep 122
+    y += rowH + 28;
 
-    y += gap;
     // ── MIDI ─────────────────────────────────────────────────────────────────
     midiHdr.setBounds (pad, y, W, secH);
-    y += secH + 4;
+    y += secH + 8;
+    velScaleLbl.setBounds  (pad,       y, 110, rowH);
+    velMinTag.setBounds    (pad + 112, y, 36,  rowH);
+    velMinSlider.setBounds (pad + 150, y, 150, rowH);
+    velMaxTag.setBounds    (pad + 320, y, 36,  rowH);
+    velMaxSlider.setBounds (pad + 358, y, 150, rowH);
+    y += rowH + 8;
+    const int tW = (W - 3 * 10) / 4;
+    localOnTgl   .setBounds (pad,             y, tW, rowH);
+    ledsActiveTgl.setBounds (pad + tW + 10,   y, tW, rowH);
+    pgmRecvTgl   .setBounds (pad + (tW+10)*2, y, tW, rowH);
+    pgmSendTgl   .setBounds (pad + (tW+10)*3, y, tW, rowH);
+    y += rowH + 28;
 
-    velScaleLbl.setBounds (pad, y, 100, rowH);
-    velMinTag.setBounds   (pad + 102, y, 30, rowH);
-    velMinSlider.setBounds(pad + 134, y, 130, rowH);
-    velMaxTag.setBounds   (pad + 274, y, 30, rowH);
-    velMaxSlider.setBounds(pad + 306, y, 130, rowH);
-    y += rowH + 4;
-
-    const int tW = (W - 3 * 6) / 4;
-    localOnTgl   .setBounds (pad,              y, tW, rowH);
-    ledsActiveTgl.setBounds (pad + tW + 6,     y, tW, rowH);
-    pgmRecvTgl   .setBounds (pad + (tW+6)*2,   y, tW, rowH);
-    pgmSendTgl   .setBounds (pad + (tW+6)*3,   y, tW, rowH);
-    y += rowH + gap + 2;  // → sep 188
-
-    y += gap;
     // ── Clock ─────────────────────────────────────────────────────────────────
     clockHdr.setBounds (pad, y, W, secH);
-    y += secH + 4;
+    y += secH + 8;
+    clockInt.setBounds         (pad,       y, 100, rowH);
+    clockExt.setBounds         (pad + 104, y, 100, rowH);
+    bpmLbl.setBounds           (pad + 224, y, 44,  rowH);
+    bpmSlider.setBounds        (pad + 270, y, 150, rowH);
+    globalSyncLbl.setBounds    (pad + 440, y, 90,  rowH);
+    globalSyncSlider.setBounds (pad + 532, y, W - 532, rowH);
+    y += rowH + 28;
 
-    clockInt.setBounds    (pad,       y, 90, rowH);
-    clockExt.setBounds    (pad + 92,  y, 90, rowH);
-    bpmLbl.setBounds      (pad + 194, y, 36, rowH);
-    bpmSlider.setBounds   (pad + 232, y, 130, rowH);
-    globalSyncLbl.setBounds    (pad + 372, y, 74, rowH);
-    globalSyncSlider.setBounds (pad + 446, y, W - 446, rowH);
-    y += rowH + gap + 2;  // → sep 236
-
-    y += gap;
     // ── Behavior ─────────────────────────────────────────────────────────────
     behavHdr.setBounds (pad, y, W, secH);
-    y += secH + 4;
+    y += secH + 8;
+    knobModeLbl.setBounds (pad,       y, 100, rowH);
+    knobImm.setBounds     (pad + 104, y, 104, rowH);
+    knobHook.setBounds    (pad + 210, y, 80,  rowH);
+    pedalLbl.setBounds    (pad + 320, y, 110, rowH);
+    pedalNorm.setBounds   (pad + 432, y, 90,  rowH);
+    pedalInv.setBounds    (pad + 524, y, 100, rowH);
+    y += rowH + 8;
+    kbModeLbl.setBounds   (pad,       y, 120, rowH);
+    kbActive.setBounds    (pad + 124, y, 120, rowH);
+    kbSelected.setBounds  (pad + 248, y, 150, rowH);
 
-    knobModeLbl.setBounds (pad,       y, 88, rowH);
-    knobImm.setBounds     (pad + 90,  y, 88, rowH);
-    knobHook.setBounds    (pad + 180, y, 70, rowH);
-    pedalLbl.setBounds    (pad + 264, y, 100, rowH);
-    pedalNorm.setBounds   (pad + 366, y, 78, rowH);
-    pedalInv.setBounds    (pad + 446, y, 80, rowH);
-    y += rowH + 4;
-
-    kbModeLbl.setBounds   (pad,       y, 108, rowH);
-    kbActive.setBounds    (pad + 110, y, 100, rowH);
-    kbSelected.setBounds  (pad + 212, y, 120, rowH);
-    y += rowH + gap + 2;  // → sep 310
-
-    y += gap;
-    // ── Buttons ──────────────────────────────────────────────────────────────
-    const int btnW = 88, btnH = 28;
-    cancelButton.setBounds (getWidth() - pad - btnW * 2 - 8, y, btnW, btnH);
-    okButton    .setBounds (getWidth() - pad - btnW,         y, btnW, btnH);
+    // ── Buttons, in the footer band ──────────────────────────────────────────
+    const int btnW = 100, btnH = 36;
+    const int btnY = getHeight() - footerH + (footerH - btnH) / 2;
+    cancelButton.setBounds (getWidth() - pad - btnW * 2 - 12, btnY, btnW, btnH);
+    okButton    .setBounds (getWidth() - pad - btnW,          btnY, btnW, btnH);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

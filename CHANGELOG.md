@@ -4,6 +4,16 @@
 
 ### Changed
 
+- **Synth Settings redesigned** (2026-10-24, branch `ui-redesign`). 720x640: the same controls (name and
+  master tune, MIDI channels, velocity scale and switches, clock, knob, pedal and keyboard behaviour) on
+  34px rows with bigger type, muted section titles and rules between sections, and Editor Options' title
+  bar and footer with Cancel and **OK** (filled with the accent).
+
+- **Patch Settings redesigned** (2026-10-24, branch `ui-redesign`). 620x572: the same controls (voices,
+  velocity and keyboard ranges, pedal and bend, portamento, octave and retrigger) with much more air, 34px
+  rows, bigger type, muted section titles, a rule between sections and Editor Options' title bar and
+  footer with Cancel and **OK** (filled with the accent).
+
 - **Ctrl+T works whatever has the keyboard, and the progress bars are thicker** (2026-10-24, branch
   `ui-redesign`). A menu that is open, or a dialog, swallowed the key press, so Ctrl+T did nothing: a
   light timer now watches the keyboard and cycles the theme then too (only when no window took the press

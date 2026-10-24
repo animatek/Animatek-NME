@@ -17,7 +17,7 @@ static void styleSlider (juce::Slider& s, int tbW = 50)
     s.setColour (juce::Slider::textBoxOutlineColourId,    kCtrlBd);
     s.setColour (juce::Slider::textBoxHighlightColourId,  kBtnOn);
     s.setSliderStyle (juce::Slider::IncDecButtons);
-    s.setTextBoxStyle (juce::Slider::TextBoxLeft, false, tbW, 22);
+    s.setTextBoxStyle (juce::Slider::TextBoxLeft, false, tbW, 30);
 }
 static void styleToggle (juce::ToggleButton& b)
 {
@@ -27,9 +27,9 @@ static void styleToggle (juce::ToggleButton& b)
 }
 static void styleLabel (juce::Label& l, bool section = false)
 {
-    l.setFont (section ? juce::Font (AppTheme::uiFont (11.0f).withStyle ("Bold"))
-                       : juce::Font (AppTheme::uiFont (12.0f)));
-    l.setColour (juce::Label::textColourId,       section ? AppTheme::palette().textPrimary : kText);
+    l.setFont (section ? juce::Font (AppTheme::uiFont (12.5f).withStyle ("Bold"))
+                       : juce::Font (AppTheme::uiFont (14.0f)));
+    l.setColour (juce::Label::textColourId,       section ? AppTheme::palette().textMuted : kText);
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
 static void styleBtn (juce::TextButton& b)
@@ -122,6 +122,8 @@ PatchSettingsDialog::PatchSettingsDialog (const PatchHeader& header, Callback on
     // OK / Cancel
     styleBtn (okButton);
     styleBtn (cancelButton);
+    okButton.setColour (juce::TextButton::buttonColourId,  AppTheme::palette().accentActive);   // OK does the thing
+    okButton.setColour (juce::TextButton::textColourOffId, AppTheme::palette().backgroundMain);
     okButton.onClick = [this]()
     {
         if (okCallback)
@@ -149,7 +151,7 @@ PatchSettingsDialog::PatchSettingsDialog (const PatchHeader& header, Callback on
     addAndMakeVisible (okButton);
     addAndMakeVisible (cancelButton);
 
-    setSize (520, 420);
+    setSize (620, 572);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -162,118 +164,89 @@ bool PatchSettingsDialog::keyPressed (const juce::KeyPress& key)
     return false;
 }
 void PatchSettingsDialog::mouseDown (const juce::MouseEvent& e)
-    { if (e.getPosition().getY() < 32) dragger.startDraggingComponent (this, e); }
+    { if (e.getPosition().getY() < 40) dragger.startDraggingComponent (this, e); }
 void PatchSettingsDialog::mouseDrag (const juce::MouseEvent& e)
-    { if (e.getMouseDownPosition().getY() < 32) dragger.dragComponent (this, e, nullptr); }  // only a drag that began on the title bar moves the window (the press position says where it began)
+    { if (e.getMouseDownPosition().getY() < 40) dragger.dragComponent (this, e, nullptr); }  // only a drag that began on the title bar moves the window (the press position says where it began)
 
 // ─────────────────────────────────────────────────────────────────────────────
 void PatchSettingsDialog::paint (juce::Graphics& g)
 {
-    g.fillAll (kBg);
-
-    // Title
-    g.setColour (AppTheme::palette().textPrimary);
-    g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
-    g.drawText ("Patch Settings", 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
-
-    // Title bar separator
-    g.setColour (kSep);
-    g.fillRect (0, 31, getWidth(), 1);
+    AppTheme::drawDialogChrome (g, getLocalBounds(), "Patch Settings", 40, 68);
 
     // Derive dividers from the laid-out rows so they cannot cross controls.
-    const float x0 = 14.0f, x1 = static_cast<float>(getWidth() - 14);
-    for (int sy : { voicesSlider.getBottom() + 7, keyMaxSlider.getBottom() + 8,
-                    bendSlider.getBottom() + 7, portaTimeSlider.getBottom() + 7,
-                    octaveButtons[0].getBottom() + 8 })
-    {
-        g.setColour (kSep);
-        g.drawHorizontalLine (sy, x0, x1);
-    }
+    g.setColour (AppTheme::palette().borderColor.withAlpha (0.6f));
+    for (int sy : { voicesSlider.getBottom() + 14, keyMaxSlider.getBottom() + 14,
+                    bendSlider.getBottom() + 14, portaTimeSlider.getBottom() + 14 })
+        g.fillRect (28, sy, getWidth() - 56, 1);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 void PatchSettingsDialog::resized()
 {
-    // Layout constants
-    constexpr int titleH = 32;
-    constexpr int pad    = 14;
-    constexpr int rowH   = 24;
-    constexpr int secH   = 18;
-    constexpr int gap    = 8;
-    constexpr int spnW   = 120;   // slider (text+buttons) width
-    constexpr int lblW   = 50;    // short label
+    constexpr int titleH = 40, footerH = 68, pad = 28;
+    constexpr int rowH = 34, secH = 18, spnW = 150, lblW = 62;
 
-    closeButton.setBounds (getWidth() - 32, 2, 28, 28);
+    closeButton.setBounds (getWidth() - 36, 6, 28, 28);
 
-    int y = titleH + gap;   // y = 40
+    int y = titleH + 16;
 
     // ── Voices ──────────────────────────────────────────────────────────────
-    voicesLabel .setBounds (pad,        y, 80,   rowH);
-    voicesSlider.setBounds (pad + 84,   y, spnW, rowH);
-    y += rowH + gap - 1;   // y = 71  (sep drawn here)
+    voicesLabel .setBounds (pad,      y, 80,   rowH);
+    voicesSlider.setBounds (pad + 84, y, spnW, rowH);
+    y += rowH + 28;
 
-    y += gap;              // y = 79
     // ── Velocity & Keyboard ─────────────────────────────────────────────────
     velKeyLabel.setBounds (pad, y, getWidth() - pad * 2, secH);
-    y += secH + 4;         // y = 101
-
-    // Row 1: velocity
-    velLoLbl   .setBounds (pad,               y, lblW, rowH);
-    velMinSlider.setBounds (pad + lblW + 2,   y, spnW, rowH);
-    velHiLbl   .setBounds (pad + lblW + spnW + 14, y, lblW, rowH);
-    velMaxSlider.setBounds (pad + lblW*2 + spnW + 16, y, spnW, rowH);
-    y += rowH + 4;         // y = 129
-
-    // Row 2: keyboard
-    keyLoLbl   .setBounds (pad,               y, lblW, rowH);
-    keyMinSlider.setBounds (pad + lblW + 2,   y, spnW, rowH);
-    keyHiLbl   .setBounds (pad + lblW + spnW + 14, y, lblW, rowH);
-    keyMaxSlider.setBounds (pad + lblW*2 + spnW + 16, y, spnW, rowH);
-    y += rowH + gap - 1;   // y = 161  (next sep at ~165 — drawn 4px below)
-    y += gap;              // y = 169  (or keep going)
+    y += secH + 8;
+    const int x2 = pad + lblW + spnW + 28;
+    velLoLbl    .setBounds (pad,           y, lblW, rowH);
+    velMinSlider.setBounds (pad + lblW,    y, spnW, rowH);
+    velHiLbl    .setBounds (x2,            y, lblW, rowH);
+    velMaxSlider.setBounds (x2 + lblW,     y, spnW, rowH);
+    y += rowH + 8;
+    keyLoLbl    .setBounds (pad,           y, lblW, rowH);
+    keyMinSlider.setBounds (pad + lblW,    y, spnW, rowH);
+    keyHiLbl    .setBounds (x2,            y, lblW, rowH);
+    keyMaxSlider.setBounds (x2 + lblW,     y, spnW, rowH);
+    y += rowH + 28;
 
     // ── Pedal & Bend ────────────────────────────────────────────────────────
-    pedalBendLabel.setBounds (pad, y - gap + 4, getWidth() - pad * 2, secH);
-    int secY = y - gap + 4 + secH + 4;  // y of the row
+    pedalBendLabel.setBounds (pad, y, getWidth() - pad * 2, secH);
+    y += secH + 8;
+    pedalLbl    .setBounds (pad,        y, 50,  rowH);
+    pedalSustain.setBounds (pad + 54,   y, 96,  rowH);
+    pedalOnOff  .setBounds (pad + 154,  y, 84,  rowH);
+    bendLbl     .setBounds (pad + 270,  y, 46,  rowH);
+    bendSlider  .setBounds (pad + 318,  y, 130, rowH);
+    bendUnitLbl .setBounds (pad + 454,  y, 30,  rowH);
+    y += rowH + 28;
 
-    pedalLbl    .setBounds (pad,            secY, 42, rowH);
-    pedalSustain.setBounds (pad + 44,       secY, 72, rowH);
-    pedalOnOff  .setBounds (pad + 118,      secY, 66, rowH);
-    bendLbl     .setBounds (pad + 200,      secY, 36, rowH);
-    bendSlider  .setBounds (pad + 238,      secY, 110, rowH);
-    bendUnitLbl .setBounds (pad + 350,      secY, 24, rowH);
-    y = secY + rowH + gap - 1;  // sep
-
-    y += gap;
     // ── Portamento ──────────────────────────────────────────────────────────
     portaLabel.setBounds (pad, y, getWidth() - pad * 2, secH);
-    y += secH + 4;
+    y += secH + 8;
+    portaNormal    .setBounds (pad,       y, 92,  rowH);
+    portaAuto      .setBounds (pad + 96,  y, 80,  rowH);
+    portaTimeLbl   .setBounds (pad + 210, y, 46,  rowH);
+    portaTimeSlider.setBounds (pad + 258, y, spnW, rowH);
+    y += rowH + 28;
 
-    portaNormal    .setBounds (pad,         y, 72, rowH);
-    portaAuto      .setBounds (pad + 74,    y, 62, rowH);
-    portaTimeLbl   .setBounds (pad + 148,   y, 40, rowH);
-    portaTimeSlider.setBounds (pad + 190,   y, spnW, rowH);
-    y += rowH + gap - 1;   // sep
-
-    y += gap;
     // ── Octave & Retrigger ──────────────────────────────────────────────────
     octRetrigLabel.setBounds (pad, y, getWidth() - pad * 2, secH);
-    y += secH + 4;
-
-    octLbl.setBounds (pad, y, 48, rowH);
-    int ox = pad + 50;
-    constexpr int octW = 42;
+    y += secH + 8;
+    octLbl.setBounds (pad, y, 62, rowH);
+    int ox = pad + 64;
+    constexpr int octW = 50;
     for (int i = 0; i < 5; ++i) { octaveButtons[i].setBounds (ox, y, octW, rowH); ox += octW + 2; }
-    ox += 8;
-    retrigLbl   .setBounds (ox,      y, 46, rowH); ox += 48;
-    retrigPoly  .setBounds (ox,      y, 50, rowH); ox += 52;
-    retrigCommon.setBounds (ox,      y, 72, rowH);
-    y += rowH + gap * 2;
+    ox += 18;
+    retrigLbl   .setBounds (ox, y, 56, rowH); ox += 58;
+    retrigPoly  .setBounds (ox, y, 62, rowH); ox += 66;
+    retrigCommon.setBounds (ox, y, 90, rowH);
 
-    // ── Buttons ─────────────────────────────────────────────────────────────
-    constexpr int btnW = 88, btnH = 28;
-    cancelButton.setBounds (getWidth() - pad - btnW * 2 - 8, y, btnW, btnH);
-    okButton    .setBounds (getWidth() - pad - btnW,         y, btnW, btnH);
+    // ── Buttons, in the footer band ─────────────────────────────────────────
+    constexpr int btnW = 100, btnH = 36;
+    const int btnY = getHeight() - footerH + (footerH - btnH) / 2;
+    cancelButton.setBounds (getWidth() - pad - btnW * 2 - 12, btnY, btnW, btnH);
+    okButton    .setBounds (getWidth() - pad - btnW,          btnY, btnW, btnH);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
