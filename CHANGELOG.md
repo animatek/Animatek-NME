@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.23.0 — 2026-10-24
+
+The new look. The whole interface is redrawn in a flat, dark style with one amber accent: the header
+bar, the module bar, the inspector, both browsers, every menu, every dialog and floater, and a status bar
+with the inspector, browser, MIDI and options buttons. Underneath: the plugin keeps its patches in the
+DAW project (#94), a UI size option for 4K screens (#105), banks that go straight to the synth's memory,
+a Mutator that mutates like the G2's, and a handful of fixes reported by email and by issue. The
+entries below are in the order they were made, newest first; the redesign ones say "branch
+`ui-redesign`", which was merged into `main` on 2026-10-24.
+
 ### Changed
 
 - **Snapshot run beside a running editor** (2026-10-24, branch `ui-redesign`). The editor allows one
