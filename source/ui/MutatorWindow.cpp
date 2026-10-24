@@ -6,9 +6,9 @@
 
 namespace
 {
-constexpr int kBoxW = 86, kBoxH = 92;
-constexpr int kTempH = 46, kVarH = 52;
-constexpr int kPad = 10;
+constexpr int kBoxW = 84, kBoxH = 96;
+constexpr int kTempH = 44, kVarH = 52;
+constexpr int kPad = 24, kGap = 10;
 
 const juce::Colour& bg()       { return AppTheme::palette().backgroundMain; }
 const juce::Colour& panelBg()  { return AppTheme::palette().backgroundPanel; }
@@ -76,14 +76,14 @@ public:
     {
         auto r = getLocalBounds().toFloat().reduced(1.0f);
         g.setColour(snap.filled ? panelBg().brighter(0.06f) : panelBg().darker(0.15f));
-        g.fillRoundedRectangle(r, 4.0f);
+        g.fillRoundedRectangle(r, 8.0f);
 
         // Chromosome: the sound walked as a path (Mutator::chromosomePath), fitted
         // to the box. Children of one mother walk alike; a new module bends it.
         if (snap.filled && !snap.entries.empty())
         {
             auto plot = r.reduced(5.0f);
-            plot.removeFromTop(11.0f);
+            plot.removeFromTop(14.0f);
             const auto points = Mutator::chromosomePath(snap);
             if (points.size() > 1)
             {
@@ -110,11 +110,13 @@ public:
         }
 
         g.setColour(focused ? accent() : (dragOver ? text() : border()));
-        g.drawRoundedRectangle(r, 4.0f, focused ? 2.0f : 1.0f);
+        g.drawRoundedRectangle(r, 8.0f, focused ? 2.0f : 1.0f);
 
-        g.setColour(snap.filled ? text() : textDim());
-        g.setFont(AppTheme::uiFont(10.5f).withStyle("Bold"));
-        g.drawText(label, getLocalBounds().removeFromTop(13), juce::Justification::centred, false);
+        // Mother and Father are the parents: their name in the accent
+        const bool parent = index == kMother || index == kFather;
+        g.setColour(parent && snap.filled ? accent() : (snap.filled ? text() : textDim()));
+        g.setFont(AppTheme::uiFont(11.5f).withStyle("Bold"));
+        g.drawText(label, getLocalBounds().removeFromTop(18), juce::Justification::centred, false);
     }
 
     void mouseDown(const juce::MouseEvent& e) override
@@ -200,7 +202,7 @@ MutatorPanel::MutatorPanel()
                             double init, bool plusMinus) {
         s.setSliderStyle(juce::Slider::RotaryVerticalDrag);
         // % readout above the knob, G2-style
-        s.setTextBoxStyle(juce::Slider::TextBoxAbove, true, 46, 13);
+        s.setTextBoxStyle(juce::Slider::TextBoxAbove, true, 60, 16);
         s.setRotaryParameters(juce::MathConstants<float>::pi * 1.25f,
                               juce::MathConstants<float>::pi * 2.75f, true);
         s.setRange(0.0, 1.0, 0.01);
@@ -214,7 +216,7 @@ MutatorPanel::MutatorPanel()
         addAndMakeVisible(s);
         l.setText(name, juce::dontSendNotification);
         l.setJustificationType(juce::Justification::centred);
-        l.setFont(AppTheme::uiFont(10.5f));
+        l.setFont(AppTheme::uiFont(12.5f).withStyle("Bold"));
         addAndMakeVisible(l);
     };
     setupKnob(probSlider, probLabel, "Probability", Mutator::probabilityForRange(0.19f), false);
@@ -255,7 +257,7 @@ MutatorPanel::MutatorPanel()
     // Audition morph time (applies when clicking a sound)
     auditionLabel.setText("Audition", juce::dontSendNotification);
     auditionLabel.setJustificationType(juce::Justification::centredRight);
-    auditionLabel.setFont(AppTheme::uiFont(10.5f));
+    auditionLabel.setFont(AppTheme::uiFont(12.5f).withStyle("Bold"));
     addAndMakeVisible(auditionLabel);
     auditionTimeBox.addItem("Instant", 1);
     auditionTimeBox.addItem("0.5 s", 2);
@@ -267,12 +269,12 @@ MutatorPanel::MutatorPanel()
     addAndMakeVisible(auditionTimeBox);
 
     tempLabel.setText("TEMPORARY STORAGE", juce::dontSendNotification);
-    variationsLabel.setText("VARIATIONS  (drag a sound here to store it)", juce::dontSendNotification);
-    quickLockLabel.setText("QUICK LOCKS during one-parent operations  (lit = not evolved; Solo = only this)",
+    variationsLabel.setText("VARIATIONS  \xc2\xb7  drag a sound here to store it", juce::dontSendNotification);
+    quickLockLabel.setText("QUICK LOCKS  \xc2\xb7  lit = not evolved, Solo = only this one",
                            juce::dontSendNotification);
     for (auto* l : { &tempLabel, &variationsLabel, &quickLockLabel })
     {
-        l->setFont(AppTheme::uiFont(10.5f).withStyle("Bold"));
+        l->setFont(AppTheme::uiFont(12.5f).withStyle("Bold"));
         addAndMakeVisible(*l);
     }
 
@@ -289,7 +291,8 @@ MutatorPanel::MutatorPanel()
     }
 
     applyTheme();
-    setSize(kPad * 2 + 8 * kBoxW + 7 * 6, 516);
+    const int w = kPad * 2 + 8 * kBoxW + 7 * kGap;
+    setSize(w, layoutAll(w, false));
 }
 
 MutatorPanel::~MutatorPanel()
@@ -320,7 +323,10 @@ void MutatorPanel::applyTheme()
     for (auto* l : { &probLabel, &rangeLabel, &crossProbLabel, &auditionLabel })
         l->setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
     for (auto* l : { &quickLockLabel, &tempLabel, &variationsLabel })
-        l->setColour(juce::Label::textColourId, AppTheme::palette().accentActive);
+        l->setColour(juce::Label::textColourId, AppTheme::palette().textMuted);
+    // Mutate is the main action
+    mutateBtn.setColour(juce::TextButton::buttonColourId, AppTheme::palette().accentActive);
+    mutateBtn.setColour(juce::TextButton::textColourOffId, AppTheme::palette().backgroundMain);
     linkToggle.setColour(juce::ToggleButton::textColourId, AppTheme::palette().textSecondary);
     linkToggle.setColour(juce::ToggleButton::tickColourId, AppTheme::palette().accentWarning);
     auditionTimeBox.setColour(juce::ComboBox::backgroundColourId, AppTheme::palette().inputBackground);
@@ -385,78 +391,103 @@ void MutatorPanel::setVariations(const PatchVariations& vars)
 void MutatorPanel::paint(juce::Graphics& g)
 {
     g.fillAll(bg());
+    g.setColour(border().withAlpha(0.7f));
+    for (int ry : ruleYs)
+        g.fillRect(kPad, ry, getWidth() - kPad * 2, 1);
 }
 
 void MutatorPanel::resized()
 {
-    const int gap = 6;
-    const int w = getWidth();
+    layoutAll(getWidth(), true);
+}
+
+int MutatorPanel::layoutAll(int w, bool apply)
+{
+    auto put = [apply](juce::Component& c, int x, int y, int cw, int ch) {
+        if (apply) c.setBounds(x, y, cw, ch);
+    };
+    if (apply) ruleYs.clear();
+    auto rule = [&](int y) { if (apply) ruleYs.push_back(y); };
 
     // ── Controls row: prob/range + Link | audition | cross prob ─────────────
-    // Knobs sized like the canvas module knobs (size-21 XML knob ≈ 17 px circle)
-    probLabel.setBounds(kPad - 6, 6, 70, 12);
-    probSlider.setBounds(kPad + 6, 18, 46, 38);
-    linkToggle.setBounds(kPad + 56, 30, 50, 18);
-    rangeLabel.setBounds(kPad + 104, 6, 70, 12);
-    rangeSlider.setBounds(kPad + 116, 18, 46, 38);
+    int y = 14;
+    put(probLabel,  kPad,        y, 80, 16);
+    put(probSlider, kPad + 10,   y + 18, 60, 58);
+    put(linkToggle, kPad + 92,   y + 34, 70, 24);
+    put(rangeLabel, kPad + 176,  y, 80, 16);
+    put(rangeSlider, kPad + 186, y + 18, 60, 58);
 
-    auditionLabel.setBounds(w / 2 - 110, 26, 62, 18);
-    auditionTimeBox.setBounds(w / 2 - 44, 24, 92, 22);
+    put(auditionLabel,   w / 2 - 80, y + 38, 70, 24);
+    put(auditionTimeBox, w / 2 - 6,  y + 36, 104, 30);
 
-    crossProbLabel.setBounds(w - kPad - 130, 6, 70, 12);
-    crossProbSlider.setBounds(w - kPad - 112, 18, 46, 38);
-    crossModeToggle.setBounds(w - kPad - 58, 30, 48, 18);
+    put(crossProbLabel,  w - kPad - 200, y, 80, 16);
+    put(crossProbSlider, w - kPad - 190, y + 18, 60, 58);
+    put(crossModeToggle, w - kPad - 110, y + 34, 110, 24);
+    y += 76 + 12;
+    rule(y);
+    y += 12;
 
-    // ── Operation buttons (centered) ─────────────────────────────────────────
+    // ── Operation buttons ────────────────────────────────────────────────────
     {
-        const int widths[5] = { 108, 76, 88, 92, 64 };
-        int total = 4 * gap;
-        for (int bw : widths) total += bw;
-        int x = (w - total) / 2;
-        juce::TextButton* btns[5] = { &motherFromPatchBtn, &mutateBtn, &randomizeBtn,
-                                      &interpolateBtn, &crossBtn };
+        const int widths[5] = { 128, 92, 108, 112, 80 };
+        // Mutate first: it is the thing most used
+        juce::TextButton* btns[5] = { &mutateBtn, &randomizeBtn, &interpolateBtn, &crossBtn, &motherFromPatchBtn };
+        const int order[5] = { 1, 2, 3, 4, 0 };
+        int x = kPad;
         for (int i = 0; i < 5; ++i)
         {
-            btns[i]->setBounds(x, 62, widths[i], 24);
-            x += widths[i] + gap;
+            const int bw = i == 4 ? widths[0] : widths[order[i]];
+            put(*btns[i], i == 4 ? w - kPad - bw : x, y, bw, 34);
+            x += bw + 8;
         }
     }
+    y += 34 + 16;
 
     // ── Mother | Children | Father ───────────────────────────────────────────
-    int y = 94;
     int x = kPad;
     for (int i = 0; i <= kFather; ++i)
     {
-        box(i).setBounds(x, y, kBoxW, kBoxH);
-        x += kBoxW + gap;
+        put(box(i), x, y, kBoxW, kBoxH);
+        x += kBoxW + kGap;
     }
-    y += kBoxH + 8;
+    y += kBoxH + 16;
+    rule(y);
+    y += 14;
 
     // ── Temporary storage 3 x 8 ──────────────────────────────────────────────
-    tempLabel.setBounds(kPad, y, 460, 16);
-    y += 18;
+    put(tempLabel, kPad, y, 460, 18);
+    y += 26;
     for (int row = 0; row < 3; ++row)
         for (int col = 0; col < 8; ++col)
-            box(kTempFirst + row * 8 + col)
-                .setBounds(kPad + col * (kBoxW + gap), y + row * (kTempH + gap), kBoxW, kTempH);
-    y += 3 * (kTempH + gap) + 2;
+            put(box(kTempFirst + row * 8 + col),
+                kPad + col * (kBoxW + kGap), y + row * (kTempH + kGap), kBoxW, kTempH);
+    y += 3 * (kTempH + kGap) + 4;
+    rule(y);
+    y += 14;
 
     // ── Variations row ───────────────────────────────────────────────────────
-    variationsLabel.setBounds(kPad, y, 460, 16);
-    y += 18;
+    put(variationsLabel, kPad, y, w - kPad * 2, 18);
+    y += 26;
     for (int v = 0; v < 8; ++v)
-        box(kVarFirst + v).setBounds(kPad + v * (kBoxW + gap), y, kBoxW, kVarH);
-    y += kVarH + 8;
+        put(box(kVarFirst + v), kPad + v * (kBoxW + kGap), y, kBoxW, kVarH);
+    y += kVarH + 16;
+    rule(y);
+    y += 14;
 
     // ── Quick locks ──────────────────────────────────────────────────────────
-    quickLockLabel.setBounds(kPad, y, w - kPad * 2, 16);
-    y += 18;
-    const int qlW = (w - kPad * 2 - 6 * 4) / 7;
+    put(quickLockLabel, kPad, y, w - kPad * 2, 18);
+    y += 26;
+    const int qlW = (w - kPad * 2 - 6 * 8) / 7;
     for (int i = 0; i < kNumMutCategories; ++i)
     {
-        lockBtn[i]->setBounds(kPad + i * (qlW + 4), y, qlW, 22);
-        soloBtn[i]->setBounds(kPad + i * (qlW + 4), y + 24, qlW, 16);
+        if (apply)
+        {
+            lockBtn[i]->setBounds(kPad + i * (qlW + 8), y, qlW, 30);
+            soloBtn[i]->setBounds(kPad + i * (qlW + 8), y + 34, qlW, 22);
+        }
     }
+    y += 56 + kPad;
+    return y;
 }
 
 MutatorPanel::GenParams MutatorPanel::currentParams(float interpT) const

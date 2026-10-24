@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Patch Mutator restyled** (2026-10-24, branch `ui-redesign`). Same controls and keys, new layout: more
+  air (24px margins, 10px gaps), a rule between sections, muted section titles, rounder sound boxes with
+  Mother and Father named in the accent, bigger knob captions, **Mutate** filled with the accent first in
+  the row of operations and Mother = Patch at its right end. The panel measures its own height now
+  (`layoutAll`), so it is no longer a fixed number.
+
 - **Slot Select: no rule under "Local"** (2026-10-24, branch `ui-redesign`). The footer already draws one:
   the last row leaves its own out (`OptionRow::setShowRule`) and the dialog is shorter again.
 

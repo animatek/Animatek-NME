@@ -60,6 +60,9 @@ public:
     bool keyPressed(const juce::KeyPress& key) override;
 
 private:
+    // Places everything for a width and returns the height it takes; with apply false only measures
+    int layoutAll(int w, bool apply);
+    std::vector<int> ruleYs;   // the rules between sections, as laid out
     class SnapshotBox;
     class KnobLookAndFeel;
 
