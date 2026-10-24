@@ -1525,7 +1525,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     addShortcutItem(menu, 60, "Zoom In", "Ctrl++");
     addShortcutItem(menu, 61, "Zoom Out", "Ctrl+-");
     addShortcutItem(menu, 62, "Reset Zoom (100%)", "Shift+Z");
-    addShortcutItem(menu, 63, "Zoom to Selection", "Z", !activeCanvas().isDragging(0, 0, 0));  // always enabled
+    addShortcutItem(menu, 63, "Zoom to Selection (again: back)", "Z", !activeCanvas().isDragging(0, 0, 0));  // always enabled
     menu.addSeparator();
     juce::String zoomLabel = "Zoom: " + juce::String(juce::roundToInt(zoom * 100)) + "%";
     menu.addItem(-1, zoomLabel, false);
@@ -1848,8 +1848,8 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 62:  // Reset Zoom
     activeCanvas().resetZoom();
     break;
-  case 63:  // Zoom to Selection
-    activeCanvas().zoomToSelection();
+  case 63:  // Zoom to Selection (again: back to where it was)
+    activeCanvas().toggleZoomToSelection();
     break;
   case 64:  // Shake Cables
     activeCanvas().shakeCables();

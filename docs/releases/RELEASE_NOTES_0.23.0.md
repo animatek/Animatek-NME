@@ -49,6 +49,7 @@ no slot used on the way; banks are saved with a `.pchList`. Four MCP tools drive
 
 - **The plugin keeps the slots' patches in the DAW project** and restores them when it reopens (#94).
 - **UI size** in Editor Options scales every window, menu and text for 4K screens (#105).
+- **Z zooms to the selection and Z again goes back** to where you were.
 - **Banks go to and from the synth's memory directly**, as in Clavia's editor.
 - **The Patch Mutator mutates like the G2's.**
 - **Store to Bank is confirmed by the synth** and goes to the right synth when two are connected (#109).

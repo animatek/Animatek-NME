@@ -105,6 +105,8 @@ public:
     void setZoomLevel(float z, juce::Point<int> anchor = {});
     void zoomToSelection();
     void resetZoom();
+    // Z: the first press zooms to the selection and remembers where it was, the next one goes back there
+    void toggleZoomToSelection();
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
     // Trackpad pinch (macOS, and any platform JUCE feeds magnify events from).
     void mouseMagnify(const juce::MouseEvent& e, float scaleFactor) override;
@@ -695,6 +697,9 @@ private:
 
     // Zoom
     float zoomLevel = 1.0f;
+    bool zoomedToSelection = false;       // Z zoomed in, and the next Z goes back
+    float zoomBeforeSelection = 1.0f;
+    juce::Point<int> viewBeforeSelection;
     ColorScheme activeScheme_ = kDarkTheme;
     ThemeId activeThemeId_ = ThemeId::Dark;
     inline static OverlayMode overlayMode = OverlayMode::Off;
@@ -1051,6 +1056,11 @@ public:
     {
         polyCanvas.zoomToSelection();
         commonCanvas.zoomToSelection();
+    }
+    void toggleZoomToSelection()
+    {
+        polyCanvas.toggleZoomToSelection();
+        commonCanvas.toggleZoomToSelection();
     }
     void resetZoom()
     {

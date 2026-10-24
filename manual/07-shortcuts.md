@@ -48,7 +48,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `F3` (or `F10`) | Toggle module DSP cost overlay |
 | double-click | Double-click a module to read its DSP cost |
 | `+` / `-` | Step the knob, slider or arrow-pair the pointer is over, one value at a time. Hold to repeat; the whole run is one undo step |
-| `Z` | Zoom to selection (or reset when nothing selected) |
+| `Z` | Zoom to the selection; press `Z` again to go back to where you were (reset to 100% when nothing is selected) |
 | `Shift+Z` | Reset zoom to 100% |
 | `Ctrl++` / `Ctrl+-` | Zoom in / out |
 | `Ctrl`+wheel, trackpad pinch | Zoom in / out around the pointer |

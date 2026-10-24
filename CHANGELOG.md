@@ -566,6 +566,12 @@ entries below are in the order they were made, newest first; the redesign ones s
 
 ### Fixed
 
+- **Z zooms in and Z again zooms back** (2026-10-24, `main`; asked for by Blaise by email). Z zoomed to the
+  selection and every further Z did the same; going back needed Shift+Z, which resets to 100% and not to
+  where you were. Now the first Z zooms to the selection and remembers the zoom and the place, and
+  the next Z returns to them. Zooming by hand (wheel, Ctrl+plus and minus) starts it over, and with
+  nothing selected Z still resets to 100%. Shift+Z is unchanged. The View menu item does the same.
+
 - **One Themes window instead of a long submenu and two windows** (2026-10-24, `main`). View > Theme was
   a list of every theme with eight options under it, and the editor and the community list were windows of
   their own. It is now one item, **View > Themes...**, that opens a window laid out like Editor Options:

@@ -2952,13 +2952,10 @@ bool PatchCanvas::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
-    // Z → zoom-to-selection (if any) or reset to 100%
+    // Z → zoom to the selection; Z again goes back to where it was. Nothing selected: reset to 100%
     if (key.getTextCharacter() == 'z' && !key.getModifiers().isCommandDown())
     {
-        if (hasSelection())
-            zoomToSelection();
-        else
-            resetZoom();
+        toggleZoomToSelection();
         return true;
     }
 

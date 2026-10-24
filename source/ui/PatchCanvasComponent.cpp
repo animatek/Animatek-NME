@@ -125,13 +125,40 @@ void PatchCanvas::setZoomLevel(float z, juce::Point<int> /*anchor*/)
     z = juce::jlimit(zoomMin, zoomMax, z);
     if (std::abs(z - zoomLevel) < 0.001f)
         return;
+    zoomedToSelection = false;   // zoomed by hand: Z starts over
     zoomLevel = z;
     updateSizeForZoom();
     repaint();
 }
 
+void PatchCanvas::toggleZoomToSelection()
+{
+    auto* vp = findParentComponentOfClass<juce::Viewport>();
+    if (zoomedToSelection)
+    {
+        // The second Z: back to the zoom and the place it was at before the first
+        zoomedToSelection = false;
+        zoomLevel = zoomBeforeSelection;
+        updateSizeForZoom();
+        if (vp != nullptr)
+            vp->setViewPosition(viewBeforeSelection);
+        repaint();
+        return;
+    }
+    if (hasSelection())
+    {
+        zoomBeforeSelection = zoomLevel;
+        viewBeforeSelection = vp != nullptr ? vp->getViewPosition() : juce::Point<int>();
+        zoomToSelection();
+        zoomedToSelection = true;
+    }
+    else
+        resetZoom();
+}
+
 void PatchCanvas::resetZoom()
 {
+    zoomedToSelection = false;
     if (auto* vp = findParentComponentOfClass<juce::Viewport>())
     {
         auto vpCenter = vp->getViewPosition() + juce::Point<int>(vp->getWidth() / 2, vp->getHeight() / 2);

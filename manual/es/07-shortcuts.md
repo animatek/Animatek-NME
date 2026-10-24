@@ -46,7 +46,7 @@ En macOS, `Ctrl` es `Cmd`.
 | `F9` | Superposición de asignaciones de MIDI CC |
 | `F10` | Superposición del coste de DSP de cada módulo |
 | doble clic | Doble clic en un módulo para leer su coste de DSP |
-| `Z` | Zoom a la selección (o reset si no hay nada seleccionado) |
+| `Z` | Zoom a la selección; otro `Z` vuelve a donde estabas (reset al 100 % si no hay nada seleccionado) |
 | `Shift+Z` | Reset del zoom al 100% |
 | `Ctrl++` / `Ctrl+-` | Acercar / alejar |
 | `Ctrl+T` | Siguiente tema de color |

@@ -51,7 +51,7 @@ const std::vector<ShortcutsDialog::Group>& ShortcutsDialog::groups()
             { "F3, F10", "Module DSP cost overlay" },
             { "Double-click module", "Module DSP cost" },
             { "+ / -", "Step the control under the pointer" },
-            { "Z", "Zoom to selection / reset" },
+            { "Z", "Zoom to the selection; again, back where it was" },
             { "Shift+Z", "Reset zoom to 100%" },
             { "Ctrl++ / Ctrl+-", "Zoom in / out" },
             { NME_SC_ZOOM_WHEEL, "Zoom around the pointer" },
