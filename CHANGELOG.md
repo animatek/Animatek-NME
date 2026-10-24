@@ -4,6 +4,10 @@
 
 ### Changed
 
+- **The browsers remember "Hide empty" and "Hide 2.10"** (2026-10-24, branch `ui-redesign`). Both
+  switches went back to off every time the editor was opened. They are now saved in the editor's
+  settings (`browserHideEmpty`, `browserHidePch2`) and set again at startup.
+
 - **Synth tab: the banks as section headings** (2026-10-24, branch `ui-redesign`). Each bank is drawn
   like the inspector's sections: a rule above it, its name in small capitals ("BANK 1", the 101-199
   range is gone), and the fold mark at the right edge (up when folded, down when open). The tree draws

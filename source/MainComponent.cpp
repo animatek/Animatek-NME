@@ -387,6 +387,23 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   }); });
 
   // Wire patch browser callbacks
+  // The two "hide" switches of the browsers are kept between sessions
+  if (auto* st = appProperties.getUserSettings()) {
+    mainLayout->getPatchBrowser().setHideEmpty(st->getBoolValue("browserHideEmpty", false));
+    mainLayout->getDiskPresetBrowser().setHidePch2(st->getBoolValue("browserHidePch2", false));
+  }
+  mainLayout->getPatchBrowser().onHideEmptyChanged = [this](bool hide) {
+    if (auto* st = appProperties.getUserSettings()) {
+      st->setValue("browserHideEmpty", hide);
+      st->saveIfNeeded();
+    }
+  };
+  mainLayout->getDiskPresetBrowser().onHidePch2Changed = [this](bool hide) {
+    if (auto* st = appProperties.getUserSettings()) {
+      st->setValue("browserHidePch2", hide);
+      st->saveIfNeeded();
+    }
+  };
   mainLayout->getPatchBrowser().onPatchDoubleClicked = [this](int section, int position) {
     loadBankPatchIntoSlot(section, position, activeSlot);
   };

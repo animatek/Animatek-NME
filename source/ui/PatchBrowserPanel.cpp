@@ -151,6 +151,8 @@ void PatchBrowserPanel::onSearchTextChanged()
 void PatchBrowserPanel::onHideEmptyToggled()
 {
     hideEmptySlots = hideEmptyButton.getToggleState();
+    if (onHideEmptyChanged)
+        onHideEmptyChanged(hideEmptySlots);
     applyFilters();
 }
 

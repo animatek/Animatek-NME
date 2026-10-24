@@ -21,6 +21,16 @@ public:
     std::function<void(const juce::File&)> onSnippetChosen;
     std::function<void(const juce::File&)> onSetChosen;   // a slot set manifest
 
+    // "Hide 2.10" is remembered between sessions: the owner sets it at start and is told when it
+    // changes, so it can keep it.
+    void setHidePch2(bool hide)
+    {
+        hidePch2 = hide;
+        hidePch2Button.setToggleState(hide, juce::dontSendNotification);
+        rebuildVisibleEntries();
+    }
+    std::function<void(bool)> onHidePch2Changed;
+
 private:
     class RefreshIconButton : public juce::Button
     {

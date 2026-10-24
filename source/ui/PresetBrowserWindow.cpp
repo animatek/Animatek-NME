@@ -165,6 +165,8 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     hidePch2Button.setTooltip("Hide legacy 2.10 patches (tagged PCH2 in the list)");
     hidePch2Button.onClick = [this]() {
         hidePch2 = hidePch2Button.getToggleState();
+        if (onHidePch2Changed)
+            onHidePch2Changed(hidePch2);
         rebuildVisibleEntries();
     };
     addAndMakeVisible(hidePch2Button);
