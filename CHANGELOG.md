@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Synth tab: patch locations as pills, and the list closer to the left** (2026-10-24, branch
+  `ui-redesign`). Each patch shows its location (101, 102...) as a pill in the style of the Disk
+  list's type tags, blue for a patch, muted for an empty slot and in the accent for the one loaded
+  in the slot, with the name after it, both centred in a 32px row. The tree's indentation drops to
+  14px (room for the chevron only), so the patches sit close to their bank instead of far to the right.
+
 - **Browser search fields: the text is centred and bigger** (2026-10-24, branch `ui-redesign`). The
   typed text and the hint sat at the top of the field in a small size; both search fields (Disk and
   Synth) now centre it vertically and use size 15.

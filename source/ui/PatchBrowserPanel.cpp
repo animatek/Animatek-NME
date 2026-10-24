@@ -43,7 +43,7 @@ PatchBrowserPanel::PatchBrowserPanel()
     // TreeView for patch browser
     treeView = std::make_unique<juce::TreeView>();
     treeView->setDefaultOpenness(false);  // Banks start collapsed
-    treeView->setIndentSize(18);
+    treeView->setIndentSize(14);   // just room for the chevron: the patches sit close to their bank
     addAndMakeVisible(*treeView);
 
     applyTheme();
@@ -357,19 +357,27 @@ void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, i
     }
     else
     {
-        // A patch: its location in the bank, muted, then its name
+        // A patch: its location in the bank as a pill, like the type tags of the Disk list, then
+        // its name, both centred in the row
         const int colon = itemName.indexOf(": ");
         const auto location = colon > 0 ? itemName.substring(0, colon) : juce::String();
         const auto name = colon > 0 ? itemName.substring(colon + 2) : itemName;
 
-        g.setColour(isLoaded ? AppTheme::palette().accentActive : AppTheme::palette().textMuted);
-        g.setFont(juce::Font(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(),
-                                               11.5f * AppTheme::uiFontScale(), juce::Font::plain)));
-        g.drawText(location, 8, 0, 40, height, juce::Justification::centredLeft, false);
+        const auto pill = juce::Rectangle<float>(6.0f, (static_cast<float>(height) - 20.0f) * 0.5f, 42.0f, 20.0f);
+        const auto tag = isLoaded ? AppTheme::palette().accentActive
+                       : empty    ? AppTheme::palette().textMuted
+                                  : AppTheme::palette().accentInfo;
+        g.setColour(tag.withAlpha(empty ? 0.14f : 0.22f));
+        g.fillRoundedRectangle(pill, 4.0f);
+        g.setColour(tag);
+        g.setFont(juce::Font(AppTheme::uiFont(10.5f)).boldened());
+        g.drawText(location, pill.toNearestInt(), juce::Justification::centred, false);
 
-        g.setColour(empty ? AppTheme::palette().textMuted : textColor);
+        g.setColour(empty ? AppTheme::palette().textMuted : isLoaded ? AppTheme::palette().accentActive
+                                                                    : AppTheme::palette().textPrimary.withAlpha(0.92f));
         g.setFont(juce::Font(AppTheme::uiFont(13.0f)));
-        g.drawText(name, 54, 0, width - 60, height, juce::Justification::centredLeft, true);
+        g.drawText(name, static_cast<int>(pill.getRight()) + 10, 0, width - static_cast<int>(pill.getRight()) - 16, height,
+                   juce::Justification::centredLeft, true);
     }
 }
 

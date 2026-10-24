@@ -51,7 +51,7 @@ private:
                       PatchBrowserPanel* parent = nullptr, bool isEmptySlot = false);
 
         bool mightContainSubItems() override;
-        int getItemHeight() const override { return (section >= 0 && position == -1) ? 36 : 30; }
+        int getItemHeight() const override { return (section >= 0 && position == -1) ? 36 : 32; }
         void paintItem(juce::Graphics& g, int width, int height) override;
         void itemClicked(const juce::MouseEvent& e) override;
         void itemDoubleClicked(const juce::MouseEvent& e) override;
