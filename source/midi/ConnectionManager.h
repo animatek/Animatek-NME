@@ -242,6 +242,13 @@ public:
     }
     bool isPatchListLoaded() const { return patchListLoaded; }
 
+    // The synth answers a Store with a one-entry patch list (bank, position, name):
+    // that is its word that the patch is in flash (G1originaleditor/notes/16). Whoever
+    // stores asks to be told: true on that entry, false if it does not come in time.
+    using StoreConfirmCallback = std::function<void(bool confirmed)>;
+    void expectStoreConfirmation(int section, int position, StoreConfirmCallback cb,
+                                 int timeoutMs = 4000);
+
     // Bank transfer hook (one-shot, set by BankTransferManager before each item).
     // While set, upload completion (true) or ACK-timeout abort (false) is
     // delivered here instead of uploadCompleteCallback.
@@ -527,6 +534,11 @@ private:
     int patchListSection = 0;      // Current section (0-8) being requested
     int patchListPosition = 0;     // Current position (0-98) being requested
     int patchListGeneration = 0;   // Invalidate old timeouts
+    int pendingStoreSection = -1;  // A Store waiting for the synth's confirmation
+    int pendingStorePosition = -1;
+    int storeGeneration = 0;       // Invalidate old store timeouts
+    StoreConfirmCallback storeConfirmCallback;
+    void finishStoreConfirmation(bool confirmed);
     std::vector<std::string> patchListNames;  // 891 entries (9 banks × 99 positions)
     PatchListCallback patchListCallback;
     // patchListTimeoutMs: 891 patches × one request/response each.

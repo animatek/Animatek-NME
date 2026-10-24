@@ -446,7 +446,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   mainLayout->getPatchBrowser().onPatchCopy = [this](int section, int position) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    PatchLocationDialog::show(this, "Copy Patch", synthHub.active().getPatchList(), true, activeSlot,
+    PatchLocationDialog::show(this, "Copy Patch", synthHub.active().getPatchList(), true,
+                              SynthSlot::localOf(activeSlot),
       [safeThis, section, position](const PatchLocationDialog::Result& r) {
         if (safeThis != nullptr && r.confirmed)
           safeThis->synthHub.active().copyPatchInBank(section, position, r.section, r.position, r.slot);
@@ -455,7 +456,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   mainLayout->getPatchBrowser().onPatchMove = [this](int section, int position) {
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    PatchLocationDialog::show(this, "Move Patch", synthHub.active().getPatchList(), true, activeSlot,
+    PatchLocationDialog::show(this, "Move Patch", synthHub.active().getPatchList(), true,
+                              SynthSlot::localOf(activeSlot),
       [safeThis, section, position](const PatchLocationDialog::Result& r) {
         if (safeThis != nullptr && r.confirmed)
           safeThis->synthHub.active().movePatchInBank(section, position, r.section, r.position, r.slot);
@@ -2817,11 +2819,16 @@ void MainComponent::storePatchToBank() {
     initialPosition = slotBankCandidates[slot].front().second;
   }
 
+  // The dialog speaks of the synth's own four slots (A-D); the slot it hands back is one
+  // of those, and belongs to the synth the store was opened on. Taken as a global slot it
+  // reached the first synth, whichever one the user was working on.
+  const int synth = SynthSlot::synthOf(slot);
   PatchLocationDialog::show(this, "Store Patch to Bank",
-    synthHub.active().getPatchList(), true, slot,
-    [safeThis](const PatchLocationDialog::Result& result) {
+    synthHub.active().getPatchList(), true, SynthSlot::localOf(slot),
+    [safeThis, synth](const PatchLocationDialog::Result& result) {
       if (safeThis == nullptr || !result.confirmed) return;
-      safeThis->sendStoreToBank(result.slot, result.section, result.position);
+      safeThis->storeAndReport(SynthSlot::global(synth, result.slot), result.section,
+                               result.position);
     },
     initialSection, initialPosition);
 }
@@ -2849,7 +2856,17 @@ void MainComponent::quickStoreToBank() {
     return;
   }
 
-  sendStoreToBank(activeSlot, section, position);
+  storeAndReport(activeSlot, section, position);
+}
+
+// The editor's slot is not always what the synth's working slot holds (a new patch, one
+// opened from a file), and a Store writes the working slot. So the patch goes up first,
+// as the MCP store does, and the Store follows once the synth has taken it.
+void MainComponent::storeAndReport(int slot, int section, int position) {
+  juce::String error;
+  if (!storeSlotPatchToBank(slot, section, position, error))
+    juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                                           "Store failed", error);
 }
 
 void MainComponent::sendStoreToBank(int slot, int section, int position) {
@@ -2857,35 +2874,55 @@ void MainComponent::sendStoreToBank(int slot, int section, int position) {
     return;
 
   const int location = (section + 1) * 100 + position + 1;
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  const auto name = slotPatches[slot] != nullptr ? slotPatches[slot]->getName().toStdString()
+                                                  : std::string();
+
+  // The synth answers a Store with the position and name it now holds there; only that
+  // answer says the patch is in flash (the original editor waits for it too). It is asked
+  // for before the Store goes out, so a quick answer is not missed.
+  synthHub.forSlot(slot).expectStoreConfirmation(section, position,
+      [safeThis, slot, section, position, location, name](bool confirmed) {
+        if (safeThis == nullptr) return;
+        auto* self = safeThis.getComponent();
+        if (confirmed) {
+          // The patch lives here now, which is what the next store offers by default,
+          // and the shortlist of same-named positions stops mattering.
+          self->synthHub.setSlotBankLocation(slot, section, position);
+          self->slotBankCandidates[slot].clear();
+          self->synthHub.forSlot(slot).setPatchListName(section, position, name);
+          if (slot == self->activeSlot)
+            self->updateStoreLocationDisplay();
+          if (SynthSlot::synthOf(slot) == self->synthHub.activeSynth()) {
+            self->mainLayout->getPatchBrowser().setPatchList(self->synthHub.active().getPatchList());
+            self->mainLayout->getPatchBrowser().setLoadedPatch(section, position);
+          }
+          self->mainLayout->getStatusBar().showMessage(
+              "Stored slot " + SynthSlot::label(slot) + " to bank location "
+              + juce::String(location) + " (the synth confirmed it)", 3000);
+        } else {
+          self->mainLayout->getStatusBar().showMessage(
+              "Bank location " + juce::String(location)
+              + " was NOT confirmed by the synth - reading the bank again", 8000);
+        }
+        std::cout << "[STORE] Slot " << SynthSlot::label(slot).toStdString()
+                  << " -> bank location " << location
+                  << (confirmed ? " confirmed" : " NOT confirmed") << std::endl;
+
+        // Whatever the answer, the list is read again from the synth: what it says is
+        // the truth, and the name written above is only what we expect to find.
+        juce::Timer::callAfterDelay(300, [safeThis, slot]() {
+          if (safeThis != nullptr && safeThis->synthHub.forSlot(slot).isConnected())
+            safeThis->synthHub.forSlot(slot).requestPatchList();
+        });
+      });
+
   StorePatchMessage msg(SynthHub::local(slot), section, position);
   // Through the ACK queue, like ConnectionManager::storeLoadedSlotToBank. Sent
   // raw, a store fired straight off an upload's last ACK could reach a synth
   // still busy with that upload and be dropped without a word: of four stores
   // in a row on 2026-09-13, one never reached the bank.
   synthHub.sendAckedSysEx(slot, msg.toSysEx(SynthHub::local(slot)));
-
-  // The patch now lives here, which is what the next store offers by default,
-  // and the shortlist of same-named positions stops mattering.
-  synthHub.setSlotBankLocation(slot, section, position);
-  slotBankCandidates[slot].clear();
-  // The bank list is not fetched again after a store, so write the new name
-  // into it: otherwise the position keeps its old name (or reads as empty)
-  // until the editor reconnects.
-  if (slotPatches[slot] != nullptr)
-    synthHub.forSlot(slot).setPatchListName(section, position,
-                                            slotPatches[slot]->getName().toStdString());
-  if (slot == activeSlot)
-    updateStoreLocationDisplay();
-  if (SynthSlot::synthOf(slot) == synthHub.activeSynth()) {
-    mainLayout->getPatchBrowser().setPatchList(synthHub.active().getPatchList());
-    mainLayout->getPatchBrowser().setLoadedPatch(section, position);
-  }
-
-  mainLayout->getStatusBar().showMessage(
-      "Stored slot " + SynthSlot::label(slot)
-      + " to bank location " + juce::String(location), 3000);
-  std::cout << "[STORE] Slot " << SynthSlot::label(slot).toStdString() << " -> bank location "
-            << location << std::endl;
 }
 
 void MainComponent::inferSlotBankLocation(int slot) {
