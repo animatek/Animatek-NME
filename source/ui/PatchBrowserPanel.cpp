@@ -18,12 +18,13 @@ PatchBrowserPanel::PatchBrowserPanel()
     addAndMakeVisible(statusLabel);
 
     // Search label
-    searchLabel.setText("Search:", juce::dontSendNotification);
-    searchLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
-    addAndMakeVisible(searchLabel);
+    // (no label: the hint in the field says it)
+    searchLabel.setVisible(false);
 
     // Search box
-    searchBox.setFont(juce::Font(AppTheme::uiFont(12.0f)));
+    searchBox.setFont(juce::Font(AppTheme::uiFont(13.0f)));
+    searchBox.setIndents(10, 0);
+    searchBox.setTextToShowWhenEmpty("Search patch...", AppTheme::palette().textMuted);
     searchBox.onTextChange = [this]() { onSearchTextChanged(); };
     addAndMakeVisible(searchBox);
 
@@ -94,18 +95,17 @@ void PatchBrowserPanel::resized()
         statusLabel.setVisible(false);
 
         // Header area with search and filters
-        auto headerArea = bounds.removeFromTop(70);
+        auto headerArea = bounds.removeFromTop(82);
         headerArea.reduce(8, 8);
 
         // First row: Search
-        auto searchRow = headerArea.removeFromTop(24);
-        searchLabel.setBounds(searchRow.removeFromLeft(50));
-        searchBox.setBounds(searchRow.withTrimmedLeft(4));
+        auto searchRow = headerArea.removeFromTop(34);
+        searchBox.setBounds(searchRow.reduced(0, 2));
 
         headerArea.removeFromTop(4);  // Spacing
 
         // Second row: Hide empty + Refresh
-        auto filterRow = headerArea.removeFromTop(24);
+        auto filterRow = headerArea.removeFromTop(28);
         hideEmptyButton.setBounds(filterRow.removeFromLeft(100));
         filterRow.removeFromLeft(8);  // Spacing
         refreshButton.setBounds(filterRow.removeFromLeft(80));
@@ -113,7 +113,6 @@ void PatchBrowserPanel::resized()
         // TreeView gets remaining space
         treeView->setBounds(bounds.withTrimmedTop(4));
         treeView->setVisible(true);
-        searchLabel.setVisible(true);
         searchBox.setVisible(true);
         hideEmptyButton.setVisible(true);
         refreshButton.setVisible(true);
@@ -322,21 +321,19 @@ void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, i
                        && section == panel->selectedSection
                        && position == panel->selectedPosition);
 
-    if (isSelected)
+    // A rounded row: raised for the one selected, and tinted with the accent for the patch
+    // that is loaded in the slot
+    if (isSelected || isLoaded)
     {
-        g.setColour(isLoaded ? juce::Colour(0x44ffaa00)
-                             : AppTheme::palette().backgroundElevated.withAlpha(0.33f));
-        g.fillRect(0, 0, width, height);
-
-        g.setColour(isLoaded ? AppTheme::palette().accentActive
-                             : AppTheme::palette().textPrimary);
-        g.drawRect(0, 0, width, height);
-    }
-    else if (isLoaded)
-    {
-        // Subtle highlight background for the loaded patch
-        g.setColour(juce::Colour(0x33ffaa00));
-        g.fillRect(0, 0, width, height);
+        const auto row = juce::Rectangle<float>(2.0f, 1.0f, static_cast<float>(width) - 4.0f, static_cast<float>(height) - 2.0f);
+        g.setColour(isLoaded ? AppTheme::palette().accentActive.withAlpha(0.18f)
+                             : AppTheme::palette().backgroundElevated);
+        g.fillRoundedRectangle(row, 5.0f);
+        if (isLoaded)
+        {
+            g.setColour(AppTheme::palette().accentActive.withAlpha(0.6f));
+            g.drawRoundedRectangle(row.reduced(0.5f), 5.0f, 1.0f);
+        }
     }
 
     juce::Colour textColor = isLoaded ? AppTheme::palette().accentActive

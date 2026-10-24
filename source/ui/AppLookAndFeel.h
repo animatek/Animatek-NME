@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "AppTheme.h"
 
 // The app's default LookAndFeel: JUCE's V4, coloured by AppTheme, plus a red dot on a
 // menu bar title that ends in `newMarker()` (View, when there are community themes
@@ -21,6 +22,56 @@ public:
         d->setPath(p);
         d->setFill(newColour());
         return d;
+    }
+
+    // Tabs (the browser's Synth / Disk): just the word, with an underline under the front one
+    static juce::Font tabFont() { return juce::Font(AppTheme::uiFont(13.0f).withStyle("Bold")); }
+
+    int getTabButtonBestWidth(juce::TabBarButton& button, int) override
+    {
+        return juce::roundToInt(juce::GlyphArrangement::getStringWidth(tabFont(), button.getButtonText())) + 36;
+    }
+
+    void drawTabButton(juce::TabBarButton& button, juce::Graphics& g, bool isMouseOver, bool) override
+    {
+        const auto& pal = AppTheme::palette();
+        const auto r = button.getLocalBounds();
+        const bool front = button.isFrontTab();
+        g.setColour(front || isMouseOver ? pal.textPrimary : pal.textSecondary);
+        g.setFont(tabFont());
+        g.drawText(button.getButtonText(), r, juce::Justification::centred, false);
+        if (front)
+        {
+            g.setColour(pal.accentActive);
+            g.fillRect(r.getX() + 8, r.getBottom() - 3, r.getWidth() - 16, 3);
+        }
+    }
+
+    void drawTabAreaBehindFrontButton(juce::TabbedButtonBar&, juce::Graphics& g, int w, int h) override
+    {
+        g.setColour(AppTheme::palette().borderColor);
+        g.drawHorizontalLine(h - 1, 0.0f, static_cast<float>(w));
+    }
+
+    // Text fields with rounded corners, like the buttons
+    void fillTextEditorBackground(juce::Graphics& g, int width, int height, juce::TextEditor& editor) override
+    {
+        g.setColour(editor.findColour(juce::TextEditor::backgroundColourId));
+        g.fillRoundedRectangle(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 6.0f);
+    }
+
+    void drawTextEditorOutline(juce::Graphics& g, int width, int height, juce::TextEditor& editor) override
+    {
+        if (!editor.isEnabled())
+            return;
+        const bool focused = editor.hasKeyboardFocus(true) && !editor.isReadOnly();
+        const auto colour = editor.findColour(focused ? juce::TextEditor::focusedOutlineColourId
+                                                      : juce::TextEditor::outlineColourId);
+        if (colour.isTransparent())
+            return;
+        g.setColour(colour);
+        g.drawRoundedRectangle(0.5f, 0.5f, static_cast<float>(width) - 1.0f, static_cast<float>(height) - 1.0f,
+                               6.0f, focused ? 1.8f : 1.0f);
     }
 
     void drawMenuBarItem(juce::Graphics& g, int width, int height, int itemIndex,

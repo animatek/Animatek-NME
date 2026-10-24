@@ -4,6 +4,16 @@
 
 ### Changed
 
+- **Browser (right panel) restyled** (2026-10-24, branch `ui-redesign`). The **Synth / Disk tabs** are
+  flat now: just the word, with an underline in the accent under the front one (`AppLookAndFeel`).
+  **Text fields app-wide get rounded corners** (6px, the focus ring too), so the search fields, the
+  dialogs and the inspector's editors match the buttons. **Disk tab:** no "Search" label (the field's
+  hint says it), a taller search row with a rounded refresh button, the filter chips (All, Patch, Snip,
+  Bank, Set) as pills with the chosen one filled in the accent, 30px rows with no hairline between them,
+  the selected one a raised rounded row, and the type tag (PATCH, SNIP, BANK, SET) a pill. **Synth tab:**
+  the same search field, and the selected and the loaded patch as rounded rows (the loaded one tinted
+  with the accent) instead of a boxed outline.
+
 - **Inspector: no hairline under the last assignment of a section** (2026-10-24, branch
   `ui-redesign`): the next section's title already draws its own rule, so two lines in a row read as noise.
 

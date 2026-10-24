@@ -40,9 +40,9 @@ void DiskPresetBrowserPanel::RefreshIconButton::paintButton(juce::Graphics& g, b
                                 : AppTheme::palette().inputBackground;
 
     g.setColour(bg);
-    g.fillRoundedRectangle(area, 4.0f);
+    g.fillRoundedRectangle(area, 6.0f);
     g.setColour(AppTheme::palette().borderColor);
-    g.drawRoundedRectangle(area, 4.0f, 1.0f);
+    g.drawRoundedRectangle(area.reduced(0.5f), 6.0f, 1.0f);
 
     auto iconArea = area.reduced(7.0f);
     juce::Path p;
@@ -99,7 +99,7 @@ DiskPresetBrowserPanel::TypeChipButton::TypeChipButton(const juce::String& chipL
 
 static juce::Font chipFont()
 {
-    return juce::Font(AppTheme::uiFont(10.0f)).boldened();
+    return juce::Font(AppTheme::uiFont(11.0f)).boldened();
 }
 
 int DiskPresetBrowserPanel::TypeChipButton::getIdealWidth(int padding) const
@@ -114,15 +114,19 @@ int DiskPresetBrowserPanel::TypeChipButton::getIdealWidth(int padding) const
 void DiskPresetBrowserPanel::TypeChipButton::paintButton(juce::Graphics& g, bool highlighted, bool down)
 {
     const bool selected = getToggleState();
-    auto area = getLocalBounds().toFloat().reduced(0.5f, 3.0f);
+    auto area = getLocalBounds().toFloat().reduced(0.5f, 2.0f);
 
-    auto fill = selected || down ? AppTheme::palette().buttonActive
+    // A pill: the chosen one is filled with the accent, the others are outlined
+    auto fill = selected || down ? AppTheme::palette().accentActive
               : highlighted      ? AppTheme::palette().buttonHover
-                                 : AppTheme::palette().inputBackground;
+                                 : AppTheme::palette().buttonBackground;
     g.setColour(fill);
-    g.fillRoundedRectangle(area, 3.0f);
-    g.setColour(selected ? AppTheme::palette().accentActive : AppTheme::palette().borderColor);
-    g.drawRoundedRectangle(area, 3.0f, 1.0f);
+    g.fillRoundedRectangle(area, area.getHeight() * 0.5f);
+    if (!selected)
+    {
+        g.setColour(AppTheme::palette().borderColor);
+        g.drawRoundedRectangle(area.reduced(0.5f), area.getHeight() * 0.5f, 1.0f);
+    }
 
     g.setColour(selected ? iconInkFor(fill) : AppTheme::palette().textSecondary);
     g.setFont(chipFont());
@@ -133,9 +137,8 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
 {
     setOpaque(true);
 
-    searchLabel.setText("Search", juce::dontSendNotification);
-    searchLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
-    addAndMakeVisible(searchLabel);
+    searchBox.setFont(juce::Font(AppTheme::uiFont(13.0f)));
+    searchBox.setIndents(10, 0);
 
     searchBox.onTextChange = [this]() { rebuildVisibleEntries(); };
     addAndMakeVisible(searchBox);
@@ -170,7 +173,7 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     statusLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
     addAndMakeVisible(statusLabel);
 
-    listBox.setRowHeight(24);
+    listBox.setRowHeight(30);
     addAndMakeVisible(listBox);
 
     applyTheme();
@@ -183,7 +186,7 @@ void DiskPresetBrowserPanel::applyTheme()
     searchBox.setColour(juce::TextEditor::textColourId, kText);
     searchBox.setColour(juce::TextEditor::outlineColourId, kSep);
     searchBox.setColour(juce::TextEditor::focusedOutlineColourId, AppTheme::palette().accentActive);
-    searchBox.setTextToShowWhenEmpty("patch, snippet or set name", kDim);
+    searchBox.setTextToShowWhenEmpty("Search patch, snippet or set...", kDim);
     statusLabel.setColour(juce::Label::textColourId, kDim);
     listBox.setColour(juce::ListBox::backgroundColourId, kPanel);
     listBox.setColour(juce::ListBox::outlineColourId, kSep);
@@ -298,15 +301,16 @@ void DiskPresetBrowserPanel::resized()
 {
     auto area = getLocalBounds().reduced(8);
 
-    auto searchRow = area.removeFromTop(28);
-    searchLabel.setBounds(searchRow.removeFromLeft(52));
-    refreshButton.setBounds(searchRow.removeFromRight(32).reduced(1));
-    searchBox.setBounds(searchRow.reduced(2));
+    auto searchRow = area.removeFromTop(34);
+    refreshButton.setBounds(searchRow.removeFromRight(34).reduced(1));
+    searchBox.setBounds(searchRow.withTrimmedRight(4).reduced(0, 2));
+    area.removeFromTop(4);
 
-    filterRowArea = area.removeFromTop(26);
+    filterRowArea = area.removeFromTop(30);
     layoutFilterRow();
+    area.removeFromTop(2);
 
-    auto statusRow = area.removeFromTop(24);
+    auto statusRow = area.removeFromTop(28);
     nextButton.setBounds(statusRow.removeFromRight(26));
     prevButton.setBounds(statusRow.removeFromRight(26));
     statusRow.removeFromRight(4);
@@ -359,26 +363,28 @@ void DiskPresetBrowserPanel::paintListBoxItem(int row, juce::Graphics& g, int wi
 
     auto& entry = allEntries[static_cast<size_t>(visibleEntryIndices[static_cast<size_t>(row)])];
 
-    g.fillAll(selected ? AppTheme::palette().backgroundElevated : kPanel);
-    g.setColour(selected ? juce::Colour(0xffd8dcdf) : kSep);
-    g.drawHorizontalLine(height - 1, 0.0f, static_cast<float>(width));
+    g.fillAll(kPanel);
+    if (selected)
+    {
+        g.setColour(AppTheme::palette().backgroundElevated);
+        g.fillRoundedRectangle(4.0f, 1.0f, static_cast<float>(width) - 8.0f, static_cast<float>(height) - 2.0f, 5.0f);
+    }
 
-    auto tagArea = juce::Rectangle<int>(6, 4, 48, height - 8);
+    auto tagArea = juce::Rectangle<int>(10, (height - 18) / 2, 50, 18);
     auto tagColour = isLegacyPatch210(entry)            ? legacyPatchTagColour()
                    : entry.type == Entry::Type::Patch   ? kPatchTag
                    : entry.type == Entry::Type::Snippet ? kSnippetTag
                    : entry.type == Entry::Type::Set     ? kSetTag
                                                         : kBankTag;
     g.setColour(tagColour.withAlpha(0.22f));
-    g.fillRoundedRectangle(tagArea.toFloat(), 3.0f);
+    g.fillRoundedRectangle(tagArea.toFloat(), 4.0f);
     g.setColour(tagColour);
-    g.drawRoundedRectangle(tagArea.toFloat(), 3.0f, 1.0f);
     g.setFont(juce::Font(AppTheme::uiFont(10.0f)).boldened());
     g.drawText(getTypeLabel(entry), tagArea, juce::Justification::centred, true);
 
-    g.setColour(selected ? juce::Colours::white : kText);
-    g.setFont(juce::Font(AppTheme::uiFont(12.0f)));
-    g.drawText(entry.displayName, 62, 0, width - 68, height, juce::Justification::centredLeft, true);
+    g.setColour(selected ? AppTheme::palette().textPrimary : AppTheme::palette().textPrimary.withAlpha(0.9f));
+    g.setFont(juce::Font(AppTheme::uiFont(13.0f)));
+    g.drawText(entry.displayName, 70, 0, width - 78, height, juce::Justification::centredLeft, true);
 }
 
 void DiskPresetBrowserPanel::loadRow(int row)
