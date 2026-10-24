@@ -110,6 +110,115 @@ public:
                    juce::Justification::centredLeft, true);
     }
 
+    // ---- Menus: rounded, roomy, a hairline for a separator, a light highlight, quiet shortcuts ----
+    juce::Font getPopupMenuFont() override { return juce::Font(AppTheme::uiFont(14.0f)); }
+    int getPopupMenuBorderSize() override { return 6; }
+
+    void drawPopupMenuBackground(juce::Graphics& g, int width, int height) override
+    {
+        const auto& pal = AppTheme::palette();
+        // A window that cannot be see-through shows square corners: paint them in the ground colour
+        if (!juce::Desktop::getInstance().canUseSemiTransparentWindows())
+            g.fillAll(pal.backgroundMain);
+        const auto box = juce::Rectangle<float>(0.5f, 0.5f, static_cast<float>(width) - 1.0f, static_cast<float>(height) - 1.0f);
+        g.setColour(pal.backgroundPanel);
+        g.fillRoundedRectangle(box, 9.0f);
+        g.setColour(pal.borderColor.brighter(0.2f));
+        g.drawRoundedRectangle(box, 9.0f, 1.0f);
+    }
+
+    void getIdealPopupMenuItemSize(const juce::String& text, bool isSeparator, int standardMenuItemHeight,
+                                   int& idealWidth, int& idealHeight) override
+    {
+        LookAndFeel_V4::getIdealPopupMenuItemSize(text, isSeparator, standardMenuItemHeight, idealWidth, idealHeight);
+        if (isSeparator)
+            idealHeight = 11;
+        else
+        {
+            idealHeight = juce::jmax(idealHeight, 32);
+            idealWidth += 24;   // room to breathe between the words and the shortcut
+        }
+    }
+
+    void drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& area, bool isSeparator, bool isActive,
+                           bool isHighlighted, bool isTicked, bool hasSubMenu, const juce::String& text,
+                           const juce::String& shortcutKeyText, const juce::Drawable* icon,
+                           const juce::Colour* textColourToUse) override
+    {
+        const auto& pal = AppTheme::palette();
+
+        if (isSeparator)
+        {
+            g.setColour(pal.borderColor);
+            g.fillRect(area.reduced(8, 0).withSizeKeepingCentre(area.getWidth() - 16, 1));
+            return;
+        }
+
+        const auto textColour = textColourToUse == nullptr ? findColour(juce::PopupMenu::textColourId) : *textColourToUse;
+
+        if (isHighlighted && isActive)
+        {
+            g.setColour(findColour(juce::PopupMenu::highlightedBackgroundColourId));
+            g.fillRoundedRectangle(area.reduced(2, 1).toFloat(), 6.0f);
+            g.setColour(findColour(juce::PopupMenu::highlightedTextColourId));
+        }
+        else
+        {
+            g.setColour(textColour.withMultipliedAlpha(isActive ? 1.0f : 0.5f));
+        }
+
+        auto r = area.reduced(10, 0);
+        auto font = getPopupMenuFont();
+        g.setFont(font);
+
+        // The mark column: an icon, or a check in the accent when the item is on
+        auto mark = r.removeFromLeft(18).toFloat();
+        if (icon != nullptr)
+            icon->drawWithin(g, mark, juce::RectanglePlacement::centred | juce::RectanglePlacement::onlyReduceInSize, 1.0f);
+        else if (isTicked)
+        {
+            juce::Path tick;
+            tick.startNewSubPath(mark.getX() + 3.0f, mark.getCentreY());
+            tick.lineTo(mark.getX() + 7.0f, mark.getCentreY() + 4.0f);
+            tick.lineTo(mark.getX() + 14.0f, mark.getCentreY() - 4.5f);
+            g.saveState();
+            g.setColour(isHighlighted && isActive ? findColour(juce::PopupMenu::highlightedTextColourId) : pal.accentActive);
+            g.strokePath(tick, juce::PathStrokeType(2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+            g.restoreState();
+        }
+        r.removeFromLeft(6);
+
+        if (hasSubMenu)
+        {
+            auto arrow = r.removeFromRight(12);
+            const float cx = static_cast<float>(arrow.getCentreX()), cy = static_cast<float>(arrow.getCentreY());
+            juce::Path chevron;
+            chevron.startNewSubPath(cx - 2.5f, cy - 4.5f);
+            chevron.lineTo(cx + 2.5f, cy);
+            chevron.lineTo(cx - 2.5f, cy + 4.5f);
+            g.strokePath(chevron, juce::PathStrokeType(1.7f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+            r.removeFromRight(4);
+        }
+
+        // The shortcut, quiet and monospaced, at the right; the words get what is left
+        int shortcutW = 0;
+        if (shortcutKeyText.isNotEmpty())
+        {
+            const juce::Font mono(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(),
+                                                    12.0f * AppTheme::uiFontScale(), juce::Font::plain));
+            shortcutW = static_cast<int>(juce::GlyphArrangement::getStringWidth(mono, shortcutKeyText)) + 6;
+            g.setColour((isHighlighted && isActive ? findColour(juce::PopupMenu::highlightedTextColourId) : pal.textMuted)
+                            .withMultipliedAlpha(isActive ? 1.0f : 0.5f));
+            g.setFont(mono);
+            g.drawText(shortcutKeyText, r, juce::Justification::centredRight, true);
+            g.setColour(isHighlighted && isActive ? findColour(juce::PopupMenu::highlightedTextColourId)
+                                                  : textColour.withMultipliedAlpha(isActive ? 1.0f : 0.5f));
+            g.setFont(font);
+        }
+
+        g.drawFittedText(text, r.withTrimmedRight(shortcutW + (shortcutW > 0 ? 12 : 0)), juce::Justification::centredLeft, 1);
+    }
+
     // Text fields with rounded corners, like the buttons
     void fillTextEditorBackground(juce::Graphics& g, int width, int height, juce::TextEditor& editor) override
     {

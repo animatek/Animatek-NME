@@ -133,7 +133,8 @@ void AppTheme::applyLookAndFeel()
     const auto& t = palette();
     auto& lf = juce::LookAndFeel::getDefaultLookAndFeel();
 
-    lf.setColour(juce::PopupMenu::backgroundColourId,            t.backgroundPanel);
+    // Just short of opaque: a menu window that is not opaque can have rounded corners
+    lf.setColour(juce::PopupMenu::backgroundColourId,            t.backgroundPanel.withAlpha(0.996f));
     lf.setColour(juce::PopupMenu::textColourId,                  t.textSecondary);
     lf.setColour(juce::PopupMenu::headerTextColourId,            t.accentActive);
     lf.setColour(juce::PopupMenu::highlightedBackgroundColourId, t.buttonActive);

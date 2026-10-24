@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Menus restyled** (2026-10-24, branch `ui-redesign`). Every drop-down and context menu (File, Edit, View,
+  Device, the right-click menus, the Cables menu) gets rounded corners and a thin border, 6px of
+  padding, 32px rows, a rounded highlight under the pointer, a hairline for a separator, a check
+  mark in the accent for what is on, a chevron for a sub-menu and the shortcut at the right, quiet
+  and in monospaced type. The menu bar itself (File, Edit... along the top) is unchanged for now.
+
 - **Disk list: it appears at once, from one scan, in a third of the time** (2026-10-24, branch
   `ui-redesign`). The first background version showed an empty list with "Hide 2.10" on: two scans
   started (the panel was asked for the same folder twice) and each opened all 53,759 files before
