@@ -23,6 +23,31 @@ public:
     }
 };
 
+// A small on/off switch, the way the options pages draw theirs, for a place where a row of text
+// has already said what it is for
+class SwitchButton : public juce::ToggleButton
+{
+public:
+    SwitchButton() { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
+
+    void paintButton (juce::Graphics& g, bool, bool) override
+    {
+        const auto& pal = AppTheme::palette();
+        const bool on = getToggleState();
+        const float fade = isEnabled() ? 1.0f : 0.45f;
+        const auto r = getLocalBounds().toFloat().withSizeKeepingCentre (44.0f, 22.0f);
+        g.setColour ((on ? pal.accentActive : pal.inputBackground).withAlpha (fade));
+        g.fillRoundedRectangle (r, 11.0f);
+        if (! on)
+        {
+            g.setColour (pal.borderColor.withAlpha (fade));
+            g.drawRoundedRectangle (r.reduced (0.5f), 11.0f, 1.0f);
+        }
+        g.setColour ((on ? pal.backgroundMain : pal.textSecondary).withAlpha (fade));
+        g.fillEllipse (on ? r.getRight() - 20.0f : r.getX() + 2.0f, r.getCentreY() - 9.0f, 18.0f, 18.0f);
+    }
+};
+
 // The app's default LookAndFeel: JUCE's V4, coloured by AppTheme, plus a red dot on a
 // menu bar title that ends in `newMarker()` (View, when there are community themes
 // the user has not seen, #91). The dot as text took the menu's colour and was easy

@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **MIDI Setup redesigned** (2026-10-24, branch `ui-redesign`). The framed groups become **one card per
+  port** (640px wide): its number and name, the connection status in words with a dot (green when
+  connected) and the **switch** that enables it, and below it the In and Out ports, one under the other,
+  each a full-width list. The title bar is Editor Options' (40px, bold title, rule), and the buttons sit
+  at the right of a footer band: Apply, **OK** (filled with the accent) and Cancel. The same ports,
+  statuses, retries and Apply/OK/Cancel as before; only the layout is new.
+
 - **Renaming the patch in the header, and every window's title bar** (2026-10-24, branch `ui-redesign`).
   After a rename the name label stayed on screen as a boxed field instead of the bar going back to its
   flat title: it is hidden when the editing ends, and the editor is typed in the title's own size and

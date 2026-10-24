@@ -6,6 +6,7 @@
 #include <array>
 #include "../midi/SynthHub.h"
 #include "FlatCloseButton.h"
+#include "AppLookAndFeel.h"
 
 // MIDI Setup, as the original editor has it: one group per port, each with its In and
 // Out ports, an Enabled box and the Status of the synth found there. A port is one
@@ -49,7 +50,7 @@ private:
         juce::Label    inLabel  { {}, "In" };
         juce::Label    outLabel { {}, "Out" };
         juce::ComboBox inCombo, outCombo;
-        juce::ToggleButton enabled { "Enabled" };
+        SwitchButton   enabled;
         juce::Label    statusCaption { {}, "Status:" };
         juce::Label    status;
         bool connected = false;
@@ -74,7 +75,7 @@ private:
     };
     Content content;
     juce::Viewport viewport;
-    static constexpr int kGroupH = 112, kTitleH = 32, kButtonsH = 52;
+    static constexpr int kGroupH = 160, kTitleH = 40, kButtonsH = 68;
     std::array<Port, kMaxSynths> applied;   // what the synth was last told
     juce::TextButton okButton { "OK" }, cancelButton { "Cancel" }, applyButton { "Apply" };
 
