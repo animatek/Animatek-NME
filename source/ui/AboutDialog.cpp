@@ -1,5 +1,6 @@
 #include "AboutDialog.h"
 #include "AppTheme.h"
+#include "VersionCheck.h"
 #include <BinaryData.h>
 
 namespace
@@ -58,10 +59,11 @@ AboutDialog::AboutDialog(UrlCallback openUrl)
 
     websiteButton.onClick = [this]() { if (openUrl_) openUrl_(kWebsiteUrl); };
     patreonButton.onClick = [this]() { if (openUrl_) openUrl_(kPatreonUrl); };
+    donateButton.onClick  = [this]() { if (openUrl_) openUrl_(VersionCheck::kDonateUrl); };
     githubButton.onClick  = [this]() { if (openUrl_) openUrl_(kGithubUrl); };
     copyButton.onClick    = [this]() { copyVersionToClipboard(); };
 
-    for (auto* b : { &websiteButton, &patreonButton, &githubButton, &copyButton })
+    for (auto* b : { &websiteButton, &patreonButton, &donateButton, &githubButton, &copyButton })
     {
         styleButton(*b);
         addAndMakeVisible(*b);
@@ -125,12 +127,14 @@ void AboutDialog::resized()
     auto buttons = area.removeFromBottom(buttonRowH + pad).reduced(pad, 0);
     buttons.removeFromBottom(pad);
 
-    // Four equal buttons across the row.
+    // Five equal buttons across the row.
     const int gap = 6;
-    const int w = (buttons.getWidth() - gap * 3) / 4;
+    const int w = (buttons.getWidth() - gap * 4) / 5;
     websiteButton.setBounds(buttons.removeFromLeft(w));
     buttons.removeFromLeft(gap);
     patreonButton.setBounds(buttons.removeFromLeft(w));
+    buttons.removeFromLeft(gap);
+    donateButton.setBounds(buttons.removeFromLeft(w));
     buttons.removeFromLeft(gap);
     githubButton.setBounds(buttons.removeFromLeft(w));
     buttons.removeFromLeft(gap);

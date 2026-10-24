@@ -4,6 +4,11 @@
 
 ### Changed
 
+- **Donate button next to Patreon** (2026-10-24, branch `apoyo-donar`). The About box gets a
+  Donate button (five buttons across now), the About menu a "Donate (PayPal)..." item, and the
+  repo a `.github/FUNDING.yml` (GitHub's Sponsor button) plus a "Support the project" section
+  in the README. The PayPal link lives once, in `VersionCheck.h`. Release build compiles.
+
 - **Banks go to and from the synth's memory directly, as in Clavia's editor** (2026-10-18,
   branch `bank-flash-transfer`). Read off the wire from editor 3.03 against a real G1
   (`G1originaleditor/notes/15-bancos-pchlist.md`):
