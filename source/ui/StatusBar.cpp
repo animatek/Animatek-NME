@@ -1,8 +1,81 @@
 #include "StatusBar.h"
 #include "AppTheme.h"
 
+PanelIconButton::PanelIconButton(Icon i) : juce::Button("panel"), icon(i)
+{
+    setClickingTogglesState(false);
+    setMouseCursor(juce::MouseCursor::PointingHandCursor);
+}
+
+void PanelIconButton::paintButton(juce::Graphics& g, bool highlighted, bool down)
+{
+    const auto& pal = AppTheme::palette();
+    const bool on = getToggleState();
+    const auto r = getLocalBounds().toFloat().reduced(1.0f, 2.0f);
+    if (highlighted || down)
+    {
+        g.setColour(pal.buttonBackground);
+        g.fillRoundedRectangle(r, 6.0f);
+    }
+    const auto ink = on ? pal.accentActive : (highlighted ? pal.textPrimary : pal.textSecondary);
+    g.setColour(ink);
+    const auto c = r.getCentre();
+    if (icon == Icon::Inspector)
+    {
+        g.setFont(juce::Font(AppTheme::uiFont(17.0f)).boldened());
+        g.drawText("i", r.toNearestInt(), juce::Justification::centred, false);
+    }
+    else if (icon == Icon::Browser)
+    {
+        g.drawEllipse(c.x - 5.5f, c.y - 5.5f, 10.0f, 10.0f, 1.8f);
+        g.drawLine(c.x + 2.2f, c.y + 2.2f, c.x + 6.5f, c.y + 6.5f, 2.0f);
+    }
+    else if (icon == Icon::Midi)
+    {
+        // A keyboard: the outline, the splits between white keys and the black keys over them
+        const auto k = juce::Rectangle<float>(c.x - 9.0f, c.y - 6.0f, 18.0f, 12.0f);
+        g.drawRoundedRectangle(k, 2.0f, 1.5f);
+        for (float x : { -3.0f, 3.0f })
+            g.drawLine(c.x + x, c.y + 0.5f, c.x + x, c.y + 6.0f, 1.2f);
+        for (float x : { -6.0f, 0.0f, 6.0f })
+            g.fillRect(juce::Rectangle<float>(c.x + x - 1.3f, c.y - 6.0f, 2.6f, 6.5f));
+    }
+    else
+    {
+        // A cogwheel: a ring with eight teeth
+        g.drawEllipse(c.x - 4.2f, c.y - 4.2f, 8.4f, 8.4f, 2.0f);
+        for (int i = 0; i < 8; ++i)
+        {
+            const float a = static_cast<float>(i) * juce::MathConstants<float>::pi / 4.0f;
+            g.drawLine(c.x + std::sin(a) * 4.6f, c.y - std::cos(a) * 4.6f,
+                       c.x + std::sin(a) * 7.4f, c.y - std::cos(a) * 7.4f, 2.4f);
+        }
+    }
+}
+
+void StatusBar::setPanelStates(bool inspectorOpen, bool browserOpen)
+{
+    inspectorButton.setToggleState(inspectorOpen, juce::dontSendNotification);
+    browserButton.setToggleState(browserOpen, juce::dontSendNotification);
+}
+
 StatusBar::StatusBar()
 {
+    midiButton.setTooltip("MIDI Setup (Ctrl+M)");
+    settingsButton.setTooltip("Editor Options (Ctrl+,)");
+    midiButton.onClick     = [this] { if (onMidiClicked) onMidiClicked(); };
+    settingsButton.onClick = [this] { if (onSettingsClicked) onSettingsClicked(); };
+    addAndMakeVisible(midiButton);
+    addAndMakeVisible(settingsButton);
+    inspectorButton.setTooltip("Inspector (Ctrl+I)");
+    browserButton.setTooltip("Patch browser (Ctrl+Shift+I)");
+    inspectorButton.setToggleState(true, juce::dontSendNotification);
+    browserButton.setToggleState(true, juce::dontSendNotification);
+    inspectorButton.onClick = [this] { if (onInspectorClicked) onInspectorClicked(); };
+    browserButton.onClick   = [this] { if (onBrowserClicked) onBrowserClicked(); };
+    addAndMakeVisible(inspectorButton);
+    addAndMakeVisible(browserButton);
+
     auto setupLabel = [this](juce::Label& label, const juce::String& text)
     {
         label.setText(text, juce::dontSendNotification);
@@ -64,6 +137,7 @@ void StatusBar::setSynthLink(const juce::String& text)
 {
     linkLabel.setText(text, juce::dontSendNotification);
     linkLabel.setTooltip(text);
+    resized();   // the label is as wide as its text, right against the buttons
 }
 
 void StatusBar::setVoiceCount(int count)
@@ -122,6 +196,13 @@ void StatusBar::paint(juce::Graphics& g)
     g.setColour(AppTheme::palette().buttonActive);
     g.drawLine(0.0f, 0.0f, static_cast<float>(getWidth()), 0.0f, 1.0f);
 
+    // The hairlines between the buttons and the text
+    g.setColour(AppTheme::palette().borderColor.brighter(0.4f));
+    const float sy = (static_cast<float>(getHeight()) - 14.0f) * 0.5f;
+    for (int x : { sepLeftX, sepRightX })
+        if (x >= 0)
+            g.fillRect(static_cast<float>(x), sy, 1.0f, 14.0f);
+
     // Draw LED indicator
     if (!ledBounds.isEmpty())
     {
@@ -172,6 +253,17 @@ void StatusBar::paint(juce::Graphics& g)
 void StatusBar::resized()
 {
     auto area = getLocalBounds().reduced(8, 0);
+    inspectorButton.setBounds(area.removeFromLeft(32));
+    area.removeFromLeft(8);
+    sepLeftX = area.getX();             // the hairline after the "i", as in Bitwig
+    area.removeFromLeft(12);
+    // From the right: Settings, MIDI, Browser (so, left to right, the lens, the keyboard, the cogwheel)
+    settingsButton.setBounds(area.removeFromRight(32));
+    midiButton.setBounds(area.removeFromRight(32));
+    browserButton.setBounds(area.removeFromRight(32));
+    area.removeFromRight(8);
+    sepRightX = area.getRight();        // and one between them and the text
+    area.removeFromRight(12);
 
     // LED indicator (small circle on the left)
     auto ledSize = 10.0f;
@@ -183,10 +275,11 @@ void StatusBar::resized()
     connectionArea.removeFromLeft(20);  // Space for LED
     connectionLabel.setBounds(connectionArea);
 
-    // Right-aligned labels
-    dspLabel.setBounds(area.removeFromRight(100));
-    voiceLabel.setBounds(area.removeFromRight(100));
-    linkLabel.setBounds(area.removeFromRight(juce::jmin(260, area.getWidth() / 3)));
+    // Right-aligned labels, each only as wide as it needs: the hidden ones take no room
+    if (dspLabel.isVisible())   dspLabel.setBounds(area.removeFromRight(100));
+    if (voiceLabel.isVisible()) voiceLabel.setBounds(area.removeFromRight(100));
+    const int linkW = static_cast<int>(std::ceil(linkLabel.getFont().getStringWidthFloat(linkLabel.getText()))) + 12;
+    linkLabel.setBounds(area.removeFromRight(juce::jmin(juce::jmin(320, area.getWidth() / 2), linkW)));
 
     // Message label in the center (takes remaining space), shared with the
     // progress bar

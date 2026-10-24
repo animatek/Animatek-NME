@@ -1,5 +1,8 @@
 #pragma once
 
+#include <array>
+#include <vector>
+
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../model/Patch.h"
 #include "ValueSpinner.h"
@@ -55,21 +58,10 @@ public:
     void setMutatorButtonCallback(MutatorButtonCallback cb) { mutatorButtonCallback = std::move(cb); }
     void setMutatorOpen(bool open) { mutatorOpen = open; repaint(); }
 
-    // ABCD: re-tile the open slot sub-windows into A|B / C|D (right of MUT).
-    // Greyed out when there is nothing to put back in order, which is one slot
-    // open or a layout that is already canonical.
-    using RetileButtonCallback = std::function<void()>;
-    void setRetileButtonCallback(RetileButtonCallback cb) { retileButtonCallback = std::move(cb); }
     // Heart (donate) and Patreon, right of ABCD. Each opens its page through
     // the callback, which is MainComponent's openURL.
     using SupportCallback = std::function<void(const juce::String& url)>;
     void setSupportCallback(SupportCallback cb) { supportCallback = std::move(cb); }
-    void setRetileEnabled(bool enabled)
-    {
-        if (retileEnabled == enabled) return;
-        retileEnabled = enabled;
-        repaint();
-    }
 
     // Snapshot buttons (click=recall, shift+click=save, right-click=copy/init/interpolation menu)
     using SnapshotClickCallback = std::function<void(int index, bool isShiftClick)>;
@@ -125,7 +117,7 @@ public:
 private:
     void drawMorphKnob(juce::Graphics& g, float cx, float cy, float size,
                        float normalized, const juce::String& label, juce::Colour colour);
-    void drawLoadBar(juce::Graphics& g, int x, int y, int w, int h,
+    void drawLoadBar(juce::Graphics& g, juce::Rectangle<float> r,
                      float percent, const juce::String& label);
 
     int getMorphKnobAt(juce::Point<int> pos) const;
@@ -176,8 +168,6 @@ private:
     SnapshotInitCallback snapshotInitCallback;
     MutatorButtonCallback mutatorButtonCallback;
     bool mutatorOpen = false;
-    RetileButtonCallback retileButtonCallback;
-    bool retileEnabled = false;
     SupportCallback supportCallback;
     // Top-level (no parent): the bar is 48px tall and would clip a child tip.
     juce::TooltipWindow tooltipWindow { nullptr, 600 };
@@ -194,8 +184,6 @@ private:
     int getSnapshotButtonAt(juce::Point<int> pos) const;  // -1 if none
     juce::Rectangle<float> getMutatorButtonBounds() const;
     bool isMutatorButtonAt(juce::Point<int> pos) const;
-    juce::Rectangle<float> getRetileButtonBounds() const;
-    bool isRetileButtonAt(juce::Point<int> pos) const;
     static constexpr float supportButtonSize = 22.0f;
     static constexpr float supportEdge = 10.0f;      // gap to the bar's right edge
     static constexpr int supportBlockW = 56;         // both buttons, the gap and a margin
@@ -206,6 +194,7 @@ private:
     juce::Rectangle<float> getMorphFaderBounds() const;
     bool isMorphFaderAt(juce::Point<int> pos) const;
     void showMorphFaderMenu();
+    void showCablesMenu();
     float morphFaderPosFromX(float x) const;
     MorphFaderCallback morphFaderCallback;
     MorphSetEndpointCallback morphSetEndpointCallback;
@@ -242,17 +231,27 @@ public:
 
 private:
 
-    // Cached section X positions (computed in resized)
-    int patchSecX_ = 0;
-    int voicesSecX_ = 0;
-    int loadSecX_ = 0;
-    int morphSecX_ = 0;
-    int cableSecX_ = 0;
+    // Every element's rectangle, worked out once in resized(); paint and the hit tests read these.
+    struct Layout
+    {
+        juce::Rectangle<int> name;
+        juce::Rectangle<float> voicesLabel, voicesField, voicesUp, voicesDown;
+        juce::Rectangle<float> loadPva, loadE, store, xfade;
+        std::array<juce::Rectangle<float>, 4> morph;
+        std::array<juce::Rectangle<float>, 8> snap;
+        std::array<juce::Rectangle<float>, 7> cable;
+        juce::Rectangle<float> shake, mutator, donate, patreon;
+        float storeWordW = 0.0f;   // measured in resized(), so the word and the location never overlap
+        std::vector<float> seps;   // x of each hairline between groups
+        bool cablesCompact = false;  // too narrow for the dots: one "Cables" button and a menu
+        juce::Rectangle<float> cablesBtn;
+    };
+    Layout L;
 
-    static constexpr int morphKnobSize = 26;
+    static constexpr int morphKnobSize = 32;
     static constexpr int morphKnobSpacing = 8;
-    static constexpr int cableToggleSize = 14;
-    static constexpr int cableToggleSpacing = 5;
+    static constexpr int cableToggleSize = 16;
+    static constexpr int cableToggleSpacing = 6;
     static constexpr int numCableTypes = 7;
     static constexpr int paramSendIntervalMs = 50;
 

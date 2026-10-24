@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "AppTheme.h"
 
 /** A dialog that puts itself on the desktop and deletes itself when dismissed.
     Nobody owns one, which is convenient right up to the moment the editor quits
@@ -29,6 +30,9 @@ public:
         for (auto* d : doomed)
             delete d;
     }
+
+    /** The thin outline every window wears, over whatever the dialog holds. */
+    void paintOverChildren (juce::Graphics& g) override { AppTheme::drawWindowFrame (g, getLocalBounds()); }
 
 protected:
     /** Dismisses and destroys the dialog. Safe to call from a button callback. */

@@ -43,6 +43,15 @@ public:
     std::function<void(int section, int position)> onPatchCopy;
     std::function<void(int section, int position)> onPatchMove;
 
+    // "Hide empty" is remembered between sessions: the owner sets it at start and is told when
+    // it changes, so it can keep it.
+    void setHideEmpty(bool hide)
+    {
+        hideEmptySlots = hide;
+        hideEmptyButton.setToggleState(hide, juce::dontSendNotification);
+    }
+    std::function<void(bool)> onHideEmptyChanged;
+
 private:
     class PatchTreeItem : public juce::TreeViewItem
     {
@@ -51,6 +60,7 @@ private:
                       PatchBrowserPanel* parent = nullptr, bool isEmptySlot = false);
 
         bool mightContainSubItems() override;
+        int getItemHeight() const override { return (section >= 0 && position == -1) ? 38 : 32; }
         void paintItem(juce::Graphics& g, int width, int height) override;
         void itemClicked(const juce::MouseEvent& e) override;
         void itemDoubleClicked(const juce::MouseEvent& e) override;

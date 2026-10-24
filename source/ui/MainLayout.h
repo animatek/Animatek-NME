@@ -83,13 +83,13 @@ private:
     bool blinkPhase = false;
     juce::String slotNames[numSlots];  // patch names per slot
     juce::Rectangle<int> slotBounds[numSlots];   // the A B C D buttons
-    juce::Rectangle<int> nameBounds[kMaxSynths], loadBounds[kMaxSynths];
+    juce::Rectangle<int> numBounds[kMaxSynths], nameBounds[kMaxSynths], loadBounds[kMaxSynths];
     juce::String synthName[kMaxSynths];
     bool rowShown[kMaxSynths] = { true };
     int waitingEmulators = 0;
     // The panel's frame: a header with a rule above it (the inspector ends there), the rows, and
     // a margin before the status bar.
-    static constexpr int kHeaderH = 24, kRowH = 30, kBottomPad = 8;
+    static constexpr int kHeaderH = 28, kRowH = 42, kBottomPad = 8;
     float loadFraction[kMaxSynths];
     // Row a patch is currently being dragged over, -1 when none. Painted so the
     // drop says where it is going before it happens.
@@ -101,33 +101,6 @@ private:
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SlotBar)
-};
-
-// Narrow clickable strip with a chevron that collapses/expands the panel it
-// sits next to. It stays put when the panel is hidden, so it is also the way
-// back.
-class PanelToggleStrip : public juce::Component
-{
-public:
-    explicit PanelToggleStrip(bool leftEdge);
-
-    void paint(juce::Graphics& g) override;
-    void mouseDown(const juce::MouseEvent& e) override;
-    void mouseEnter(const juce::MouseEvent& e) override;
-    void mouseExit(const juce::MouseEvent& e) override;
-
-    void setPanelOpen(bool open);
-
-    std::function<void()> onToggle;
-
-    static constexpr int stripWidth = 14;
-
-private:
-    const bool isLeftEdge;      // strip for the left panel, chevron mirrored
-    bool panelOpen = true;
-    bool hovered = false;
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PanelToggleStrip)
 };
 
 class MainLayout : public juce::Component,
@@ -175,7 +148,7 @@ public:
     bool isLeftPanelVisible() const  { return leftPanelVisible; }
     bool isRightPanelVisible() const { return rightPanelVisible; }
 
-    // Chevron strip clicked: true for the left panel, false for the right one.
+    // The inspector or browser switch of the status bar clicked: true for the left panel, false for the right one.
     // Routed out so the toggle goes through the same place as the shortcuts and
     // reports in the status bar. Falls back to toggling directly if unwired.
     std::function<void(bool)> onPanelToggleRequested;
@@ -191,9 +164,6 @@ private:
     InspectorPanel    inspectorPanel;
 
     juce::Component   leftColumn;   // groups all left elements
-
-    PanelToggleStrip  leftToggleStrip { true };
-    PanelToggleStrip  rightToggleStrip { false };
 
     ModuleIconBar     moduleIconBar;      // full width, under the header bar
     SlotMdiArea       patchArea;          // centre — the slots as sub-windows
@@ -214,7 +184,7 @@ private:
     int  savedLeftWidth    = 210;   // preferred sizes below, restored on re-show
     int  savedRightWidth   = 220;
 
-    static constexpr int statusBarHeight = 24;
+    static constexpr int statusBarHeight = 30;
     static constexpr int headerBarHeight = 48;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainLayout)

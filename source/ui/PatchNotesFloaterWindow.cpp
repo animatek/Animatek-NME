@@ -18,6 +18,7 @@ PatchNotesFloaterPanel::PatchNotesFloaterPanel()
     editor.setScrollbarsShown(true);
     editor.setFont(juce::Font(juce::Font::getDefaultMonospacedFontName(), 14.0f,
                               juce::Font::plain));
+    editor.setIndents(14, 12);   // the text does not touch the field's edge
     editor.onTextChange = [this]() {
         if (patch != nullptr)
             patch->patchNotes = editor.getText();
@@ -48,15 +49,15 @@ void PatchNotesFloaterPanel::paint(juce::Graphics& g)
 
 void PatchNotesFloaterPanel::resized()
 {
-    editor.setBounds(getLocalBounds().reduced(6));
+    editor.setBounds(getLocalBounds().reduced(16));
 }
 
 void PatchNotesFloaterPanel::applyTheme()
 {
-    editor.setColour(juce::TextEditor::backgroundColourId, kBg.brighter(0.06f));
+    editor.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().inputBackground);
     editor.setColour(juce::TextEditor::textColourId, kText);
     editor.setColour(juce::TextEditor::outlineColourId, kBorder);
-    editor.setColour(juce::TextEditor::focusedOutlineColourId, kBorder);
+    editor.setColour(juce::TextEditor::focusedOutlineColourId, AppTheme::palette().accentActive);
     editor.setColour(juce::CaretComponent::caretColourId, kText);
     editor.applyColourToAllText(kText);
     repaint();

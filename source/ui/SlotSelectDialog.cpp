@@ -20,9 +20,6 @@ static void styleBtn (juce::TextButton& b)
 
 static void styleToggle (juce::ToggleButton& t)
 {
-    t.setColour (juce::ToggleButton::textColourId,        AppTheme::palette().textPrimary);
-    t.setColour (juce::ToggleButton::tickColourId,        kGold);
-    t.setColour (juce::ToggleButton::tickDisabledColourId, AppTheme::palette().borderColor);
     t.setRadioGroupId (kRadioGroup);
 }
 
@@ -48,55 +45,48 @@ SlotSelectDialog::SlotSelectDialog(const juce::String& title,
     }
 
     styleToggle (localButton);
+    localButton.setShowRule (false);   // the footer's rule is right under it
     addAndMakeVisible (localButton);
 
     slotButtons[static_cast<size_t> (currentSlot_)].setToggleState (true, juce::dontSendNotification);
 
     styleBtn (okButton);
     styleBtn (cancelButton);
+    okButton.setColour (juce::TextButton::buttonColourId,  AppTheme::palette().accentActive);   // OK does the thing
+    okButton.setColour (juce::TextButton::textColourOffId, AppTheme::palette().backgroundMain);
     okButton.onClick     = [this] { confirm(); };
     cancelButton.onClick = [this] { cancel();  };
     addAndMakeVisible (okButton);
     addAndMakeVisible (cancelButton);
 
-    setSize (320, 262);
+    setSize (400, 40 + 12 + 4 * 48 + 68 + 8 + 68);
     setWantsKeyboardFocus (true);
 }
 
 void SlotSelectDialog::paint (juce::Graphics& g)
 {
-    g.fillAll (kBg);
-
-    g.setColour (AppTheme::palette().textPrimary);
-    g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
-    g.drawText (title_, 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
-
-    g.setColour (kSep);
-    g.fillRect (0, 31, getWidth(), 1);
-
-    const int sepY = getHeight() - 50;
-    g.drawHorizontalLine (sepY, 14.0f, static_cast<float> (getWidth() - 14));
+    AppTheme::drawDialogChrome (g, getLocalBounds(), title_, 40, 68);
 }
 
 void SlotSelectDialog::resized()
 {
-    constexpr int titleH = 32, pad = 14, rowH = 26, gap = 4;
+    constexpr int titleH = 40, footerH = 68, side = 24;
 
-    closeButton.setBounds (getWidth() - 32, 2, 28, 28);
+    closeButton.setBounds (getWidth() - 36, 6, 28, 28);
 
-    int y = titleH + gap + 2;
+    // Each slot is a row with a round radio at the right; the editor-only choice is the last row
+    int y = titleH + 12;
     for (auto& b : slotButtons)
     {
-        b.setBounds (pad + 4, y, getWidth() - pad * 2 - 8, rowH);
-        y += rowH + gap;
+        b.setBounds (side, y, getWidth() - side * 2, 48);
+        y += 48;
     }
-    y += 4;
-    localButton.setBounds (pad + 4, y, getWidth() - pad * 2 - 8, rowH);
+    localButton.setBounds (side, y, getWidth() - side * 2, 68);   // room for its two lines of text
 
-    const int btnW = 80, btnH = 26;
-    const int btnY = getHeight() - pad - btnH;
-    cancelButton.setBounds (getWidth() - pad - btnW,         btnY, btnW, btnH);
-    okButton    .setBounds (getWidth() - pad - btnW * 2 - 8, btnY, btnW, btnH);
+    const int btnW = 100, btnH = 36;
+    const int btnY = getHeight() - footerH + (footerH - btnH) / 2;
+    cancelButton.setBounds (getWidth() - side - btnW,          btnY, btnW, btnH);
+    okButton    .setBounds (getWidth() - side - btnW * 2 - 12, btnY, btnW, btnH);
 }
 
 bool SlotSelectDialog::keyPressed (const juce::KeyPress& key)

@@ -11,8 +11,8 @@
 #define kBtnOn  (AppTheme::palette().buttonActive)
 static void styleLabel (juce::Label& l)
 {
-    l.setFont (juce::Font (AppTheme::uiFont (10.0f).withStyle ("Bold")));
-    l.setColour (juce::Label::textColourId,       AppTheme::palette().textPrimary);
+    l.setFont (juce::Font (AppTheme::uiFont (12.5f).withStyle ("Bold")));
+    l.setColour (juce::Label::textColourId,       AppTheme::palette().textMuted);
     l.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 }
 
@@ -87,12 +87,14 @@ PatchLocationDialog::PatchLocationDialog(const juce::String& title,
     // Buttons
     styleBtn (okButton);
     styleBtn (cancelButton);
+    okButton.setColour (juce::TextButton::buttonColourId,  kGold);   // OK does the thing
+    okButton.setColour (juce::TextButton::textColourOffId, AppTheme::palette().backgroundMain);
     okButton    .onClick = [this]() { confirm(); };
     cancelButton.onClick = [this]() { cancel();  };
     addAndMakeVisible (okButton);
     addAndMakeVisible (cancelButton);
 
-    setSize (380, showSlot_ ? 250 : 218);
+    setSize (440, 40 + 16 + (showSlot_ ? 3 : 2) * 78 + 12 + 68);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,41 +147,30 @@ bool PatchLocationDialog::keyPressed (const juce::KeyPress& key)
 }
 
 void PatchLocationDialog::mouseDown (const juce::MouseEvent& e)
-    { if (e.getPosition().getY() < 32) dragger.startDraggingComponent (this, e); }
+    { if (e.getPosition().getY() < 40) dragger.startDraggingComponent (this, e); }
 void PatchLocationDialog::mouseDrag (const juce::MouseEvent& e)
-    { dragger.dragComponent (this, e, nullptr); }
+    { if (e.getMouseDownPosition().getY() < 40) dragger.dragComponent (this, e, nullptr); }  // only a drag that began on the title bar moves the window (the press position says where it began)
 
 // ─────────────────────────────────────────────────────────────────────────────
 void PatchLocationDialog::paint (juce::Graphics& g)
 {
-    g.fillAll (kBg);
-
-    g.setColour (AppTheme::palette().textPrimary);
-    g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
-    g.drawText (title_, 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
-
-    g.setColour (kSep);
-    g.fillRect (0, 31, getWidth(), 1);
-
-    const float x0 = 14.0f, x1 = static_cast<float> (getWidth() - 14);
-    const int sepY = getHeight() - 50;
-    g.drawHorizontalLine (sepY, x0, x1);
+    AppTheme::drawDialogChrome (g, getLocalBounds(), title_, 40, 68);
 }
 
 void PatchLocationDialog::resized()
 {
-    constexpr int titleH = 32, pad = 14, secH = 14, rowH = 28, gap = 6;
+    constexpr int titleH = 40, footerH = 68, pad = 24, secH = 18, rowH = 36;
 
-    closeButton.setBounds (getWidth() - 32, 2, 28, 28);
+    closeButton.setBounds (getWidth() - 36, 6, 28, 28);
 
-    int y = titleH + gap;
+    int y = titleH + 16;
 
     auto addRow = [&](juce::Label& lbl, juce::ComboBox& combo)
     {
         lbl.setBounds   (pad, y, getWidth() - pad * 2, secH);
-        y += secH + 2;
+        y += secH + 4;
         combo.setBounds (pad, y, getWidth() - pad * 2, rowH);
-        y += rowH + gap + 4;
+        y += rowH + 20;
     };
 
     if (showSlot_) addRow (slotLabel, slotCombo);
@@ -187,10 +178,10 @@ void PatchLocationDialog::resized()
     addRow (positionLabel, positionCombo);
 
     // Buttons pinned to bottom
-    const int btnW = 80, btnH = 26;
-    const int btnY = getHeight() - pad - btnH;
-    cancelButton.setBounds (getWidth() - pad - btnW,         btnY, btnW, btnH);
-    okButton    .setBounds (getWidth() - pad - btnW * 2 - 8, btnY, btnW, btnH);
+    const int btnW = 100, btnH = 36;
+    const int btnY = getHeight() - footerH + (footerH - btnH) / 2;
+    cancelButton.setBounds (getWidth() - pad - btnW,          btnY, btnW, btnH);
+    okButton    .setBounds (getWidth() - pad - btnW * 2 - 12, btnY, btnW, btnH);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

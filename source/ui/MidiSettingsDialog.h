@@ -1,9 +1,12 @@
 #pragma once
 
+#include "AppTheme.h"
+
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <array>
 #include "../midi/SynthHub.h"
 #include "FlatCloseButton.h"
+#include "AppLookAndFeel.h"
 
 // MIDI Setup, as the original editor has it: one group per port, each with its In and
 // Out ports, an Enabled box and the Status of the synth found there. A port is one
@@ -29,7 +32,11 @@ public:
     // connected) when OK or Apply is pressed.
     std::function<void(int port, const Port& wanted)> onApply;
 
+    // Closes it from outside, as its own close does; a second press of the button that opened it
+    void dismiss() { close(); }
+
     void paint   (juce::Graphics& g) override;
+    void paintOverChildren (juce::Graphics& g) override { AppTheme::drawWindowFrame (g, getLocalBounds()); }
     void resized () override;
     bool keyPressed (const juce::KeyPress& key) override;
     void mouseDown  (const juce::MouseEvent& e) override;
@@ -46,7 +53,7 @@ private:
         juce::Label    inLabel  { {}, "In" };
         juce::Label    outLabel { {}, "Out" };
         juce::ComboBox inCombo, outCombo;
-        juce::ToggleButton enabled { "Enabled" };
+        SwitchButton   enabled;
         juce::Label    statusCaption { {}, "Status:" };
         juce::Label    status;
         bool connected = false;
@@ -71,7 +78,7 @@ private:
     };
     Content content;
     juce::Viewport viewport;
-    static constexpr int kGroupH = 112, kTitleH = 32, kButtonsH = 52;
+    static constexpr int kGroupH = 160, kTitleH = 40, kButtonsH = 68;
     std::array<Port, kMaxSynths> applied;   // what the synth was last told
     juce::TextButton okButton { "OK" }, cancelButton { "Cancel" }, applyButton { "Apply" };
 

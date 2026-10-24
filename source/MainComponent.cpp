@@ -8,6 +8,9 @@
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
 #include "ui/AboutDialog.h"
+#include "ui/FlatCloseButton.h"
+#include "ui/EditorOptionsDialog.h"
+#include "ui/SaveSlotSetDialog.h"
 #include "ui/SelfOwnedDialog.h"
 #include "ui/SlotSelectDialog.h"
 #include "ui/PatchSettingsDialog.h"
@@ -223,7 +226,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     saveMdiLayout();
     // The ABCD button greys out when the layout is already the canonical one,
     // and this is the only place that knows the layout moved.
-    mainLayout->getHeaderBar().setRetileEnabled(
+    mainLayout->getModuleIconBar().setRetileEnabled(
         mainLayout->getPatchArea().canResetTileOrder());
   };
 
@@ -387,6 +390,23 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   }); });
 
   // Wire patch browser callbacks
+  // The two "hide" switches of the browsers are kept between sessions
+  if (auto* st = appProperties.getUserSettings()) {
+    mainLayout->getPatchBrowser().setHideEmpty(st->getBoolValue("browserHideEmpty", false));
+    mainLayout->getDiskPresetBrowser().setHidePch2(st->getBoolValue("browserHidePch2", false));
+  }
+  mainLayout->getPatchBrowser().onHideEmptyChanged = [this](bool hide) {
+    if (auto* st = appProperties.getUserSettings()) {
+      st->setValue("browserHideEmpty", hide);
+      st->saveIfNeeded();
+    }
+  };
+  mainLayout->getDiskPresetBrowser().onHidePch2Changed = [this](bool hide) {
+    if (auto* st = appProperties.getUserSettings()) {
+      st->setValue("browserHidePch2", hide);
+      st->saveIfNeeded();
+    }
+  };
   mainLayout->getPatchBrowser().onPatchDoubleClicked = [this](int section, int position) {
     loadBankPatchIntoSlot(section, position, activeSlot);
   };
@@ -795,8 +815,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       [this]() { toggleMutatorWindow(); });
   mainLayout->getHeaderBar().setSupportCallback(
       [this](const juce::String& url) { openURL(url); });
-  mainLayout->getHeaderBar().setRetileButtonCallback(
-      [this]() { mainLayout->getPatchArea().resetTileOrder(); });
+  mainLayout->getModuleIconBar().onRetile =
+      [this]() { mainLayout->getPatchArea().resetTileOrder(); };
 
   // Wire the Morph A/B fader
   mainLayout->getHeaderBar().setMorphFaderCallback(
@@ -924,11 +944,13 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // Wire toolbar buttons
 
-  // Chevron strips go through the same path as Ctrl+I / Ctrl+Shift+I so the
-  // status bar reports the change either way.
+  // The status bar's inspector and browser buttons go through the same path as Ctrl+I / Ctrl+Shift+I so
+  // the status bar reports the change either way.
   mainLayout->onPanelToggleRequested = [this](bool left) {
     if (left) toggleLeftPanel(); else toggleRightPanel();
   };
+  mainLayout->getStatusBar().onMidiClicked     = [this] { showMidiSettingsDialog(); };
+  mainLayout->getStatusBar().onSettingsClicked = [this] { showEditorOptionsDialog(); };
   mainLayout->getDiskPresetBrowser().setLibraryRoot(editorOptions.presetLibraryRoot);
   mainLayout->getDiskPresetBrowser().onPatchChosen = [this](const juce::File& file) {
     openPatchFileWithChooser(file);
@@ -1056,6 +1078,25 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     explicit EmulatorScanTimer(MainComponent& m) : mc(m) {}
     void timerCallback() override { mc.scanForEmulators(); }
   };
+  // Ctrl+T while a menu is open (or a dialog has the focus): those take the key press, so the keyboard
+  // itself is watched, and only when no window handled the press a moment ago
+  struct ThemeKeyTimer : public juce::Timer {
+    MainComponent& mc;
+    explicit ThemeKeyTimer(MainComponent& m) : mc(m) {}
+    void timerCallback() override
+    {
+      const bool down = juce::Process::isForegroundProcess()
+                     && juce::ModifierKeys::currentModifiers.isCommandDown()
+                     && juce::KeyPress::isKeyCurrentlyDown('t');
+      if (down && !mc.themeKeyWasDown
+          && juce::Time::getMillisecondCounter() - mc.lastThemeKeyMs > 400)
+        mc.cycleUiThemeFromKey();
+      mc.themeKeyWasDown = down;
+    }
+  };
+  themeKeyTimer = std::make_unique<ThemeKeyTimer>(*this);
+  themeKeyTimer->startTimer(40);
+
   emulatorScanTimer = std::make_unique<EmulatorScanTimer>(*this);
   emulatorScanTimer->startTimer(3000);
 
@@ -1069,6 +1110,19 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
     // Reopen floater windows that were open last session
     juce::Timer::callAfterDelay(600, [safeThis]() { if (safeThis) safeThis->restoreFloaterWindows(); });
+
+    // NME_SNAPSHOT_PATCH=<file.pch>: the picture-taking run opens that patch (editor only) first, so the
+    // inspector, the knobs and the floaters have something to show
+    if (const auto snapPatch = juce::SystemStats::getEnvironmentVariable("NME_SNAPSHOT_PATCH", {}); snapPatch.isNotEmpty())
+      juce::Timer::callAfterDelay(1500, [safeThis, snapPatch]() {
+        if (safeThis) safeThis->loadPatchFromFile(juce::File(snapPatch), safeThis->activeSlot, true);
+      });
+
+    // NME_SNAPSHOT_DIR=<folder>: save pictures of the editor and its floaters, then quit
+    if (const auto snapDir = juce::SystemStats::getEnvironmentVariable("NME_SNAPSHOT_DIR", {}); snapDir.isNotEmpty())
+      juce::Timer::callAfterDelay(3500, [safeThis, snapDir]() {
+        if (safeThis) safeThis->snapshotMenus(juce::File(snapDir), 0);
+      });
 
     // Community themes (#91): the cached list now, the repository at most once a day.
     loadCommunityIndexCache();
@@ -1174,7 +1228,7 @@ void MainComponent::resized() {
   auto area = getLocalBounds();
 
 #if !JUCE_MAC
-  menuBar->setBounds(area.removeFromTop(24));
+  menuBar->setBounds(area.removeFromTop(32));
 #endif
 
   mainLayout->setBounds(area);
@@ -1244,9 +1298,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
   }
   if (key == juce::KeyPress('t', juce::ModifierKeys::commandModifier, 0))
   {
-    chooseUiTheme(editorOptions.uiThemeIndex + 1);
-    mainLayout->getStatusBar().showMessage(
-        "Theme: " + ThemeRegistry::get(editorOptions.uiThemeIndex).name, 2500);
+    cycleUiThemeFromKey();
     return true;
   }
   // On macOS the naked Cmd+W belongs to "close window" and fired both ways
@@ -2993,6 +3045,7 @@ bool MainComponent::saveSlotPatchToFile(int slot, const juce::File &file) {
 }
 
 void MainComponent::showPatchSettingsDialog() {
+  if (patchSettingsDialog != nullptr) { patchSettingsDialog->dismiss(); return; }
   if (currentPatch() == nullptr)
     return;
 
@@ -3004,7 +3057,7 @@ void MainComponent::showPatchSettingsDialog() {
   const int slot = activeSlot;
   const int settingsGeneration = slotPatchGeneration[slot];
 
-  announceDialogOnSynth(
+  auto* patchSettings =
       PatchSettingsDialog::show(this, currentPatch()->getHeader(),
       [this, slot, settingsGeneration](const PatchSettingsDialog::Result& r)
       {
@@ -3032,10 +3085,13 @@ void MainComponent::showPatchSettingsDialog() {
         // Upload full patch to synth if connected
         if (synthHub.isConnectedSlot(slot))
           synthHub.uploadPatch(slot, *slotPatches[slot]);
-      }));
+      });
+  patchSettingsDialog = dynamic_cast<PatchSettingsDialog*>(patchSettings);
+  announceDialogOnSynth(patchSettings);
 }
 
 void MainComponent::showSynthSettingsDialog() {
+  if (synthSettingsDialog != nullptr) { synthSettingsDialog->dismiss(); return; }
   if (synthHub.active().isConnected())
   {
     pendingSynthSettingsDialogOpen = true;
@@ -3074,6 +3130,8 @@ void MainComponent::openSynthSettingsDialog() {
 }
 
 void MainComponent::showMidiSettingsDialog() {
+  // Open already: the button (or Ctrl+M) closes it instead of opening a second one
+  if (midiSettingsDialog != nullptr) { midiSettingsDialog->dismiss(); return; }
   MidiSettingsDialog::Ports ports;
   auto* settings = appProperties.getUserSettings();
   for (int i = 0; i < kMaxSynths; ++i) {
@@ -3118,6 +3176,7 @@ void MainComponent::showMidiSettingsDialog() {
 }
 
 void MainComponent::showEditorOptionsDialog() {
+  if (editorOptionsDialog != nullptr) { editorOptionsDialog->dismiss(); return; }
 #if NME_MCP_BRIDGE
   McpBridgeStatusKind mcpStatus = McpBridgeStatusKind::Disabled;
   juce::String mcpStatusText = "Disabled";
@@ -3148,6 +3207,7 @@ void MainComponent::showEditorOptionsDialog() {
     if (auto* topComp = juce::Desktop::getInstance().getComponent(0))
       topComp->repaint();
   };
+  editorOptionsDialog = dialog;
   announceDialogOnSynth(dialog);
 }
 
@@ -3236,6 +3296,181 @@ void MainComponent::applyUiTheme(int index, bool persist) {
   applyThemeLive(ThemeRegistry::get(index));
   if (persist)
     editorOptions.save(appProperties.getUserSettings());
+}
+
+void MainComponent::snapshotMenus(const juce::File& dir, int index)
+{
+  const auto names = getMenuBarNames();
+  dir.createDirectory();
+  auto shootWindow = [dir](juce::Component& c, const juce::String& name) {
+    const auto img = c.createComponentSnapshot(c.getLocalBounds(), true, 1.0f);
+    juce::FileOutputStream out(dir.getChildFile(name + ".png"));
+    if (out.openedOk())
+    {
+      out.setPosition(0);
+      out.truncate();
+      juce::PNGImageFormat().writeImageToStream(img, out);
+    }
+  };
+
+  if (index == 0)
+  {
+    // A clean start shows the Beta warning: picture it, then take it away so it is not in the menus' way
+    auto& desktop = juce::Desktop::getInstance();
+    for (int i = desktop.getNumComponents(); --i >= 0;)
+      if (auto* c = desktop.getComponent(i); c != nullptr && c->getName() == "beta-warning")
+      {
+        shootWindow(*c, "dialog-beta");
+        c->removeFromDesktop();
+        delete c;
+      }
+  }
+
+  if (index == names.size())
+  {
+    // The Keyboard Shortcuts window, then on to the rest
+    showKeyboardShortcutsDialog();
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::Timer::callAfterDelay(500, [safeThis, dir, shootWindow]() mutable {
+      if (!safeThis) return;
+      auto& desktop = juce::Desktop::getInstance();
+      for (int i = 0; i < desktop.getNumComponents(); ++i)
+        if (auto* dw = dynamic_cast<juce::DialogWindow*>(desktop.getComponent(i)))
+        {
+          shootWindow(*dw, "dialog-shortcuts");
+          dw->exitModalState(0);
+          break;
+        }
+      juce::Timer::callAfterDelay(250, [safeThis, dir]() { if (safeThis) safeThis->saveSnapshotsAndQuit(dir); });
+    });
+    return;
+  }
+  if (index > names.size()) { saveSnapshotsAndQuit(dir); return; }
+
+  // Open the menu as the bar would, give it a moment to appear, picture the window it opens (the only
+  // top-level one besides the editor's own), close it and go on to the next
+  getMenuForIndex(index, names[index]).showMenuAsync(juce::PopupMenu::Options());
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  juce::Timer::callAfterDelay(500, [safeThis, dir, index, names]() {
+    if (!safeThis) return;
+    auto* mine = safeThis->getTopLevelComponent();
+    auto& desktop = juce::Desktop::getInstance();
+    for (int i = 0; i < desktop.getNumComponents(); ++i)
+      if (auto* c = desktop.getComponent(i); c != nullptr && c != mine && c->isVisible() && c->getWidth() > 40
+                                             && c->getName() != "beta-warning")
+      {
+        const auto img = c->createComponentSnapshot(c->getLocalBounds(), true, 1.0f);
+        juce::FileOutputStream out(dir.getChildFile("menu-" + juce::String(index) + "-" + names[index].retainCharacters("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") + ".png"));
+        if (out.openedOk())
+        {
+          out.setPosition(0);
+          out.truncate();
+          juce::PNGImageFormat().writeImageToStream(img, out);
+        }
+        break;
+      }
+    juce::PopupMenu::dismissAllActiveMenus();
+    juce::Timer::callAfterDelay(250, [safeThis, dir, index]() { if (safeThis) safeThis->snapshotMenus(dir, index + 1); });
+  });
+}
+
+void MainComponent::saveSnapshotsAndQuit(const juce::File& dir)
+{
+  dir.createDirectory();
+  auto save = [dir](juce::Component& c, juce::Rectangle<int> area, const juce::String& name, float scale) {
+    if (area.isEmpty()) return;
+    const auto img = c.createComponentSnapshot(area, true, scale);
+    juce::FileOutputStream out(dir.getChildFile(name + ".png"));
+    if (out.openedOk())
+    {
+      out.setPosition(0);
+      out.truncate();
+      juce::PNGImageFormat().writeImageToStream(img, out);
+    }
+  };
+
+  save(*this, getLocalBounds(), "main", 1.0f);
+  auto& header = mainLayout->getHeaderBar();
+  save(header, header.getLocalBounds(), "header", 3.0f);
+
+  // The floaters: open each, give it a moment to lay out, picture it, close it
+  toggleKnobFloater();
+  toggleKeyboardFloater();
+  togglePatchNotesFloater();
+  toggleMutatorWindow();
+  toggleSysexMonitor();
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  juce::Timer::callAfterDelay(800, [safeThis, dir, save]() mutable {
+    if (!safeThis) return;
+    if (safeThis->knobFloaterWindow)     save(*safeThis->knobFloaterWindow,     safeThis->knobFloaterWindow->getLocalBounds(),     "knob-floater", 1.0f);
+    if (safeThis->keyboardFloaterWindow) save(*safeThis->keyboardFloaterWindow, safeThis->keyboardFloaterWindow->getLocalBounds(), "keyboard-floater", 1.0f);
+    if (safeThis->patchNotesFloaterWindow) save(*safeThis->patchNotesFloaterWindow, safeThis->patchNotesFloaterWindow->getLocalBounds(), "notes-floater", 1.0f);
+    if (safeThis->mutatorWindow)         save(*safeThis->mutatorWindow,         safeThis->mutatorWindow->getLocalBounds(),         "mutator", 1.0f);
+    if (safeThis->sysexMonitorWindow)    save(*safeThis->sysexMonitorWindow,    safeThis->sysexMonitorWindow->getLocalBounds(),    "sysex-monitor", 1.0f);
+
+    // The dialogs: built off the desktop, pictured at their own size, dropped. (Bank Transfer needs a
+    // live synth link and is left out.)
+    auto shoot = [&save](juce::Component& c, const juce::String& name) { save(c, c.getLocalBounds(), name, 1.0f); };
+    {
+      AboutDialog d([](const juce::String&) {});
+      shoot(d, "dialog-about");
+    }
+    {
+      EditorOptionsDialog d(EditorOptions{}, McpBridgeStatusKind::Disabled, "MCP bridge is off", "");
+      for (int pg = 0; pg < EditorOptionsDialog::pageCount; ++pg)
+      {
+        d.showPageForSnapshot(pg);
+        shoot(d, "dialog-options-" + juce::String(pg));
+      }
+    }
+    {
+      MidiSettingsDialog d;
+      d.setPorts({});
+      shoot(d, "dialog-midi");
+    }
+    {
+      PatchSettingsDialog d(PatchHeader{}, [](const PatchSettingsDialog::Result&) {});
+      shoot(d, "dialog-patch-settings");
+    }
+    {
+      SynthSettingsDialog d(SynthSettings{}, [](const SynthSettings&) {});
+      shoot(d, "dialog-synth-settings");
+    }
+    {
+      std::vector<std::string> names(99 * 9);
+      names[0] = "Fractura";
+      PatchLocationDialog d("Store patch to...", names, true, 0, [](const PatchLocationDialog::Result&) {}, 0, 0);
+      shoot(d, "dialog-patch-location");
+    }
+    {
+      std::array<SaveSlotSetDialog::SlotInfo, 4> slots;
+      slots[0].patchName = "Fractura"; slots[0].hasPatch = true;
+      slots[3].patchName = "A Nucleo Duro"; slots[3].hasPatch = true;
+      SaveSlotSetDialog d("Directo", slots, [](const SaveSlotSetDialog::Result&) {});
+      shoot(d, "dialog-save-slot-set");
+    }
+    {
+      SlotSelectDialog d("Open \"Fractura\" into...", { "Fractura", "", "", "A Nucleo Duro" }, 0, 0,
+                         [](const SlotSelectDialog::Result&) {});
+      shoot(d, "dialog-slot-select");
+    }
+    {
+      juce::AlertWindow d("Delete Patch", "Delete \"Fractura\" from location 101?", juce::MessageBoxIconType::WarningIcon);
+      d.addButton("Delete", 1, juce::KeyPress(juce::KeyPress::returnKey));
+      d.addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+      shoot(d, "dialog-alert");
+    }
+
+    juce::JUCEApplication::getInstance()->quit();
+  });
+}
+
+void MainComponent::cycleUiThemeFromKey()
+{
+  lastThemeKeyMs = juce::Time::getMillisecondCounter();
+  chooseUiTheme(editorOptions.uiThemeIndex + 1);
+  mainLayout->getStatusBar().showMessage(
+      "Theme: " + ThemeRegistry::get(editorOptions.uiThemeIndex).name, 2500);
 }
 
 void MainComponent::chooseUiTheme(int index) {
@@ -3595,7 +3830,10 @@ void MainComponent::applyThemeLive(const EditorTheme& theme) {
   if (presetBrowserWindow)
     presetBrowserWindow->applyTheme();
   if (knobFloaterWindow)
+  {
     knobFloaterWindow->applyTheme();
+    knobFloaterWindow->setKnobScheme(activeCanvas().getTheme());
+  }
   if (keyboardFloaterWindow)
     keyboardFloaterWindow->applyTheme();
   if (patchNotesFloaterWindow)
@@ -4143,6 +4381,7 @@ void MainComponent::toggleKnobFloater() {
   }
 
   knobFloaterWindow->applyTheme();
+  knobFloaterWindow->setKnobScheme(activeCanvas().getTheme());
   knobFloaterWindow->setPatch(currentPatch().get());
   showFloaterWindow(*knobFloaterWindow, "knobFloater");
 }
@@ -4210,9 +4449,7 @@ bool MainComponent::handleFloaterShortcut(const juce::KeyPress& key) {
       // Ctrl+T cycles the theme from the main window (MainComponent::
       // keyPressed) — forward it here too so it also works while a floater
       // or slot window has keyboard focus instead of only the main one.
-      chooseUiTheme(editorOptions.uiThemeIndex + 1);
-      mainLayout->getStatusBar().showMessage(
-          "Theme: " + ThemeRegistry::get(editorOptions.uiThemeIndex).name, 2500);
+      cycleUiThemeFromKey();
       return true;
     default: return false;
   }
@@ -5094,22 +5331,12 @@ public:
     {
         setOpaque(true);
 
-        titleLabel.setFont(juce::Font(AppTheme::uiFont(15.0f)).boldened());
-        titleLabel.setColour(juce::Label::textColourId, AppTheme::palette().accentActive);
-        titleLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
-        titleLabel.setText("Animatek NME - Beta", juce::dontSendNotification);
-        addAndMakeVisible(titleLabel);
-
-        closeButton.setButtonText("x");
-        closeButton.setColour(juce::TextButton::buttonColourId,   AppTheme::palette().backgroundPanel);
-        closeButton.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().inputBackground);
-        closeButton.setColour(juce::TextButton::textColourOffId,  AppTheme::palette().accentActive);
-        closeButton.setColour(juce::TextButton::textColourOnId,   juce::Colours::white);
+        setName("beta-warning");   // the picture-taking run knows it by this
         closeButton.onClick = [this]() { removeFromDesktop(); delete this; };
         addAndMakeVisible(closeButton);
 
-        bodyText.setFont(juce::Font(AppTheme::uiFont(13.0f)));
-        bodyText.setColour(juce::Label::textColourId, juce::Colour(0xffdddddd));
+        bodyText.setFont(juce::Font(AppTheme::uiFont(14.0f)));
+        bodyText.setColour(juce::Label::textColourId, AppTheme::palette().textSecondary);
         bodyText.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
         bodyText.setText(
             "Welcome to Animatek NME (Nord Modular Editor G1) Beta!\n\n"
@@ -5128,12 +5355,12 @@ public:
         bodyText.setMinimumHorizontalScale(1.0f);
         addAndMakeVisible(bodyText);
 
-        suppressToggle.setColour(juce::ToggleButton::textColourId, juce::Colour(0xffaaaacc));
+        suppressToggle.setColour(juce::ToggleButton::textColourId, AppTheme::palette().textMuted);
         addAndMakeVisible(suppressToggle);
 
         okButton.setButtonText("I understand, let me in!");
-        okButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().buttonActive);
-        okButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+        okButton.setColour(juce::TextButton::buttonColourId, AppTheme::palette().accentActive);   // the one thing to press
+        okButton.setColour(juce::TextButton::textColourOffId, AppTheme::palette().backgroundMain);
         okButton.onClick = [this]() {
             if (suppressToggle.getToggleState()) {
                 auto* s = appProperties.getUserSettings();
@@ -5144,13 +5371,13 @@ public:
         };
         addAndMakeVisible(okButton);
 
-        setSize(440, 340);
+        setSize(540, 468);
 
         if (relativeTo) {
             auto* top = relativeTo->getTopLevelComponent();
             auto screen = top->localAreaToGlobal(top->getLocalBounds());
-            setTopLeftPosition(screen.getX() + (screen.getWidth() - 440) / 2,
-                               screen.getY() + (screen.getHeight() - 340) / 2);
+            setTopLeftPosition(screen.getX() + (screen.getWidth() - getWidth()) / 2,
+                               screen.getY() + (screen.getHeight() - getHeight()) / 2);
         }
 
         addToDesktop(juce::ComponentPeer::windowHasDropShadow);
@@ -5159,18 +5386,14 @@ public:
         grabKeyboardFocus();
     }
 
-    void paint(juce::Graphics& g) override {
-        g.fillAll(AppTheme::palette().backgroundPanel);
-        g.setColour(AppTheme::palette().buttonActive);
-        g.fillRect(0, 31, getWidth(), 1);
-    }
+    void paint(juce::Graphics& g) override { AppTheme::drawDialogChrome(g, getLocalBounds(), "Animatek NME - Beta", 40, 68); }
+    void paintOverChildren(juce::Graphics& g) override { AppTheme::drawWindowFrame(g, getLocalBounds()); }
 
     void resized() override {
-        titleLabel.setBounds(8, 0, getWidth() - 40, 32);
-        closeButton.setBounds(getWidth() - 32, 2, 28, 28);
-        bodyText.setBounds(12, 38, getWidth() - 24, 210);
-        suppressToggle.setBounds(12, getHeight() - 68, getWidth() - 24, 24);
-        okButton.setBounds((getWidth() - 200) / 2, getHeight() - 38, 200, 30);
+        closeButton.setBounds(getWidth() - 36, 6, 28, 28);
+        bodyText.setBounds(24, 52, getWidth() - 48, 300);
+        suppressToggle.setBounds(24, getHeight() - 68 - 40, getWidth() - 48, 28);
+        okButton.setBounds(getWidth() - 24 - 220, getHeight() - 68 + 16, 220, 36);
     }
 
     bool keyPressed(const juce::KeyPress& key) override {
@@ -5181,13 +5404,14 @@ public:
         return false;
     }
 
-    void mouseDown(const juce::MouseEvent& e) override { dragger.startDraggingComponent(this, e); }
-    void mouseDrag(const juce::MouseEvent& e) override { dragger.dragComponent(this, e, nullptr); }
+    void mouseDown(const juce::MouseEvent& e) override { if (e.getPosition().getY() < 40) dragger.startDraggingComponent(this, e); }
+    void mouseDrag(const juce::MouseEvent& e) override { if (e.getMouseDownPosition().getY() < 40) dragger.dragComponent(this, e, nullptr); }
 
 private:
     juce::ApplicationProperties& appProperties;
-    juce::Label titleLabel, bodyText;
-    juce::TextButton closeButton, okButton;
+    juce::Label bodyText;
+    FlatCloseButton closeButton;
+    juce::TextButton okButton;
     juce::ToggleButton suppressToggle { "Don't show this warning at startup" };
     juce::ComponentDragger dragger;
 };
@@ -5304,7 +5528,8 @@ void MainComponent::showKeyboardShortcutsDialog() {
   editor->setColour(juce::TextEditor::textColourId, AppTheme::palette().textPrimary);
   editor->setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
   editor->setText(juce::String::fromUTF8(shortcutsText));
-  editor->setSize(440, 560);
+  editor->setIndents(20, 16);   // the text keeps its distance from the edge of the window
+  editor->setSize(480, 600);
 
   juce::DialogWindow::LaunchOptions opts;
   opts.content.setOwned(editor);

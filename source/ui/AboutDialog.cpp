@@ -5,22 +5,25 @@
 
 namespace
 {
-constexpr int dialogWidth  = 460;
-constexpr int dialogHeight = 560;
-constexpr int headerHeight = 108;
-constexpr int buttonRowH   = 30;
-constexpr int pad          = 16;
+constexpr int dialogWidth  = 520;
+constexpr int dialogHeight = 620;
+constexpr int headerHeight = 124;
+constexpr int buttonRowH   = 38;
+constexpr int pad          = 22;
+constexpr int footerHeight = pad * 2 + buttonRowH * 2 + 10;
 
 // Same destinations as the About menu items in MainComponent.
 const char* const kWebsiteUrl = "https://animatek.net/animatek-nme-eng/";
 const char* const kPatreonUrl = "https://www.patreon.com/collection/2038913";
 const char* const kGithubUrl  = "https://github.com/animatek/Animatek-NME/";
 
-void styleButton(juce::TextButton& b)
+void styleButton(juce::TextButton& b, bool primary = false)
 {
-    b.setColour(juce::TextButton::buttonColourId,   AppTheme::palette().buttonBackground);
+    b.setColour(juce::TextButton::buttonColourId,   primary ? AppTheme::palette().accentActive
+                                                            : AppTheme::palette().buttonBackground);
     b.setColour(juce::TextButton::buttonOnColourId, AppTheme::palette().buttonActive);
-    b.setColour(juce::TextButton::textColourOffId,  AppTheme::palette().textSecondary);
+    b.setColour(juce::TextButton::textColourOffId,  primary ? AppTheme::palette().backgroundMain
+                                                            : AppTheme::palette().textSecondary);
     b.setColour(juce::TextButton::textColourOnId,   AppTheme::palette().textPrimary);
 }
 }
@@ -47,7 +50,8 @@ AboutDialog::AboutDialog(UrlCallback openUrl)
     credits.setScrollbarsShown(true);
     credits.setCaretVisible(false);
     credits.setFont(juce::Font(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(),
-                                                 12.0f, juce::Font::plain)));
+                                                 12.5f, juce::Font::plain)));
+    credits.setIndents(2, 4);
     credits.setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().backgroundMain);
     credits.setColour(juce::TextEditor::textColourId,       AppTheme::palette().textSecondary);
     credits.setColour(juce::TextEditor::outlineColourId,    juce::Colours::transparentBlack);
@@ -65,7 +69,7 @@ AboutDialog::AboutDialog(UrlCallback openUrl)
 
     for (auto* b : { &websiteButton, &patreonButton, &donateButton, &githubButton, &copyButton })
     {
-        styleButton(*b);
+        styleButton(*b, b == &donateButton);   // Donate is the one thing asked of you here
         addAndMakeVisible(*b);
     }
 
@@ -98,25 +102,30 @@ void AboutDialog::paint(juce::Graphics& g)
         header.removeFromLeft(pad);
     }
 
-    auto line = header.removeFromTop(26);
+    auto line = header.removeFromTop(34);
     g.setColour(pal.textPrimary);
-    g.setFont(juce::Font(AppTheme::uiFont(20.0f)).boldened());
+    g.setFont(juce::Font(AppTheme::uiFont(25.0f)).boldened());
     g.drawText("Animatek NME", line, juce::Justification::centredLeft, true);
 
-    line = header.removeFromTop(20);
+    line = header.removeFromTop(24);
     g.setColour(pal.accentActive);
-    g.setFont(juce::Font(AppTheme::uiFont(13.0f)));
+    g.setFont(juce::Font(AppTheme::uiFont(15.0f)).boldened());
     g.drawText("Nord Modular Editor G1", line, juce::Justification::centredLeft, true);
 
-    line = header.removeFromTop(18);
-    g.setColour(pal.textSecondary);
-    g.setFont(juce::Font(AppTheme::uiFont(11.5f)));
+    line = header.removeFromTop(22);
+    g.setColour(pal.textMuted);
+    g.setFont(juce::Font(AppTheme::uiFont(12.5f)));
     g.drawText("Version " + juce::String(JUCE_APPLICATION_VERSION_STRING)
                    + "  -  built " + juce::String(__DATE__),
                line, juce::Justification::centredLeft, true);
 
-    g.setColour(pal.buttonActive);
+    g.setColour(pal.borderColor);
     g.fillRect(0, headerHeight - 1, getWidth(), 1);
+
+    g.setColour(pal.backgroundPanel);
+    g.fillRect(0, getHeight() - footerHeight, getWidth(), footerHeight);
+    g.setColour(pal.borderColor);
+    g.fillRect(0, getHeight() - footerHeight, getWidth(), 1);
 }
 
 void AboutDialog::resized()
@@ -124,23 +133,29 @@ void AboutDialog::resized()
     auto area = getLocalBounds();
     area.removeFromTop(headerHeight);
 
-    auto buttons = area.removeFromBottom(buttonRowH + pad).reduced(pad, 0);
-    buttons.removeFromBottom(pad);
+    // Two rows of buttons in a footer: Donate and Patreon, the asks, above Website, GitHub and Copy version
+    auto footer = area.removeFromBottom(footerHeight).reduced(pad, pad);
+    const int gap = 8;
+    auto top = footer.removeFromTop(buttonRowH);
+    footer.removeFromTop(10);
+    auto bottom = footer.removeFromTop(buttonRowH);
 
-    // Five equal buttons across the row.
-    const int gap = 6;
-    const int w = (buttons.getWidth() - gap * 4) / 5;
-    websiteButton.setBounds(buttons.removeFromLeft(w));
-    buttons.removeFromLeft(gap);
-    patreonButton.setBounds(buttons.removeFromLeft(w));
-    buttons.removeFromLeft(gap);
-    donateButton.setBounds(buttons.removeFromLeft(w));
-    buttons.removeFromLeft(gap);
-    githubButton.setBounds(buttons.removeFromLeft(w));
-    buttons.removeFromLeft(gap);
-    copyButton.setBounds(buttons);
+    {
+        const int w = (top.getWidth() - gap) / 2;
+        donateButton.setBounds(top.removeFromLeft(w));
+        top.removeFromLeft(gap);
+        patreonButton.setBounds(top);
+    }
+    {
+        const int w = (bottom.getWidth() - gap * 2) / 3;
+        websiteButton.setBounds(bottom.removeFromLeft(w));
+        bottom.removeFromLeft(gap);
+        githubButton.setBounds(bottom.removeFromLeft(w));
+        bottom.removeFromLeft(gap);
+        copyButton.setBounds(bottom);
+    }
 
-    credits.setBounds(area.reduced(pad, pad / 2));
+    credits.setBounds(area.reduced(pad, 8));
 }
 
 juce::Component* AboutDialog::show(juce::Component* parent, UrlCallback openUrl)

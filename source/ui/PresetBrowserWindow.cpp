@@ -1,5 +1,6 @@
 #include "PresetBrowserWindow.h"
 #include <algorithm>
+#include <filesystem>
 #include "../model/PchFileIO.h"
 #include "AppTheme.h"
 
@@ -40,9 +41,9 @@ void DiskPresetBrowserPanel::RefreshIconButton::paintButton(juce::Graphics& g, b
                                 : AppTheme::palette().inputBackground;
 
     g.setColour(bg);
-    g.fillRoundedRectangle(area, 4.0f);
+    g.fillRoundedRectangle(area, 6.0f);
     g.setColour(AppTheme::palette().borderColor);
-    g.drawRoundedRectangle(area, 4.0f, 1.0f);
+    g.drawRoundedRectangle(area.reduced(0.5f), 6.0f, 1.0f);
 
     auto iconArea = area.reduced(7.0f);
     juce::Path p;
@@ -99,7 +100,7 @@ DiskPresetBrowserPanel::TypeChipButton::TypeChipButton(const juce::String& chipL
 
 static juce::Font chipFont()
 {
-    return juce::Font(AppTheme::uiFont(10.0f)).boldened();
+    return juce::Font(AppTheme::uiFont(11.0f)).boldened();
 }
 
 int DiskPresetBrowserPanel::TypeChipButton::getIdealWidth(int padding) const
@@ -114,15 +115,19 @@ int DiskPresetBrowserPanel::TypeChipButton::getIdealWidth(int padding) const
 void DiskPresetBrowserPanel::TypeChipButton::paintButton(juce::Graphics& g, bool highlighted, bool down)
 {
     const bool selected = getToggleState();
-    auto area = getLocalBounds().toFloat().reduced(0.5f, 3.0f);
+    auto area = getLocalBounds().toFloat().reduced(0.5f, 2.0f);
 
-    auto fill = selected || down ? AppTheme::palette().buttonActive
+    // A pill: the chosen one is filled with the accent, the others are outlined
+    auto fill = selected || down ? AppTheme::palette().accentActive
               : highlighted      ? AppTheme::palette().buttonHover
-                                 : AppTheme::palette().inputBackground;
+                                 : AppTheme::palette().buttonBackground;
     g.setColour(fill);
-    g.fillRoundedRectangle(area, 3.0f);
-    g.setColour(selected ? AppTheme::palette().accentActive : AppTheme::palette().borderColor);
-    g.drawRoundedRectangle(area, 3.0f, 1.0f);
+    g.fillRoundedRectangle(area, area.getHeight() * 0.5f);
+    if (!selected)
+    {
+        g.setColour(AppTheme::palette().borderColor);
+        g.drawRoundedRectangle(area.reduced(0.5f), area.getHeight() * 0.5f, 1.0f);
+    }
 
     g.setColour(selected ? iconInkFor(fill) : AppTheme::palette().textSecondary);
     g.setFont(chipFont());
@@ -133,9 +138,10 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
 {
     setOpaque(true);
 
-    searchLabel.setText("Search", juce::dontSendNotification);
-    searchLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
-    addAndMakeVisible(searchLabel);
+    // Centred in the field, both ways, and in a size that fills it
+    searchBox.setFont(juce::Font(AppTheme::uiFont(15.0f)));
+    searchBox.setJustification(juce::Justification::centredLeft);
+    searchBox.setIndents(12, 0);
 
     searchBox.onTextChange = [this]() { rebuildVisibleEntries(); };
     addAndMakeVisible(searchBox);
@@ -160,7 +166,11 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     hidePch2Button.setTooltip("Hide legacy 2.10 patches (tagged PCH2 in the list)");
     hidePch2Button.onClick = [this]() {
         hidePch2 = hidePch2Button.getToggleState();
+        if (onHidePch2Changed)
+            onHidePch2Changed(hidePch2);
         rebuildVisibleEntries();
+        if (hidePch2)
+            sniffLegacyInBackground();
     };
     addAndMakeVisible(hidePch2Button);
 
@@ -170,7 +180,7 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     statusLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
     addAndMakeVisible(statusLabel);
 
-    listBox.setRowHeight(24);
+    listBox.setRowHeight(32);
     addAndMakeVisible(listBox);
 
     applyTheme();
@@ -183,7 +193,7 @@ void DiskPresetBrowserPanel::applyTheme()
     searchBox.setColour(juce::TextEditor::textColourId, kText);
     searchBox.setColour(juce::TextEditor::outlineColourId, kSep);
     searchBox.setColour(juce::TextEditor::focusedOutlineColourId, AppTheme::palette().accentActive);
-    searchBox.setTextToShowWhenEmpty("patch, snippet or set name", kDim);
+    searchBox.setTextToShowWhenEmpty("Search patch, snippet or set...", kDim);
     statusLabel.setColour(juce::Label::textColourId, kDim);
     listBox.setColour(juce::ListBox::backgroundColourId, kPanel);
     listBox.setColour(juce::ListBox::outlineColourId, kSep);
@@ -198,68 +208,169 @@ void DiskPresetBrowserPanel::applyTheme()
 void DiskPresetBrowserPanel::paint(juce::Graphics& g)
 {
     g.fillAll(kPanel);
+
+    // The two hairlines, edge to edge, like the rules between the inspector's sections
+    g.setColour(AppTheme::palette().borderColor);
+    g.fillRect(0, rule1Y, getWidth(), 1);
+    g.fillRect(0, rule2Y, getWidth(), 1);
 }
 
 void DiskPresetBrowserPanel::setLibraryRoot(const juce::File& root)
 {
+    // The same folder asked for again while it is still being read is the same request: starting
+    // a second read would only make both slower
+    if (root == libraryRoot && scanning)
+        return;
     libraryRoot = root;
     refresh();
 }
 
 void DiskPresetBrowserPanel::refresh()
 {
-    allEntries.clear();
-
     if (libraryRoot == juce::File() || !libraryRoot.isDirectory())
     {
+        ++scanGeneration;   // whatever was being read is no longer wanted
+        scanning = false;
+        allEntries.clear();
         statusLabel.setText("Choose a preset library folder first.", juce::dontSendNotification);
         rebuildVisibleEntries();
         return;
     }
+
+    // The list on screen stays as it is until the new one is ready
+    scanning = true;
+    statusLabel.setText("Reading the library...", juce::dontSendNotification);
+
+    const int generation = ++scanGeneration;
+    const auto root = libraryRoot;
+    juce::Component::SafePointer<DiskPresetBrowserPanel> safeThis(this);
+    juce::Thread::launch([safeThis, root, generation]()
+    {
+        // Only the names are read here, so the list can appear at once. Which patches are old is
+        // found out afterwards (sniffLegacyInBackground), because that means opening every file.
+        auto entries = scanLibrary(root, false);
+        juce::MessageManager::callAsync([safeThis, generation, entries = std::move(entries)]() mutable
+        {
+            if (safeThis != nullptr && safeThis->scanGeneration.load() == generation)
+                safeThis->scanFinished(std::move(entries));
+        });
+    });
+}
+
+std::vector<DiskPresetBrowserPanel::Entry> DiskPresetBrowserPanel::scanLibrary(const juce::File& root, bool sniffLegacy)
+{
+    std::vector<Entry> entries;
 
     // A patch is any .pch under the library folder, not only what is inside
     // Patches/: people point the library at the folder they already keep their
     // patches in (#106). The folders with a meaning of their own are left out,
     // so a snippet or a bank backup is not listed twice.
     const std::vector<juce::File> ownFolders {
-        libraryRoot.getChildFile("Snippets"), libraryRoot.getChildFile("Banks"),
-        libraryRoot.getChildFile("Sets"),     libraryRoot.getChildFile("Presets") };
-    scanFolder(libraryRoot, Entry::Type::Patch, ownFolders);
-    scanFolder(libraryRoot.getChildFile("Snippets"), Entry::Type::Snippet);
-    scanFolder(libraryRoot.getChildFile("Banks"), Entry::Type::Bank);
-    scanFolder(libraryRoot.getChildFile("Sets"), Entry::Type::Set);
+        root.getChildFile("Snippets"), root.getChildFile("Banks"),
+        root.getChildFile("Sets"),     root.getChildFile("Presets") };
+    scanFolder(root, root, Entry::Type::Patch, ownFolders, entries);
+    scanFolder(root, root.getChildFile("Snippets"), Entry::Type::Snippet, {}, entries);
+    scanFolder(root, root.getChildFile("Banks"), Entry::Type::Bank, {}, entries);
+    scanFolder(root, root.getChildFile("Sets"), Entry::Type::Set, {}, entries);
 
-    std::sort(allEntries.begin(), allEntries.end(), [](const Entry& a, const Entry& b) {
+    std::sort(entries.begin(), entries.end(), [](const Entry& a, const Entry& b) {
         if (a.type != b.type)
             return static_cast<int>(a.type) < static_cast<int>(b.type);
         return a.displayName.compareIgnoreCase(b.displayName) < 0;
     });
 
-    rebuildVisibleEntries();
+    if (sniffLegacy)
+        for (auto& e : entries)
+            if (e.type == Entry::Type::Patch)
+                e.legacyPatch210 = PchFileIO::isLegacyPatch210(e.file) ? 1 : 0;
+
+    return entries;
 }
 
-void DiskPresetBrowserPanel::scanFolder(const juce::File& folder, Entry::Type type,
-                                        const std::vector<juce::File>& skipFolders)
+void DiskPresetBrowserPanel::scanFinished(std::vector<Entry> entries)
+{
+    scanning = false;
+    allEntries = std::move(entries);
+    rebuildVisibleEntries();
+    // "Hide 2.10" may have been switched on after this scan began: find out about what it missed
+    if (hidePch2)
+        sniffLegacyInBackground();
+}
+
+// Switching "Hide 2.10" on needs to know which patches are old, which means opening them: done
+// off the message thread too, and the list is rebuilt when it is known. Until then nothing is hidden.
+void DiskPresetBrowserPanel::sniffLegacyInBackground()
+{
+    std::vector<juce::File> files;
+    std::vector<size_t> indices;
+    for (size_t i = 0; i < allEntries.size(); ++i)
+        if (allEntries[i].type == Entry::Type::Patch && allEntries[i].legacyPatch210 < 0)
+        {
+            files.push_back(allEntries[i].file);
+            indices.push_back(i);
+        }
+    if (files.empty())
+        return;
+
+    const int generation = scanGeneration.load();
+    juce::Component::SafePointer<DiskPresetBrowserPanel> safeThis(this);
+    juce::Thread::launch([safeThis, generation, files = std::move(files), indices = std::move(indices)]()
+    {
+        std::vector<int> result;
+        result.reserve(files.size());
+        for (const auto& f : files)
+            result.push_back(PchFileIO::isLegacyPatch210(f) ? 1 : 0);
+
+        juce::MessageManager::callAsync([safeThis, generation, indices, result]()
+        {
+            if (safeThis == nullptr || safeThis->scanGeneration.load() != generation)
+                return;   // the list was read again meanwhile: the indices mean something else now
+            for (size_t k = 0; k < indices.size() && indices[k] < safeThis->allEntries.size(); ++k)
+                safeThis->allEntries[indices[k]].legacyPatch210 = result[k];
+            safeThis->rebuildVisibleEntries();
+        });
+    });
+}
+
+void DiskPresetBrowserPanel::scanFolder(const juce::File& root, const juce::File& folder, Entry::Type type,
+                                        const std::vector<juce::File>& skipFolders, std::vector<Entry>& out)
 {
     if (!folder.isDirectory())
         return;
 
-    for (juce::RangedDirectoryIterator it(folder, true, type == Entry::Type::Set ? "*.nmset" : "*.pch", juce::File::findFiles); it != juce::RangedDirectoryIterator(); ++it)
+    // std::filesystem reads the type of each entry from the directory listing itself, where the
+    // JUCE iterator stats every file: on a library of 50,000 patches that is ten seconds against
+    // a fraction of one.
+    namespace fs = std::filesystem;
+    const juce::String wanted = type == Entry::Type::Set ? ".nmset" : ".pch";
+    std::error_code ec;
+    fs::recursive_directory_iterator it(fs::u8path(folder.getFullPathName().toStdString()),
+                                        fs::directory_options::skip_permission_denied, ec);
+    const fs::recursive_directory_iterator end;
+
+    for (; !ec && it != end; it.increment(ec))
     {
-        auto file = it->getFile();
+        std::error_code entryError;
+        if (!it->is_regular_file(entryError))
+            continue;
+
+        const auto ext = juce::String(it->path().extension().u8string());
+        if (!ext.equalsIgnoreCase(wanted))
+            continue;
+
+        juce::File file(juce::String::fromUTF8(it->path().u8string().c_str()));
         if (std::any_of(skipFolders.begin(), skipFolders.end(),
                         [&file](const juce::File& skip) { return file.isAChildOf(skip); }))
             continue;
+
         Entry entry;
         entry.type = type;
-        entry.file = file;
-        // Bank backups show their bank subfolder ("Bank3/05 - Name") so the
-        // same patch name in different banks stays distinguishable.
         entry.displayName = type == Entry::Type::Bank
             ? file.getRelativePathFrom(folder).dropLastCharacters(4)
             : file.getFileNameWithoutExtension();
-        entry.relativePath = file.getRelativePathFrom(libraryRoot);
-        allEntries.push_back(std::move(entry));
+        entry.relativePath = file.getRelativePathFrom(root);
+        entry.file = std::move(file);
+        out.push_back(std::move(entry));
     }
 }
 
@@ -271,7 +382,7 @@ void DiskPresetBrowserPanel::rebuildVisibleEntries()
     for (int i = 0; i < static_cast<int>(allEntries.size()); ++i)
     {
         auto& e = allEntries[static_cast<size_t>(i)];
-        if (hidePch2 && isLegacyPatch210(e))
+        if (hidePch2 && e.legacyPatch210 == 1)
             continue;
 
         auto haystack = (e.displayName + " " + e.relativePath).toLowerCase();
@@ -284,8 +395,11 @@ void DiskPresetBrowserPanel::rebuildVisibleEntries()
 
     // Just the count: the library path never fit beside it, so it moves to
     // the tooltip for whoever needs to know which folder this is.
-    statusLabel.setText(juce::String(visibleEntryIndices.size()) + " of "
-                            + juce::String(allEntries.size()) + " files",
+    statusLabel.setText(scanning && allEntries.empty()
+                            ? juce::String("Reading the library...")
+                            : visibleEntryIndices.size() == allEntries.size()
+                                ? juce::String(allEntries.size()) + " files"
+                                : juce::String(visibleEntryIndices.size()) + " of " + juce::String(allEntries.size()),
                         juce::dontSendNotification);
     statusLabel.setTooltip(libraryRoot != juce::File() ? libraryRoot.getFullPathName() : juce::String());
 
@@ -296,24 +410,31 @@ void DiskPresetBrowserPanel::rebuildVisibleEntries()
 
 void DiskPresetBrowserPanel::resized()
 {
-    auto area = getLocalBounds().reduced(8);
+    auto area = getLocalBounds().reduced(12, 10);
 
-    auto searchRow = area.removeFromTop(28);
-    searchLabel.setBounds(searchRow.removeFromLeft(52));
-    refreshButton.setBounds(searchRow.removeFromRight(32).reduced(1));
-    searchBox.setBounds(searchRow.reduced(2));
+    auto searchRow = area.removeFromTop(36);
+    refreshButton.setBounds(searchRow.removeFromRight(36));
+    searchBox.setBounds(searchRow.withTrimmedRight(8));
+    area.removeFromTop(10);
 
-    filterRowArea = area.removeFromTop(26);
+    filterRowArea = area.removeFromTop(28);
     layoutFilterRow();
+    area.removeFromTop(10);
 
-    auto statusRow = area.removeFromTop(24);
-    nextButton.setBounds(statusRow.removeFromRight(26));
-    prevButton.setBounds(statusRow.removeFromRight(26));
+    // A hairline under the search and the filters, then the count row, then another over the list
+    rule1Y = area.getY();
+    area.removeFromTop(1 + 5);
+    auto statusRow = area.removeFromTop(30);
+    nextButton.setBounds(statusRow.removeFromRight(28));
     statusRow.removeFromRight(4);
-    hidePch2Button.setBounds(statusRow.removeFromRight(juce::jmin(84, statusRow.getWidth() / 2)));
+    prevButton.setBounds(statusRow.removeFromRight(28));
+    statusRow.removeFromRight(8);
+    hidePch2Button.setBounds(statusRow.removeFromRight(juce::jmin(116, statusRow.getWidth() * 3 / 5)));
     statusLabel.setBounds(statusRow);
-    area.removeFromTop(4);
-    listBox.setBounds(area);
+    area.removeFromTop(5);
+    rule2Y = area.getY();
+    area.removeFromTop(1 + 2);
+    listBox.setBounds(area.withX(0).withWidth(getWidth()));
 }
 
 // Chips take the width their word needs and share out any room left over.
@@ -326,7 +447,7 @@ void DiskPresetBrowserPanel::layoutFilterRow()
 
     TypeChipButton* chips[] = { &allButton, &patchesButton, &snippetsButton, &banksButton, &setsButton };
     constexpr int numChips = static_cast<int>(std::size(chips));
-    const int gap = 3;
+    const int gap = 6;
     auto totalWidth = [&](int padding) {
         int w = gap * (numChips - 1);
         for (auto* c : chips)
@@ -334,15 +455,15 @@ void DiskPresetBrowserPanel::layoutFilterRow()
         return w;
     };
 
-    int padding = 14;
-    while (padding > 6 && totalWidth(padding) > row.getWidth())
+    // Each chip is as wide as its word needs, with room around it, and they sit side by side
+    // from the left. On a narrow panel the padding tightens instead: the labels are never cut.
+    int padding = 20;
+    while (padding > 8 && totalWidth(padding) > row.getWidth())
         padding -= 2;
 
-    const int spare = juce::jmax(0, row.getWidth() - totalWidth(padding));
-    for (int i = 0; i < numChips; ++i)
+    for (auto* c : chips)
     {
-        const int extra = spare / numChips + (i < spare % numChips ? 1 : 0);
-        chips[i]->setBounds(row.removeFromLeft(chips[i]->getIdealWidth(padding) + extra));
+        c->setBounds(row.removeFromLeft(c->getIdealWidth(padding)));
         row.removeFromLeft(gap);
     }
 }
@@ -359,26 +480,28 @@ void DiskPresetBrowserPanel::paintListBoxItem(int row, juce::Graphics& g, int wi
 
     auto& entry = allEntries[static_cast<size_t>(visibleEntryIndices[static_cast<size_t>(row)])];
 
-    g.fillAll(selected ? AppTheme::palette().backgroundElevated : kPanel);
-    g.setColour(selected ? juce::Colour(0xffd8dcdf) : kSep);
-    g.drawHorizontalLine(height - 1, 0.0f, static_cast<float>(width));
+    g.fillAll(kPanel);
+    if (selected)
+    {
+        g.setColour(AppTheme::palette().backgroundElevated);
+        g.fillRoundedRectangle(4.0f, 1.0f, static_cast<float>(width) - 8.0f, static_cast<float>(height) - 2.0f, 5.0f);
+    }
 
-    auto tagArea = juce::Rectangle<int>(6, 4, 48, height - 8);
+    auto tagArea = juce::Rectangle<int>(10, (height - 18) / 2, 50, 18);
     auto tagColour = isLegacyPatch210(entry)            ? legacyPatchTagColour()
                    : entry.type == Entry::Type::Patch   ? kPatchTag
                    : entry.type == Entry::Type::Snippet ? kSnippetTag
                    : entry.type == Entry::Type::Set     ? kSetTag
                                                         : kBankTag;
     g.setColour(tagColour.withAlpha(0.22f));
-    g.fillRoundedRectangle(tagArea.toFloat(), 3.0f);
+    g.fillRoundedRectangle(tagArea.toFloat(), 4.0f);
     g.setColour(tagColour);
-    g.drawRoundedRectangle(tagArea.toFloat(), 3.0f, 1.0f);
     g.setFont(juce::Font(AppTheme::uiFont(10.0f)).boldened());
     g.drawText(getTypeLabel(entry), tagArea, juce::Justification::centred, true);
 
-    g.setColour(selected ? juce::Colours::white : kText);
-    g.setFont(juce::Font(AppTheme::uiFont(12.0f)));
-    g.drawText(entry.displayName, 62, 0, width - 68, height, juce::Justification::centredLeft, true);
+    g.setColour(selected ? AppTheme::palette().textPrimary : AppTheme::palette().textPrimary.withAlpha(0.9f));
+    g.setFont(juce::Font(AppTheme::uiFont(13.0f)));
+    g.drawText(entry.displayName, 70, 0, width - 78, height, juce::Justification::centredLeft, true);
 }
 
 void DiskPresetBrowserPanel::loadRow(int row)

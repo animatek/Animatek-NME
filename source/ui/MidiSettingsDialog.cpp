@@ -39,11 +39,17 @@ MidiSettingsDialog::MidiSettingsDialog()
     for (int i = 0; i < kMaxSynths; ++i)
     {
         auto& g = groups[static_cast<size_t> (i)];
-        styleLabel (g.inLabel);
-        styleLabel (g.outLabel);
+        styleLabel (g.inLabel, true);
+        styleLabel (g.outLabel, true);
         styleLabel (g.statusCaption);
         styleLabel (g.status);
+        g.inLabel.setColour (juce::Label::textColourId, kText);
+        g.outLabel.setColour (juce::Label::textColourId, kText);
+        g.inLabel.setFont (juce::Font (AppTheme::uiFont (13.0f).withStyle ("Bold")));
+        g.outLabel.setFont (juce::Font (AppTheme::uiFont (13.0f).withStyle ("Bold")));
         g.status.setColour (juce::Label::textColourId, kDim);
+        g.status.setFont (juce::Font (AppTheme::uiFont (13.0f)));
+        g.status.setJustificationType (juce::Justification::centredRight);
         styleCombo (g.inCombo);
         styleCombo (g.outCombo);
         g.enabled.setColour (juce::ToggleButton::textColourId, kText);
@@ -56,9 +62,10 @@ MidiSettingsDialog::MidiSettingsDialog()
 
     for (auto* b : { &okButton, &cancelButton, &applyButton })
     {
-        b->setColour (juce::TextButton::buttonColourId,   kBtnBg);
+        const bool primary = (b == &okButton);   // OK is the one that does the thing
+        b->setColour (juce::TextButton::buttonColourId,   primary ? AppTheme::palette().accentActive : kBtnBg);
         b->setColour (juce::TextButton::buttonOnColourId, kBtnOn);
-        b->setColour (juce::TextButton::textColourOffId,  kText);
+        b->setColour (juce::TextButton::textColourOffId,  primary ? AppTheme::palette().backgroundMain : kText);
         b->setColour (juce::TextButton::textColourOnId,   AppTheme::palette().textPrimary);
         addAndMakeVisible (b);
     }
@@ -72,7 +79,7 @@ MidiSettingsDialog::MidiSettingsDialog()
     addAndMakeVisible (viewport);
 
     refreshDeviceLists();
-    setSize (480, kTitleH + 6 + juce::jmin (kMaxSynths * kGroupH, 4 * kGroupH + kGroupH / 2) + kButtonsH);
+    setSize (640, kTitleH + 8 + juce::jmin (kMaxSynths * kGroupH, 3 * kGroupH + kGroupH * 2 / 5) + kButtonsH);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -181,83 +188,101 @@ bool MidiSettingsDialog::keyPressed (const juce::KeyPress& key)
 }
 
 void MidiSettingsDialog::mouseDown (const juce::MouseEvent& e)
-    { if (e.getPosition().getY() < 32) dragger.startDraggingComponent (this, e); }
+    { if (e.getPosition().getY() < kTitleH) dragger.startDraggingComponent (this, e); }
 void MidiSettingsDialog::mouseDrag (const juce::MouseEvent& e)
-    { dragger.dragComponent (this, e, nullptr); }
+    { if (e.getMouseDownPosition().getY() < kTitleH) dragger.dragComponent (this, e, nullptr); }  // only a drag that began on the title bar moves the window (the press position says where it began)
 
 // ─────────────────────────────────────────────────────────────────────────────
 void MidiSettingsDialog::paint (juce::Graphics& g)
 {
+    const auto& pal = AppTheme::palette();
     g.fillAll (kBg);
 
-    g.setColour (AppTheme::palette().textPrimary);
-    g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
-    g.drawText ("MIDI Setup", 10, 0, getWidth() - 44, 32, juce::Justification::centredLeft);
+    // Title bar, as in Editor Options
+    g.setColour (pal.textPrimary);
+    g.setFont (juce::Font (AppTheme::uiFont (15.0f)).boldened());
+    g.drawText ("MIDI Setup", 18, 0, getWidth() - 60, kTitleH, juce::Justification::centredLeft);
+    g.setColour (pal.borderColor);
+    g.fillRect (0, kTitleH - 1, getWidth(), 1);
 
-    g.setColour (kSep);
-    g.fillRect (0, 31, getWidth(), 1);
-
+    // Footer band under the cards
+    g.setColour (pal.backgroundPanel);
+    g.fillRect (0, getHeight() - kButtonsH, getWidth(), kButtonsH);
+    g.setColour (pal.borderColor);
+    g.fillRect (0, getHeight() - kButtonsH, getWidth(), 1);
 }
 
 void MidiSettingsDialog::Content::paint (juce::Graphics& g)
 {
-    // One framed group per port, titled as in the original editor.
-    constexpr int pad = 12;
+    // One card per port: its number and name, how it is doing and a switch at the top, its In and
+    // Out ports below.
+    const auto& pal = AppTheme::palette();
+    constexpr int pad = 24;
     for (int i = 0; i < kMaxSynths; ++i)
     {
-        const juce::Rectangle<float> r (static_cast<float> (pad), static_cast<float> (i * kGroupH + 10),
-                                        static_cast<float> (getWidth() - pad * 2), static_cast<float> (kGroupH - 14));
-        g.setColour (kCtrlBd);
-        g.drawRoundedRectangle (r, 3.0f, 1.0f);
-        const auto title = "Port " + juce::String (i + 1);
-        g.setFont (juce::Font (AppTheme::uiFont (11.0f)).boldened());
-        const int tw = static_cast<int> (g.getCurrentFont().getStringWidthFloat (title)) + 10;
-        g.setColour (kBg);
-        g.fillRect (r.getX() + 8, r.getY() - 7, static_cast<float> (tw), 14.0f);
-        g.setColour (AppTheme::palette().textPrimary);
-        g.drawText (title, static_cast<int> (r.getX()) + 8, static_cast<int> (r.getY()) - 7, tw, 14,
-                    juce::Justification::centred);
+        const auto& group = owner->groups[static_cast<size_t> (i)];
+        const juce::Rectangle<float> r (static_cast<float> (pad), static_cast<float> (i * kGroupH + 8),
+                                        static_cast<float> (getWidth() - pad * 2), static_cast<float> (kGroupH - 12));
+        g.setColour (pal.backgroundPanel);
+        g.fillRoundedRectangle (r, 10.0f);
+        g.setColour (pal.borderColor);
+        g.drawRoundedRectangle (r.reduced (0.5f), 10.0f, 1.0f);
+
+        const bool on = group.enabled.getToggleState();
+        g.setColour (on ? pal.accentActive : pal.textMuted);
+        g.setFont (juce::Font (AppTheme::uiFont (14.0f)).boldened());
+        g.drawText (juce::String (i + 1), static_cast<int> (r.getX()) + 16, static_cast<int> (r.getY()) + 12, 18, 30,
+                    juce::Justification::centredLeft);
+        g.setColour (on ? pal.textPrimary : pal.textSecondary);
+        g.drawText ("Port " + juce::String (i + 1), static_cast<int> (r.getX()) + 36, static_cast<int> (r.getY()) + 12, 200, 30,
+                    juce::Justification::centredLeft);
+
+        // The connection dot, between the status words and the switch
+        const auto dot = group.status.getBounds().toFloat();
+        g.setColour (group.connected ? pal.accentSuccess : pal.textMuted.withAlpha (0.6f));
+        g.fillEllipse (dot.getRight() + 8.0f, dot.getCentreY() - 4.5f, 9.0f, 9.0f);
     }
 }
 
 void MidiSettingsDialog::Content::resized()
 {
-    constexpr int pad = 12, rowH = 24;
+    constexpr int pad = 24;
     for (int i = 0; i < kMaxSynths; ++i)
     {
         auto& g = owner->groups[static_cast<size_t> (i)];
-        auto area = juce::Rectangle<int> (pad + 10, i * kGroupH + 18, getWidth() - pad * 2 - 20, 84);
-        auto row1 = area.removeFromTop (rowH);
-        g.inLabel.setBounds (row1.removeFromLeft (24));
-        const int comboW = (row1.getWidth() - 34) / 2;
-        g.inCombo.setBounds (row1.removeFromLeft (comboW));
-        g.outLabel.setBounds (row1.removeFromLeft (34).withTrimmedLeft (8));
-        g.outCombo.setBounds (row1);
-        area.removeFromTop (6);
-        auto row2 = area.removeFromTop (rowH);
-        g.enabled.setBounds (row2.removeFromLeft (100).withTrimmedLeft (24));
-        g.statusCaption.setBounds (row2.removeFromLeft (50));
-        g.status.setBounds (row2);
+        const juce::Rectangle<int> card (pad, i * kGroupH + 8, getWidth() - pad * 2, kGroupH - 12);
+
+        // The switch at the right of the card's heading, the status words to the left of it
+        auto head = juce::Rectangle<int> (card.getX() + 16, card.getY() + 12, card.getWidth() - 32, 30);
+        g.enabled.setBounds (head.removeFromRight (52));
+        head.removeFromRight (34);
+        g.status.setBounds (head.removeFromRight (juce::jmin (head.getWidth() - 110, 320)));
+
+        // In and Out, one under the other, each a full-width list
+        auto body = juce::Rectangle<int> (card.getX() + 16, card.getY() + 56, card.getWidth() - 32, 34);
+        g.inLabel.setBounds (body.removeFromLeft (44));
+        g.inCombo.setBounds (body);
+        body = juce::Rectangle<int> (card.getX() + 16, card.getY() + 98, card.getWidth() - 32, 34);
+        g.outLabel.setBounds (body.removeFromLeft (44));
+        g.outCombo.setBounds (body);
+        g.statusCaption.setVisible (false);   // "Status:" is said by the dot now
     }
 }
 
 void MidiSettingsDialog::resized()
 {
-    closeButton.setBounds (getWidth() - 32, 2, 28, 28);
+    closeButton.setBounds (getWidth() - 36, 6, 28, 28);
 
-    viewport.setBounds (0, kTitleH + 6, getWidth(), getHeight() - kTitleH - 6 - kButtonsH);
+    viewport.setBounds (0, kTitleH + 8, getWidth(), getHeight() - kTitleH - 8 - kButtonsH);
     content.setSize (viewport.getWidth() - (kMaxSynths * kGroupH > viewport.getHeight() ? viewport.getScrollBarThickness() : 0),
                      kMaxSynths * kGroupH);
 
-    constexpr int btnW = 84, btnH = 28;
-    auto bottom = juce::Rectangle<int> (0, getHeight() - btnH - 12, getWidth(), btnH);
-    const int total = btnW * 3 + 16;
-    bottom = bottom.withSizeKeepingCentre (total, btnH);
-    okButton.setBounds (bottom.removeFromLeft (btnW));
-    bottom.removeFromLeft (8);
-    cancelButton.setBounds (bottom.removeFromLeft (btnW));
-    bottom.removeFromLeft (8);
-    applyButton.setBounds (bottom.removeFromLeft (btnW));
+    // At the right of the footer: Apply, then OK, then Cancel last
+    constexpr int btnW = 100, btnH = 36;
+    const int by = getHeight() - kButtonsH + (kButtonsH - btnH) / 2;
+    cancelButton.setBounds (getWidth() - 24 - btnW, by, btnW, btnH);
+    okButton.setBounds (cancelButton.getX() - 12 - btnW, by, btnW, btnH);
+    applyButton.setBounds (okButton.getX() - 12 - btnW, by, btnW, btnH);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
