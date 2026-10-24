@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **Knob Floater, like the mockup** (2026-10-24, branch `ui-redesign`). Each cell reads from the top:
+  the module's name (small, muted), the parameter's name (bold), an **arc knob** (dark track, the value
+  in the accent, a white pointer; it replaces the old filled blob) and the value as the parameter
+  formats it (C4, 340 ms, -6 dB) in a monospaced line. An empty knob says "Free" (its number where the
+  module's name goes) with a dimmed knob and a dash; the assignment lamp is gone, since the colour of the
+  arc says it already.
+
 - **Knob Floater restyled** (2026-10-24, branch `ui-redesign`). Bigger cells (112x86) and knobs (46px),
   18px margins and 22px between the three groups, module names and parameter names in 12px (the
   parameter in bold), and the lamp and knob number moved with them.
