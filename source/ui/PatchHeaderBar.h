@@ -5,10 +5,14 @@
 #include "ValueSpinner.h"
 #include <functional>
 
-class PatchHeaderBar : public juce::Component
+class PatchHeaderBar : public juce::Component,
+                       public juce::TooltipClient
 {
 public:
     PatchHeaderBar();
+
+    // The small icon buttons say what they are; the rest of the bar has no tip.
+    juce::String getTooltip() override;
 
     void setPatch(Patch* p);
 
@@ -56,6 +60,10 @@ public:
     // open or a layout that is already canonical.
     using RetileButtonCallback = std::function<void()>;
     void setRetileButtonCallback(RetileButtonCallback cb) { retileButtonCallback = std::move(cb); }
+    // Heart (donate) and Patreon, right of ABCD. Each opens its page through
+    // the callback, which is MainComponent's openURL.
+    using SupportCallback = std::function<void(const juce::String& url)>;
+    void setSupportCallback(SupportCallback cb) { supportCallback = std::move(cb); }
     void setRetileEnabled(bool enabled)
     {
         if (retileEnabled == enabled) return;
@@ -170,6 +178,9 @@ private:
     bool mutatorOpen = false;
     RetileButtonCallback retileButtonCallback;
     bool retileEnabled = false;
+    SupportCallback supportCallback;
+    // Top-level (no parent): the bar is 48px tall and would clip a child tip.
+    juce::TooltipWindow tooltipWindow { nullptr, 600 };
 
     void showMorphKnobContextMenu(int morphIndex);
 
@@ -185,6 +196,11 @@ private:
     bool isMutatorButtonAt(juce::Point<int> pos) const;
     juce::Rectangle<float> getRetileButtonBounds() const;
     bool isRetileButtonAt(juce::Point<int> pos) const;
+    static constexpr float supportButtonSize = 22.0f;
+    static constexpr float supportEdge = 10.0f;      // gap to the bar's right edge
+    static constexpr int supportBlockW = 56;         // both buttons, the gap and a margin
+    juce::Rectangle<float> getDonateButtonBounds() const;
+    juce::Rectangle<float> getPatreonButtonBounds() const;
 
     // Morph A/B fader
     juce::Rectangle<float> getMorphFaderBounds() const;

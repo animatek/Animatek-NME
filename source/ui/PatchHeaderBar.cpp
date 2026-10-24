@@ -1,6 +1,7 @@
 #include "PatchHeaderBar.h"
 #include "AppTheme.h"
 #include "KnobDrag.h"
+#include "VersionCheck.h"
 #include "../protocol/KnobAssignmentMessage.h"
 
 namespace
@@ -99,6 +100,20 @@ void PatchHeaderBar::setPatch(Patch* p)
     if (patchNameEditor->isVisible())
         patchNameEditor->setVisible(false);
     repaint();
+}
+
+juce::String PatchHeaderBar::getTooltip()
+{
+    const auto p = getMouseXYRelative();
+    if (isMutatorButtonAt(p))
+        return "Patch Mutator: breed new sounds from this patch";
+    if (getRetileButtonBounds().expanded(2.0f).contains(p.toFloat()))
+        return "Put the slot windows back in order: A B over C D";
+    if (getDonateButtonBounds().expanded(2.0f).contains(p.toFloat()))
+        return "Donate with PayPal";
+    if (getPatreonButtonBounds().expanded(2.0f).contains(p.toFloat()))
+        return "Support Animatek NME on Patreon";
+    return {};
 }
 
 void PatchHeaderBar::mouseMove(const juce::MouseEvent& e)
@@ -342,6 +357,22 @@ juce::Rectangle<float> PatchHeaderBar::getRetileButtonBounds() const
 bool PatchHeaderBar::isRetileButtonAt(juce::Point<int> pos) const
 {
     return retileEnabled && getRetileButtonBounds().expanded(2.0f).contains(pos.toFloat());
+}
+
+// Heart and Patreon sit in the far right corner, clear of the ABCD button, and the
+// synth name box makes room for them (supportBlockW).
+juce::Rectangle<float> PatchHeaderBar::getPatreonButtonBounds() const
+{
+    return { static_cast<float>(getWidth()) - supportEdge - supportButtonSize,
+             (static_cast<float>(getHeight()) - supportButtonSize) * 0.5f,
+             supportButtonSize, supportButtonSize };
+}
+
+juce::Rectangle<float> PatchHeaderBar::getDonateButtonBounds() const
+{
+    auto patreon = getPatreonButtonBounds();
+    return { patreon.getX() - 4.0f - supportButtonSize, patreon.getY(),
+             supportButtonSize, supportButtonSize };
 }
 
 void PatchHeaderBar::setSnapshotFilled(int index, bool filled)
@@ -792,6 +823,39 @@ void PatchHeaderBar::paint(juce::Graphics& g)
             }
         }
 
+        // Support: a heart for the PayPal donation and Patreon's mark, like the
+        // Sponsor button on GitHub. Small and quiet: the bar has no room to nag.
+        {
+            auto db = getDonateButtonBounds();
+            g.setColour(AppTheme::palette().buttonBackground);
+            g.fillRoundedRectangle(db, 2.0f);
+            g.setColour(AppTheme::palette().borderColor);
+            g.drawRoundedRectangle(db.reduced(0.5f), 2.0f, 1.0f);
+
+            // Two circles and a triangle make the heart; no font has to carry it.
+            const auto hc = db.getCentre();
+            constexpr float r = 3.4f;
+            juce::Path heart;
+            heart.addEllipse(hc.x - 2.0f * r + 0.4f, hc.y - r - 1.6f, 2.0f * r, 2.0f * r);
+            heart.addEllipse(hc.x - 0.4f, hc.y - r - 1.6f, 2.0f * r, 2.0f * r);
+            heart.addTriangle(hc.x - 2.0f * r + 0.6f, hc.y + 0.2f, hc.x + 2.0f * r - 0.6f, hc.y + 0.2f,
+                              hc.x, hc.y + 2.0f * r - 0.6f);
+            g.setColour(juce::Colour(0xffe0556b));
+            g.fillPath(heart);
+
+            auto pb = getPatreonButtonBounds();
+            g.setColour(AppTheme::palette().buttonBackground);
+            g.fillRoundedRectangle(pb, 2.0f);
+            g.setColour(AppTheme::palette().borderColor);
+            g.drawRoundedRectangle(pb.reduced(0.5f), 2.0f, 1.0f);
+
+            // Patreon's mark: a round head and a bar down its left side.
+            const auto pc = pb.getCentre();
+            g.setColour(juce::Colour(0xfff96854));
+            g.fillEllipse(pc.x - 0.5f, pc.y - 5.5f, 7.0f, 7.0f);
+            g.fillRect(pc.x - 4.5f, pc.y - 5.5f, 2.2f, 11.0f);
+        }
+
         // Interpolation progress bar (below snapshot buttons)
         if (interpolationProgress >= 0.0f)
         {
@@ -812,7 +876,7 @@ void PatchHeaderBar::paint(juce::Graphics& g)
     {
         constexpr int synthNameW = 110;
         constexpr int synthPad = 10;
-        int sx = getWidth() - synthNameW - synthPad;
+        int sx = getWidth() - synthNameW - synthPad - supportBlockW;
 
         // Separator
         {
@@ -951,6 +1015,21 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
         if (retileButtonCallback)
             retileButtonCallback();
         return;
+    }
+
+    // Heart and Patreon
+    if (supportCallback)
+    {
+        if (getDonateButtonBounds().expanded(2.0f).contains(pos.toFloat()))
+        {
+            supportCallback(VersionCheck::kDonateUrl);
+            return;
+        }
+        if (getPatreonButtonBounds().expanded(2.0f).contains(pos.toFloat()))
+        {
+            supportCallback(VersionCheck::kPatreonUrl);
+            return;
+        }
     }
 
     // Snapshot buttons

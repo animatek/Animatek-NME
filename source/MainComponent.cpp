@@ -791,6 +791,8 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       [this](int index) { initSnapshot(index); });
   mainLayout->getHeaderBar().setMutatorButtonCallback(
       [this]() { toggleMutatorWindow(); });
+  mainLayout->getHeaderBar().setSupportCallback(
+      [this](const juce::String& url) { openURL(url); });
   mainLayout->getHeaderBar().setRetileButtonCallback(
       [this]() { mainLayout->getPatchArea().resetTileOrder(); });
 

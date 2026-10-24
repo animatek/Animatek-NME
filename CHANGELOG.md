@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Heart and Patreon buttons in the patch bar** (2026-10-24). Two small icon buttons in the far
+  right corner, like GitHub's Sponsor button: a heart that opens the PayPal donation page and
+  Patreon's mark that opens the Patreon page. The synth name box moves left to make room. The
+  heart, Patreon, MUT and ABCD buttons get tooltips (the bar has its own top-level tooltip
+  window, as the 48px bar would clip a child one). Release build checked by eye.
+
 - **Donate button next to Patreon** (2026-10-24, branch `apoyo-donar`). The About box gets a
   Donate button (five buttons across now), the About menu a "Donate (PayPal)..." item, and the
   repo a `.github/FUNDING.yml` (GitHub's Sponsor button) plus a "Support the project" section
