@@ -566,6 +566,15 @@ entries below are in the order they were made, newest first; the redesign ones s
 
 ### Fixed
 
+- **Theme editor and Community Themes, in the new look** (2026-10-24, `main`). The two windows still wore
+  the system's title bar and the old controls. The **Theme editor** has its own title bar with the gold
+  cross, a name field and a **Save** filled with the accent, the colour groups as quiet headings, rows of
+  40px with a hairline between them and a rounded swatch, and a footer band with the render-style
+  switch and the status. It keeps colours of its own (the new look's dark ground and amber) instead of
+  following the theme, so it does not move under the mouse while a theme is edited. **Community
+  Themes** takes the editor's title bar, a roomier list (72px rows) in a rounded box, and Install and
+  Update in the accent.
+
 - **The macOS build compiles again** (2026-10-24). The Disk tab's fast scan used `std::filesystem`
   directory iterators, which the macOS 10.13 target does not have (they came with 10.15), so the macOS
   job of the build workflow stopped. On macOS the scan uses JUCE's iterator (slower on a huge library);

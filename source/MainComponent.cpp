@@ -8,6 +8,8 @@
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
 #include "ui/AboutDialog.h"
+#include "ui/ThemeEditorWindow.h"
+#include "ui/CommunityThemesWindow.h"
 #include "ui/ShortcutsDialog.h"
 #include "ui/FlatCloseButton.h"
 #include "ui/EditorOptionsDialog.h"
@@ -3495,6 +3497,25 @@ void MainComponent::saveSnapshotsAndQuit(const juce::File& dir)
       SlotSelectDialog d("Open \"Fractura\" into...", { "Fractura", "", "", "A Nucleo Duro" }, 0, 0,
                          [](const SlotSelectDialog::Result&) {});
       shoot(d, "dialog-slot-select");
+    }
+    {
+      ThemeEditorWindow w(ThemeRegistry::get(0), "Nord");
+      shoot(w, "window-theme-editor");
+    }
+    {
+      CommunityThemesWindow w;
+      auto row = [](const char* name, const char* author, const char* desc, CommunityThemes::State st, bool isNew, bool inUse) {
+        CommunityThemesWindow::Row r;
+        r.entry.name = name; r.entry.author = author; r.entry.description = desc;
+        r.state = st; r.isNew = isNew; r.inUse = inUse;
+        return r;
+      };
+      w.setRows({ row("Animatek Rack", "animatek", "Flat knobs, dark", CommunityThemes::State::BuiltIn, false, true),
+                  row("Midnight", "someone", "Deep blues", CommunityThemes::State::NotInstalled, true, false),
+                  row("Paper", "someone else", "A light one", CommunityThemes::State::Changed, false, false),
+                  row("Nord", "animatek", "The default", CommunityThemes::State::Installed, false, false) });
+      w.setStatus("Checked 2 minutes ago.");
+      shoot(w, "window-community-themes");
     }
     {
       juce::AlertWindow d("Delete Patch", "Delete \"Fractura\" from location 101?", juce::MessageBoxIconType::WarningIcon);

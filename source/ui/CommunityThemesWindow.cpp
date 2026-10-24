@@ -24,6 +24,10 @@ public:
                            : r.state == State::Installed || r.state == State::BuiltIn ? "Use"
                            : r.state == State::Changed ? "Update" : "Install");
         button.setEnabled(!r.inUse);
+        // What asks something of you (install, update) is filled with the accent; the rest is quiet
+        const bool asks = !r.inUse && (r.state == State::Changed || (r.state != State::Installed && r.state != State::BuiltIn));
+        button.setColour(juce::TextButton::buttonColourId, asks ? AppTheme::palette().accentActive : AppTheme::palette().buttonBackground);
+        button.setColour(juce::TextButton::textColourOffId, asks ? AppTheme::palette().backgroundMain : AppTheme::palette().textSecondary);
         repaint();
     }
 
@@ -31,16 +35,16 @@ public:
 
     void resized() override
     {
-        button.setBounds(getLocalBounds().removeFromRight(96).reduced(8, 12));
+        button.setBounds(getLocalBounds().removeFromRight(112).withTrimmedRight(16).withSizeKeepingCentre(96, 36));
     }
 
     void paint(juce::Graphics& g) override
     {
         const auto& p = AppTheme::palette();
-        auto r = getLocalBounds().reduced(10, 6);
-        r.removeFromRight(96);
-        g.setColour(p.borderColor);
-        g.drawHorizontalLine(getHeight() - 1, 6.0f, static_cast<float>(getWidth() - 6));
+        auto r = getLocalBounds().reduced(20, 10);
+        r.removeFromRight(112);
+        g.setColour(p.borderColor.withAlpha(0.5f));
+        g.fillRect(16, getHeight() - 1, getWidth() - 32, 1);
 
         juce::String badge = row.isNew ? (row.state == State::Changed ? "Updated" : "New")
                            : row.state == State::Changed ? "Update"
@@ -59,15 +63,15 @@ public:
         }
 
         g.setColour(p.textPrimary);
-        g.setFont(juce::FontOptions(17.0f, juce::Font::bold));
+        g.setFont(juce::FontOptions(16.0f, juce::Font::bold));
         g.drawText(row.entry.name, r.removeFromTop(r.getHeight() / 2), juce::Justification::bottomLeft, true);
 
         juce::String sub = row.entry.author.isNotEmpty() ? "by " + row.entry.author : juce::String();
         if (row.entry.description.isNotEmpty())
             sub << (sub.isNotEmpty() ? "  -  " : "") << row.entry.description;
-        g.setColour(p.textSecondary);
-        g.setFont(juce::FontOptions(14.0f));
-        g.drawText(sub, r, juce::Justification::topLeft, true);
+        g.setColour(p.textMuted);
+        g.setFont(juce::FontOptions(13.5f));
+        g.drawText(sub, r.withTrimmedTop(2), juce::Justification::topLeft, true);
     }
 
 private:
@@ -81,12 +85,10 @@ class CommunityThemesWindow::Content : public juce::Component
 public:
     explicit Content(CommunityThemesWindow& o) : owner(o)
     {
-        title.setText("Community themes", juce::dontSendNotification);
-        title.setFont(juce::FontOptions(20.0f, juce::Font::bold));
-        addAndMakeVisible(title);
         from.setText("From github.com/animatek/nme-themes. Anyone can add one there by pull request.",
                      juce::dontSendNotification);
         from.setFont(juce::FontOptions(14.0f));
+        from.setMinimumHorizontalScale(1.0f);
         addAndMakeVisible(from);
 
         checkButton.onClick = [this] { if (owner.onCheckNow) owner.onCheckNow(); };
@@ -100,13 +102,12 @@ public:
         viewport.setScrollBarsShown(true, false);
         addAndMakeVisible(viewport);
         applyColours();
-        setSize(560, 520);
+        setSize(620, 580);
     }
 
     void applyColours()
     {
         const auto& p = AppTheme::palette();
-        title.setColour(juce::Label::textColourId, p.textPrimary);
         from.setColour(juce::Label::textColourId, p.textSecondary);
         status.setColour(juce::Label::textColourId, p.textSecondary);
     }
@@ -140,21 +141,20 @@ public:
 
     void resized() override
     {
-        auto r = getLocalBounds().reduced(12);
-        title.setBounds(r.removeFromTop(28));
-        from.setBounds(r.removeFromTop(22));
-        r.removeFromTop(6);
-        auto bottom = r.removeFromBottom(30);
-        checkButton.setBounds(bottom.removeFromLeft(110));
-        bottom.removeFromLeft(8);
-        repoButton.setBounds(bottom.removeFromLeft(130));
-        r.removeFromBottom(6);
-        status.setBounds(r.removeFromBottom(22));
-        r.removeFromBottom(4);
+        auto r = getLocalBounds().reduced(20, 16);
+        from.setBounds(r.removeFromTop(24));
+        r.removeFromTop(12);
+        auto bottom = r.removeFromBottom(36);
+        checkButton.setBounds(bottom.removeFromLeft(120));
+        bottom.removeFromLeft(10);
+        repoButton.setBounds(bottom.removeFromLeft(150));
+        bottom.removeFromLeft(14);
+        status.setBounds(bottom);
+        r.removeFromBottom(14);
         viewport.setBounds(r);
         const int w = viewport.getMaximumVisibleWidth();
         int y = 0;
-        for (auto& row : rows) { row->setBounds(0, y, w, 62); y += 62; }
+        for (auto& row : rows) { row->setBounds(0, y, w, 72); y += 72; }
         list.setSize(w, juce::jmax(y, 1));
     }
 
@@ -163,7 +163,9 @@ public:
         const auto& p = AppTheme::palette();
         g.fillAll(p.backgroundMain);
         g.setColour(p.backgroundPanel);
-        g.fillRect(viewport.getBounds());
+        g.fillRoundedRectangle(viewport.getBounds().toFloat(), 8.0f);
+        g.setColour(p.borderColor);
+        g.drawRoundedRectangle(viewport.getBounds().toFloat().reduced(0.5f), 8.0f, 1.0f);
         if (empty)
         {
             g.setColour(p.textMuted);
@@ -174,7 +176,7 @@ public:
 
 private:
     CommunityThemesWindow& owner;
-    juce::Label title, from, status;
+    juce::Label from, status;
     juce::TextButton checkButton { "Check Now" }, repoButton { "Open on GitHub" };
     juce::Viewport viewport;
     juce::Component list;
@@ -185,7 +187,7 @@ private:
 CommunityThemesWindow::CommunityThemesWindow()
     : juce::DocumentWindow("Community themes", AppTheme::palette().backgroundMain, juce::DocumentWindow::closeButton)
 {
-    setUsingNativeTitleBar(true);
+    setUsingNativeTitleBar(false);   // the editor's own title bar, as the other windows wear
     content = new Content(*this);
     setContentOwned(content, true);
     setResizable(true, false);
