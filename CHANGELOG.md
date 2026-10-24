@@ -4,6 +4,10 @@
 
 ### Changed
 
+- **Menus: the highlight is clear of the box's edge** (2026-10-24, branch `ui-redesign`): 6px of room
+  between the highlighted row and the rounded box on each side (it was 2), and the words 10px inside the
+  highlight; the menus are a little wider for it.
+
 - **Menus: the highlighted row stays inside the box** (2026-10-24, branch `ui-redesign`): the rows are
   given the whole width of the window, margin included, so the highlight stuck out of the rounded box
   by the margin on each side; the rows are now drawn 6px in.

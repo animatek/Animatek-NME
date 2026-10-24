@@ -139,7 +139,7 @@ public:
         else
         {
             idealHeight = juce::jmax(idealHeight, 32);
-            idealWidth += 36;   // room to breathe between the words and the shortcut, and for the margin
+            idealWidth += 48;   // room to breathe between the words and the shortcut, and for the margins
         }
     }
 
@@ -165,7 +165,7 @@ public:
         if (isHighlighted && isActive)
         {
             g.setColour(findColour(juce::PopupMenu::highlightedBackgroundColourId));
-            g.fillRoundedRectangle(area.reduced(2, 1).toFloat(), 6.0f);
+            g.fillRoundedRectangle(area.reduced(6, 1).toFloat(), 6.0f);   // 6px clear of the box on each side
             g.setColour(findColour(juce::PopupMenu::highlightedTextColourId));
         }
         else
@@ -173,7 +173,7 @@ public:
             g.setColour(textColour.withMultipliedAlpha(isActive ? 1.0f : 0.5f));
         }
 
-        auto r = area.reduced(10, 0);
+        auto r = area.reduced(16, 0);   // so the words sit 10px inside the highlight
         auto font = getPopupMenuFont();
         g.setFont(font);
 
