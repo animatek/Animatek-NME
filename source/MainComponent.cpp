@@ -1116,6 +1116,16 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     // Reopen floater windows that were open last session
     juce::Timer::callAfterDelay(600, [safeThis]() { if (safeThis) safeThis->restoreFloaterWindows(); });
 
+    // NME_SNAPSHOT_SIZE=<w>x<h>: the picture-taking run first gives the window that size (for screenshots)
+    if (const auto snapSize = juce::SystemStats::getEnvironmentVariable("NME_SNAPSHOT_SIZE", {}); snapSize.isNotEmpty())
+      juce::Timer::callAfterDelay(800, [safeThis, snapSize]() {
+        if (safeThis == nullptr) return;
+        const int w = snapSize.upToFirstOccurrenceOf("x", false, false).getIntValue();
+        const int h = snapSize.fromFirstOccurrenceOf("x", false, false).getIntValue();
+        if (w > 200 && h > 200)
+          safeThis->getTopLevelComponent()->setSize(w, h);
+      });
+
     // NME_SNAPSHOT_PATCH=<file.pch>: the picture-taking run opens that patch (editor only) first, so the
     // inspector, the knobs and the floaters have something to show
     if (const auto snapPatch = juce::SystemStats::getEnvironmentVariable("NME_SNAPSHOT_PATCH", {}); snapPatch.isNotEmpty())
@@ -3325,7 +3335,7 @@ void MainComponent::snapshotMenus(const juce::File& dir, int index)
   const auto names = getMenuBarNames();
   dir.createDirectory();
   auto shootWindow = [dir](juce::Component& c, const juce::String& name) {
-    const auto img = c.createComponentSnapshot(c.getLocalBounds(), true, 1.0f);
+    const auto img = c.createComponentSnapshot(c.getLocalBounds(), true, juce::jmax(1.0f, juce::SystemStats::getEnvironmentVariable("NME_SNAPSHOT_SCALE", "1").getFloatValue()));
     juce::FileOutputStream out(dir.getChildFile(name + ".png"));
     if (out.openedOk())
     {
@@ -3385,7 +3395,7 @@ void MainComponent::snapshotMenus(const juce::File& dir, int index)
       if (auto* c = desktop.getComponent(i); c != nullptr && c != mine && c->isVisible() && c->getWidth() > 40
                                              && c->getName() != "beta-warning")
       {
-        const auto img = c->createComponentSnapshot(c->getLocalBounds(), true, 1.0f);
+        const auto img = c->createComponentSnapshot(c->getLocalBounds(), true, juce::jmax(1.0f, juce::SystemStats::getEnvironmentVariable("NME_SNAPSHOT_SCALE", "1").getFloatValue()));
         juce::FileOutputStream out(dir.getChildFile("menu-" + juce::String(index) + "-" + names[index].retainCharacters("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") + ".png"));
         if (out.openedOk())
         {
@@ -3405,7 +3415,9 @@ void MainComponent::saveSnapshotsAndQuit(const juce::File& dir)
   dir.createDirectory();
   auto save = [dir](juce::Component& c, juce::Rectangle<int> area, const juce::String& name, float scale) {
     if (area.isEmpty()) return;
-    const auto img = c.createComponentSnapshot(area, true, scale);
+    // NME_SNAPSHOT_SCALE=2 makes every picture twice as sharp (for screenshots)
+    const float extra = juce::jmax(1.0f, juce::SystemStats::getEnvironmentVariable("NME_SNAPSHOT_SCALE", "1").getFloatValue());
+    const auto img = c.createComponentSnapshot(area, true, scale * extra);
     juce::FileOutputStream out(dir.getChildFile(name + ".png"));
     if (out.openedOk())
     {
@@ -3415,6 +3427,7 @@ void MainComponent::saveSnapshotsAndQuit(const juce::File& dir)
     }
   };
 
+  mainLayout->getStatusBar().clearMessage();   // no "Loaded: ..." line in the picture
   save(*this, getLocalBounds(), "main", 1.0f);
   auto& header = mainLayout->getHeaderBar();
   save(header, header.getLocalBounds(), "header", 3.0f);
@@ -3431,8 +3444,19 @@ void MainComponent::saveSnapshotsAndQuit(const juce::File& dir)
     if (safeThis->knobFloaterWindow)     save(*safeThis->knobFloaterWindow,     safeThis->knobFloaterWindow->getLocalBounds(),     "knob-floater", 1.0f);
     if (safeThis->keyboardFloaterWindow) save(*safeThis->keyboardFloaterWindow, safeThis->keyboardFloaterWindow->getLocalBounds(), "keyboard-floater", 1.0f);
     if (safeThis->patchNotesFloaterWindow) save(*safeThis->patchNotesFloaterWindow, safeThis->patchNotesFloaterWindow->getLocalBounds(), "notes-floater", 1.0f);
+    if (safeThis->mutatorWindow)         safeThis->mutatorWindow->getPanel().mutateForSnapshot();   // so the children are drawn
     if (safeThis->mutatorWindow)         save(*safeThis->mutatorWindow,         safeThis->mutatorWindow->getLocalBounds(),         "mutator", 1.0f);
     if (safeThis->sysexMonitorWindow)    save(*safeThis->sysexMonitorWindow,    safeThis->sysexMonitorWindow->getLocalBounds(),    "sysex-monitor", 1.0f);
+
+    // The Themes window as it opens in the editor, the Themes page and the Colours page
+    safeThis->showThemesDialog(ThemesDialog::Themes);
+    if (safeThis->themesDialog != nullptr)
+    {
+      save(*safeThis->themesDialog, safeThis->themesDialog->getLocalBounds(), "themes-real", 1.0f);
+      safeThis->themesDialog->showPage(ThemesDialog::Colours);
+      save(*safeThis->themesDialog, safeThis->themesDialog->getLocalBounds(), "themes-colours-real", 1.0f);
+      safeThis->themesDialog->dismiss();
+    }
 
     // The dialogs: built off the desktop, pictured at their own size, dropped. (Bank Transfer needs a
     // live synth link and is left out.)

@@ -566,6 +566,12 @@ entries below are in the order they were made, newest first; the redesign ones s
 
 ### Fixed
 
+- **Screenshots from the editor itself** (2026-10-24, `main`). The picture-taking run (`NME_SNAPSHOT_DIR`)
+  takes three more settings, for making screenshots without touching the desktop: `NME_SNAPSHOT_SIZE=1920x1080`
+  gives the window that size, `NME_SNAPSHOT_SCALE=2` makes every picture twice as sharp, and the Mutator
+  has its children drawn (Mutate) before its picture. It also pictures the Themes window as it opens in the
+  editor.
+
 - **Colour swatches without the white edge** (2026-10-24, `main`). The swatches of the Colours page were
   drawn over a grey checkerboard whose square corners showed at the rounded edge, with a pale outline. The
   checkerboard now only sits under a translucent colour and is clipped to the rounded shape; the

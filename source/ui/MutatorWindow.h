@@ -52,6 +52,7 @@ public:
                        const Mutator::ModuleTypes& now)> onLayoutChanged;
 
     void clearAll();      // call when the underlying patch changes
+    void mutateForSnapshot() { generate(GenOp::Mutate); }   // for the picture-taking run
     void setVariations(const PatchVariations& vars);  // sync the Variations row
     void applyTheme();
 
