@@ -32,6 +32,9 @@ public:
     // connected) when OK or Apply is pressed.
     std::function<void(int port, const Port& wanted)> onApply;
 
+    // Closes it from outside, as its own close does; a second press of the button that opened it
+    void dismiss() { close(); }
+
     void paint   (juce::Graphics& g) override;
     void paintOverChildren (juce::Graphics& g) override { AppTheme::drawWindowFrame (g, getLocalBounds()); }
     void resized () override;

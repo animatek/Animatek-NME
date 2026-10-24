@@ -105,6 +105,9 @@ public:
                         const juce::String& mcpStatusText,
                         const juce::String& mcpCommand);
 
+    // Closes it from outside, as its own close does; a second press of the button that opened it
+    void dismiss() { close(); }
+
     std::function<void(const EditorOptions&)> onChange;
     // Cable opacity is the one setting you have to see to choose, so it moves
     // the canvas while the slider does, and the dialog puts the old value back

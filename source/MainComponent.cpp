@@ -3037,6 +3037,7 @@ bool MainComponent::saveSlotPatchToFile(int slot, const juce::File &file) {
 }
 
 void MainComponent::showPatchSettingsDialog() {
+  if (patchSettingsDialog != nullptr) { patchSettingsDialog->dismiss(); return; }
   if (currentPatch() == nullptr)
     return;
 
@@ -3048,7 +3049,7 @@ void MainComponent::showPatchSettingsDialog() {
   const int slot = activeSlot;
   const int settingsGeneration = slotPatchGeneration[slot];
 
-  announceDialogOnSynth(
+  auto* patchSettings =
       PatchSettingsDialog::show(this, currentPatch()->getHeader(),
       [this, slot, settingsGeneration](const PatchSettingsDialog::Result& r)
       {
@@ -3076,10 +3077,13 @@ void MainComponent::showPatchSettingsDialog() {
         // Upload full patch to synth if connected
         if (synthHub.isConnectedSlot(slot))
           synthHub.uploadPatch(slot, *slotPatches[slot]);
-      }));
+      });
+  patchSettingsDialog = dynamic_cast<PatchSettingsDialog*>(patchSettings);
+  announceDialogOnSynth(patchSettings);
 }
 
 void MainComponent::showSynthSettingsDialog() {
+  if (synthSettingsDialog != nullptr) { synthSettingsDialog->dismiss(); return; }
   if (synthHub.active().isConnected())
   {
     pendingSynthSettingsDialogOpen = true;
@@ -3118,6 +3122,8 @@ void MainComponent::openSynthSettingsDialog() {
 }
 
 void MainComponent::showMidiSettingsDialog() {
+  // Open already: the button (or Ctrl+M) closes it instead of opening a second one
+  if (midiSettingsDialog != nullptr) { midiSettingsDialog->dismiss(); return; }
   MidiSettingsDialog::Ports ports;
   auto* settings = appProperties.getUserSettings();
   for (int i = 0; i < kMaxSynths; ++i) {
@@ -3162,6 +3168,7 @@ void MainComponent::showMidiSettingsDialog() {
 }
 
 void MainComponent::showEditorOptionsDialog() {
+  if (editorOptionsDialog != nullptr) { editorOptionsDialog->dismiss(); return; }
 #if NME_MCP_BRIDGE
   McpBridgeStatusKind mcpStatus = McpBridgeStatusKind::Disabled;
   juce::String mcpStatusText = "Disabled";
@@ -3192,6 +3199,7 @@ void MainComponent::showEditorOptionsDialog() {
     if (auto* topComp = juce::Desktop::getInstance().getComponent(0))
       topComp->repaint();
   };
+  editorOptionsDialog = dialog;
   announceDialogOnSynth(dialog);
 }
 

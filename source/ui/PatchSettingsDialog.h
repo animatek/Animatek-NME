@@ -27,6 +27,9 @@ public:
 
     PatchSettingsDialog (const PatchHeader& header, Callback onOk);
 
+    // Closes it from outside, as its own close does; a second press of the button that opened it
+    void dismiss() { close(); }
+
     void paint   (juce::Graphics& g) override;
     void paintOverChildren (juce::Graphics& g) override { AppTheme::drawWindowFrame (g, getLocalBounds()); }
     void resized () override;

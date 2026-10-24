@@ -8,6 +8,13 @@
   instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
   to yours and quit without a picture. That run now counts as its own instance.
 
+- **One window each: asking again closes it** (2026-10-24, branch `ui-redesign`). Pressing the MIDI
+  button (or Ctrl+M) several times opened one MIDI Setup after another, and so did the other dialogs.
+  MIDI Setup, Editor Options, Patch Settings and Synth Settings now toggle: the second press closes the
+  window that is open (Editor Options puts the cable opacity back, as Cancel does). About is modal, so
+  it cannot be asked twice; Slot Select and the location and set dialogs belong to an action in progress
+  and are left as they were.
+
 - **MIDI and Options buttons in the status bar** (2026-10-24, branch `ui-redesign`). At the right of the
   status bar, after the lens of the browser, a little **keyboard** opens MIDI Setup and a **cogwheel**
   opens Editor Options: lens, keyboard, cogwheel. Same dialogs as Ctrl+M and Ctrl+, and the menus;

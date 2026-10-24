@@ -20,6 +20,7 @@
 #include "undo/PatchActions.h"
 #include "ui/MainLayout.h"
 #include "ui/EditorOptionsDialog.h"
+#include "ui/PatchSettingsDialog.h"
 #include "ui/ThemeEditorWindow.h"
 #include "ui/CommunityThemesWindow.h"
 #include "ui/PresetBrowserWindow.h"
@@ -472,6 +473,9 @@ private:
     juce::Component::SafePointer<SynthSettingsDialog> synthSettingsDialog;
     // Open while the MIDI settings dialog is; told of every connection change.
     juce::Component::SafePointer<MidiSettingsDialog> midiSettingsDialog;
+    // The same for the other windows a button or a shortcut opens: asking again closes it, not a second one
+    juce::Component::SafePointer<PatchSettingsDialog> patchSettingsDialog;
+    juce::Component::SafePointer<EditorOptionsDialog> editorOptionsDialog;
 
     // Convenience accessors for current slot
     std::unique_ptr<Patch>& currentPatch() { return slotPatches[activeSlot]; }
