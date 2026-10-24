@@ -8,6 +8,12 @@
   instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
   to yours and quit without a picture. That run now counts as its own instance.
 
+- **Header bar: the patch name is a field, and the elements sit closer** (2026-10-24, `main`). The name
+  was bare text, with nothing to say it can be edited: it is in a field now (the input colour, darker than
+  the bar, with a thin border and 11px of room), 150px wide (it was 168), and the editor that replaces it
+  while typing has the same size and margin. The most the gaps between groups can grow is 30px (it was
+  48), so the voices and everything after them sit nearer the name and further left on a wide window.
+
 - **Tabs: the word centred in its box, and a hairline between tabs** (2026-10-24, branch `ui-redesign`).
   The titles of the tabs (Synth, Disk of the browser) rode high above the underline: they sit in the
   middle of the room above it now, and a thin rule between one tab and the next tells them apart.

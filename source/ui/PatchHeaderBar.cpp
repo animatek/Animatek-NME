@@ -32,7 +32,7 @@ namespace
     }
 
     // Layout constants (see resized())
-    constexpr int nameW = 168;
+    constexpr int nameW = 150;
     constexpr float loadW = 104.0f;
     constexpr float snapSize = 24.0f;
     constexpr float snapGap = 4.0f;
@@ -57,7 +57,8 @@ PatchHeaderBar::PatchHeaderBar()
     patchNameEditor->setColour(juce::Label::textColourId, AppTheme::palette().textPrimary);
     patchNameEditor->setColour(juce::Label::outlineColourId, AppTheme::palette().borderColor);
     // The same type as the title it replaces while it is being typed over
-    patchNameEditor->setFont(AppTheme::uiFont(16.0f).withStyle("Bold"));
+    patchNameEditor->setFont(AppTheme::uiFont(15.0f).withStyle("Bold"));
+    patchNameEditor->setBorderSize(juce::BorderSize<int>(0, 11, 0, 8));
     patchNameEditor->setJustificationType(juce::Justification::centredLeft);
 
     // CRITICAL: Limit input to 15 characters (16+ hangs the synth!)
@@ -210,7 +211,7 @@ void PatchHeaderBar::resized()
     const float h = static_cast<float>(getHeight());
     const float cy = h * 0.5f;
     const float width = static_cast<float>(getWidth());
-    constexpr float minGap = 18.0f, maxGap = 48.0f;
+    constexpr float minGap = 18.0f, maxGap = 30.0f;
     constexpr float margin = 12.0f;
     constexpr int numGaps = 9;   // eight between the nine groups, and one before the heart
 
@@ -624,15 +625,21 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         }
     };
 
-    // --- Patch name (no box; the editor label sits on it when it is clicked) ---
+    // --- Patch name: in a field, darker than the bar, so it reads as something to type in
+    // (double-click); the editor label takes its place while it is being edited ---
     if (!patchNameEditor || !patchNameEditor->isVisible())
     {
         auto nameRect = L.name;
         const bool has = patch != nullptr;
+        const auto box = nameRect.toFloat();
+        g.setColour(pal.inputBackground);
+        g.fillRoundedRectangle(box, 6.0f);
+        g.setColour(pal.borderColor);
+        g.drawRoundedRectangle(box.reduced(0.5f), 6.0f, 1.0f);
         g.setColour(has ? pal.textPrimary : pal.textMuted);
-        g.setFont(AppTheme::uiFont(16.0f).withStyle("Bold"));
+        g.setFont(AppTheme::uiFont(15.0f).withStyle("Bold"));
         g.drawText(has ? patch->getName() : juce::String("No Patch"),
-                   nameRect.reduced(8, 0), juce::Justification::centredLeft, true);
+                   nameRect.reduced(11, 0), juce::Justification::centredLeft, true);
     }
 
     // --- Voices: label above, the number in a field with its arrows ---
