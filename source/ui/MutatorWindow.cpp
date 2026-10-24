@@ -269,8 +269,9 @@ MutatorPanel::MutatorPanel()
     addAndMakeVisible(auditionTimeBox);
 
     tempLabel.setText("TEMPORARY STORAGE", juce::dontSendNotification);
-    variationsLabel.setText("VARIATIONS  \xc2\xb7  drag a sound here to store it", juce::dontSendNotification);
-    quickLockLabel.setText("QUICK LOCKS  \xc2\xb7  lit = not evolved, Solo = only this one",
+    variationsLabel.setText(juce::String::fromUTF8("VARIATIONS  \xc2\xb7  drag a sound here to store it"),
+                            juce::dontSendNotification);
+    quickLockLabel.setText(juce::String::fromUTF8("QUICK LOCKS  \xc2\xb7  lit = not evolved, Solo = only this one"),
                            juce::dontSendNotification);
     for (auto* l : { &tempLabel, &variationsLabel, &quickLockLabel })
     {

@@ -4,6 +4,9 @@
 
 ### Changed
 
+- **Mutator: the separator dot in the section titles** (2026-10-24, branch `ui-redesign`). It was read as
+  Latin-1 and showed as "A" with a stray mark; the titles are read as UTF-8.
+
 - **Patch Mutator restyled** (2026-10-24, branch `ui-redesign`). Same controls and keys, new layout: more
   air (24px margins, 10px gaps), a rule between sections, muted section titles, rounder sound boxes with
   Mother and Father named in the accent, bigger knob captions, **Mutate** filled with the accent first in
