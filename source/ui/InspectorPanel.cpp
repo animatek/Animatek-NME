@@ -396,7 +396,7 @@ public:
     static constexpr int topPad       = 4;
     static constexpr int sectionTitleH = 30;
     static constexpr int groupHeaderH = 22;
-    static constexpr int rowH         = 26;
+    static constexpr int rowH         = 30;
     static constexpr int xBtnW        = 20;
     static constexpr int amountW      = 56;
     // Wider than the morph amount: it holds a formatted reading, not a number,
@@ -771,15 +771,19 @@ public:
         const auto& r = paramRows[size_t(i)];
         const auto& theme = AppTheme::palette();
 
-        g.setColour(i % 2 == 0 ? theme.backgroundPanel : theme.backgroundSecondary);
-        g.fillRect(bounds);
+        // Flat rows: no stripes. The row being dragged is the only one that lights up.
+        if (dragRow == i)
+        {
+            g.setColour(theme.buttonHover);
+            g.fillRect(bounds);
+        }
 
         const auto cell = valueCellFor(bounds);
 
-        g.setColour(theme.textPrimary);
+        g.setColour(theme.textSecondary);
         g.setFont(AppTheme::uiFont(fontRow));
-        g.drawText(r.name, marginX, bounds.getY(),
-                   cell.getX() - marginX - 4, bounds.getHeight(),
+        g.drawText(r.name, marginX + 4, bounds.getY(),
+                   cell.getX() - marginX - 8, bounds.getHeight(),
                    juce::Justification::centredLeft, true);
 
         // While one is being typed into, the editor is sitting on top of it.
@@ -793,11 +797,12 @@ public:
         }
 
         g.setColour(theme.inputBackground);
-        g.fillRoundedRectangle(cell.toFloat(), 3.0f);
-        g.setColour(theme.borderColor.withAlpha(dragRow == i ? 1.0f : 0.55f));
-        g.drawRoundedRectangle(cell.toFloat(), 3.0f, 1.0f);
+        g.fillRoundedRectangle(cell.toFloat(), 5.0f);
+        g.setColour(theme.borderColor.withAlpha(dragRow == i ? 1.0f : 0.45f));
+        g.drawRoundedRectangle(cell.toFloat().reduced(0.5f), 5.0f, 1.0f);
         g.setColour(theme.textPrimary);
-        g.setFont(AppTheme::uiFont(fontRowSmall));
+        g.setFont(juce::Font(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(),
+                                               12.0f * AppTheme::uiFontScale(), juce::Font::plain)));
         g.drawText(valueTextOf(r), cell, juce::Justification::centred, false);
     }
 
@@ -1180,31 +1185,29 @@ private:
     void paintGroupHeader(juce::Graphics& g, int y, int group)
     {
         juce::Colour gc = kMorphColors[group];
-        g.setColour(gc.withAlpha(0.18f));
-        g.fillRect(0, y, getWidth(), groupHeaderH);
+        // The macro's colour as a dot, and its name in the theme's ink: the dot says which
+        // macro this is, and green Macro 2 disappeared as text on light themes.
         g.setColour(gc);
-        g.fillRect(0, y, 3, groupHeaderH);
-        g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
-        // Ink, not the macro colour: the stripe and the wash already say which
-        // macro this is, and green Macro 2 disappeared on light themes.
-        g.setColour(AppTheme::macroLabelInk());
-        g.drawText(kGroupNames[group], marginX + 6, y, getWidth() - marginX * 2, groupHeaderH,
+        g.fillEllipse(static_cast<float>(marginX + 4), static_cast<float>(y) + groupHeaderH * 0.5f - 4.0f, 8.0f, 8.0f);
+        g.setFont(AppTheme::uiFont(12.0f).withStyle("Bold"));
+        g.setColour(AppTheme::palette().textPrimary);
+        g.drawText(kGroupNames[group], marginX + 18, y, getWidth() - marginX * 2, groupHeaderH,
                    juce::Justification::centredLeft);
     }
 
     void paintMorphRow(juce::Graphics& g, int y, int i, const MorphRow& r, bool isGlobal)
     {
         int w = getWidth();
-        g.setColour(i % 2 == 0 ? AppTheme::palette().backgroundPanel
-                                : AppTheme::palette().backgroundSecondary);
-        g.fillRect(0, y, w, rowH);
+        (void) i;
 
-        // X button
-        g.setColour(AppTheme::palette().borderColor);
+        // Remove: a light cross, no box
+        g.setColour(AppTheme::palette().textMuted);
         juce::Rectangle<int> xRect(marginX, y + (rowH - xBtnW) / 2, xBtnW, xBtnW);
-        g.drawRoundedRectangle(xRect.toFloat(), 3.0f, 1.0f);
-        g.setFont(AppTheme::uiFont(fontSmall));
-        g.drawText("x", xRect, juce::Justification::centred);
+        {
+            const auto c = xRect.toFloat().getCentre();
+            g.drawLine(c.x - 3.5f, c.y - 3.5f, c.x + 3.5f, c.y + 3.5f, 1.4f);
+            g.drawLine(c.x - 3.5f, c.y + 3.5f, c.x + 3.5f, c.y - 3.5f, 1.4f);
+        }
 
         // Name
         int nameX = marginX + xBtnW + 4;
@@ -1239,24 +1242,24 @@ private:
     void paintHwRow(juce::Graphics& g, int y, int i, const HwRow& r, bool isGlobal, juce::Colour accent)
     {
         int w = getWidth();
-        g.setColour(i % 2 == 0 ? AppTheme::palette().backgroundPanel
-                                : AppTheme::palette().backgroundSecondary);
-        g.fillRect(0, y, w, rowH);
+        (void) i;
 
-        // X button
-        g.setColour(AppTheme::palette().borderColor);
+        // Remove: a light cross, no box
+        g.setColour(AppTheme::palette().textMuted);
         juce::Rectangle<int> xRect(marginX, y + (rowH - xBtnW) / 2, xBtnW, xBtnW);
-        g.drawRoundedRectangle(xRect.toFloat(), 3.0f, 1.0f);
-        g.setFont(AppTheme::uiFont(fontSmall));
-        g.drawText("x", xRect, juce::Justification::centred);
+        {
+            const auto c = xRect.toFloat().getCentre();
+            g.drawLine(c.x - 3.5f, c.y - 3.5f, c.x + 3.5f, c.y + 3.5f, 1.4f);
+            g.drawLine(c.x - 3.5f, c.y + 3.5f, c.x + 3.5f, c.y - 3.5f, 1.4f);
+        }
 
         // Label badge (e.g. "Knob 3")
         int badgeX = marginX + xBtnW + 4;
         g.setFont(AppTheme::uiFont(fontBadge).withStyle("Bold"));
         int labelW = g.getCurrentFont().getStringWidth(r.label) + 8;
-        juce::Rectangle<int> badge(badgeX, y + 3, labelW, rowH - 6);
+        juce::Rectangle<int> badge(badgeX, y + 5, labelW, rowH - 10);
         g.setColour(accent.withAlpha(0.32f));
-        g.fillRoundedRectangle(badge.toFloat(), 3.0f);
+        g.fillRoundedRectangle(badge.toFloat(), badge.getHeight() * 0.5f);
         g.setColour(AppTheme::palette().textPrimary);
         g.drawText(r.label, badge, juce::Justification::centred);
 
@@ -1498,12 +1501,12 @@ private:
 InspectorPanel::InspectorPanel()
 {
     titleLabel.setText("Inspector", juce::dontSendNotification);
-    titleLabel.setFont(juce::Font(AppTheme::uiFont(13.0f).withStyle("Bold")));
+    titleLabel.setFont(juce::Font(AppTheme::uiFont(15.0f).withStyle("Bold")));
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(titleLabel);
 
     nameLabel.setText("Name", juce::dontSendNotification);
-    nameLabel.setFont(juce::Font(AppTheme::uiFont(11.0f)));
+    nameLabel.setFont(juce::Font(AppTheme::uiFont(11.0f).withStyle("Bold")));
     nameLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(nameLabel);
 
@@ -1513,13 +1516,13 @@ InspectorPanel::InspectorPanel()
     nameEditor.setEnabled(false);
     addAndMakeVisible(nameEditor);
 
-    sectionLabel.setFont(juce::Font(AppTheme::uiFont(11.0f)));
+    sectionLabel.setFont(juce::Font(AppTheme::uiFont(11.0f).withStyle("Bold")));
     sectionLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(sectionLabel);
 
     // Shares the section row, right-aligned: what this one module costs the DSP
     // while the header bar shows what the whole patch costs (issue #31).
-    dspLabel.setFont(juce::Font(AppTheme::uiFont(11.0f)));
+    dspLabel.setFont(juce::Font(AppTheme::uiFont(11.0f).withStyle("Bold")));
     dspLabel.setJustificationType(juce::Justification::centredRight);
     addAndMakeVisible(dspLabel);
 
@@ -1624,7 +1627,7 @@ void InspectorPanel::setPatch(Patch* p)
     if (currentModule() == nullptr)
     {
         titleLabel.setText("Assignments", juce::dontSendNotification);
-        sectionLabel.setText("All modules", juce::dontSendNotification);
+        sectionLabel.setText("ALL MODULES", juce::dontSendNotification);
         dspLabel.setText({}, juce::dontSendNotification);
         nameLabel.setVisible(false);
         nameEditor.setVisible(false);
@@ -1642,7 +1645,7 @@ void InspectorPanel::setModule(Module* module, int section)
 
     auto* desc = module->getDescriptor();
     titleLabel.setText(desc ? desc->fullname : "Module", juce::dontSendNotification);
-    sectionLabel.setText(section == 1 ? "Poly" : "Common", juce::dontSendNotification);
+    sectionLabel.setText(section == 1 ? "POLY AREA" : "COMMON AREA", juce::dontSendNotification);
     dspLabel.setText(desc ? formatDspCost(desc->cycles) + " DSP" : juce::String(),
                      juce::dontSendNotification);
     nameLabel.setVisible(true);
@@ -1668,7 +1671,7 @@ void InspectorPanel::clearModule()
     if (currentPatch != nullptr)
     {
         titleLabel.setText("Assignments", juce::dontSendNotification);
-        sectionLabel.setText("All modules", juce::dontSendNotification);
+        sectionLabel.setText("ALL MODULES", juce::dontSendNotification);
         nameLabel.setVisible(false);
         nameEditor.setVisible(false);
         assignmentsList->setPatchWide(currentPatch);

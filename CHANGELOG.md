@@ -4,6 +4,14 @@
 
 ### Changed
 
+- **Inspector rows and header restyled** (2026-10-24, branch `ui-redesign`). Flat rows with no
+  zebra stripes: the parameter's name on the left in the secondary ink and its value on the right
+  in a monospaced field (rows 30px, were 26); morph, knob and MIDI CC rows lose the boxed "x" for a
+  light cross, and their badge ("Knob 3", "CC 74") becomes a pill; a morph group shows its colour as
+  a dot with its name instead of a coloured band. The header gets a bigger title (15), and the area
+  and DSP cost as bold small labels ("POLY AREA", "COMMON AREA", "ALL MODULES"). Same controls and
+  behaviour underneath: dragging values, typing over the cell, folding the sections, presets.
+
 - **Inspector section titles restyled** (2026-10-24, branch `ui-redesign`). Parameters, Morphs,
   Knobs, MIDI CC and Presets lose their coloured wash and strong rule: a small uppercase title
   (in the theme's secondary ink, still readable) with a hairline above it and more air (30px, was
