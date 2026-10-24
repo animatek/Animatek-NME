@@ -62,6 +62,9 @@ SynthSettingsDialog::SynthSettingsDialog (const SynthSettings& current, Callback
     styleLabel (nameLbl);
     nameEditor.setText (working.name, juce::dontSendNotification);
     nameEditor.setInputRestrictions (16);
+    nameEditor.setFont (juce::Font (AppTheme::uiFont (14.0f)));
+    nameEditor.setJustification (juce::Justification::centredLeft);
+    nameEditor.setIndents (10, 0);
     nameEditor.setColour (juce::TextEditor::backgroundColourId,  kCtrlBg);
     nameEditor.setColour (juce::TextEditor::textColourId,        AppTheme::palette().textPrimary);
     nameEditor.setColour (juce::TextEditor::outlineColourId,     kCtrlBd);
@@ -248,6 +251,8 @@ void SynthSettingsDialog::mouseDown (const juce::MouseEvent& e)
 
 void SynthSettingsDialog::mouseDrag (const juce::MouseEvent& e)
 {
+    if (e.getMouseDownPosition().getY() >= 32)
+        return;   // only a drag that began on the title bar moves the window (the press position says where it began)
     dragger.dragComponent (this, e, nullptr);
 }
 

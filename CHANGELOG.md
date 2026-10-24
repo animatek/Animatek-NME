@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **The other dialogs: no stray window drag, and readable text fields** (2026-10-24, branch
+  `ui-redesign`). MIDI Setup, Bank Transfer, Patch Location, Patch Settings and Synth Settings dragged
+  the window on any mouse movement with the anchor of the last title-bar drag, the same fault as Editor
+  Options had: they now drag only when the press began on the title bar (the press position tells).
+  The name field of Synth Settings and the name and notes fields of Save Slot Set use size 14, centred
+  in the field.
+
 - **Editor Options: the window no longer moves by itself, and its text fields read better**
   (2026-10-24, branch `ui-redesign`). Picking a page in the sidebar could carry the whole dialog across
   the screen: `mouseDrag` dragged the window on any movement, with the anchor of the last time the

@@ -147,7 +147,7 @@ bool PatchLocationDialog::keyPressed (const juce::KeyPress& key)
 void PatchLocationDialog::mouseDown (const juce::MouseEvent& e)
     { if (e.getPosition().getY() < 32) dragger.startDraggingComponent (this, e); }
 void PatchLocationDialog::mouseDrag (const juce::MouseEvent& e)
-    { dragger.dragComponent (this, e, nullptr); }
+    { if (e.getMouseDownPosition().getY() < 32) dragger.dragComponent (this, e, nullptr); }  // only a drag that began on the title bar moves the window (the press position says where it began)
 
 // ─────────────────────────────────────────────────────────────────────────────
 void PatchLocationDialog::paint (juce::Graphics& g)

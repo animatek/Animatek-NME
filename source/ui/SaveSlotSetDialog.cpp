@@ -40,6 +40,9 @@ SaveSlotSetDialog::SaveSlotSetDialog (const juce::String& suggestedName,
     styleLabel (nameLabel);
     addAndMakeVisible (nameLabel);
     styleEditor (nameEditor);
+    nameEditor.setFont (juce::Font (AppTheme::uiFont (14.0f)));
+    nameEditor.setJustification (juce::Justification::centredLeft);
+    nameEditor.setIndents (10, 0);
     nameEditor.setText (suggestedName, juce::dontSendNotification);
     nameEditor.setTextToShowWhenEmpty ("e.g. Fractura", AppTheme::palette().textMuted);
     nameEditor.onTextChange = [this] { updateSaveButton(); };
@@ -79,6 +82,8 @@ SaveSlotSetDialog::SaveSlotSetDialog (const juce::String& suggestedName,
     styleLabel (notesLabel);
     addAndMakeVisible (notesLabel);
     styleEditor (notesEditor);
+    notesEditor.setFont (juce::Font (AppTheme::uiFont (14.0f)));
+    notesEditor.setIndents (10, 8);
     notesEditor.setMultiLine (true);
     notesEditor.setReturnKeyStartsNewLine (true);
     notesEditor.setTextToShowWhenEmpty ("Optional: tempo, what to bring in first...",
