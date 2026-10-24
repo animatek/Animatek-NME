@@ -22,8 +22,7 @@
 #include "ui/EditorOptionsDialog.h"
 #include "ui/PatchSettingsDialog.h"
 #include "ui/ShortcutsDialog.h"
-#include "ui/ThemeEditorWindow.h"
-#include "ui/CommunityThemesWindow.h"
+#include "ui/ThemesDialog.h"
 #include "ui/PresetBrowserWindow.h"
 #include "ui/KnobFloaterWindow.h"
 #include "ui/KeyboardFloaterWindow.h"
@@ -241,6 +240,10 @@ private:
     int communityNewCount() const;
     void showCommunityThemes();
     void refreshCommunityThemesWindow();
+    // The one window of everything about themes (View > Themes...): opens it on a page, or moves to it
+    void showThemesDialog(ThemesDialog::Page page);
+    // Hands it the list of themes and which one is in use
+    void syncThemesDialog();
     void installCommunityTheme(const CommunityThemes::Entry& entry);
     // New version notice (#97): a newer release tag than this build, and whether the
     // user has not opened its menu item yet (that is what the red dot on About means).
@@ -425,10 +428,9 @@ private:
     EditorOptions editorOptions;
     std::unique_ptr<PresetBrowserWindow> presetBrowserWindow;
     std::unique_ptr<KnobFloaterWindow> knobFloaterWindow;
-    std::unique_ptr<ThemeEditorWindow> themeEditorWindow;
     // Community themes (#91): the last list read from animatek/nme-themes (also cached on
     // disk, so the menu can mark new ones before the network answers).
-    std::unique_ptr<CommunityThemesWindow> communityThemesWindow;
+    juce::Component::SafePointer<ThemesDialog> themesDialog;
     std::vector<CommunityThemes::Entry> communityThemes;
     juce::StringArray communitySeenWhenOpened;   // the "New" badges in the open window
     bool communityBusy = false;

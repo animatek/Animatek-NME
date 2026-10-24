@@ -566,6 +566,15 @@ entries below are in the order they were made, newest first; the redesign ones s
 
 ### Fixed
 
+- **One Themes window instead of a long submenu and two windows** (2026-10-24, `main`). View > Theme was
+  a list of every theme with eight options under it, and the editor and the community list were windows of
+  their own. It is now one item, **View > Themes...**, that opens a window laid out like Editor Options:
+  **Themes** (every theme with a preview of its colours; click to use), **Colours** (the editor), **Community**
+  (with a red dot while something there is new) and **Files** (import, export, save as file, reload, open
+  the folder). The same item closes it again, Ctrl+T still cycles, and closing puts the chosen theme back.
+  The window keeps colours of its own so it does not move while a theme is edited. The manual (English and
+  Spanish) describes it.
+
 - **Module help (F1) in the new look** (2026-10-24, `main`). The help window of a module had the old
   gold title and a tiny line under it: it has the dialogs' title bar and frame now, 520px wide, 24px of
   margin, the parameter names in the accent over their text in 13.5px, and it only drags from its title

@@ -1,9 +1,18 @@
-#include "CommunityThemesWindow.h"
-#include "AppTheme.h"
+#include "CommunityThemesPanel.h"
+#include "ThemesLook.h"
 
 namespace
 {
 using State = CommunityThemes::State;
+
+// The Themes window keeps colours of its own (see ThemesLook.h); the names are the palette's
+struct Pal
+{
+    juce::Colour accentActive = ThemesLook::accent, backgroundMain = ThemesLook::ground, borderColor = ThemesLook::border,
+                 textPrimary = ThemesLook::text, textMuted = ThemesLook::muted, textSecondary = ThemesLook::muted.brighter(0.35f),
+                 buttonBackground = ThemesLook::button, backgroundPanel = ThemesLook::panel;
+};
+const Pal& pal() { static const Pal p; return p; }
 
 // One theme: name and author on the left, a badge, and the button that installs it.
 class ThemeRow : public juce::Component
@@ -17,7 +26,7 @@ public:
         addAndMakeVisible(button);
     }
 
-    void set(const CommunityThemesWindow::Row& r)
+    void set(const CommunityThemesPanel::Row& r)
     {
         row = r;
         button.setButtonText(r.inUse ? "In use"
@@ -26,8 +35,8 @@ public:
         button.setEnabled(!r.inUse);
         // What asks something of you (install, update) is filled with the accent; the rest is quiet
         const bool asks = !r.inUse && (r.state == State::Changed || (r.state != State::Installed && r.state != State::BuiltIn));
-        button.setColour(juce::TextButton::buttonColourId, asks ? AppTheme::palette().accentActive : AppTheme::palette().buttonBackground);
-        button.setColour(juce::TextButton::textColourOffId, asks ? AppTheme::palette().backgroundMain : AppTheme::palette().textSecondary);
+        button.setColour(juce::TextButton::buttonColourId, asks ? pal().accentActive : pal().buttonBackground);
+        button.setColour(juce::TextButton::textColourOffId, asks ? pal().backgroundMain : pal().textSecondary);
         repaint();
     }
 
@@ -40,7 +49,7 @@ public:
 
     void paint(juce::Graphics& g) override
     {
-        const auto& p = AppTheme::palette();
+        const auto& p = pal();
         auto r = getLocalBounds().reduced(20, 10);
         r.removeFromRight(112);
         g.setColour(p.borderColor.withAlpha(0.5f));
@@ -75,21 +84,16 @@ public:
     }
 
 private:
-    CommunityThemesWindow::Row row;
+    CommunityThemesPanel::Row row;
     juce::TextButton button;
 };
 }
 
-class CommunityThemesWindow::Content : public juce::Component
+class CommunityThemesPanel::Content : public juce::Component
 {
 public:
-    explicit Content(CommunityThemesWindow& o) : owner(o)
+    explicit Content(CommunityThemesPanel& o) : owner(o)
     {
-        from.setText("From github.com/animatek/nme-themes. Anyone can add one there by pull request.",
-                     juce::dontSendNotification);
-        from.setFont(juce::FontOptions(14.0f));
-        from.setMinimumHorizontalScale(1.0f);
-        addAndMakeVisible(from);
 
         checkButton.onClick = [this] { if (owner.onCheckNow) owner.onCheckNow(); };
         repoButton.onClick = [] { juce::URL(CommunityThemes::kRepoUrl).launchInDefaultBrowser(); };
@@ -102,13 +106,11 @@ public:
         viewport.setScrollBarsShown(true, false);
         addAndMakeVisible(viewport);
         applyColours();
-        setSize(620, 580);
     }
 
     void applyColours()
     {
-        const auto& p = AppTheme::palette();
-        from.setColour(juce::Label::textColourId, p.textSecondary);
+        const auto& p = pal();
         status.setColour(juce::Label::textColourId, p.textSecondary);
     }
 
@@ -141,9 +143,7 @@ public:
 
     void resized() override
     {
-        auto r = getLocalBounds().reduced(20, 16);
-        from.setBounds(r.removeFromTop(24));
-        r.removeFromTop(12);
+        auto r = getLocalBounds();
         auto bottom = r.removeFromBottom(36);
         checkButton.setBounds(bottom.removeFromLeft(120));
         bottom.removeFromLeft(10);
@@ -160,8 +160,7 @@ public:
 
     void paint(juce::Graphics& g) override
     {
-        const auto& p = AppTheme::palette();
-        g.fillAll(p.backgroundMain);
+        const auto& p = pal();
         g.setColour(p.backgroundPanel);
         g.fillRoundedRectangle(viewport.getBounds().toFloat(), 8.0f);
         g.setColour(p.borderColor);
@@ -175,8 +174,8 @@ public:
     }
 
 private:
-    CommunityThemesWindow& owner;
-    juce::Label from, status;
+    CommunityThemesPanel& owner;
+    juce::Label status;
     juce::TextButton checkButton { "Check Now" }, repoButton { "Open on GitHub" };
     juce::Viewport viewport;
     juce::Component list;
@@ -184,24 +183,16 @@ private:
     bool busy = false, empty = true;
 };
 
-CommunityThemesWindow::CommunityThemesWindow()
-    : juce::DocumentWindow("Community themes", AppTheme::palette().backgroundMain, juce::DocumentWindow::closeButton)
+CommunityThemesPanel::CommunityThemesPanel()
 {
-    setUsingNativeTitleBar(false);   // the editor's own title bar, as the other windows wear
-    content = new Content(*this);
-    setContentOwned(content, true);
-    setResizable(true, false);
-    centreWithSize(getWidth(), getHeight());
+    content = std::make_unique<Content>(*this);
+    addAndMakeVisible(*content);
 }
 
-CommunityThemesWindow::~CommunityThemesWindow() = default;
+CommunityThemesPanel::~CommunityThemesPanel() = default;
 
-void CommunityThemesWindow::setRows(std::vector<Row> rows) { content->setRows(std::move(rows)); }
-void CommunityThemesWindow::setStatus(const juce::String& text) { content->setStatus(text); }
-void CommunityThemesWindow::setBusy(bool busy) { content->setBusy(busy); }
+void CommunityThemesPanel::setRows(std::vector<Row> rows) { content->setRows(std::move(rows)); }
+void CommunityThemesPanel::setStatus(const juce::String& text) { content->setStatus(text); }
+void CommunityThemesPanel::setBusy(bool busy) { content->setBusy(busy); }
 
-void CommunityThemesWindow::closeButtonPressed()
-{
-    if (onClosed)
-        onClosed();
-}
+void CommunityThemesPanel::resized() { content->setBounds(getLocalBounds()); }

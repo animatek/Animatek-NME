@@ -330,7 +330,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     styleToggle (communityThemesToggle);
     communityThemesToggle.setToggleState (options.checkCommunityThemes, juce::dontSendNotification);
     communityThemesToggle.setTooltip ("On startup, at most once a day, NME reads the list of themes in "
-                                      "github.com/animatek/nme-themes and marks the new ones in View > Theme. "
+                                      "github.com/animatek/nme-themes and marks the new ones in View > Themes. "
                                       "Nothing is sent but the request. Off: only when you choose Check Now.");
     addAndMakeVisible (communityThemesToggle);
     styleToggle (newVersionToggle);

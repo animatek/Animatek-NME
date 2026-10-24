@@ -140,30 +140,30 @@ ventana y la disposición de los flotantes.
 
 ### Tus propios temas
 
-**View → Theme → Edit Theme Colours...** abre una ventana con una muestra por
-cada color, agrupadas (LEDs y medidores, cables y jacks, knobs de morph,
-secuenciadores, knobs, módulos y canvas, aplicación). El canvas cambia mientras
-arrastras un color; **Save** lo guarda como tema propio, y cerrar sin guardar
-devuelve el tema elegido. Si marcas **Save the render style with the theme**,
-el tema también enciende o apaga Wireframe, Hardware look y Flat knobs tal como
-están en pantalla cada vez que se elige.
+Todo lo de los temas está en una ventana: **View → Themes...** (se abre y se cierra con la misma
+opción). Sus páginas están a la izquierda, como en Editor Options:
 
-Los temas son archivos JSON pequeños en una carpeta `themes` junto a los ajustes
-(**View → Theme → Open Themes Folder**). **Export Current Theme...** guarda el
-tema en uso en un archivo que puedes pasar a otra persona, e **Import Theme
-File...** instala uno: primero lo comprueba, luego lo copia a tu carpeta de
-temas y lo elige. Un tema tuyo con el mismo nombre solo se sustituye si lo
-confirmas.
+- **Themes** lista todos los temas con una pequeña vista previa de sus colores; haz clic en uno para
+  usarlo. `Ctrl+T` sigue pasando de uno a otro desde cualquier sitio.
+- **Colours** es el editor de temas: una muestra por cada color, agrupadas (LEDs y medidores, cables y
+  jacks, knobs de morph, secuenciadores, knobs, módulos y canvas, aplicación). El canvas cambia mientras
+  arrastras un color; **Save** lo guarda como tema propio, y cerrar la ventana sin guardar devuelve el
+  tema elegido. Si marcas **Save the render style with the theme**, el tema también enciende o apaga
+  Wireframe, Hardware look y Flat knobs tal como están en pantalla cada vez que se elige.
+- **Community** muestra los temas que la gente comparte en
+  [animatek/nme-themes](https://github.com/animatek/nme-themes) en GitHub, con la marca **New** en los
+  que no habías visto y **Update** en los que han cambiado desde que los instalaste. Un clic instala el
+  tema y lo pone. NME mira esa lista como mucho una vez al día al arrancar, y lo avisa en la barra de
+  estado cuando hay algo nuevo (un punto en View, en la opción Themes y en la página Community);
+  **Check Now** mira en el momento. En Editor Options se puede desactivar la comprobación diaria.
+  Cualquiera puede añadir un tema allí con un pull request: el README del repo explica cómo.
+- **Files** mueve temas de entrada y de salida: **Import** instala un archivo de tema (primero lo
+  comprueba, luego lo copia a tu carpeta de temas y lo elige; uno tuyo con el mismo nombre solo se
+  sustituye si lo confirmas), **Export** guarda el tema en uso en un archivo que puedes pasar a otra
+  persona, **Save** lo guarda con tus cambios como archivo editable, **Reload** vuelve a leer la
+  carpeta y **Open** la muestra.
 
-**View → Theme → Community Themes...** muestra los temas que la gente comparte
-en [animatek/nme-themes](https://github.com/animatek/nme-themes) en GitHub, con
-la marca **New** en los que no habías visto y **Update** en los que han cambiado
-desde que los instalaste. Un clic instala el tema y lo pone. NME mira esa lista
-como mucho una vez al día al arrancar, y lo avisa en la barra de estado cuando
-hay algo nuevo (un punto en View y en Theme, y la opción dice cuántos); **Check Now** mira en el
-momento. En Editor Options se puede desactivar la comprobación diaria.
-Cualquiera puede añadir un tema allí con un pull request: el README del repo
-explica cómo.
+Los temas son archivos JSON pequeños en una carpeta `themes` junto a los ajustes.
 
 Un tema puede traer su estilo de render. **Animatek Rack** enciende Flat knobs
 al elegirlo; al elegir un tema que no trae ninguno vuelves al estilo que tenías

@@ -9,8 +9,7 @@
 #include "ui/PatchLocationDialog.h"
 #include "ui/AboutDialog.h"
 #include "help/ModuleHelpPopup.h"
-#include "ui/ThemeEditorWindow.h"
-#include "ui/CommunityThemesWindow.h"
+#include "ui/ThemesDialog.h"
 #include "ui/ShortcutsDialog.h"
 #include "ui/FlatCloseButton.h"
 #include "ui/EditorOptionsDialog.h"
@@ -1218,7 +1217,7 @@ MainComponent::~MainComponent() {
   knobFloaterWindow.reset();
   keyboardFloaterWindow.reset();
   mainLayout.reset();
-  communityThemesWindow.reset();
+  if (themesDialog != nullptr) themesDialog->dismiss();
   if (--appLookAndFeelUsers == 0)
     juce::LookAndFeel::setDefaultLookAndFeel(nullptr);
 }
@@ -1533,36 +1532,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addSeparator();
     addShortcutItem(menu, 64, "Shake Cables", "S");
     menu.addSeparator();
-    juce::PopupMenu themeMenu;
-    for (int i = 0; i < ThemeRegistry::count(); ++i)  // ids 200+ reserved for themes
-      themeMenu.addItem(200 + i, ThemeRegistry::get(i).name, true,
-                        i == editorOptions.uiThemeIndex);
-    themeMenu.addSeparator();
-    themeMenu.addItem(193, "Edit Theme Colours...");
-    themeMenu.addItem(190, "Save Current Theme as File...");
-    themeMenu.addItem(194, "Import Theme File...");
-    if (const int fresh = communityNewCount(); fresh > 0)
-      themeMenu.addItem(196, "Community Themes...   (" + juce::String(fresh) + " new)", true, false,
-                        AppLookAndFeel::newDot());
+    // Every theme choice and option lives in one window (ThemesDialog); Ctrl+T still cycles
+    if (communityNewCount() > 0)
+      menu.addItem(197, "Themes...", true, false, AppLookAndFeel::newDot());
     else
-      themeMenu.addItem(196, "Community Themes...");
-    themeMenu.addItem(195, "Export Current Theme...");
-    themeMenu.addItem(191, "Reload Theme Files");
-    themeMenu.addItem(192, "Open Themes Folder");
-    {
-      // A submenu with a shortcut hint needs the Item form: addSubMenu has no
-      // shortcut field, and Ctrl+T cycling the theme is worth advertising.
-     #if JUCE_MAC
-      juce::PopupMenu::Item themeItem("Theme   " + macShortcutSymbols("Ctrl+T"));
-     #else
-      juce::PopupMenu::Item themeItem("Theme");
-     #endif
-      if (communityNewCount() > 0)
-        themeItem.setImage(AppLookAndFeel::newDot());
-      themeItem.subMenu = std::make_unique<juce::PopupMenu>(themeMenu);
-      themeItem.shortcutKeyDescription = "Ctrl+T";
-      menu.addItem(std::move(themeItem));
-    }
+      menu.addItem(197, "Themes...");
     // Cmd+W is "close window" on macOS and the system wins the argument, so
     // wireframe rides with Shift there (issue #55).
    #if JUCE_MAC
@@ -1995,10 +1969,17 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     ThemeRegistry::reloadUserThemes();
     const int idx = ThemeRegistry::indexOfName(current);
     applyUiTheme(idx >= 0 ? idx : editorOptions.uiThemeIndex, true);
+    syncThemesDialog();
     mainLayout->getStatusBar().showMessage("Themes reloaded: " + juce::String(ThemeRegistry::count() - ThemeRegistry::builtinCount())
                                            + " user theme(s)", 3000);
     break;
   }
+  case 197:  // View > Themes...: opens the window, or closes it if it is open
+    if (themesDialog != nullptr)
+      themesDialog->dismiss();
+    else
+      showThemesDialog(ThemesDialog::Themes);
+    break;
   case 193:
     showThemeEditor();
     break;
@@ -3523,23 +3504,32 @@ void MainComponent::saveSnapshotsAndQuit(const juce::File& dir)
       if (out.openedOk()) { out.setPosition(0); out.truncate(); png.writeImageToStream(tip, out); }
     }
     {
-      ThemeEditorWindow w(ThemeRegistry::get(0), "Nord");
-      shoot(w, "window-theme-editor");
-    }
-    {
-      CommunityThemesWindow w;
+      // The Themes window, a page at a time (the community page with a made-up list)
+      ThemesDialog d;
+      auto info = [](const char* n, juce::uint32 g, juce::uint32 p, juce::uint32 a, juce::uint32 t) {
+        return ThemesDialog::ThemeInfo { n, juce::Colour(g), juce::Colour(p), juce::Colour(a), juce::Colour(t) };
+      };
+      d.setThemes({ info("Nord", 0xff1b1f26, 0xff222730, 0xffe2b765, 0xffe4e8ee), info("Animatek Rack", 0xff16181c, 0xff1f2228, 0xffe5a53b, 0xffe8e8e8),
+                    info("Dracula", 0xff282a36, 0xff303341, 0xffbd93f9, 0xfff8f8f2), info("Nord Classic", 0xff2e3440, 0xff3b4252, 0xff88c0d0, 0xffeceff4) }, 1);
+      shoot(d, "window-themes-themes");
+      d.colours().setTheme(ThemeRegistry::get(0), "Nord");
+      d.showPage(ThemesDialog::Colours);
+      shoot(d, "window-themes-colours");
       auto row = [](const char* name, const char* author, const char* desc, CommunityThemes::State st, bool isNew, bool inUse) {
-        CommunityThemesWindow::Row r;
+        CommunityThemesPanel::Row r;
         r.entry.name = name; r.entry.author = author; r.entry.description = desc;
         r.state = st; r.isNew = isNew; r.inUse = inUse;
         return r;
       };
-      w.setRows({ row("Animatek Rack", "animatek", "Flat knobs, dark", CommunityThemes::State::BuiltIn, false, true),
-                  row("Midnight", "someone", "Deep blues", CommunityThemes::State::NotInstalled, true, false),
-                  row("Paper", "someone else", "A light one", CommunityThemes::State::Changed, false, false),
-                  row("Nord", "animatek", "The default", CommunityThemes::State::Installed, false, false) });
-      w.setStatus("Checked 2 minutes ago.");
-      shoot(w, "window-community-themes");
+      d.community().setRows({ row("Animatek Rack", "animatek", "Flat knobs, dark", CommunityThemes::State::BuiltIn, false, true),
+                              row("Midnight", "someone", "Deep blues", CommunityThemes::State::NotInstalled, true, false),
+                              row("Paper", "someone else", "A light one", CommunityThemes::State::Changed, false, false) });
+      d.community().setStatus("Checked 2 minutes ago.");
+      d.setCommunityNewCount(1);
+      d.showPage(ThemesDialog::Community);
+      shoot(d, "window-themes-community");
+      d.showPage(ThemesDialog::Files);
+      shoot(d, "window-themes-files");
     }
     {
       juce::AlertWindow d("Delete Patch", "Delete \"Fractura\" from location 101?", juce::MessageBoxIconType::WarningIcon);
@@ -3566,6 +3556,7 @@ void MainComponent::chooseUiTheme(int index) {
   editorOptions.setRenderStyle(ThemeRegistry::switchRender(
       editorOptions.renderStyle(), editorOptions.renderBeforeTheme, ThemeRegistry::get(index).render));
   applyUiTheme(index, true);
+  syncThemesDialog();
 }
 
 void MainComponent::importThemeFile() {
@@ -3712,10 +3703,10 @@ void MainComponent::checkCommunityThemes(bool userAsked) {
                                + " theme(s) in the repository, checked "
                                + juce::Time::getCurrentTime().toString(false, true, false) + ".";
         // On its own it only speaks up when there is something new.
-        if (const int fresh = self.communityNewCount(); fresh > 0 && !userAsked && !self.communityThemesWindow)
+        if (const int fresh = self.communityNewCount(); fresh > 0 && !userAsked && self.themesDialog == nullptr)
           self.mainLayout->getStatusBar().showMessage(
               juce::String(fresh) + (fresh == 1 ? " new community theme" : " new community themes")
-                  + ": View > Theme > Community Themes", 8000);
+                  + ": View > Themes... > Community", 8000);
         self.menuItemsChanged();
       } else {
         self.communityStatus = "Could not read the list: " + error + ".";
@@ -3764,33 +3755,26 @@ void MainComponent::checkNewVersion() {
 }
 
 void MainComponent::showCommunityThemes() {
-  // The badges show what was new when the window opened; from then on it all counts as seen.
-  communitySeenWhenOpened = juce::StringArray::fromLines(editorOptions.communityThemesSeen);
-  if (!communityThemesWindow) {
-    communityThemesWindow = std::make_unique<CommunityThemesWindow>();
-    communityThemesWindow->onInstall = [this](const CommunityThemes::Entry& e) { installCommunityTheme(e); };
-    communityThemesWindow->onCheckNow = [this] { checkCommunityThemes(true); };
-    communityThemesWindow->onClosed = [this] {
-      juce::Component::SafePointer<MainComponent> safe(this);
-      juce::MessageManager::callAsync([safe] {
-        if (safe != nullptr) safe->communityThemesWindow.reset();
-      });
-    };
+  showThemesDialog(ThemesDialog::Community);
+}
+
+void MainComponent::syncThemesDialog() {
+  if (themesDialog == nullptr)
+    return;
+  std::vector<ThemesDialog::ThemeInfo> infos;
+  for (int i = 0; i < ThemeRegistry::count(); ++i) {
+    const auto& t = ThemeRegistry::get(i);
+    infos.push_back({ t.name, t.app.backgroundMain, t.app.backgroundPanel, t.app.accentActive, t.app.textPrimary });
   }
-  if (communityStatus.isEmpty())
-    communityStatus = communityThemes.empty() ? "No list yet."
-                                              : "The list from the last check. Check Now looks again.";
-  refreshCommunityThemesWindow();
-  communityThemesWindow->setVisible(true);
-  communityThemesWindow->toFront(true);
-  // Nothing in the repository yet, or the cached list is old: look now.
-  if (communityThemes.empty())
-    checkCommunityThemes(true);
+  themesDialog->setThemes(std::move(infos), editorOptions.uiThemeIndex);
+  themesDialog->setCommunityNewCount(communityNewCount());
 }
 
 void MainComponent::refreshCommunityThemesWindow() {
-  // Everything listed counts as seen once the window shows it.
-  if (communityThemesWindow) {
+  if (themesDialog == nullptr)
+    return;
+  // Everything listed counts as seen once the Community page shows it.
+  if (themesDialog->getPage() == ThemesDialog::Community) {
     auto seen = juce::StringArray::fromLines(editorOptions.communityThemesSeen);
     for (const auto& e : communityThemes)
       seen.addIfNotAlreadyThere(CommunityThemes::seenKey(e));
@@ -3801,12 +3785,10 @@ void MainComponent::refreshCommunityThemesWindow() {
       menuItemsChanged();
     }
   }
-  if (!communityThemesWindow)
-    return;
   const auto current = ThemeRegistry::get(editorOptions.uiThemeIndex).name;
-  std::vector<CommunityThemesWindow::Row> rows;
+  std::vector<CommunityThemesPanel::Row> rows;
   for (const auto& e : communityThemes) {
-    CommunityThemesWindow::Row r;
+    CommunityThemesPanel::Row r;
     r.entry = e;
     r.state = communityStateOf(e);
     r.isNew = CommunityThemes::isNew(e, r.state, communitySeenWhenOpened);
@@ -3814,9 +3796,11 @@ void MainComponent::refreshCommunityThemesWindow() {
               && (current == e.name || current == e.name + " (user)");
     rows.push_back(r);
   }
-  communityThemesWindow->setRows(std::move(rows));
-  communityThemesWindow->setStatus(communityStatus);
-  communityThemesWindow->setBusy(communityBusy);
+  auto& panel = themesDialog->community();
+  panel.setRows(std::move(rows));
+  panel.setStatus(communityStatus);
+  panel.setBusy(communityBusy);
+  syncThemesDialog();
 }
 
 void MainComponent::installCommunityTheme(const CommunityThemes::Entry& entry) {
@@ -3877,32 +3861,61 @@ void MainComponent::installCommunityTheme(const CommunityThemes::Entry& entry) {
 }
 
 void MainComponent::showThemeEditor() {
-  if (themeEditorWindow) {
-    themeEditorWindow->toFront(true);
+  showThemesDialog(ThemesDialog::Colours);
+}
+
+void MainComponent::showThemesDialog(ThemesDialog::Page page) {
+  if (themesDialog != nullptr) {
+    themesDialog->showPage(page);
+    themesDialog->toFront(true);
     return;
   }
-  const auto& cur = ThemeRegistry::get(editorOptions.uiThemeIndex);
-  const bool builtin = ThemeRegistry::findBuiltin(cur.name) != nullptr;
-  themeEditorWindow = std::make_unique<ThemeEditorWindow>(cur, builtin ? cur.name : "Dark");
-  themeEditorWindow->onChange = [this](const EditorTheme& t) { applyThemeLive(t); };
-  themeEditorWindow->currentRender = [this] { return editorOptions.renderStyle(); };
-  themeEditorWindow->onSaved = [this](const EditorTheme& t, const juce::File&) {
+  auto* dlg = ThemesDialog::show(this);
+  themesDialog = dlg;
+  dlg->onChooseTheme = [this](int index) { chooseUiTheme(index); };
+  dlg->onFileAction = [this](int id) { menuItemSelected(id, 0); };   // the same actions the old submenu had
+  dlg->colours().onChange = [this](const EditorTheme& t) { applyThemeLive(t); };
+  dlg->colours().currentRender = [this] { return editorOptions.renderStyle(); };
+  dlg->colours().onSaved = [this](const EditorTheme& t, const juce::File&) {
     ThemeRegistry::reloadUserThemes();
     const int idx = ThemeRegistry::indexOfName(t.name);
     if (idx >= 0)
       chooseUiTheme(idx);
+    syncThemesDialog();
   };
-  themeEditorWindow->onClosed = [this] {
-    // Closing without saving puts the chosen theme back. The pointer is made out
-    // here: MSVC reads `this` inside an init-capture as the lambda itself.
+  dlg->community().onInstall = [this](const CommunityThemes::Entry& e) { installCommunityTheme(e); };
+  dlg->community().onCheckNow = [this] { checkCommunityThemes(true); };
+  dlg->onPageShown = [this](ThemesDialog::Page p) {
+    if (p == ThemesDialog::Colours) {
+      const auto& cur = ThemeRegistry::get(editorOptions.uiThemeIndex);
+      const bool builtin = ThemeRegistry::findBuiltin(cur.name) != nullptr;
+      themesDialog->colours().setTheme(cur, builtin ? cur.name : "Dark");
+    } else if (p == ThemesDialog::Community) {
+      // The badges show what was new when the page opened; from then on it all counts as seen.
+      communitySeenWhenOpened = juce::StringArray::fromLines(editorOptions.communityThemesSeen);
+      if (communityStatus.isEmpty())
+        communityStatus = communityThemes.empty() ? "No list yet."
+                                                  : "The list from the last check. Check Now looks again.";
+      refreshCommunityThemesWindow();
+      // Nothing in the repository yet, or the cached list is old: look now.
+      if (communityThemes.empty())
+        checkCommunityThemes(true);
+    } else {
+      syncThemesDialog();
+    }
+  };
+  dlg->onClosed = [this] {
+    // Closing puts the chosen theme back, whatever the Colours page was showing live. The pointer is
+    // made out here: MSVC reads `this` inside an init-capture as the lambda itself.
     juce::Component::SafePointer<MainComponent> safe(this);
     juce::MessageManager::callAsync([safe] {
       if (safe == nullptr) return;
-      safe->themeEditorWindow.reset();
       safe->applyUiTheme(safe->editorOptions.uiThemeIndex, false);
+      safe->menuItemsChanged();
     });
   };
-  themeEditorWindow->setVisible(true);
+  syncThemesDialog();
+  dlg->showPage(page);
 }
 
 void MainComponent::applyThemeLive(const EditorTheme& theme) {

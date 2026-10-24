@@ -4,25 +4,26 @@
 #include <juce_gui_extra/juce_gui_extra.h>
 #include "ThemeFile.h"
 
-// Live theme editor (#90, step 2): one swatch per colour, grouped, with a colour
-// selector on click. Every change is handed to `onChange` at once so the canvas
-// repaints while the colour is being dragged. Save writes a user theme file.
-class ThemeEditorWindow : public juce::DocumentWindow
+// Live theme editor (#90, step 2), as the Colours page of the Themes window: one swatch per colour, grouped,
+// with a colour selector on click. Every change is handed to `onChange` at once so the canvas repaints while
+// the colour is being dragged. Save writes a user theme file.
+class ThemeEditorPanel : public juce::Component
 {
 public:
+    ThemeEditorPanel();
+    ~ThemeEditorPanel() override;
+
     // `start` is the theme to edit; `baseName` the built-in the saved file falls back to.
-    ThemeEditorWindow(const EditorTheme& start, const juce::String& baseName);
-    ~ThemeEditorWindow() override;
+    void setTheme(const EditorTheme& start, const juce::String& baseName);
 
     std::function<void(const EditorTheme&)> onChange;             // live preview
     std::function<void(const EditorTheme&, const juce::File&)> onSaved;   // after the file is written
-    std::function<void()> onClosed;
     // The render style on screen, saved with the theme when the user ticks the box.
     std::function<RenderStyle()> currentRender;
 
-    void closeButtonPressed() override;
+    void resized() override;
 
 private:
     class Content;
-    Content* content = nullptr;
+    std::unique_ptr<Content> content;
 };

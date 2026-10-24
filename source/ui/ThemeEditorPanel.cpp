@@ -1,23 +1,9 @@
-#include "ThemeEditorWindow.h"
-#include "AppTheme.h"
-#include "FlatCloseButton.h"
+#include "ThemeEditorPanel.h"
+#include "ThemesLook.h"
 
 namespace
 {
-// This window keeps colours of its own instead of following the theme: while a theme is being edited the
-// palette moves under the mouse, and an editor that changes colour as you drag its swatches is not one
-// you can read. They are the new look's dark ground and amber accent.
-namespace fx
-{
-const juce::Colour ground   { 0xff1b1f26 };
-const juce::Colour panel    { 0xff222730 };
-const juce::Colour field    { 0xff15181e };
-const juce::Colour border   { 0xff353c47 };
-const juce::Colour text     { 0xffe4e8ee };
-const juce::Colour muted    { 0xff7f8896 };
-const juce::Colour accent   { 0xffe2b765 };
-const juce::Colour button   { 0xff2d343f };
-}
+namespace fx = ThemesLook;
 
 class Swatch : public juce::Component
 {
@@ -141,10 +127,10 @@ public:
 };
 }
 
-class ThemeEditorWindow::Content : public juce::Component
+class ThemeEditorPanel::Content : public juce::Component
 {
 public:
-    Content(ThemeEditorWindow& o, const EditorTheme& start, const juce::String& base)
+    Content(ThemeEditorPanel& o, const EditorTheme& start, const juce::String& base)
         : owner(o), baseName(base), doc(ThemeFile::makeDoc(start)), original(doc)
     {
         nameEditor.setText(start.name + " edited", juce::dontSendNotification);
@@ -157,8 +143,6 @@ public:
         nameEditor.setColour(juce::TextEditor::outlineColourId, fx::border);
         nameEditor.setColour(juce::TextEditor::focusedOutlineColourId, fx::accent);
         addAndMakeVisible(nameEditor);
-        closeButton.onClick = [this] { owner.closeButtonPressed(); };
-        addAndMakeVisible(closeButton);
         saveButton.setColour(juce::TextButton::buttonColourId, fx::accent);          // Save is the thing to press
         saveButton.setColour(juce::TextButton::textColourOffId, fx::ground);
         resetButton.setColour(juce::TextButton::buttonColourId, fx::button);
@@ -202,15 +186,24 @@ public:
         viewport.setViewedComponent(&body, false);
         viewport.setScrollBarsShown(true, false);
         addAndMakeVisible(viewport);
-        setSize(480, 700);
+    }
+
+    // Called when the theme being edited is another one: the rows read from `doc`, so they follow
+    void reset(const EditorTheme& start, const juce::String& base)
+    {
+        baseName = base;
+        doc = ThemeFile::makeDoc(start);
+        original = doc;
+        nameEditor.setText(start.name + " edited", juce::dontSendNotification);
+        keepRender.setToggleState(start.render.any(), juce::dontSendNotification);
+        status.setText({}, juce::dontSendNotification);
+        refreshRows();
     }
 
     void resized() override
     {
-        closeButton.setBounds(getWidth() - 36, 6, 28, 28);
-
-        // Name, Save and Reset under the title bar
-        auto r = getLocalBounds().withTrimmedTop(titleH + 16).withTrimmedBottom(footerH).reduced(24, 0);
+        // Name, Save and Reset at the top
+        auto r = getLocalBounds().withTrimmedBottom(footerH);
         auto top = r.removeFromTop(38);
         resetButton.setBounds(top.removeFromRight(76));
         top.removeFromRight(8);
@@ -218,53 +211,26 @@ public:
         top.removeFromRight(10);
         nameEditor.setBounds(top);
         r.removeFromTop(12);
-        viewport.setBounds(r.withTrimmedRight(-8));
+        viewport.setBounds(r);
         const int w = viewport.getMaximumVisibleWidth();
         int y = 4;
         for (auto& it : items) { it.comp->setBounds(0, y, w, it.height); y += it.height; }
         body.setSize(w, y + 4);
 
-        // The footer band: the render-style switch and what Save said
-        auto f = getLocalBounds().removeFromBottom(footerH).reduced(24, 10);
+        // The foot: the render-style switch and what Save said
+        auto f = getLocalBounds().removeFromBottom(footerH).withTrimmedTop(10);
         keepRender.setBounds(f.removeFromTop(28));
         status.setBounds(f);
     }
 
     void paint(juce::Graphics& g) override
     {
-        g.fillAll(fx::ground);
-        g.setColour(fx::text);
-        g.setFont(juce::Font(juce::FontOptions(15.0f, juce::Font::bold)));
-        g.drawText("Theme editor", 18, 0, getWidth() - 60, titleH, juce::Justification::centredLeft);
-        g.setColour(fx::border);
-        g.fillRect(0, titleH - 1, getWidth(), 1);
-
-        g.setColour(fx::panel);
-        g.fillRect(0, getHeight() - footerH, getWidth(), footerH);
         g.setColour(fx::border);
         g.fillRect(0, getHeight() - footerH, getWidth(), 1);
     }
 
-    void paintOverChildren(juce::Graphics& g) override
-    {
-        g.setColour(fx::border.brighter(0.4f));
-        g.drawRect(getLocalBounds(), 1);
-    }
-
-    // Only a press on the title bar drags the window (it has no system title bar any more)
-    void mouseDown(const juce::MouseEvent& e) override
-    {
-        dragging = e.getPosition().getY() < titleH;
-        if (dragging) dragger.startDraggingComponent(&owner, e);
-    }
-    void mouseDrag(const juce::MouseEvent& e) override { if (dragging) dragger.dragComponent(&owner, e, nullptr); }
-    void mouseUp(const juce::MouseEvent&) override { dragging = false; }
-
 private:
-    static constexpr int titleH = 40, footerH = 72;
-    FlatCloseButton closeButton;
-    juce::ComponentDragger dragger;
-    bool dragging = false;
+    static constexpr int footerH = 76;
 
     struct Item { juce::Component* comp; int height; };
 
@@ -302,7 +268,7 @@ private:
             status.setText("Could not write " + file.getFullPathName(), juce::dontSendNotification);
     }
 
-    ThemeEditorWindow& owner;
+    ThemeEditorPanel& owner;
     juce::String baseName;
     ThemeFile::Doc doc, original;
     juce::TextEditor nameEditor;
@@ -316,21 +282,23 @@ private:
     std::vector<Item> items;
 };
 
-ThemeEditorWindow::ThemeEditorWindow(const EditorTheme& start, const juce::String& baseName)
-    : juce::DocumentWindow("Theme editor", fx::ground, juce::DocumentWindow::closeButton)
+ThemeEditorPanel::ThemeEditorPanel() = default;
+ThemeEditorPanel::~ThemeEditorPanel() = default;
+
+void ThemeEditorPanel::setTheme(const EditorTheme& start, const juce::String& baseName)
 {
-    setUsingNativeTitleBar(false);
-    setTitleBarHeight(0);   // the content draws its own, in this window's own colours
-    content = new Content(*this, start, baseName);
-    setContentOwned(content, true);
-    setResizable(true, false);
-    centreWithSize(getWidth(), getHeight());
+    if (content == nullptr)
+    {
+        content = std::make_unique<Content>(*this, start, baseName);
+        addAndMakeVisible(*content);
+        resized();
+    }
+    else
+        content->reset(start, baseName);
 }
 
-ThemeEditorWindow::~ThemeEditorWindow() = default;
-
-void ThemeEditorWindow::closeButtonPressed()
+void ThemeEditorPanel::resized()
 {
-    if (onClosed)
-        onClosed();
+    if (content != nullptr)
+        content->setBounds(getLocalBounds());
 }

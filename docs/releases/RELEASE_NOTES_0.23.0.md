@@ -41,7 +41,8 @@ no slot used on the way; banks are saved with a `.pchList`. Four MCP tools drive
   unchanged.
 - **Keyboard Shortcuts** is a window with the groups at the left, the keys as key caps and a filter that
   searches every group.
-- **Ctrl+T cycles the theme** even with a menu open. Opening MIDI Setup, Editor Options or Patch/Synth
+- **One Themes window** (View > Themes...) with pages for the themes, the colour editor, the community themes and the
+  file options, in place of the long submenu. **Ctrl+T cycles the theme** even with a menu open. Opening MIDI Setup, Editor Options or Patch/Synth
   Settings again closes it instead of opening a second one.
 
 ## Also in this version

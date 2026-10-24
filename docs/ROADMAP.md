@@ -25,7 +25,7 @@ definition; the new plan supplies its delivery and verification context.
 ## High Priority
 
 - [x] **Community themes in the editor** ([#91](https://github.com/animatek/Animatek-NME/issues/91)) —
-  shipped in 0.22.0: View > Theme > Community Themes, from the `index.json` of
+  shipped in 0.22.0 (now the Community page of View > Themes...), from the `index.json` of
   [animatek/nme-themes](https://github.com/animatek/nme-themes), checked once a day at most
   (Editor Options can turn it off), installed by SHA-256. NME's own themes live there too and
   update from there. Theme files may also set the render style (#90).

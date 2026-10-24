@@ -3,14 +3,14 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "CommunityThemes.h"
 
-// View > Theme > Community Themes (#91): the themes in animatek/nme-themes, each with
-// an Install / Update / Use button and a "New" badge for the ones the user had not
-// seen when the window opened. MainComponent does the fetching; this only shows it.
-class CommunityThemesWindow : public juce::DocumentWindow
+// The Community page of the Themes window (#91): the themes in animatek/nme-themes, each with an
+// Install / Update / Use button and a "New" badge for the ones the user had not seen when the page
+// opened. MainComponent does the fetching; this only shows it.
+class CommunityThemesPanel : public juce::Component
 {
 public:
-    CommunityThemesWindow();
-    ~CommunityThemesWindow() override;
+    CommunityThemesPanel();
+    ~CommunityThemesPanel() override;
 
     struct Row
     {
@@ -25,11 +25,10 @@ public:
 
     std::function<void(const CommunityThemes::Entry&)> onInstall;   // install, update or use
     std::function<void()> onCheckNow;
-    std::function<void()> onClosed;
 
-    void closeButtonPressed() override;
+    void resized() override;
 
 private:
     class Content;
-    Content* content = nullptr;
+    std::unique_ptr<Content> content;
 };
