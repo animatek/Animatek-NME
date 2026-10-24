@@ -8,6 +8,11 @@
   instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
   to yours and quit without a picture. That run now counts as its own instance.
 
+- **Module bar: a rule under the categories and room round ABCD** (2026-10-24, branch `ui-redesign`).
+  A horizontal rule runs between the row of categories (In/Out, Osc, LFO...) and the row of module chips,
+  and the ABCD button has 16px more room before the chips (the column is 74px, it was 58), with its
+  hairline in the middle of the gap, as in the mockup.
+
 - **Status bar: hairlines and the link text against the buttons** (2026-10-24, branch `ui-redesign`).
   A thin vertical rule after the "i" of the inspector, as in Bitwig, and another between the text on the
   right ("Real G1 (UM-ONE MIDI 1)") and the lens. The text is now as wide as it needs and sits against

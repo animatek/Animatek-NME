@@ -101,7 +101,7 @@ private:
     int selectedTab = 0;
     int hoverTab = -1;
 
-    static constexpr int retileColW = 58;     // the ABCD button and the room around it
+    static constexpr int retileColW = 74;     // the ABCD button and the room around it
     juce::Rectangle<int> retileBounds;
     bool retileEnabled = false;
     bool retileHover = false;

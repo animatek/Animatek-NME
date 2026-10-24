@@ -172,7 +172,7 @@ void ModuleIconBar::resized()
     area.removeFromBottom(separatorHeight);
 
     // ABCD at the left of the chip row, level with the chips; the strip scrolls to its right
-    retileBounds = { 10, area.getY() + chipTopGap, retileColW - 22, chipHeight };
+    retileBounds = { 10, area.getY() + chipTopGap, 36, chipHeight };
     auto stripArea = area.withTrimmedLeft(retileColW);
     viewport.setBounds(stripArea);
     strip.setSize(juce::jmax(stripArea.getWidth(), strip.getWidth()), stripArea.getHeight());
@@ -191,6 +191,8 @@ void ModuleIconBar::paint(juce::Graphics& g)
     g.fillAll(p.backgroundPanel);
     g.setColour(p.borderColor);
     g.drawHorizontalLine(getHeight() - 1, 0.0f, static_cast<float>(getWidth()));
+    // A rule between the row of categories and the row of modules (the tab's own underline sits on it)
+    g.drawHorizontalLine(tabRowHeight - 1, 0.0f, static_cast<float>(getWidth()));
 
     // Tabs: just the word, with an underline under the one that is showing
     g.setFont(chipFont());
@@ -244,7 +246,7 @@ void ModuleIconBar::paint(juce::Graphics& g)
 
         // A hairline between the tile and the chips
         g.setColour(p.borderColor);
-        const float lx = static_cast<float>(retileColW) - 7.0f;
+        const float lx = (static_cast<float>(retileBounds.getRight()) + static_cast<float>(retileColW)) * 0.5f;   // mid-gap
         g.drawLine(lx, rb.getY() + 2.0f, lx, rb.getBottom() - 2.0f, 1.0f);
     }
 }
