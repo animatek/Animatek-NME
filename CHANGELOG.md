@@ -4,6 +4,10 @@
 
 ### Changed
 
+- **Browser tabs: more room under the words** (2026-10-24, branch `ui-redesign`). The "Synth" and "Disk"
+  titles were touching the rule below them. The tab bar is 40px (was 28) and the word is lifted so
+  there is air between it and the underline.
+
 - **Disk tab: hairlines between the search and filters, the count row and the list** (2026-10-24,
   branch `ui-redesign`), edge to edge like the rules of the inspector and of the Synth banks; and
   "Hide 2.10" gets enough room to read in full (it was cut to "Hide 2....").

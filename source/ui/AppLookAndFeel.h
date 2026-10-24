@@ -39,11 +39,12 @@ public:
         const bool front = button.isFrontTab();
         g.setColour(front || isMouseOver ? pal.textPrimary : pal.textSecondary);
         g.setFont(tabFont());
-        g.drawText(button.getButtonText(), r, juce::Justification::centred, false);
+        // The word sits above the underline with air under it, not on top of the rule
+        g.drawText(button.getButtonText(), r.withTrimmedBottom(10), juce::Justification::centred, false);
         if (front)
         {
             g.setColour(pal.accentActive);
-            g.fillRect(r.getX() + 8, r.getBottom() - 3, r.getWidth() - 16, 3);
+            g.fillRect(r.getX() + 8, r.getBottom() - 4, r.getWidth() - 16, 3);
         }
     }
 

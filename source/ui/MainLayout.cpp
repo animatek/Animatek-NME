@@ -487,7 +487,7 @@ MainLayout::MainLayout(ModuleDescriptions& moduleDescs)
     leftColumn.addAndMakeVisible(inspectorPanel);
     leftColumn.addAndMakeVisible(slotBar);
 
-    rightBrowserTabs.setTabBarDepth(28);
+    rightBrowserTabs.setTabBarDepth(40);
     rightBrowserTabs.addTab("Synth", AppTheme::palette().backgroundPanel, &patchBrowserPanel, false);
     rightBrowserTabs.addTab("Disk", AppTheme::palette().backgroundPanel, &diskPresetBrowserPanel, false);
 
