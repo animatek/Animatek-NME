@@ -396,6 +396,7 @@ public:
     static constexpr int groupHeaderH = 22;
     static constexpr int rowH         = 30;
     static constexpr int xBtnW        = 20;
+    static constexpr int assignRowH   = 40;   // an assignment: the parameter and where it goes, the module under it
     static constexpr int amountW      = 56;
     // Wider than the morph amount: it holds a formatted reading, not a number,
     // and "1.00kHz" or "-12(Oct)" has to fit.
@@ -456,7 +457,7 @@ public:
             add(RowKind::KnobsTitle, -1, sectionTitleH);
             if (!knobsSectionCollapsed)
                 for (int i = 0; i < (int)knobRows.size(); ++i)
-                    add(RowKind::KnobRow, i, rowH);
+                    add(RowKind::KnobRow, i, assignRowH);
             y += sectionGap;
         }
 
@@ -465,7 +466,7 @@ public:
             add(RowKind::CtrlsTitle, -1, sectionTitleH);
             if (!ctrlsSectionCollapsed)
                 for (int i = 0; i < (int)ctrlRows.size(); ++i)
-                    add(RowKind::CtrlRow, i, rowH);
+                    add(RowKind::CtrlRow, i, assignRowH);
             y += sectionGap;
         }
 
@@ -474,16 +475,8 @@ public:
             add(RowKind::MorphsTitle, -1, sectionTitleH);
             if (!morphsSectionCollapsed)
             {
-                int prevGroup = -1;
                 for (int i = 0; i < (int)morphRows.size(); ++i)
-                {
-                    if (morphRows[size_t(i)].group != prevGroup)
-                    {
-                        prevGroup = morphRows[size_t(i)].group;
-                        add(RowKind::MorphGroupHeader, i, groupHeaderH);
-                    }
-                    add(RowKind::MorphRow, i, rowH);
-                }
+                    add(RowKind::MorphRow, i, assignRowH);
             }
             y += sectionGap;
         }
@@ -555,20 +548,20 @@ public:
 
                 case RowKind::MorphRow:
                 {
-                    if (pos.x >= marginX && pos.x < marginX + xBtnW)
+                    if (pos.x >= getWidth() - marginX - xBtnW - 4)
                         return { HitType::MorphX, row.index };
-                    if (pos.x >= getWidth() - marginX - amountW)
+                    if (pos.x >= getWidth() - marginX - xBtnW - 6 - amountW)
                         return { HitType::MorphAmount, row.index };
                     return {};
                 }
 
                 case RowKind::KnobRow:
-                    if (pos.x >= marginX && pos.x < marginX + xBtnW)
+                    if (pos.x >= getWidth() - marginX - xBtnW - 4)
                         return { HitType::KnobX, row.index };
                     return {};
 
                 case RowKind::CtrlRow:
-                    if (pos.x >= marginX && pos.x < marginX + xBtnW)
+                    if (pos.x >= getWidth() - marginX - xBtnW - 4)
                         return { HitType::CtrlX, row.index };
                     return {};
 
@@ -1192,78 +1185,151 @@ private:
                    juce::Justification::centredLeft);
     }
 
-    void paintMorphRow(juce::Graphics& g, int y, int i, const MorphRow& r, bool isGlobal)
-    {
-        int w = getWidth();
-        (void) i;
+    // An assignment row: an icon that says what kind it is, "parameter -> where it goes" with
+    // an arrow, the module it belongs to under that, and the cross at the right. Macros, knobs
+    // and MIDI CC all draw through here, so they read as one family told apart by their icon.
+    enum class AssignIcon { Macro, Knob, Cc };
 
-        // Remove: a light cross, no box
-        g.setColour(AppTheme::palette().textMuted);
-        juce::Rectangle<int> xRect(marginX, y + (rowH - xBtnW) / 2, xBtnW, xBtnW);
+    void paintAssignIcon(juce::Graphics& g, AssignIcon kind, juce::Rectangle<float> r, juce::Colour c)
+    {
+        const float cx = r.getCentreX(), cy = r.getCentreY();
+        switch (kind)
         {
-            const auto c = xRect.toFloat().getCentre();
+            case AssignIcon::Macro:
+            {
+                // an arch, in the macro's own colour
+                juce::Path arch;
+                arch.startNewSubPath(cx - 7.0f, cy + 6.0f);
+                arch.cubicTo(cx - 7.0f, cy - 8.0f, cx + 7.0f, cy - 8.0f, cx + 7.0f, cy + 6.0f);
+                g.setColour(c);
+                g.strokePath(arch, juce::PathStrokeType(3.0f, juce::PathStrokeType::curved,
+                                                        juce::PathStrokeType::rounded));
+                break;
+            }
+            case AssignIcon::Knob:
+                g.setColour(c);
+                g.drawEllipse(cx - 8.0f, cy - 8.0f, 16.0f, 16.0f, 1.6f);
+                g.drawLine(cx, cy, cx + 4.0f, cy - 4.5f, 1.8f);
+                break;
+            case AssignIcon::Cc:
+            {
+                auto pill = juce::Rectangle<float>(r.getX(), cy - 8.0f, 28.0f, 16.0f);
+                g.setColour(c.withAlpha(0.22f));
+                g.fillRoundedRectangle(pill, 4.0f);
+                g.setColour(c.withAlpha(0.8f));
+                g.drawRoundedRectangle(pill.reduced(0.5f), 4.0f, 1.0f);
+                g.setFont(AppTheme::uiFont(10.0f).withStyle("Bold"));
+                g.drawText("CC", pill.toNearestInt(), juce::Justification::centred, false);
+                break;
+            }
+        }
+    }
+
+    // Where the cross is: right edge, centred in the row
+    juce::Rectangle<int> removeCellFor(int y) const
+    {
+        return { getWidth() - marginX - xBtnW, y + (assignRowH - xBtnW) / 2, xBtnW, xBtnW };
+    }
+
+    void paintAssignRow(juce::Graphics& g, int y, AssignIcon kind, juce::Colour iconColour,
+                        const juce::String& paramName, const juce::String& target,
+                        const juce::String& moduleName, bool isGlobal, int reserveRight)
+    {
+        const auto& pal = AppTheme::palette();
+        const int w = getWidth();
+
+        // A hairline between rows, so each assignment stands apart
+        g.setColour(pal.borderColor.withAlpha(0.5f));
+        g.fillRect(marginX, y + assignRowH - 1, w - marginX * 2, 1);
+
+        paintAssignIcon(g, kind, { static_cast<float>(marginX + 2), static_cast<float>(y + (assignRowH - 24) / 2), 30.0f, 24.0f },
+                        iconColour);
+
+        // Remove: a light cross
+        {
+            const auto c = removeCellFor(y).toFloat().getCentre();
+            g.setColour(pal.textMuted);
             g.drawLine(c.x - 3.5f, c.y - 3.5f, c.x + 3.5f, c.y + 3.5f, 1.4f);
             g.drawLine(c.x - 3.5f, c.y + 3.5f, c.x + 3.5f, c.y - 3.5f, 1.4f);
         }
 
-        // Name
-        int nameX = marginX + xBtnW + 4;
-        int amX   = w - marginX - amountW;
-        int nameW = amX - nameX - 4;
-        paintParamName(g, nameX, y, nameW, r.paramName, r.moduleName, isGlobal);
+        const int textX = marginX + 38;
+        const int textRight = w - marginX - xBtnW - 6 - reserveRight;
+        const int textW = juce::jmax(0, textRight - textX);
+        const bool twoLines = isGlobal && moduleName.isNotEmpty();
+        const int lineY = twoLines ? y + 5 : y + (assignRowH - 18) / 2;
 
-        // Amount bar
+        // "parameter -> target"
+        const juce::Font font(AppTheme::uiFont(fontRow));
+        const juce::Font targetFont(AppTheme::uiFont(fontRow).withStyle("Bold"));
+        const float targetW = targetFont.getStringWidthFloat(target);
+        const float arrowW = 22.0f;
+        const float paramMax = juce::jmax(0.0f, static_cast<float>(textW) - arrowW - targetW);
+        const float paramW = juce::jmin(font.getStringWidthFloat(paramName), paramMax);
+
+        g.setColour(pal.textPrimary);
+        g.setFont(font);
+        g.drawText(paramName, textX, lineY, static_cast<int>(paramW) + 1, 18, juce::Justification::centredLeft, true);
+
+        const float ax = static_cast<float>(textX) + paramW + 5.0f;
+        const float ay = static_cast<float>(lineY) + 9.0f;
+        g.setColour(pal.textMuted);
+        g.drawLine(ax, ay, ax + 10.0f, ay, 1.4f);
+        g.drawLine(ax + 10.0f, ay, ax + 6.5f, ay - 3.0f, 1.4f);
+        g.drawLine(ax + 10.0f, ay, ax + 6.5f, ay + 3.0f, 1.4f);
+
+        g.setColour(kind == AssignIcon::Macro ? iconColour : pal.textSecondary);
+        g.setFont(targetFont);
+        g.drawText(target, static_cast<int>(ax + 15.0f), lineY, static_cast<int>(targetW) + 2, 18,
+                   juce::Justification::centredLeft, false);
+
+        // The module it belongs to, small, underneath
+        if (twoLines)
+        {
+            g.setColour(pal.textMuted);
+            g.setFont(AppTheme::uiFont(fontRowSmall));
+            g.drawText(moduleName, textX, y + 23, textW, 14, juce::Justification::centredLeft, true);
+        }
+    }
+
+    void paintMorphRow(juce::Graphics& g, int y, int i, const MorphRow& r, bool isGlobal)
+    {
+        (void) i;
+        const juce::Colour gc = kMorphColors[r.group];
+        paintAssignRow(g, y, AssignIcon::Macro, gc, r.paramName, kGroupNames[r.group], r.moduleName,
+                       isGlobal, amountW + 6);
+
+        // Amount: how far the macro moves it, to the left of the cross
         if (r.param != nullptr)
         {
-            int morphRange = r.param->getMorphRange();
-            juce::Colour gc = kMorphColors[r.group];
-            juce::Rectangle<int> amRect(amX, y + 3, amountW, rowH - 6);
+            const int morphRange = r.param->getMorphRange();
+            const auto cross = removeCellFor(y);
+            juce::Rectangle<int> amRect(cross.getX() - 6 - amountW, y + (assignRowH - 20) / 2, amountW, 20);
             g.setColour(AppTheme::palette().inputBackground);
-            g.fillRoundedRectangle(amRect.toFloat(), 3.0f);
-            float fraction = static_cast<float>(morphRange) / 127.0f;
-            float midXf = amRect.getX() + amRect.getWidth() * 0.5f;
-            float barW = std::abs(fraction) * (amRect.getWidth() * 0.5f);
-            float barX = (fraction >= 0.0f) ? midXf : midXf - barW;
+            g.fillRoundedRectangle(amRect.toFloat(), 5.0f);
+            const float fraction = static_cast<float>(morphRange) / 127.0f;
+            const float midXf = amRect.getX() + amRect.getWidth() * 0.5f;
+            const float barW = std::abs(fraction) * (amRect.getWidth() * 0.5f);
+            const float barX = (fraction >= 0.0f) ? midXf : midXf - barW;
             g.setColour(gc.withAlpha(0.75f));
-            g.fillRoundedRectangle(barX, float(amRect.getY()), barW, float(amRect.getHeight()), 2.0f);
+            g.fillRoundedRectangle(barX, float(amRect.getY()), barW, float(amRect.getHeight()), 4.0f);
             g.setColour(AppTheme::palette().borderColor);
             g.drawVerticalLine(int(midXf), float(amRect.getY()), float(amRect.getBottom()));
-            g.setColour(juce::Colours::white.withAlpha(0.9f));
+            g.setColour(juce::Colours::white.withAlpha(0.92f));
             g.setFont(AppTheme::uiFont(10.0f));
             g.drawText(juce::String(morphRange), amRect, juce::Justification::centred);
             g.setColour(gc.withAlpha(0.4f));
-            g.drawRoundedRectangle(amRect.toFloat(), 3.0f, 1.0f);
+            g.drawRoundedRectangle(amRect.toFloat().reduced(0.5f), 5.0f, 1.0f);
         }
     }
 
     void paintHwRow(juce::Graphics& g, int y, int i, const HwRow& r, bool isGlobal, juce::Colour accent)
     {
-        int w = getWidth();
         (void) i;
-
-        // Remove: a light cross, no box
-        g.setColour(AppTheme::palette().textMuted);
-        juce::Rectangle<int> xRect(marginX, y + (rowH - xBtnW) / 2, xBtnW, xBtnW);
-        {
-            const auto c = xRect.toFloat().getCentre();
-            g.drawLine(c.x - 3.5f, c.y - 3.5f, c.x + 3.5f, c.y + 3.5f, 1.4f);
-            g.drawLine(c.x - 3.5f, c.y + 3.5f, c.x + 3.5f, c.y - 3.5f, 1.4f);
-        }
-
-        // Label badge (e.g. "Knob 3")
-        int badgeX = marginX + xBtnW + 4;
-        g.setFont(AppTheme::uiFont(fontBadge).withStyle("Bold"));
-        int labelW = g.getCurrentFont().getStringWidth(r.label) + 8;
-        juce::Rectangle<int> badge(badgeX, y + 5, labelW, rowH - 10);
-        g.setColour(accent.withAlpha(0.32f));
-        g.fillRoundedRectangle(badge.toFloat(), badge.getHeight() * 0.5f);
-        g.setColour(AppTheme::palette().textPrimary);
-        g.drawText(r.label, badge, juce::Justification::centred);
-
-        // Param name
-        int nameX = badgeX + labelW + 6;
-        int nameW = w - nameX - marginX;
-        paintParamName(g, nameX, y, nameW, r.paramName, r.moduleName, isGlobal);
+        const bool isCc = r.label.startsWith("CC");
+        paintAssignRow(g, y, isCc ? AssignIcon::Cc : AssignIcon::Knob,
+                       isCc ? accent : AppTheme::palette().textSecondary,
+                       r.paramName, r.label, r.moduleName, isGlobal, 0);
     }
 
     void paintParamName(juce::Graphics& g, int x, int y, int w,

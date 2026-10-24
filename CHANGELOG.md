@@ -4,6 +4,14 @@
 
 ### Changed
 
+- **Inspector: assignment rows as in the mockup** (2026-10-24, branch `ui-redesign`). Macros,
+  knobs and MIDI CC share one look, told apart by their icon: an arch in the macro's colour, a knob
+  glyph, a "CC" pill. Each row reads "parameter -> target" with a drawn arrow (e.g. "Coarse -> Macro 1",
+  "Res -> Knob 3", "Freq -> CC 74"), the module it belongs to in small type under it, a hairline between
+  rows (40px high) and the cross at the right edge, with the macro's amount bar just left of it. The
+  coloured band per macro is gone: the icon colour and the target say which one it is. The cross and
+  the amount bar keep working; only their place moved.
+
 - **Inspector: new order, and what is empty is hidden** (2026-10-24, branch `ui-redesign`). From
   the top: the knob panel, the **Module** block, its **Parameters**, then **Knobs** (with **MIDI CC**
   right after), **Macros**, and the module's **Presets** last. With no module selected the Module
