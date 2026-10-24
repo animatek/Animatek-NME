@@ -144,11 +144,21 @@ public:
         LookAndFeel_V4::getIdealPopupMenuItemSize(text, isSeparator, standardMenuItemHeight, idealWidth, idealHeight);
         if (isSeparator)
             idealHeight = 11;
+        else if (standardMenuItemHeight < 0)
+            idealWidth += 40;   // a section heading: JUCE asks with -1, and adds half its height again
         else
         {
             idealHeight = juce::jmax(idealHeight, 32);
-            idealWidth += 48;   // room to breathe between the words and the shortcut, and for the margins
+            idealWidth += 44;   // room to breathe between the words and the shortcut, and for the margins
         }
+    }
+
+    // A section heading ("value" over a parameter's menu): bold, in the accent, level with the words
+    void drawPopupMenuSectionHeader(juce::Graphics& g, const juce::Rectangle<int>& area, const juce::String& sectionName) override
+    {
+        g.setFont(getPopupMenuFont().boldened());
+        g.setColour(findColour(juce::PopupMenu::headerTextColourId));
+        g.drawFittedText(sectionName, area.reduced(6 + 14, 0).withTrimmedTop(2), juce::Justification::centredLeft, 1);
     }
 
     void drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& fullArea, bool isSeparator, bool isActive,
@@ -181,12 +191,12 @@ public:
             g.setColour(textColour.withMultipliedAlpha(isActive ? 1.0f : 0.5f));
         }
 
-        auto r = area.reduced(16, 0);   // so the words sit 10px inside the highlight
+        auto r = area.reduced(14, 0);   // so the words sit 8px inside the highlight
         auto font = getPopupMenuFont();
         g.setFont(font);
 
         // The mark column: an icon, or a check in the accent when the item is on
-        auto mark = r.removeFromLeft(18).toFloat();
+        auto mark = r.removeFromLeft(16).toFloat();
         if (icon != nullptr)
             icon->drawWithin(g, mark, juce::RectanglePlacement::centred | juce::RectanglePlacement::onlyReduceInSize, 1.0f);
         else if (isTicked)
@@ -200,7 +210,7 @@ public:
             g.strokePath(tick, juce::PathStrokeType(2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
             g.restoreState();
         }
-        r.removeFromLeft(6);
+        r.removeFromLeft(4);
 
         if (hasSubMenu)
         {

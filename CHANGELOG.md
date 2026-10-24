@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Menus: the section heading is no longer stretched, and the check column is narrower**
+  (2026-10-24, branch `ui-redesign`). The 32px minimum row height applied to a menu's section heading
+  as well (the "value" over a parameter's right-click menu), which JUCE then enlarges by half again, so
+  it had a big gap above it. The heading keeps its natural height now and is drawn level with the
+  words, and the column reserved on the left for the check marks is 20px (was 24+).
+
 - **Menus on Linux are one clean rectangle** (2026-10-24, branch `ui-redesign`). JUCE can only give a
   window see-through corners on Linux when it is built with `JUCE_USE_XRENDER`, which this build is
   not, so a rounded box showed square dark corners behind it (most visible on the right-click menus).
