@@ -12,7 +12,7 @@ public:
     {
         // Module description. Palette colour, not a hardcoded near-white: on a
         // light theme white-on-white made the text invisible (issue #58).
-        descLabel.setFont(juce::Font(AppTheme::uiFont(13.0f)));
+        descLabel.setFont(juce::Font(AppTheme::uiFont(14.0f)));
         descLabel.setColour(juce::Label::textColourId,       AppTheme::palette().textPrimary);
         descLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
         descLabel.setText(help.description, juce::dontSendNotification);
@@ -28,15 +28,15 @@ public:
             if (p.name.startsWith("$"))
                 continue;
             auto* nl = names.add(std::make_unique<juce::Label>());
-            nl->setFont(juce::Font(AppTheme::uiFont(12.0f)).boldened());
-            nl->setColour(juce::Label::textColourId,       AppTheme::palette().accentWarning);
+            nl->setFont(juce::Font(AppTheme::uiFont(13.5f)).boldened());
+            nl->setColour(juce::Label::textColourId,       AppTheme::palette().accentActive);
             nl->setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
             nl->setText(p.name, juce::dontSendNotification);
             nl->setJustificationType(juce::Justification::topLeft);
             addAndMakeVisible(nl);
 
             auto* dl = descs.add(std::make_unique<juce::Label>());
-            dl->setFont(juce::Font(AppTheme::uiFont(12.0f)));
+            dl->setFont(juce::Font(AppTheme::uiFont(13.5f)));
             dl->setColour(juce::Label::textColourId,       AppTheme::palette().textSecondary);
             dl->setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
             dl->setText(p.description, juce::dontSendNotification);
@@ -49,7 +49,7 @@ public:
     // Call this after setting width to get the required height
     int layout(int w)
     {
-        const int pad = 12;
+        const int pad = 24;
         int innerW = w - pad * 2;
         int y = pad;
 
@@ -59,22 +59,22 @@ public:
         };
         (void)setLbl; // suppress unused warning
 
-        int dh = textHeight(descLabel.getText(), innerW, 13.0f, false);
+        int dh = textHeight(descLabel.getText(), innerW, 14.0f, false);
         descLabel.setBounds(pad, y, innerW, dh);
-        y += dh + 10;
+        y += dh + 14;
 
         if (!names.isEmpty())
         {
-            y += 8; // space for divider
+            y += 14; // space for divider
             for (int i = 0; i < names.size(); ++i)
             {
-                int nh = textHeight(names[i]->getText(), innerW, 12.0f, true);
+                int nh = textHeight(names[i]->getText(), innerW, 13.5f, true);
                 names[i]->setBounds(pad, y, innerW, nh);
                 y += nh + 2;
 
-                int ph = textHeight(descs[i]->getText(), innerW, 12.0f, false);
+                int ph = textHeight(descs[i]->getText(), innerW, 13.5f, false);
                 descs[i]->setBounds(pad, y, innerW, ph);
-                y += ph + 8;
+                y += ph + 14;
             }
         }
 
@@ -83,13 +83,13 @@ public:
 
     void paint(juce::Graphics& g) override
     {
-        g.fillAll(AppTheme::palette().backgroundPanel);
+        g.fillAll(AppTheme::palette().backgroundMain);
         if (!names.isEmpty())
         {
             // divider line just above first parameter
-            int y = descLabel.getBottom() + 10 + 4;
-            g.setColour(AppTheme::palette().buttonActive);
-            g.fillRect(12, y, getWidth() - 24, 1);
+            int y = descLabel.getBottom() + 14 + 4;
+            g.setColour(AppTheme::palette().borderColor);
+            g.fillRect(24, y, getWidth() - 48, 1);
         }
     }
 
@@ -121,14 +121,8 @@ ModuleHelpPopup::ModuleHelpPopup(const NordHelp::ModuleHelp& help,
 {
     setOpaque(true);
 
-    // Title bar
-    titleLabel.setFont(juce::Font(AppTheme::uiFont(14.0f)).boldened());
-    titleLabel.setColour(juce::Label::textColourId,       AppTheme::palette().accentActive);
-    titleLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+    // The title is drawn by paint(); the label only carries the text
     titleLabel.setText(help.name, juce::dontSendNotification);
-    titleLabel.setJustificationType(juce::Justification::centredLeft);
-    titleLabel.setInterceptsMouseClicks(false, false);
-    addAndMakeVisible(titleLabel);
 
     closeButton.onClick = [this]() { removeFromDesktop(); delete this; };
     addAndMakeVisible(closeButton);
@@ -141,9 +135,9 @@ ModuleHelpPopup::ModuleHelpPopup(const NordHelp::ModuleHelp& help,
     addAndMakeVisible(viewport);
 
     // Size: lay out content at target width first
-    const int popupW = 430;
-    const int titleH = 32;
-    const int maxContentH = 480;
+    const int popupW = 520;
+    const int titleH = 40;
+    const int maxContentH = 520;
 
     int prefH = content->layout(popupW);
     content->setSize(popupW, prefH);
@@ -169,18 +163,20 @@ ModuleHelpPopup::ModuleHelpPopup(const NordHelp::ModuleHelp& help,
 
 void ModuleHelpPopup::resized()
 {
-    const int titleH = 32;
-    titleLabel.setBounds(8, 0, getWidth() - 40, titleH);
-    closeButton.setBounds(getWidth() - 32, 2, 28, 28);
+    const int titleH = 40;
+    closeButton.setBounds(getWidth() - 36, 6, 28, 28);
     viewport.setBounds(0, titleH, getWidth(), getHeight() - titleH);
 }
 
 void ModuleHelpPopup::paint(juce::Graphics& g)
 {
-    g.fillAll(AppTheme::palette().backgroundPanel);
-    // Title bar bottom line
-    g.setColour(AppTheme::palette().buttonActive);
-    g.fillRect(0, 31, getWidth(), 1);
+    // The same title bar as every dialog; the text sits on the panel colour below it
+    AppTheme::drawDialogChrome(g, getLocalBounds(), titleLabel.getText(), 40, 0);
+}
+
+void ModuleHelpPopup::paintOverChildren(juce::Graphics& g)
+{
+    AppTheme::drawWindowFrame(g, getLocalBounds());
 }
 
 bool ModuleHelpPopup::keyPressed(const juce::KeyPress& key)
@@ -196,13 +192,15 @@ bool ModuleHelpPopup::keyPressed(const juce::KeyPress& key)
 
 void ModuleHelpPopup::mouseDown(const juce::MouseEvent& e)
 {
-    if (e.getPosition().getY() < 32)
+    if (e.getPosition().getY() < 40)
         dragger.startDraggingComponent(this, e);
 }
 
 void ModuleHelpPopup::mouseDrag(const juce::MouseEvent& e)
 {
-    dragger.dragComponent(this, e, nullptr);
+    // only a drag that began on the title bar moves the window
+    if (e.getMouseDownPosition().getY() < 40)
+        dragger.dragComponent(this, e, nullptr);
 }
 
 // static

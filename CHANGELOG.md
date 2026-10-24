@@ -566,6 +566,11 @@ entries below are in the order they were made, newest first; the redesign ones s
 
 ### Fixed
 
+- **Module help (F1) in the new look** (2026-10-24, `main`). The help window of a module had the old
+  gold title and a tiny line under it: it has the dialogs' title bar and frame now, 520px wide, 24px of
+  margin, the parameter names in the accent over their text in 13.5px, and it only drags from its title
+  bar (it dragged from anywhere).
+
 - **Found in a last sweep for what the redesign had missed** (2026-10-24, `main`). The **Quick Add**
   popup (Enter on the canvas) wears the new look: 400px wide, a 48px field, 30px rows with a rounded
   highlight and 11.5px categories and DSP costs. The **maximise button** of a slot's sub-window is a

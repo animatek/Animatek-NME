@@ -8,6 +8,7 @@
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
 #include "ui/AboutDialog.h"
+#include "help/ModuleHelpPopup.h"
 #include "ui/ThemeEditorWindow.h"
 #include "ui/CommunityThemesWindow.h"
 #include "ui/ShortcutsDialog.h"
@@ -3497,6 +3498,15 @@ void MainComponent::saveSnapshotsAndQuit(const juce::File& dir)
       SlotSelectDialog d("Open \"Fractura\" into...", { "Fractura", "", "", "A Nucleo Duro" }, 0, 0,
                          [](const SlotSelectDialog::Result&) {});
       shoot(d, "dialog-slot-select");
+    }
+    {
+      // The module help window (F1): shown for a module that has help, taken away after the picture
+      if (auto* help = ModuleHelpPopup::show("2 Outputs|2 Outputs", safeThis.getComponent()))
+      {
+        shoot(*help, "popup-module-help");
+        help->removeFromDesktop();
+        delete help;
+      }
     }
     {
       // Quick Add, with a search typed, and a tooltip drawn the way the editor draws them
