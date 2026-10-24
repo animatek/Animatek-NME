@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **Every window wears a thin outline** (2026-10-24, branch `ui-redesign`). A dialog or a floater on
+  the same dark ground as what is behind it melted into it. The dialogs (Editor Options, About, MIDI
+  Setup, Bank Transfer, Patch and Synth Settings, Patch Location, Save Slot Set, Slot Select) draw a 1px
+  frame over everything they hold, and the windows JUCE draws itself (the floaters, the browser window,
+  the About box) get it from the look and feel's window border. The line is the theme's border colour,
+  lightened.
+
 - **Editor Options redesigned** (2026-10-24, branch `ui-redesign`). The one long list becomes a dialog
   (860x640) with a **sidebar of eight pages**: Appearance (theme, UI size, hardware look, knob style,
   flat knobs, wireframe), Cables (style, opacity), Knobs (drag mode), Behaviour (ask slot, animate

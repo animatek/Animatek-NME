@@ -53,6 +53,10 @@ namespace AppTheme
     // colour left green Macro 2 unreadable on the light Nord Classic chrome.
     juce::Colour macroLabelInk();
 
+    // The thin outline every window of the editor wears: a dialog or a floater on the same dark
+    // ground as what is behind it would otherwise melt into it.
+    void drawWindowFrame(juce::Graphics& g, juce::Rectangle<int> bounds);
+
     juce::String displayName(AppThemeId id);
     AppThemeId themeFromInt(int value);
 

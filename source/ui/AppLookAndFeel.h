@@ -243,6 +243,13 @@ public:
         g.drawFittedText(text, r.withTrimmedRight(shortcutW + (shortcutW > 0 ? 12 : 0)), juce::Justification::centredLeft, 1);
     }
 
+    // Every window of the editor wears a thin outline, so it does not melt into what is behind it
+    void drawResizableWindowBorder(juce::Graphics& g, int width, int height, const juce::BorderSize<int>&,
+                                   juce::ResizableWindow&) override
+    {
+        AppTheme::drawWindowFrame(g, { 0, 0, width, height });
+    }
+
     // Text fields with rounded corners, like the buttons
     void fillTextEditorBackground(juce::Graphics& g, int width, int height, juce::TextEditor& editor) override
     {

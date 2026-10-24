@@ -1,5 +1,7 @@
 #pragma once
 
+#include "AppTheme.h"
+
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../model/SynthSettings.h"
 #include "FlatCloseButton.h"
@@ -13,6 +15,7 @@ public:
 
     void setSettings (const SynthSettings& settings);
     void paint   (juce::Graphics& g) override;
+    void paintOverChildren (juce::Graphics& g) override { AppTheme::drawWindowFrame (g, getLocalBounds()); }
     void resized () override;
     bool keyPressed (const juce::KeyPress& key) override;
     void mouseDown  (const juce::MouseEvent& e) override;

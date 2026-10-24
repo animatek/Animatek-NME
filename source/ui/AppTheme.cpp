@@ -122,6 +122,12 @@ void AppTheme::setTheme(AppThemeId id)
     applyLookAndFeel();
 }
 
+void AppTheme::drawWindowFrame(juce::Graphics& g, juce::Rectangle<int> bounds)
+{
+    g.setColour(palette().borderColor.brighter(0.6f));
+    g.drawRect(bounds, 1);
+}
+
 void AppTheme::setPalette(const AppThemePalette& p)
 {
     active = p;

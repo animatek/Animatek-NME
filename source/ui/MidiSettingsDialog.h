@@ -1,5 +1,7 @@
 #pragma once
 
+#include "AppTheme.h"
+
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <array>
 #include "../midi/SynthHub.h"
@@ -30,6 +32,7 @@ public:
     std::function<void(int port, const Port& wanted)> onApply;
 
     void paint   (juce::Graphics& g) override;
+    void paintOverChildren (juce::Graphics& g) override { AppTheme::drawWindowFrame (g, getLocalBounds()); }
     void resized () override;
     bool keyPressed (const juce::KeyPress& key) override;
     void mouseDown  (const juce::MouseEvent& e) override;
