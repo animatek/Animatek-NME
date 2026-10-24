@@ -53,9 +53,9 @@ PatchHeaderBar::PatchHeaderBar()
     // Create patch name editor (initially hidden)
     patchNameEditor = std::make_unique<juce::Label>("PatchName", "");
     patchNameEditor->setEditable(true);
-    patchNameEditor->setColour(juce::Label::backgroundColourId, AppTheme::palette().inputBackground);
+    patchNameEditor->setColour(juce::Label::backgroundColourId, AppTheme::palette().inputBackground.darker(0.15f));
     patchNameEditor->setColour(juce::Label::textColourId, AppTheme::palette().textPrimary);
-    patchNameEditor->setColour(juce::Label::outlineColourId, AppTheme::palette().borderColor);
+    patchNameEditor->setColour(juce::Label::outlineColourId, juce::Colours::transparentBlack);
     // The same type as the title it replaces while it is being typed over
     patchNameEditor->setFont(AppTheme::uiFont(15.0f).withStyle("Bold"));
     patchNameEditor->setBorderSize(juce::BorderSize<int>(0, 11, 0, 8));
@@ -632,10 +632,8 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         auto nameRect = L.name;
         const bool has = patch != nullptr;
         const auto box = nameRect.toFloat();
-        g.setColour(pal.inputBackground);
+        g.setColour(pal.inputBackground.darker(0.15f));   // just the darker ground, no outline
         g.fillRoundedRectangle(box, 6.0f);
-        g.setColour(pal.borderColor);
-        g.drawRoundedRectangle(box.reduced(0.5f), 6.0f, 1.0f);
         g.setColour(has ? pal.textPrimary : pal.textMuted);
         g.setFont(AppTheme::uiFont(15.0f).withStyle("Bold"));
         g.drawText(has ? patch->getName() : juce::String("No Patch"),

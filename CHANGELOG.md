@@ -8,6 +8,10 @@
   instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
   to yours and quit without a picture. That run now counts as its own instance.
 
+- **Patch name field without the outline** (2026-10-24, `main`). The grey line round the name field is
+  gone: only the darker ground says it is a field (a touch darker still), in the resting state and
+  while typing.
+
 - **Header bar: the patch name is a field, and the elements sit closer** (2026-10-24, `main`). The name
   was bare text, with nothing to say it can be edited: it is in a field now (the input colour, darker than
   the bar, with a thin border and 11px of room), 150px wide (it was 168), and the editor that replaces it
