@@ -4,6 +4,10 @@
 
 ### Changed
 
+- **Menus float a little away from the menu bar** (2026-10-24, branch `ui-redesign`): the rounded box
+  is drawn 6px inside the menu window, so there is a gap between it and the bar (and a margin on every
+  side) instead of touching it.
+
 - **Menus restyled** (2026-10-24, branch `ui-redesign`). Every drop-down and context menu (File, Edit, View,
   Device, the right-click menus, the Cables menu) gets rounded corners and a thin border, 6px of
   padding, 32px rows, a rounded highlight under the pointer, a hairline for a separator, a check

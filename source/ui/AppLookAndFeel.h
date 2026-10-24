@@ -112,7 +112,10 @@ public:
 
     // ---- Menus: rounded, roomy, a hairline for a separator, a light highlight, quiet shortcuts ----
     juce::Font getPopupMenuFont() override { return juce::Font(AppTheme::uiFont(14.0f)); }
-    int getPopupMenuBorderSize() override { return 6; }
+    // 12px between the window's edge and the rows: 6 of them are empty margin (the rounded box is
+    // drawn inside it, so it floats a little away from the menu bar and the title it opened from),
+    // and 6 are the box's own padding
+    int getPopupMenuBorderSize() override { return 12; }
 
     void drawPopupMenuBackground(juce::Graphics& g, int width, int height) override
     {
@@ -120,7 +123,7 @@ public:
         // A window that cannot be see-through shows square corners: paint them in the ground colour
         if (!juce::Desktop::getInstance().canUseSemiTransparentWindows())
             g.fillAll(pal.backgroundMain);
-        const auto box = juce::Rectangle<float>(0.5f, 0.5f, static_cast<float>(width) - 1.0f, static_cast<float>(height) - 1.0f);
+        const auto box = juce::Rectangle<float>(6.5f, 6.5f, static_cast<float>(width) - 13.0f, static_cast<float>(height) - 13.0f);
         g.setColour(pal.backgroundPanel);
         g.fillRoundedRectangle(box, 9.0f);
         g.setColour(pal.borderColor.brighter(0.2f));
