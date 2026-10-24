@@ -2,10 +2,26 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
+// A panel's switch in the status bar, the way Bitwig keeps its own at the foot of the window: an "i"
+// for the inspector, a magnifying glass for the browser. Lit in the accent while the panel is open.
+class PanelIconButton : public juce::Button
+{
+public:
+    enum class Icon { Inspector, Browser };
+    explicit PanelIconButton(Icon i);
+    void paintButton(juce::Graphics& g, bool highlighted, bool down) override;
+private:
+    Icon icon;
+};
+
 class StatusBar : public juce::Component
 {
 public:
     StatusBar();
+
+    // The inspector and browser switches; setPanelStates lights them to match the panels
+    std::function<void()> onInspectorClicked, onBrowserClicked;
+    void setPanelStates(bool inspectorOpen, bool browserOpen);
 
     void setConnectionStatus(const juce::String& status, bool connected = false);
     // Where the editor is connected: "Real G1 (port)", "G1-Emu (port)", "Not connected".
@@ -31,6 +47,8 @@ public:
     void mouseDown(const juce::MouseEvent& e) override;
 
 private:
+    PanelIconButton inspectorButton { PanelIconButton::Icon::Inspector };
+    PanelIconButton browserButton   { PanelIconButton::Icon::Browser };
     juce::Label connectionLabel;
     juce::Label linkLabel;
     juce::Label voiceLabel;

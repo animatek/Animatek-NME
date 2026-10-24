@@ -378,85 +378,6 @@ void SlotBar::mouseDown(const juce::MouseEvent& e)
 }
 
 // ============================================================
-// PanelToggleStrip implementation
-// ============================================================
-
-PanelToggleStrip::PanelToggleStrip(bool leftEdge)
-    : isLeftEdge(leftEdge)
-{
-    setMouseCursor(juce::MouseCursor::PointingHandCursor);
-}
-
-void PanelToggleStrip::setPanelOpen(bool open)
-{
-    if (panelOpen == open)
-        return;
-    panelOpen = open;
-    repaint();
-}
-
-void PanelToggleStrip::paint(juce::Graphics& g)
-{
-    const auto& pal = AppTheme::palette();
-    auto area = getLocalBounds();
-
-    g.setColour(hovered ? pal.buttonActive : pal.backgroundSecondary);
-    g.fillRect(area);
-
-    // Hairline on the canvas-facing edge only, so the strip reads as part of
-    // the panel's chrome rather than as a floating bar.
-    g.setColour(pal.borderColor);
-    if (isLeftEdge)
-        g.drawVerticalLine(area.getRight() - 1, (float) area.getY(), (float) area.getBottom());
-    else
-        g.drawVerticalLine(area.getX(), (float) area.getY(), (float) area.getBottom());
-
-    // Chevron points toward the panel while it is open (click collapses it)
-    // and away from it once collapsed (click brings it back), matching the
-    // slot windows.
-    const float cx = (float) area.getCentreX();
-    const float cy = (float) area.getCentreY();
-    const float s = 4.0f;
-    const bool pointsLeft = (isLeftEdge == panelOpen);
-
-    juce::Path chevron;
-    if (pointsLeft)
-    {
-        chevron.startNewSubPath(cx + s, cy - s * 1.4f);
-        chevron.lineTo(cx - s, cy);
-        chevron.lineTo(cx + s, cy + s * 1.4f);
-    }
-    else
-    {
-        chevron.startNewSubPath(cx - s, cy - s * 1.4f);
-        chevron.lineTo(cx + s, cy);
-        chevron.lineTo(cx - s, cy + s * 1.4f);
-    }
-
-    g.setColour(hovered ? pal.textPrimary : pal.textSecondary);
-    g.strokePath(chevron, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved,
-                                               juce::PathStrokeType::rounded));
-}
-
-void PanelToggleStrip::mouseDown(const juce::MouseEvent&)
-{
-    if (onToggle)
-        onToggle();
-}
-
-void PanelToggleStrip::mouseEnter(const juce::MouseEvent&)
-{
-    hovered = true;
-    repaint();
-}
-
-void PanelToggleStrip::mouseExit(const juce::MouseEvent&)
-{
-    hovered = false;
-    repaint();
-}
-
-// ============================================================
 // MainLayout implementation
 // ============================================================
 
@@ -491,17 +412,16 @@ MainLayout::MainLayout(ModuleDescriptions& moduleDescs)
     rightBrowserTabs.addTab("Synth", AppTheme::palette().backgroundPanel, &patchBrowserPanel, false);
     rightBrowserTabs.addTab("Disk", AppTheme::palette().backgroundPanel, &diskPresetBrowserPanel, false);
 
-    leftToggleStrip.onToggle = [this]() {
+    // The switches live in the status bar, as in Bitwig: an "i" for the inspector, a lens for the browser
+    statusBar.onInspectorClicked = [this]() {
         if (onPanelToggleRequested) onPanelToggleRequested(true);
         else                        setLeftPanelVisible(!leftPanelVisible);
     };
-    rightToggleStrip.onToggle = [this]() {
+    statusBar.onBrowserClicked = [this]() {
         if (onPanelToggleRequested) onPanelToggleRequested(false);
         else                        setRightPanelVisible(!rightPanelVisible);
     };
 
-    addAndMakeVisible(leftToggleStrip);
-    addAndMakeVisible(rightToggleStrip);
     addAndMakeVisible(leftColumn);
     addAndMakeVisible(headerBar);
     moduleIconBar.setModuleDescriptions(&moduleDescs);
@@ -538,8 +458,6 @@ void MainLayout::applyTheme()
     diskPresetBrowserPanel.applyTheme();
     inspectorPanel.applyTheme();
     statusBar.applyTheme();
-    leftToggleStrip.repaint();
-    rightToggleStrip.repaint();
     repaint();
 }
 
@@ -556,11 +474,6 @@ void MainLayout::resized()
     headerBar.setBounds(area.removeFromTop(headerBarHeight));
     if (moduleIconBarVisible)
         moduleIconBar.setBounds(area.removeFromTop(ModuleIconBar::preferredHeight));
-
-    // The chevron strips sit outside the stretchable layout, at both edges, so
-    // they keep their place whether or not the panel behind them is showing.
-    leftToggleStrip.setBounds(area.removeFromLeft(PanelToggleStrip::stripWidth));
-    rightToggleStrip.setBounds(area.removeFromRight(PanelToggleStrip::stripWidth));
 
     juce::Component* comps[] = {
         &leftColumn, &resizerBar1, &patchArea, &resizerBar2, &rightBrowserTabs
@@ -602,7 +515,7 @@ void MainLayout::setLeftPanelVisible(bool visible)
     leftPanelVisible = visible;
     leftColumn.setVisible(visible);
     resizerBar1.setVisible(visible);
-    leftToggleStrip.setPanelOpen(visible);
+    statusBar.setPanelStates(leftPanelVisible, rightPanelVisible);
 
     // Zero out the item and its resizer so the canvas absorbs the width.
     if (visible)
@@ -630,7 +543,7 @@ void MainLayout::setRightPanelVisible(bool visible)
     rightPanelVisible = visible;
     rightBrowserTabs.setVisible(visible);
     resizerBar2.setVisible(visible);
-    rightToggleStrip.setPanelOpen(visible);
+    statusBar.setPanelStates(leftPanelVisible, rightPanelVisible);
 
     if (visible)
     {

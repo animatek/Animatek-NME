@@ -4,6 +4,17 @@
 
 ### Changed
 
+- **Snapshot run beside a running editor** (2026-10-24, branch `ui-redesign`). The editor allows one
+  instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
+  to yours and quit without a picture. That run now counts as its own instance.
+
+- **Inspector and browser switches as icons in the status bar** (2026-10-24, branch `ui-redesign`).
+  The two thin strips with a chevron at the edges of the window, which were hard to read as buttons, are
+  gone. As in Bitwig, an **"i"** at the left of the status bar opens and closes the inspector and a
+  **magnifying glass** at the right does the same for the patch browser; each lights in the accent while
+  its panel is open and has a tooltip with its shortcut. The status bar is 30px tall (it was 24) and the
+  canvas gets the 14px at each edge back. Ctrl+I and Ctrl+Shift+I are unchanged.
+
 - **The menu bar, restyled** (2026-10-24, branch `ui-redesign`). 32px tall (it was 24) in the ground
   colour with a rule under it; each title (File, Edit, View, Device, Help, About) is a 14px pill that
   lights up under the mouse and stays lit while its menu is open, with 14px of room either side. The red

@@ -1,8 +1,54 @@
 #include "StatusBar.h"
 #include "AppTheme.h"
 
+PanelIconButton::PanelIconButton(Icon i) : juce::Button("panel"), icon(i)
+{
+    setClickingTogglesState(false);
+    setMouseCursor(juce::MouseCursor::PointingHandCursor);
+}
+
+void PanelIconButton::paintButton(juce::Graphics& g, bool highlighted, bool down)
+{
+    const auto& pal = AppTheme::palette();
+    const bool on = getToggleState();
+    const auto r = getLocalBounds().toFloat().reduced(1.0f, 2.0f);
+    if (highlighted || down)
+    {
+        g.setColour(pal.buttonBackground);
+        g.fillRoundedRectangle(r, 6.0f);
+    }
+    const auto ink = on ? pal.accentActive : (highlighted ? pal.textPrimary : pal.textSecondary);
+    g.setColour(ink);
+    const auto c = r.getCentre();
+    if (icon == Icon::Inspector)
+    {
+        g.setFont(juce::Font(AppTheme::uiFont(17.0f)).boldened());
+        g.drawText("i", r.toNearestInt(), juce::Justification::centred, false);
+    }
+    else
+    {
+        g.drawEllipse(c.x - 5.5f, c.y - 5.5f, 10.0f, 10.0f, 1.8f);
+        g.drawLine(c.x + 2.2f, c.y + 2.2f, c.x + 6.5f, c.y + 6.5f, 2.0f);
+    }
+}
+
+void StatusBar::setPanelStates(bool inspectorOpen, bool browserOpen)
+{
+    inspectorButton.setToggleState(inspectorOpen, juce::dontSendNotification);
+    browserButton.setToggleState(browserOpen, juce::dontSendNotification);
+}
+
 StatusBar::StatusBar()
 {
+    inspectorButton.setTooltip("Inspector (Ctrl+I)");
+    browserButton.setTooltip("Patch browser (Ctrl+Shift+I)");
+    inspectorButton.setToggleState(true, juce::dontSendNotification);
+    browserButton.setToggleState(true, juce::dontSendNotification);
+    inspectorButton.onClick = [this] { if (onInspectorClicked) onInspectorClicked(); };
+    browserButton.onClick   = [this] { if (onBrowserClicked) onBrowserClicked(); };
+    addAndMakeVisible(inspectorButton);
+    addAndMakeVisible(browserButton);
+
     auto setupLabel = [this](juce::Label& label, const juce::String& text)
     {
         label.setText(text, juce::dontSendNotification);
@@ -172,6 +218,10 @@ void StatusBar::paint(juce::Graphics& g)
 void StatusBar::resized()
 {
     auto area = getLocalBounds().reduced(8, 0);
+    inspectorButton.setBounds(area.removeFromLeft(32));
+    area.removeFromLeft(8);
+    browserButton.setBounds(area.removeFromRight(32));
+    area.removeFromRight(8);
 
     // LED indicator (small circle on the left)
     auto ledSize = 10.0f;
