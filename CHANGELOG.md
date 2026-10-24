@@ -4,6 +4,9 @@
 
 ### Changed
 
+- **Inspector: no hairline under the last assignment of a section** (2026-10-24, branch
+  `ui-redesign`): the next section's title already draws its own rule, so two lines in a row read as noise.
+
 - **Inspector: with a module selected, only its own knobs, MIDI CC and macros** (2026-10-24,
   branch `ui-redesign`). The Knobs, MIDI CC and Macros sections listed the whole patch whichever module
   was selected. Now, with a module selected they show that module's assignments only; with none

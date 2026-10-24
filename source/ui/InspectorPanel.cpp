@@ -1249,14 +1249,18 @@ private:
 
     void paintAssignRow(juce::Graphics& g, int y, AssignIcon kind, juce::Colour iconColour,
                         const juce::String& paramName, const juce::String& target,
-                        const juce::String& moduleName, bool isGlobal, int reserveRight)
+                        const juce::String& moduleName, bool isGlobal, int reserveRight, bool lastRow)
     {
         const auto& pal = AppTheme::palette();
         const int w = getWidth();
 
-        // A hairline between rows, so each assignment stands apart
-        g.setColour(pal.borderColor.withAlpha(0.5f));
-        g.fillRect(marginX, y + assignRowH - 1, w - marginX * 2, 1);
+        // A hairline between rows, so each assignment stands apart. Not under the last one of a
+        // section: the next section's title brings its own rule, and two lines in a row is noise.
+        if (!lastRow)
+        {
+            g.setColour(pal.borderColor.withAlpha(0.5f));
+            g.fillRect(marginX, y + assignRowH - 1, w - marginX * 2, 1);
+        }
 
         paintAssignIcon(g, kind, { static_cast<float>(marginX + 2), static_cast<float>(y + (assignRowH - 24) / 2), 30.0f, 24.0f },
                         iconColour);
@@ -1310,10 +1314,9 @@ private:
 
     void paintMorphRow(juce::Graphics& g, int y, int i, const MorphRow& r, bool isGlobal)
     {
-        (void) i;
         const juce::Colour gc = kMorphColors[r.group];
         paintAssignRow(g, y, AssignIcon::Macro, gc, r.paramName, kGroupNames[r.group], r.moduleName,
-                       isGlobal, amountW + 6);
+                       isGlobal, amountW + 6, i == static_cast<int>(morphRows.size()) - 1);
 
         // Amount: how far the macro moves it, to the left of the cross
         if (r.param != nullptr)
@@ -1341,11 +1344,11 @@ private:
 
     void paintHwRow(juce::Graphics& g, int y, int i, const HwRow& r, bool isGlobal, juce::Colour accent)
     {
-        (void) i;
         const bool isCc = r.label.startsWith("CC");
+        const bool last = i == static_cast<int>((isCc ? ctrlRows.size() : knobRows.size())) - 1;
         paintAssignRow(g, y, isCc ? AssignIcon::Cc : AssignIcon::Knob,
                        isCc ? accent : AppTheme::palette().textSecondary,
-                       r.paramName, r.label, r.moduleName, isGlobal, 0);
+                       r.paramName, r.label, r.moduleName, isGlobal, 0, last);
     }
 
     void paintParamName(juce::Graphics& g, int x, int y, int w,
