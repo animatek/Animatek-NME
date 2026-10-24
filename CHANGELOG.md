@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Synth list restyled** (2026-10-24, branch `ui-redesign`). Same one-row-per-synth list at the
+  bottom of the inspector, in the new look: the synth's number (lit when it is the one being
+  edited), the four slot buttons as rounded squares, the name as a pill with a connection dot and
+  the DSP load as a number inside it, and the load itself as a thin bar under the row. Rows are
+  42px (were 30). Click, drag-and-drop, rename and Ctrl+click behave as before.
+
 - **Header bar: MUTATOR sits between the snapshots and the A/B crossfader** (2026-10-24, branch
   `ui-redesign`), with a hairline on each side. Order: ... cable colours | snapshots | MUTATOR |
   A/B | free room | heart, Patreon.

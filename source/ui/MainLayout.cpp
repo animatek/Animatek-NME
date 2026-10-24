@@ -89,7 +89,7 @@ void SlotBar::setLoad(int synth, float fraction)
     if (juce::approximatelyEqual(loadFraction[synth], fraction))
         return;
     loadFraction[synth] = fraction;
-    repaint(loadBounds[synth]);
+    repaint(nameBounds[synth].getUnion(loadBounds[synth]));   // the number is in the name pill
 }
 
 void SlotBar::setRowShown(int synth, bool shown)
@@ -122,7 +122,7 @@ void SlotBar::setWaitingEmulators(int count)
 void SlotBar::resized()
 {
     auto all = getLocalBounds().withTrimmedTop(kHeaderH).withTrimmedBottom(kBottomPad);
-    static constexpr int buttonW = 20;
+    static constexpr int numW = 16, buttonW = 25;
     for (int synth = 0; synth < kMaxSynths; ++synth)
     {
         if (! rowShown[synth])
@@ -130,17 +130,22 @@ void SlotBar::resized()
             // Nothing on screen, so nothing to click or drop onto either.
             for (int l = 0; l < kSlotsPerSynth; ++l)
                 slotBounds[SynthSlot::global(synth, l)] = {};
-            nameBounds[synth] = loadBounds[synth] = {};
+            numBounds[synth] = nameBounds[synth] = loadBounds[synth] = {};
             continue;
         }
-        auto area = all.removeFromTop(kRowH).reduced(8, 3);
+        // A row: the synth's number, its four slot buttons, its name; the DSP load is a thin bar
+        // under the buttons and the name.
+        auto row = all.removeFromTop(kRowH).reduced(10, 4);
+        auto load = row.removeFromBottom(4);
+        row.removeFromBottom(3);
+        numBounds[synth] = row.removeFromLeft(numW);
+        row.removeFromLeft(2);
+        const int firstButtonX = row.getX();
         for (int l = 0; l < kSlotsPerSynth; ++l)
-            slotBounds[SynthSlot::global(synth, l)] = area.removeFromLeft(buttonW).withTrimmedRight(2);
-        area.removeFromLeft(2);
-        // The name takes about half of what is left, the load bar the rest.
-        nameBounds[synth] = area.removeFromLeft(juce::jmax(40, area.getWidth() * 11 / 20));
-        area.removeFromLeft(6);
-        loadBounds[synth] = area;
+            slotBounds[SynthSlot::global(synth, l)] = row.removeFromLeft(buttonW).withTrimmedRight(3);
+        row.removeFromLeft(3);
+        nameBounds[synth] = row;
+        loadBounds[synth] = load.withTrimmedLeft(firstButtonX - load.getX());
     }
 }
 
@@ -152,16 +157,17 @@ void SlotBar::paint(juce::Graphics& g)
     // The rule that ends the inspector, then the header: what this is, and how many synths.
     g.setColour(pal.borderColor);
     g.fillRect(0, 0, getWidth(), 1);
-    auto header = juce::Rectangle<int>(8, 4, getWidth() - 16, kHeaderH - 6);
-    g.setColour(pal.textSecondary);
-    g.setFont(AppTheme::uiFont(10.0f).withStyle("Bold"));
+    auto header = juce::Rectangle<int>(10, 6, getWidth() - 20, kHeaderH - 8);
+    g.setColour(pal.textMuted);
+    g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
     g.drawText("SYNTHS", header, juce::Justification::centredLeft, false);
     int connected = 0;
     for (int synth = 0; synth < kMaxSynths; ++synth)
         if (synthName[synth].isNotEmpty())
             ++connected;
     juce::String count = juce::String(connected) + " / " + juce::String(kMaxSynths);
-    g.setFont(AppTheme::uiFont(10.0f));
+    g.setColour(pal.textSecondary);
+    g.setFont(AppTheme::uiFont(11.0f));
     if (waitingEmulators > 0)
     {
         // More emulators than ports: the ones left out are counted where it shows.
@@ -181,31 +187,31 @@ void SlotBar::paint(juce::Graphics& g)
         if (i == dropTargetSlot)
         {
             g.setColour(pal.accentActive.withAlpha(0.35f));
-            g.fillRoundedRectangle(b.expanded(1.0f), 3.0f);
+            g.fillRoundedRectangle(b.expanded(1.0f), 5.0f);
         }
 
-        g.setColour(active ? pal.buttonActive : pal.inputBackground);
-        g.fillRoundedRectangle(b, 3.0f);
-        g.setColour(i == dropTargetSlot ? pal.accentActive : pal.borderColor);
-        g.drawRoundedRectangle(b, 3.0f, 1.0f);
+        g.setColour(active ? pal.buttonActive : pal.buttonBackground);
+        g.fillRoundedRectangle(b, 5.0f);
+        g.setColour(i == dropTargetSlot ? pal.accentActive : active ? pal.buttonActive : pal.borderColor);
+        g.drawRoundedRectangle(b.reduced(0.5f), 5.0f, 1.0f);
 
         g.setColour(active ? juce::Colours::white
                            : slotEnabledFlags[i] ? pal.textPrimary : pal.textSecondary.withAlpha(0.5f));
-        g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
+        g.setFont(AppTheme::uiFont(12.0f).withStyle("Bold"));
         g.drawText(slotLetters[SynthSlot::localOf(i)], slotBounds[i], juce::Justification::centred);
 
         // The slot LED, as a bar under the letter: blinking = focused, fixed =
         // enabled, off = disabled. Ctrl+click the button to toggle enable.
         const bool ledOn = active ? blinkPhase : slotEnabledFlags[i];
         g.setColour(ledOn ? juce::Colour(0xff44cc44) : juce::Colour(0xff2a3a2a));
-        g.fillRect(b.getX() + 3.0f, b.getBottom() - 4.0f, b.getWidth() - 6.0f, 2.0f);
+        g.fillRoundedRectangle(b.getX() + 5.0f, b.getBottom() - 5.0f, b.getWidth() - 10.0f, 2.0f, 1.0f);
 
         // "LOCAL": this slot's editor patch is not known to match the synth
         // (loaded Local, or edited/loaded while disconnected).
         if (slotLocalFlags[i])
         {
             g.setColour(juce::Colour(0xffd08a2c));
-            g.fillEllipse(b.getRight() - 6.0f, b.getY() + 1.0f, 5.0f, 5.0f);
+            g.fillEllipse(b.getRight() - 7.0f, b.getY() + 2.0f, 5.0f, 5.0f);
         }
     }
 
@@ -213,48 +219,54 @@ void SlotBar::paint(juce::Graphics& g)
     {
         if (! rowShown[synth])
             continue;
-        // The synth's name: dark when it is the synth being edited, as in the original.
         const bool hasSynth = synthName[synth].isNotEmpty();
         const bool beingEdited = (synth == SynthSlot::synthOf(activeIndex));
+
+        // The synth's number, lit when it is the synth being edited
+        g.setColour(beingEdited ? pal.accentActive : pal.textMuted);
+        g.setFont(AppTheme::uiFont(12.0f).withStyle("Bold"));
+        g.drawText(juce::String(synth + 1), numBounds[synth], juce::Justification::centred, false);
+
+        // Its name: a pill with a connection dot; filled when it is the synth being edited
         auto name = nameBounds[synth].toFloat();
         g.setColour(! hasSynth ? pal.inputBackground
-                               : beingEdited ? juce::Colour(0xff3a2f7a) : juce::Colour(0xffa9c8c8));
-        g.fillRoundedRectangle(name, 2.0f);
-        g.setColour(pal.borderColor);
-        g.drawRoundedRectangle(name, 2.0f, 1.0f);
-        g.setColour(! hasSynth ? pal.textSecondary : beingEdited ? juce::Colours::white : juce::Colours::black);
-        g.setFont(AppTheme::uiFont(12.0f));
-        g.drawText(hasSynth ? synthName[synth] : "No synth", nameBounds[synth].reduced(3, 0),
-                   juce::Justification::centred, true);
+                               : beingEdited ? pal.buttonActive : pal.buttonBackground);
+        g.fillRoundedRectangle(name, 5.0f);
+        g.setColour(beingEdited && hasSynth ? pal.buttonActive : pal.borderColor);
+        g.drawRoundedRectangle(name.reduced(0.5f), 5.0f, 1.0f);
 
-        // The load: a green-to-red track, darkened past the current value.
-        const auto lb = loadBounds[synth];
+        g.setColour(hasSynth ? juce::Colour(0xff7bc47f) : pal.textMuted.withAlpha(0.6f));
+        g.fillEllipse(name.getX() + 8.0f, name.getCentreY() - 3.5f, 7.0f, 7.0f);
+
         const float load = loadFraction[synth];
+        const juce::String pct = load >= 0.0f ? juce::String(juce::roundToInt(load * 100.0f)) + "%" : juce::String();
+        g.setColour(! hasSynth ? pal.textMuted : beingEdited ? juce::Colours::white : pal.textPrimary);
+        g.setFont(AppTheme::uiFont(12.0f));
+        auto text = name.withTrimmedLeft(21.0f).withTrimmedRight(6.0f);
+        if (pct.isNotEmpty())
+        {
+            g.setFont(AppTheme::uiFont(10.0f));
+            g.setColour(beingEdited ? juce::Colours::white.withAlpha(0.8f) : pal.textSecondary);
+            g.drawText(pct, text, juce::Justification::centredRight, false);
+            text.removeFromRight(30.0f);
+            g.setColour(beingEdited ? juce::Colours::white : pal.textPrimary);
+            g.setFont(AppTheme::uiFont(12.0f));
+        }
+        g.drawText(hasSynth ? synthName[synth] : "No synth", text.toNearestInt(), juce::Justification::centredLeft, true);
+
+        // The load: a thin track under the row, green to amber to red
+        const auto lb = loadBounds[synth];
         if (lb.getWidth() > 8)
         {
-            auto bar = lb.toFloat().withSizeKeepingCentre(static_cast<float>(lb.getWidth()), 7.0f);
-            g.setGradientFill(juce::ColourGradient(juce::Colour(0xff2fae3f), bar.getX(), 0.0f,
-                                                   juce::Colour(0xffc8352b), bar.getRight(), 0.0f, false));
-            g.fillRoundedRectangle(bar, 2.0f);
+            auto bar = lb.toFloat().withSizeKeepingCentre(static_cast<float>(lb.getWidth()), 3.0f);
+            g.setColour(pal.inputBackground);
+            g.fillRoundedRectangle(bar, 1.5f);
             if (load >= 0.0f)
             {
-                auto rest = bar;
-                rest.removeFromLeft(bar.getWidth() * load);
-                g.setColour(pal.backgroundPanel.darker(0.6f).withAlpha(0.85f));
-                g.fillRect(rest);
+                g.setColour(load < 0.6f ? juce::Colour(0xff5a9a5a)
+                          : load < 0.85f ? juce::Colour(0xffb0a030) : juce::Colour(0xffcb4f4f));
+                g.fillRoundedRectangle(bar.withWidth(juce::jmax(2.0f, bar.getWidth() * juce::jlimit(0.0f, 1.0f, load))), 1.5f);
             }
-            else
-            {
-                g.setColour(pal.backgroundPanel.withAlpha(0.7f));
-                g.fillRoundedRectangle(bar, 2.0f);
-            }
-            g.setColour(pal.borderColor);
-            g.drawRoundedRectangle(bar, 2.0f, 1.0f);
-            g.setColour(pal.textSecondary);
-            g.setFont(AppTheme::uiFont(9.0f));
-            g.drawText(load >= 0.0f ? juce::String(juce::roundToInt(load * 100.0f)) + "%" : "--",
-                       lb.withTrimmedTop(lb.getCentreY() + 5 - lb.getY()),
-                       juce::Justification::centred, false);
         }
     }
 }

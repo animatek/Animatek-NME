@@ -83,13 +83,13 @@ private:
     bool blinkPhase = false;
     juce::String slotNames[numSlots];  // patch names per slot
     juce::Rectangle<int> slotBounds[numSlots];   // the A B C D buttons
-    juce::Rectangle<int> nameBounds[kMaxSynths], loadBounds[kMaxSynths];
+    juce::Rectangle<int> numBounds[kMaxSynths], nameBounds[kMaxSynths], loadBounds[kMaxSynths];
     juce::String synthName[kMaxSynths];
     bool rowShown[kMaxSynths] = { true };
     int waitingEmulators = 0;
     // The panel's frame: a header with a rule above it (the inspector ends there), the rows, and
     // a margin before the status bar.
-    static constexpr int kHeaderH = 24, kRowH = 30, kBottomPad = 8;
+    static constexpr int kHeaderH = 28, kRowH = 42, kBottomPad = 8;
     float loadFraction[kMaxSynths];
     // Row a patch is currently being dragged over, -1 when none. Painted so the
     // drop says where it is going before it happens.
