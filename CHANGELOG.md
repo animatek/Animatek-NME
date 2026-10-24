@@ -8,6 +8,21 @@
   instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
   to yours and quit without a picture. That run now counts as its own instance.
 
+- **Snapshot run: a patch and every options page** (2026-10-24, branch `ui-redesign`). With
+  `NME_SNAPSHOT_PATCH=<file.pch>` the picture-taking run opens that patch first, and Editor Options is
+  pictured page by page (22 images in all). The A/B crossfade keeps 20px at each end for its letters, in
+  the drawing and in the hit test alike (they differed: 14 and 11).
+
+- **Header bar: nothing runs under the heart at 1280px** (2026-10-24, branch `ui-redesign`). Found in the
+  final review with the snapshots. With the bigger macro dials the bar no longer fitted a 1280px window,
+  and the crossfader ran under the heart and Patreon buttons. The patch name now gives way last (down to
+  104px) and the dials are 8px apart again, so it fits.
+
+- **The A/B crossfade, as in the mockup** (2026-10-24, branch `ui-redesign`). The boxed fader with a
+  thin bar becomes an "A" and a "B" at the ends of a slim track filled in the accent up to a tall rounded
+  thumb. The old box border that said "armed to learn" or "already on a knob" is a ring round the thumb now
+  (yellow while armed, accent once assigned). Same hit area and behaviour.
+
 - **Module bar: a rule under the categories and room round ABCD** (2026-10-24, branch `ui-redesign`).
   A horizontal rule runs between the row of categories (In/Out, Osc, LFO...) and the row of module chips,
   and the ABCD button has 16px more room before the chips (the column is 74px, it was 58), with its

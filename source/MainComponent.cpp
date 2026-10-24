@@ -1110,6 +1110,13 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     // Reopen floater windows that were open last session
     juce::Timer::callAfterDelay(600, [safeThis]() { if (safeThis) safeThis->restoreFloaterWindows(); });
 
+    // NME_SNAPSHOT_PATCH=<file.pch>: the picture-taking run opens that patch (editor only) first, so the
+    // inspector, the knobs and the floaters have something to show
+    if (const auto snapPatch = juce::SystemStats::getEnvironmentVariable("NME_SNAPSHOT_PATCH", {}); snapPatch.isNotEmpty())
+      juce::Timer::callAfterDelay(1500, [safeThis, snapPatch]() {
+        if (safeThis) safeThis->loadPatchFromFile(juce::File(snapPatch), safeThis->activeSlot, true);
+      });
+
     // NME_SNAPSHOT_DIR=<folder>: save pictures of the editor and its floaters, then quit
     if (const auto snapDir = juce::SystemStats::getEnvironmentVariable("NME_SNAPSHOT_DIR", {}); snapDir.isNotEmpty())
       juce::Timer::callAfterDelay(3500, [safeThis, snapDir]() {
@@ -3333,7 +3340,11 @@ void MainComponent::saveSnapshotsAndQuit(const juce::File& dir)
     }
     {
       EditorOptionsDialog d(EditorOptions{}, McpBridgeStatusKind::Disabled, "MCP bridge is off", "");
-      shoot(d, "dialog-options");
+      for (int pg = 0; pg < EditorOptionsDialog::pageCount; ++pg)
+      {
+        d.showPageForSnapshot(pg);
+        shoot(d, "dialog-options-" + juce::String(pg));
+      }
     }
     {
       MidiSettingsDialog d;

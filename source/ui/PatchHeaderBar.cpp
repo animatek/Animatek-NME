@@ -223,13 +223,19 @@ void PatchHeaderBar::resized()
     const float groupW = numCableTypes * cableToggleSize + (numCableTypes - 1) * cableToggleSpacing + 10.0f + 24.0f;
     const float rightW = supportButtonSize * 2.0f + 4.0f;            // heart and Patreon
 
+    // The patch name gives way last: when even the folded cables and the minimum gaps do not fit, it
+    // gets narrower (down to minNameW) rather than the crossfader running under the heart
+    constexpr float minNameW = 104.0f;
+    float nameWe = static_cast<float>(nameW);
     auto contentW = [&](float cablesW)
     {
-        return nameW + voicesW + loadW + storeW + morphW + cablesW + snapsW + xfadeW + mutatorW;
+        return nameWe + voicesW + loadW + storeW + morphW + cablesW + snapsW + xfadeW + mutatorW;
     };
     const float avail = width - 2.0f * margin - rightW;
     L.cablesCompact = contentW(groupW) + numGaps * minGap > avail;
     const float cablesW = L.cablesCompact ? compactCablesW : groupW;
+    if (contentW(cablesW) + numGaps * minGap > avail)
+        nameWe = juce::jmax(minNameW, nameWe - (contentW(cablesW) + numGaps * minGap - avail));
     const float gap = juce::jlimit(minGap, maxGap, (avail - contentW(cablesW)) / numGaps);
 
     auto sep = [this](float at) { L.seps.push_back(at); };
@@ -244,8 +250,8 @@ void PatchHeaderBar::resized()
     float x = margin;
 
     // Patch name
-    L.name = juce::Rectangle<int>(juce::roundToInt(x), 7, nameW, getHeight() - 14);
-    x += nameW + gap;
+    L.name = juce::Rectangle<int>(juce::roundToInt(x), 7, juce::roundToInt(nameWe), getHeight() - 14);
+    x += nameWe + gap;
 
     // Voices (label above, number and arrows below)
     L.voicesLabel = { x, 5.0f, 56.0f, 12.0f };
@@ -425,7 +431,7 @@ bool PatchHeaderBar::isMorphFaderAt(juce::Point<int> pos) const
 float PatchHeaderBar::morphFaderPosFromX(float x) const
 {
     auto fb = getMorphFaderBounds();
-    constexpr float inset = 11.0f;  // room for the A/B end labels
+    constexpr float inset = 20.0f;  // room for the A/B end labels, as drawn in paint
     float l = fb.getX() + inset, r = fb.getRight() - inset;
     return juce::jlimit(0.0f, 1.0f, (x - l) / juce::jmax(1.0f, r - l));
 }
@@ -749,30 +755,41 @@ void PatchHeaderBar::paint(juce::Graphics& g)
 
     // --- Morph A/B fader (editor-side software morph between two captures) ---
     {
+        // As in the mockup: no box, an "A" and a "B" at the ends of a slim track, filled in the accent up
+        // to a tall rounded thumb
         auto fb = L.xfade;
         const bool ready = morphHasA && morphHasB;
 
-        g.setColour(pal.inputBackground);
-        g.fillRoundedRectangle(fb, 5.0f);
-        g.setColour(morphLearnArmed ? pal.buttonActive : pal.borderColor);
-        g.drawRoundedRectangle(fb.reduced(0.5f), 5.0f, 1.0f);
-
-        g.setFont(AppTheme::uiFont(10.0f).withStyle("Bold"));
+        g.setFont(AppTheme::uiFont(12.0f).withStyle("Bold"));
         g.setColour(morphHasA ? pal.textSecondary : pal.textMuted);
-        g.drawText("A", juce::Rectangle<float>(fb.getX() + 3.0f, fb.getY(), 11.0f, fb.getHeight()),
+        g.drawText("A", juce::Rectangle<float>(fb.getX(), fb.getY(), 14.0f, fb.getHeight()),
                    juce::Justification::centred, false);
         g.setColour(morphHasB ? pal.textSecondary : pal.textMuted);
-        g.drawText("B", juce::Rectangle<float>(fb.getRight() - 14.0f, fb.getY(), 11.0f, fb.getHeight()),
+        g.drawText("B", juce::Rectangle<float>(fb.getRight() - 14.0f, fb.getY(), 14.0f, fb.getHeight()),
                    juce::Justification::centred, false);
 
-        constexpr float inset = 14.0f;
+        constexpr float inset = 20.0f;   // the same in morphFaderPosFromX: the thumb clears the A and the B
         const float l = fb.getX() + inset, r = fb.getRight() - inset;
         const float thumbX = l + (r - l) * morphFaderPos;
-        auto thumbCol = !ready ? pal.textMuted
-                      : morphKnobAssigned ? pal.buttonActive
-                                          : pal.textSecondary;
-        g.setColour(thumbCol);
-        g.fillRoundedRectangle(thumbX - 2.5f, fb.getY() + 3.0f, 5.0f, fb.getHeight() - 6.0f, 2.0f);
+        const float ty = fb.getCentreY();
+
+        const auto track = juce::Rectangle<float>(l, ty - 2.0f, r - l, 4.0f);
+        g.setColour(pal.borderColor);
+        g.fillRoundedRectangle(track, 2.0f);
+        if (ready)
+        {
+            g.setColour(pal.accentActive);
+            g.fillRoundedRectangle(track.withWidth(juce::jmax(2.0f, thumbX - l)), 2.0f);
+        }
+
+        const auto thumb = juce::Rectangle<float>(thumbX - 4.0f, ty - 8.0f, 8.0f, 16.0f);
+        g.setColour(!ready ? pal.textMuted : pal.textPrimary);
+        g.fillRoundedRectangle(thumb, 3.0f);
+        if (morphLearnArmed || (ready && morphKnobAssigned))
+        {
+            g.setColour(morphLearnArmed ? pal.accentWarning : pal.accentActive);
+            g.drawRoundedRectangle(thumb.expanded(1.0f), 4.0f, 1.5f);   // armed to learn, or already on a knob
+        }
     }
 
     // --- Cable colours: click to hide or show one kind ---

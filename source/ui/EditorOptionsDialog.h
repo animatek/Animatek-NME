@@ -107,6 +107,9 @@ public:
 
     // Closes it from outside, as its own close does; a second press of the button that opened it
     void dismiss() { close(); }
+    // Which page is showing (0..7), for the picture-taking run
+    void showPageForSnapshot (int p) { showPage (p); }
+    static constexpr int pageCount = 8;
 
     std::function<void(const EditorOptions&)> onChange;
     // Cable opacity is the one setting you have to see to choose, so it moves
