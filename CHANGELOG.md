@@ -4,6 +4,10 @@
 
 ### Changed
 
+- **Menus: the highlighted row stays inside the box** (2026-10-24, branch `ui-redesign`): the rows are
+  given the whole width of the window, margin included, so the highlight stuck out of the rounded box
+  by the margin on each side; the rows are now drawn 6px in.
+
 - **Menus float a little away from the menu bar** (2026-10-24, branch `ui-redesign`): the rounded box
   is drawn 6px inside the menu window, so there is a gap between it and the bar (and a margin on every
   side) instead of touching it.

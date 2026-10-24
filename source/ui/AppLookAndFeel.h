@@ -139,16 +139,19 @@ public:
         else
         {
             idealHeight = juce::jmax(idealHeight, 32);
-            idealWidth += 24;   // room to breathe between the words and the shortcut
+            idealWidth += 36;   // room to breathe between the words and the shortcut, and for the margin
         }
     }
 
-    void drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& area, bool isSeparator, bool isActive,
+    void drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& fullArea, bool isSeparator, bool isActive,
                            bool isHighlighted, bool isTicked, bool hasSubMenu, const juce::String& text,
                            const juce::String& shortcutKeyText, const juce::Drawable* icon,
                            const juce::Colour* textColourToUse) override
     {
         const auto& pal = AppTheme::palette();
+        // JUCE gives the rows the whole width of the window, margin included; the box is drawn
+        // 6px inside it, so the rows come in by the same 6px to stay within the box
+        const auto area = fullArea.reduced(6, 0);
 
         if (isSeparator)
         {
