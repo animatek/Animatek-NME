@@ -3637,7 +3637,10 @@ void MainComponent::applyThemeLive(const EditorTheme& theme) {
   if (presetBrowserWindow)
     presetBrowserWindow->applyTheme();
   if (knobFloaterWindow)
+  {
     knobFloaterWindow->applyTheme();
+    knobFloaterWindow->setKnobScheme(activeCanvas().getTheme());
+  }
   if (keyboardFloaterWindow)
     keyboardFloaterWindow->applyTheme();
   if (patchNotesFloaterWindow)
@@ -4185,6 +4188,7 @@ void MainComponent::toggleKnobFloater() {
   }
 
   knobFloaterWindow->applyTheme();
+  knobFloaterWindow->setKnobScheme(activeCanvas().getTheme());
   knobFloaterWindow->setPatch(currentPatch().get());
   showFloaterWindow(*knobFloaterWindow, "knobFloater");
 }

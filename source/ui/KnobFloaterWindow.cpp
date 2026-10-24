@@ -2,6 +2,7 @@
 #include "AppTheme.h"
 #include "../protocol/KnobAssignmentMessage.h"
 #include "../format/ValueFormatters.h"
+#include "SkeuoDraw.h"
 #include <cmath>
 
 #define kBg        (AppTheme::palette().backgroundMain)
@@ -35,34 +36,30 @@ namespace
 class ArcKnobLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
+    ColorScheme scheme = kDarkTheme;
+    float origin = 0.0f;   // where the value arc starts: 0, or the centre of a bipolar range
+
     void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height, float pos,
                           float startAngle, float endAngle, juce::Slider& s) override
     {
+        juce::ignoreUnused(startAngle, endAngle);
         const auto area = juce::Rectangle<float>((float) x, (float) y, (float) width, (float) height);
         const auto c = area.getCentre();
-        const float sz = juce::jmin(area.getWidth(), area.getHeight()) * 0.78f;
-        const float radius = sz * 0.5f;
-        const float angle = startAngle + pos * (endAngle - startAngle);
-        const float fade = s.isEnabled() ? 1.0f : 0.4f;
-        const auto& pal = AppTheme::palette();
+        const float radius = juce::jmin(area.getWidth(), area.getHeight()) * 0.78f * 0.5f;   // as on the canvas
+        const bool on = s.isEnabled();
+        if (!on) g.beginTransparencyLayer(0.4f);
 
-        g.setColour(pal.textSecondary.withAlpha(fade));
-        g.fillEllipse(c.x - radius, c.y - radius, sz, sz);
-        g.setColour(pal.borderColor.withAlpha(fade));
-        g.drawEllipse(c.x - radius, c.y - radius, sz, sz, 1.0f);
+        const auto col = skeuo::flatKnobColours(scheme.knobBase, scheme.knobBorder, scheme.knobGrip,
+                                                scheme.moduleText, scheme.gridBackground, scheme.knobArc);
+        skeuo::drawFlatKnob(g, c.x, c.y, radius, pos, on ? origin : 0.0f, false, {}, col);
 
-        g.setColour(pal.textMuted.withAlpha(fade));
-        for (float a : { startAngle, endAngle })
-        {
-            const float sa = std::sin(a), ca = std::cos(a);
-            g.drawLine(c.x + sa * radius * 1.08f, c.y - ca * radius * 1.08f,
-                       c.x + sa * radius * 1.45f, c.y - ca * radius * 1.45f, 1.5f);
-        }
-
-        const float sa = std::sin(angle), ca = std::cos(angle);
-        g.setColour(pal.backgroundMain);
-        g.drawLine(c.x + sa * radius * 0.3f, c.y - ca * radius * 0.3f,
-                   c.x + sa * radius * 0.85f, c.y - ca * radius * 0.85f, 1.5f);
+        // Travel-limit ticks at 7 and 5 o'clock, outside the knob
+        const float pi = juce::MathConstants<float>::pi;
+        g.setColour(scheme.knobTickMark);
+        for (float a : { -135.0f * pi / 180.0f, 135.0f * pi / 180.0f })
+            g.drawLine(c.x + std::sin(a) * radius * 1.08f, c.y - std::cos(a) * radius * 1.08f,
+                       c.x + std::sin(a) * radius * 1.45f, c.y - std::cos(a) * radius * 1.45f, 1.5f);
+        if (!on) g.endTransparencyLayer();
     }
 };
 }
@@ -109,6 +106,8 @@ public:
 
     ~KnobCell() override { knob.setLookAndFeel(nullptr); }
 
+    void setScheme(const ColorScheme& cs) { arcLnF.scheme = cs; knob.repaint(); }
+
     // What the knob's value reads as: the parameter's own formatter (C4, 340 ms, -6 dB), or the number
     void setInfo(const juce::String& moduleName, const juce::String& paramName,
                  bool isAssigned, int minValue, int maxValue, int value,
@@ -119,6 +118,16 @@ public:
             formatter = [desc = *pd](int v) { return ValueFormatters::format(desc, v); };
         else
             formatter = nullptr;
+
+        // A bipolar range (a negative minimum, or a default at its centre) grows its arc from the middle
+        arcLnF.origin = 0.0f;
+        if (pd != nullptr && pd->maxValue > pd->minValue)
+        {
+            const float range = static_cast<float>(pd->maxValue - pd->minValue);
+            const float def = static_cast<float>(pd->defaultValue - pd->minValue) / range;
+            if (pd->minValue < 0 && pd->maxValue > 0) arcLnF.origin = static_cast<float>(-pd->minValue) / range;
+            else if (std::abs(def - 0.5f) < 0.03f)    arcLnF.origin = def;
+        }
 
         // An empty knob says "Free", with its number where the module's name goes
         setLabelText(moduleLabel, isAssigned ? moduleName : knobLabel);
@@ -172,8 +181,8 @@ public:
     {
         moduleLabel.setBounds(0, 0, getWidth(), 15);
         paramLabel.setBounds(0, 15, getWidth(), 19);
-        knob.setBounds((getWidth() - 50) / 2, 38, 50, 50);
-        valueLabel.setBounds(0, 90, getWidth(), 20);
+        knob.setBounds((getWidth() - 56) / 2, 36, 56, 56);
+        valueLabel.setBounds(0, 92, getWidth(), 20);
     }
 
     void mouseDown(const juce::MouseEvent& e) override
@@ -421,6 +430,12 @@ void KnobFloaterPanel::resized()
     for (int i = 0; i < 3; ++i)
         cells[static_cast<size_t>(18 + i)]->setBounds(
             kMargin + i * spacing + (spacing - kCellW) / 2, y, kCellW, kCellH);
+}
+
+void KnobFloaterPanel::setKnobScheme(const ColorScheme& cs)
+{
+    for (auto& cell : cells)
+        cell->setScheme(cs);
 }
 
 void KnobFloaterPanel::applyTheme()

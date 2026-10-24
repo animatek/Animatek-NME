@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Knob Floater: the flat knob, as in the modules** (2026-10-24, branch `ui-redesign`). The knob was not
+  the one the modules wear (the dark disc with a rim, a pointer and the value arc in the theme's blue):
+  the floater now draws that very one (`skeuo::drawFlatKnob`) in the canvas theme's colours, with the arc
+  growing from the centre on bipolar ranges and the ticks at 7 and 5 o'clock. It follows the theme when
+  it changes.
+
 - **Knob Floater: the modules' own knob** (2026-10-24, branch `ui-redesign`). The arc knob is swapped for
   the knob the modules wear on the canvas (a plain circle, a grip line, a tick at each end of its
   travel), the same the Mutator uses. The labels, the formatted value and "Free" stay as they were.
