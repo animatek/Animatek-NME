@@ -16,17 +16,29 @@ public:
     {
         const auto c = getColour();
         auto r = getLocalBounds().toFloat().reduced(1.0f);
-        // Checkerboard under translucent colours, so "empty" is visible as such.
-        g.setColour(juce::Colour(0xff777777));
-        g.fillRoundedRectangle(r, 6.0f);
-        g.setColour(juce::Colour(0xff999999));
-        for (float y = r.getY(); y < r.getBottom(); y += 6.0f)
-            for (float x = r.getX() + (static_cast<int>((y - r.getY()) / 6.0f) % 2 ? 6.0f : 0.0f); x < r.getRight(); x += 12.0f)
-                g.fillRect(juce::Rectangle<float>(x, y, 6.0f, 6.0f).getIntersection(r));
-        g.setColour(c);
-        g.fillRoundedRectangle(r, 6.0f);
-        g.setColour(fx::border.brighter(0.5f));
-        g.drawRoundedRectangle(r, 6.0f, 1.0f);
+        juce::Path shape;
+        shape.addRoundedRectangle(r, 6.0f);
+
+        {
+            // Everything inside the rounded shape, so no square corner of the checkerboard shows at the edge
+            juce::Graphics::ScopedSaveState state(g);
+            g.reduceClipRegion(shape);
+            // A checkerboard under translucent colours, so "empty" is visible as such
+            if (c.getAlpha() < 255)
+            {
+                g.setColour(juce::Colour(0xff6b6f76));
+                g.fillRect(r);
+                g.setColour(juce::Colour(0xff8a8e96));
+                for (float y = r.getY(); y < r.getBottom(); y += 6.0f)
+                    for (float x = r.getX() + (static_cast<int>((y - r.getY()) / 6.0f) % 2 ? 6.0f : 0.0f); x < r.getRight(); x += 12.0f)
+                        g.fillRect(juce::Rectangle<float>(x, y, 6.0f, 6.0f));
+            }
+            g.setColour(c);
+            g.fillRect(r);
+        }
+        // A quiet outline in the window's own border colour, not a white one
+        g.setColour(fx::border.brighter(0.15f));
+        g.strokePath(shape, juce::PathStrokeType(1.0f));
         if (autoWhenTransparent && c.isTransparent())
         {
             g.setColour(juce::Colours::white);

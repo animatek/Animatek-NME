@@ -566,6 +566,11 @@ entries below are in the order they were made, newest first; the redesign ones s
 
 ### Fixed
 
+- **Colour swatches without the white edge** (2026-10-24, `main`). The swatches of the Colours page were
+  drawn over a grey checkerboard whose square corners showed at the rounded edge, with a pale outline. The
+  checkerboard now only sits under a translucent colour and is clipped to the rounded shape; the
+  outline is the window's own border colour.
+
 - **Z zooms in and Z again zooms back** (2026-10-24, `main`; asked for by Blaise by email). Z zoomed to the
   selection and every further Z did the same; going back needed Shift+Z, which resets to 100% and not to
   where you were. Now the first Z zooms to the selection and remembers the zoom and the place, and
