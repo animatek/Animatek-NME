@@ -4,6 +4,11 @@
 
 ### Changed
 
+- **About restyled** (2026-10-24, branch `ui-redesign`). 520x620, a bigger icon, title (25), the subtitle
+  in the accent and the version in a quiet line; the credits list in a clean field with breathing room;
+  and a footer band with the buttons in two rows: **Donate** (filled with the accent) and **Patreon** on
+  top, **Website**, **GitHub** and **Copy version** below.
+
 - **The other dialogs: no stray window drag, and readable text fields** (2026-10-24, branch
   `ui-redesign`). MIDI Setup, Bank Transfer, Patch Location, Patch Settings and Synth Settings dragged
   the window on any mouse movement with the anchor of the last title-bar drag, the same fault as Editor
