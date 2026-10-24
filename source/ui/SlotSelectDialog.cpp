@@ -58,7 +58,7 @@ SlotSelectDialog::SlotSelectDialog(const juce::String& title,
     addAndMakeVisible (okButton);
     addAndMakeVisible (cancelButton);
 
-    setSize (400, 40 + 12 + 4 * 48 + 64 + 68);
+    setSize (400, 40 + 12 + 4 * 48 + 76 + 20 + 68);
     setWantsKeyboardFocus (true);
 }
 
@@ -80,7 +80,7 @@ void SlotSelectDialog::resized()
         b.setBounds (side, y, getWidth() - side * 2, 48);
         y += 48;
     }
-    localButton.setBounds (side, y, getWidth() - side * 2, 64);
+    localButton.setBounds (side, y, getWidth() - side * 2, 76);   // room for its two lines of text, and a gap above the footer
 
     const int btnW = 100, btnH = 36;
     const int btnY = getHeight() - footerH + (footerH - btnH) / 2;

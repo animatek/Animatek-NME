@@ -4,6 +4,9 @@
 
 ### Changed
 
+- **Slot Select: room under "Local"** (2026-10-24, branch `ui-redesign`). The last row's text sat on its
+  own rule and that rule on the footer's: the row is taller and there is a gap before the footer.
+
 - **Synth Settings redesigned** (2026-10-24, branch `ui-redesign`). 720x640: the same controls (name and
   master tune, MIDI channels, velocity scale and switches, clock, knob, pedal and keyboard behaviour) on
   34px rows with bigger type, muted section titles and rules between sections, and Editor Options' title
