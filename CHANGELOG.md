@@ -4,6 +4,14 @@
 
 ### Changed
 
+- **Bank Transfer redesigned** (2026-10-24, branch `ui-redesign`). Save Bank to Disk, Backup All Banks and
+  Send Bank to Synth: 520x440, muted section labels, taller fields with larger type, a thinner progress
+  bar, Editor Options' title bar and a footer band with Cancel and **Start** (filled with the accent).
+
+- **Patch Location redesigned** (2026-10-24, branch `ui-redesign`). The dialog that asks where a patch goes
+  (Slot, Bank, Position): 440px wide, muted section labels over taller lists, Editor Options' title bar
+  and a footer band with Cancel and **OK** (filled with the accent).
+
 - **Save Slot Set redesigned** (2026-10-24, branch `ui-redesign`). 520x480: the set's name over a full-width
   field, the four slots as rows with a rule between and their mode list at the right, the notes field below
   and the footer band with Cancel and **Save** (filled with the accent). Same rules as before for when
