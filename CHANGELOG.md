@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Header bar: more room between groups, and MUTATOR after the crossfader** (2026-10-24,
+  branch `ui-redesign`). The gap between groups goes from 12 to 18px, with the hairline in the
+  middle, and MUTATOR follows the A/B crossfader instead of sitting in the right-hand corner,
+  which now holds only the heart and Patreon. The cable colours fold into "Cables" under about
+  1385px (the default plugin width, 1280px, still fits with them folded).
+
 - **Header bar: the cable colours move between the morph dials and the snapshots** (2026-10-24,
   branch `ui-redesign`), with a hairline on each side. The order is now: name, Voices, Load,
   Store | morph | cable colours and S | snapshots, crossfader ... MUTATOR | heart, Patreon. Under

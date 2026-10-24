@@ -32,11 +32,11 @@ namespace
     }
 
     // Layout constants (see resized())
-    constexpr int nameW = 176;
+    constexpr int nameW = 168;
     constexpr float loadW = 104.0f;
     constexpr float snapSize = 24.0f;
     constexpr float snapGap = 4.0f;
-    constexpr float xfadeW = 112.0f;
+    constexpr float xfadeW = 104.0f;
     constexpr float mutatorW = 76.0f;
     constexpr float compactCablesW = 76.0f;
 }
@@ -197,26 +197,22 @@ void PatchHeaderBar::morphSpinnerStep(int delta)
 void PatchHeaderBar::resized()
 {
     // One layout pass: every element's rectangle is worked out here and the paint code and the
-    // hit tests only read them. The right-hand group is anchored to the right edge first, so
+    // hit tests only read them. The heart and Patreon are anchored to the right edge first, so
     // the left-hand flow knows how much room it has; the cable colours sit between the morph
     // dials and the snapshots, and fold into one button when that room runs out.
     L = Layout{};
     const float h = static_cast<float>(getHeight());
     const float cy = h * 0.5f;
-    constexpr float gap = 12.0f;
+    constexpr float gap = 18.0f;   // between groups, a hairline in the middle of it
 
     auto sep = [this](float at) { L.seps.push_back(at); };
 
-    // Right edge, working inwards: Patreon, heart, a hairline, Mutator, a hairline
+    // Right edge, working inwards: Patreon, heart, a hairline
     float rx = static_cast<float>(getWidth()) - 12.0f;
     L.patreon = { rx - supportButtonSize, cy - supportButtonSize * 0.5f, supportButtonSize, supportButtonSize };
     rx -= supportButtonSize + 4.0f;
     L.donate = { rx - supportButtonSize, L.patreon.getY(), supportButtonSize, supportButtonSize };
     rx -= supportButtonSize;
-    sep(rx - gap * 0.5f);
-    rx -= gap;
-    L.mutator = { rx - mutatorW, cy - 14.0f, mutatorW, 28.0f };
-    rx -= mutatorW;
     sep(rx - gap * 0.5f);
     rx -= gap;
     const float rightStart = rx;
@@ -258,10 +254,10 @@ void PatchHeaderBar::resized()
     sep(x - gap * 0.5f);
 
     // Cable colours and the shake key, between the morph dials and the snapshots
-    const float snapsW = 8 * snapSize + 7 * snapGap + 26.0f;       // with room for the interpolation time
-    const float afterCables = snapsW + xfadeW + gap;               // what has to fit to their right
+    const float snapsW = 8 * snapSize + 7 * snapGap + 30.0f;       // with room for the interpolation time
+    const float afterCables = snapsW + xfadeW + gap + mutatorW;    // what has to fit to their right
     const float groupW = numCableTypes * cableToggleSize + (numCableTypes - 1) * cableToggleSpacing + 10.0f + 24.0f;
-    L.cablesCompact = (rightStart - x) < groupW + afterCables;
+    L.cablesCompact = (rightStart - x) < groupW + gap + afterCables;
     if (L.cablesCompact)
     {
         // Not enough room for seven dots and a key: one button that opens them as a menu.
@@ -287,8 +283,11 @@ void PatchHeaderBar::resized()
     x += snapsW;
     sep(x - gap * 0.5f);
 
-    // Crossfader A/B
+    // Crossfader A/B, and the Mutator right after it
     L.xfade = { x, cy - 11.0f, xfadeW, 22.0f };
+    x += xfadeW + gap;
+    sep(x - gap * 0.5f);
+    L.mutator = { x, cy - 14.0f, mutatorW, 28.0f };
 
     // Patch name editor
     if (patchNameEditor)
