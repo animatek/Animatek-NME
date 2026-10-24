@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **Inspector: the module's name is the title, and the type sits in the accent** (2026-10-24,
+  branch `ui-redesign`). In the Module block the bold title line is now the module's **name**
+  (FilterC), and clicking it selects the text to rename it in place: no separate Name field. The
+  module's **type** as Clavia calls it ("12dB Static Multimode Filter"), not editable, is the accent
+  text on the right of the "MODULE" heading (a long one narrows to fit). Below: Area and DSP cost.
+  The name no longer appears twice.
+
 - **Inspector: knob panel, Module, then Macros and Knobs** (2026-10-24, branch `ui-redesign`).
   The panel is now laid out from the top as: the knob panel (its miniature, untouched, with a
   "KNOB PANEL" label), a **Module** block (a "MODULE" heading with the module's own name in the

@@ -1525,7 +1525,10 @@ InspectorPanel::InspectorPanel()
     nameLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(nameLabel);
 
-    nameEditor.setFont(juce::Font(AppTheme::uiFont(13.0f)));
+    nameEditor.setFont(juce::Font(AppTheme::uiFont(15.0f).withStyle("Bold")));
+    nameEditor.setSelectAllWhenFocused(true);
+    nameEditor.setIndents(6, 0);
+    nameEditor.setTooltip("Click to rename this module");
     nameEditor.setInputRestrictions(Module::kMaxTitleLength);
     nameEditor.addListener(this);
     nameEditor.setEnabled(false);
@@ -1616,9 +1619,9 @@ void InspectorPanel::applyTheme()
     nameLabel.setColour(juce::Label::textColourId, theme.textMuted);
     sectionLabel.setColour(juce::Label::textColourId, theme.textMuted);
     dspLabel.setColour(juce::Label::textColourId, theme.textMuted);
-    nameEditor.setColour(juce::TextEditor::backgroundColourId, theme.inputBackground);
+    nameEditor.setColour(juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
     nameEditor.setColour(juce::TextEditor::textColourId, theme.textPrimary);
-    nameEditor.setColour(juce::TextEditor::outlineColourId, theme.borderColor);
+    nameEditor.setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
     nameEditor.setColour(juce::TextEditor::focusedOutlineColourId, theme.buttonActive);
     morphViewport.sendLookAndFeelChange();
     if (assignmentsList)
@@ -1858,37 +1861,32 @@ void InspectorPanel::paint(juce::Graphics& g)
             return;
         }
 
+        // The module's type, as Clavia calls it and not editable, in the accent. The name is the
+        // title below, and says itself once. A long type narrows to fit before it is cut.
         g.setColour(theme.accentActive);
         g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
-        g.drawText(nameEditor.getText().toUpperCase(), w / 2, moduleTopY, w / 2 - margin - 2, moduleHeaderH,
-                   juce::Justification::centredRight, true);
+        g.drawFittedText(titleLabel.getText(), margin + 70, moduleTopY, w - margin * 2 - 70, moduleHeaderH,
+                         juce::Justification::centredRight, 1, 0.7f);
 
-        // The module type, in full
-        g.setColour(theme.textPrimary);
-        g.setFont(AppTheme::uiFont(14.0f).withStyle("Bold"));
-        g.drawText(titleLabel.getText(), margin + 6, y, w - margin * 2 - 4, moduleInfoRowH, juce::Justification::centredLeft, true);
-        y += moduleInfoRowH;
+        // (the title line is the name editor, laid over this spot)
+        y += moduleInfoRowH + 6;
 
-        const juce::Font mono(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(),
-                                                12.0f * AppTheme::uiFontScale(), juce::Font::plain));
-        auto fact = [&](const juce::String& label, const juce::String& value)
+        auto fact = [&](const juce::String& label, const juce::String& value, bool monospaced)
         {
             g.setColour(theme.textSecondary);
             g.setFont(AppTheme::uiFont(13.0f));
-            g.drawText(label, margin + 6, y, w / 2, moduleInfoRowH, juce::Justification::centredLeft);
+            g.drawText(label, margin + 6, y, 60, moduleInfoRowH, juce::Justification::centredLeft);
             g.setColour(theme.textPrimary);
-            g.setFont(mono);
-            g.drawText(value, w / 2, y, w / 2 - margin - 2, moduleInfoRowH, juce::Justification::centredRight);
+            g.setFont(monospaced ? juce::Font(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(),
+                                                                12.0f * AppTheme::uiFontScale(), juce::Font::plain))
+                                 : juce::Font(AppTheme::uiFont(13.0f)));
+            g.drawText(value, margin + 66, y, w - margin * 2 - 64, moduleInfoRowH,
+                       juce::Justification::centredRight, true);
             y += moduleInfoRowH;
         };
-        fact("Area", currentSection() == 1 ? "Poly" : "Common");
+        fact("Area", currentSection() == 1 ? "Poly" : "Common", false);
         auto* desc = module->getDescriptor();
-        fact("DSP cost", desc != nullptr ? formatDspCost(desc->cycles) : juce::String("--"));
-
-        // The name field has its label here
-        g.setColour(theme.textSecondary);
-        g.setFont(AppTheme::uiFont(13.0f));
-        g.drawText("Name", margin + 6, nameRowY, 50, moduleInfoRowH + 8, juce::Justification::centredLeft);
+        fact("DSP cost", desc != nullptr ? formatDspCost(desc->cycles) : juce::String("--"), true);
     }
 }
 
@@ -1922,10 +1920,10 @@ void InspectorPanel::resized()
 
     if (currentModule() != nullptr)
     {
-        y += moduleInfoRowH * 3;                 // full name, area, DSP cost
-        nameRowY = y;
-        nameEditor.setBounds(x + 52, y + 3, juce::jmax(0, w - 52), moduleInfoRowH + 2);
-        y += moduleInfoRowH + 8;
+        // The module's name is the title: the same text is what gets edited
+        nameEditor.setBounds(x, y + 1, juce::jmax(0, w), moduleInfoRowH + 4);
+        y += moduleInfoRowH + 6;
+        y += moduleInfoRowH * 2 + 8;             // Type, DSP cost
     }
     else
     {
