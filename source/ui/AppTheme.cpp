@@ -128,6 +128,27 @@ void AppTheme::drawWindowFrame(juce::Graphics& g, juce::Rectangle<int> bounds)
     g.drawRect(bounds, 1);
 }
 
+void AppTheme::drawDialogChrome(juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String& title,
+                                int titleH, int footerH)
+{
+    const auto& pal = palette();
+    g.fillAll(pal.backgroundMain);
+
+    g.setColour(pal.textPrimary);
+    g.setFont(juce::Font(uiFont(15.0f)).boldened());
+    g.drawText(title, 18, 0, bounds.getWidth() - 60, titleH, juce::Justification::centredLeft, true);
+    g.setColour(pal.borderColor);
+    g.fillRect(0, titleH - 1, bounds.getWidth(), 1);
+
+    if (footerH > 0)
+    {
+        g.setColour(pal.backgroundPanel);
+        g.fillRect(0, bounds.getHeight() - footerH, bounds.getWidth(), footerH);
+        g.setColour(pal.borderColor);
+        g.fillRect(0, bounds.getHeight() - footerH, bounds.getWidth(), 1);
+    }
+}
+
 void AppTheme::setPalette(const AppThemePalette& p)
 {
     active = p;

@@ -57,6 +57,11 @@ namespace AppTheme
     // ground as what is behind it would otherwise melt into it.
     void drawWindowFrame(juce::Graphics& g, juce::Rectangle<int> bounds);
 
+    // What every dialog is drawn on: the ground colour, the title in a bar of titleH with a rule
+    // under it, and, when footerH is not 0, a band at the bottom (for the buttons) with a rule above.
+    void drawDialogChrome(juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String& title,
+                          int titleH, int footerH);
+
     juce::String displayName(AppThemeId id);
     AppThemeId themeFromInt(int value);
 

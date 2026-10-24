@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Slot Select redesigned** (2026-10-24, branch `ui-redesign`). The dialog that asks which slot to open a
+  patch into: the four slots and the "Local" choice (a name and a line saying it is editor-only) are
+  rows with a round radio at the right, the title bar is Editor Options' and the footer band has Cancel and
+  **OK** (filled with the accent). The OptionRow control moves to its own header (`OptionRow.h`) so
+  the dialogs can share it, and `AppTheme::drawDialogChrome` draws the title bar and footer common to them.
+
 - **MIDI Setup redesigned** (2026-10-24, branch `ui-redesign`). The framed groups become **one card per
   port** (640px wide): its number and name, the connection status in words with a dot (green when
   connected) and the **switch** that enables it, and below it the In and Out ports, one under the other,

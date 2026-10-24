@@ -1,5 +1,7 @@
 #pragma once
 
+#include "OptionRow.h"
+
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <array>
 #include <functional>
@@ -56,8 +58,9 @@ private:
     juce::ComponentDragger dragger;
     FlatCloseButton closeButton;
 
-    std::array<juce::ToggleButton, 4> slotButtons;
-    juce::ToggleButton localButton { "Local (editor only, do not upload)" };
+    std::array<OptionRow, 4> slotButtons { OptionRow { "", {}, true }, OptionRow { "", {}, true },
+                                           OptionRow { "", {}, true }, OptionRow { "", {}, true } };
+    OptionRow localButton { "Local", "Keep it in the editor only: nothing is uploaded to the synth.", true };
 
     juce::TextButton okButton     { "OK" };
     juce::TextButton cancelButton { "Cancel" };

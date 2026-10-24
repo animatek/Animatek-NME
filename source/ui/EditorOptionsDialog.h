@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "FlatCloseButton.h"
 #include "AppTheme.h"
+#include "OptionRow.h"
 #include "ThemeRegistry.h"
 #include <vector>
 
@@ -95,24 +96,6 @@ struct EditorOptions
 // computed by MainComponent (mirrors how MidiSettingsDialog is handed a
 // ConnectionManager::Status snapshot at open time, not a live subscription).
 enum class McpBridgeStatusKind { Disabled, Listening, Failed };
-
-// A row of the options pages: the setting's name and what it does on the left, the switch (or the
-// round radio, for a choice of one among several) on the right. The whole row is the button.
-class OptionRow : public juce::ToggleButton
-{
-public:
-    OptionRow (const juce::String& title, const juce::String& description = {}, bool radioStyle = false)
-        : juce::ToggleButton (title), description_ (description), radio_ (radioStyle)
-    {
-        setMouseCursor (juce::MouseCursor::PointingHandCursor);
-    }
-
-    void paintButton (juce::Graphics& g, bool highlighted, bool down) override;
-
-private:
-    juce::String description_;
-    bool radio_;
-};
 
 class EditorOptionsDialog : public juce::Component
 {
