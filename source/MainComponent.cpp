@@ -943,11 +943,13 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // Wire toolbar buttons
 
-  // Chevron strips go through the same path as Ctrl+I / Ctrl+Shift+I so the
-  // status bar reports the change either way.
+  // The status bar's inspector and browser buttons go through the same path as Ctrl+I / Ctrl+Shift+I so
+  // the status bar reports the change either way.
   mainLayout->onPanelToggleRequested = [this](bool left) {
     if (left) toggleLeftPanel(); else toggleRightPanel();
   };
+  mainLayout->getStatusBar().onMidiClicked     = [this] { showMidiSettingsDialog(); };
+  mainLayout->getStatusBar().onSettingsClicked = [this] { showEditorOptionsDialog(); };
   mainLayout->getDiskPresetBrowser().setLibraryRoot(editorOptions.presetLibraryRoot);
   mainLayout->getDiskPresetBrowser().onPatchChosen = [this](const juce::File& file) {
     openPatchFileWithChooser(file);

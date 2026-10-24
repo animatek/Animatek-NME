@@ -8,6 +8,11 @@
   instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
   to yours and quit without a picture. That run now counts as its own instance.
 
+- **MIDI and Options buttons in the status bar** (2026-10-24, branch `ui-redesign`). At the right of the
+  status bar, after the lens of the browser, a little **keyboard** opens MIDI Setup and a **cogwheel**
+  opens Editor Options: lens, keyboard, cogwheel. Same dialogs as Ctrl+M and Ctrl+, and the menus;
+  their tooltips say so.
+
 - **Fold arrows the right way round** (2026-10-24, branch `ui-redesign`). The banks of the patch browser
   and the inspector's sections pointed up while folded and down while open. They now point down when
   folded (open me) and up when open (fold me away).

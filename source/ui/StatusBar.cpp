@@ -25,10 +25,31 @@ void PanelIconButton::paintButton(juce::Graphics& g, bool highlighted, bool down
         g.setFont(juce::Font(AppTheme::uiFont(17.0f)).boldened());
         g.drawText("i", r.toNearestInt(), juce::Justification::centred, false);
     }
-    else
+    else if (icon == Icon::Browser)
     {
         g.drawEllipse(c.x - 5.5f, c.y - 5.5f, 10.0f, 10.0f, 1.8f);
         g.drawLine(c.x + 2.2f, c.y + 2.2f, c.x + 6.5f, c.y + 6.5f, 2.0f);
+    }
+    else if (icon == Icon::Midi)
+    {
+        // A keyboard: the outline, the splits between white keys and the black keys over them
+        const auto k = juce::Rectangle<float>(c.x - 9.0f, c.y - 6.0f, 18.0f, 12.0f);
+        g.drawRoundedRectangle(k, 2.0f, 1.5f);
+        for (float x : { -3.0f, 3.0f })
+            g.drawLine(c.x + x, c.y + 0.5f, c.x + x, c.y + 6.0f, 1.2f);
+        for (float x : { -6.0f, 0.0f, 6.0f })
+            g.fillRect(juce::Rectangle<float>(c.x + x - 1.3f, c.y - 6.0f, 2.6f, 6.5f));
+    }
+    else
+    {
+        // A cogwheel: a ring with eight teeth
+        g.drawEllipse(c.x - 4.2f, c.y - 4.2f, 8.4f, 8.4f, 2.0f);
+        for (int i = 0; i < 8; ++i)
+        {
+            const float a = static_cast<float>(i) * juce::MathConstants<float>::pi / 4.0f;
+            g.drawLine(c.x + std::sin(a) * 4.6f, c.y - std::cos(a) * 4.6f,
+                       c.x + std::sin(a) * 7.4f, c.y - std::cos(a) * 7.4f, 2.4f);
+        }
     }
 }
 
@@ -40,6 +61,12 @@ void StatusBar::setPanelStates(bool inspectorOpen, bool browserOpen)
 
 StatusBar::StatusBar()
 {
+    midiButton.setTooltip("MIDI Setup (Ctrl+M)");
+    settingsButton.setTooltip("Editor Options (Ctrl+,)");
+    midiButton.onClick     = [this] { if (onMidiClicked) onMidiClicked(); };
+    settingsButton.onClick = [this] { if (onSettingsClicked) onSettingsClicked(); };
+    addAndMakeVisible(midiButton);
+    addAndMakeVisible(settingsButton);
     inspectorButton.setTooltip("Inspector (Ctrl+I)");
     browserButton.setTooltip("Patch browser (Ctrl+Shift+I)");
     inspectorButton.setToggleState(true, juce::dontSendNotification);
@@ -220,6 +247,9 @@ void StatusBar::resized()
     auto area = getLocalBounds().reduced(8, 0);
     inspectorButton.setBounds(area.removeFromLeft(32));
     area.removeFromLeft(8);
+    // From the right: Settings, MIDI, Browser (so, left to right, the lens, the keyboard, the cogwheel)
+    settingsButton.setBounds(area.removeFromRight(32));
+    midiButton.setBounds(area.removeFromRight(32));
     browserButton.setBounds(area.removeFromRight(32));
     area.removeFromRight(8);
 
