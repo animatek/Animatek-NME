@@ -1,10 +1,28 @@
-# Animatek NME 0.23.0: the new look
+# Animatek NME 0.23.0: the new look, and a Mutator that mutates like the G2's
 
 The whole interface is redrawn in a flat, dark style with one amber accent. It is the same editor,
 with the same shortcuts and the same files, drawn from scratch: calmer, with more room, and with
 the controls where you look for them.
 
-## What you will notice
+## The Patch Mutator, rebuilt
+
+The G2's own mutator was studied and its ideas rebuilt (no code of theirs):
+
+- Every parameter has its own **shape**: finer near the bottom (attack, release, times), near the top
+  (an oscillator's levels) or around the middle (tune, detune, pan), and a change is drawn evenly in that shape.
+- **Set-up switches are never mutated** (on/off, mute, bypass, modes, KBT and LFO range switches, input
+  levels, step counts); waveforms, sequencer steps and key-quantiser notes still are, as on the G2.
+- Changes **bounce back from the edges**; Probability and Range are tied by the G2's curve and Range stops
+  at 50%; no more octave jumps; Randomize keeps each parameter's shape and leaves the switches.
+- **Mother and Father start as the patch.** The boxes draw the sound as a path, and stored sounds follow
+  the patch when a module is added, deleted or replaced.
+
+## Banks straight to the synth's memory
+
+Save Bank to Disk and Send Bank to Synth talk to the synth's flash directly, as Clavia's editor does, with
+no slot used on the way; banks are saved with a `.pchList`. Four MCP tools drive them.
+
+## What you will notice in the new look
 
 - **A new header bar.** The patch name in a field you can type in, the four macro dials redrawn, the cable
   colours between the dials and the snapshots, the **A/B crossfade** between the snapshots and
