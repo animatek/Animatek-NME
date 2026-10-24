@@ -29,7 +29,7 @@ PatchBrowserPanel::PatchBrowserPanel()
     addAndMakeVisible(searchBox);
 
     // Hide empty button
-    hideEmptyButton.setButtonText("Hide Empty");
+    hideEmptyButton.setButtonText("Hide empty");
     hideEmptyButton.onClick = [this]() { onHideEmptyToggled(); };
     addAndMakeVisible(hideEmptyButton);
 
@@ -41,7 +41,7 @@ PatchBrowserPanel::PatchBrowserPanel()
     // TreeView for patch browser
     treeView = std::make_unique<juce::TreeView>();
     treeView->setDefaultOpenness(false);  // Banks start collapsed
-    treeView->setIndentSize(20);
+    treeView->setIndentSize(18);
     addAndMakeVisible(*treeView);
 
     applyTheme();
@@ -95,23 +95,22 @@ void PatchBrowserPanel::resized()
         statusLabel.setVisible(false);
 
         // Header area with search and filters
-        auto headerArea = bounds.removeFromTop(82);
-        headerArea.reduce(8, 8);
+        auto headerArea = bounds.removeFromTop(98);
+        headerArea.reduce(12, 10);
 
         // First row: Search
-        auto searchRow = headerArea.removeFromTop(34);
-        searchBox.setBounds(searchRow.reduced(0, 2));
+        auto searchRow = headerArea.removeFromTop(36);
+        searchBox.setBounds(searchRow);
 
-        headerArea.removeFromTop(4);  // Spacing
+        headerArea.removeFromTop(10);  // Spacing
 
-        // Second row: Hide empty + Refresh
+        // Second row: Hide empty on the left, Refresh on the right
         auto filterRow = headerArea.removeFromTop(28);
-        hideEmptyButton.setBounds(filterRow.removeFromLeft(100));
-        filterRow.removeFromLeft(8);  // Spacing
-        refreshButton.setBounds(filterRow.removeFromLeft(80));
+        refreshButton.setBounds(filterRow.removeFromRight(84));
+        hideEmptyButton.setBounds(filterRow.removeFromLeft(juce::jmin(130, filterRow.getWidth())));
 
         // TreeView gets remaining space
-        treeView->setBounds(bounds.withTrimmedTop(4));
+        treeView->setBounds(bounds.withTrimmedTop(2).reduced(4, 0));
         treeView->setVisible(true);
         searchBox.setVisible(true);
         hideEmptyButton.setVisible(true);
@@ -342,28 +341,33 @@ void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, i
 
     if (section >= 0 && position == -1)
     {
-        // Bank node — bold
-        g.setColour(textColor);
-        g.setFont(juce::Font(AppTheme::uiFont(13.0f)).boldened());
-        g.drawText(itemName, 4, 0, width - 4, height, juce::Justification::centredLeft, true);
+        // A bank: its name, and the range of locations it covers, quietly on the right
+        const int paren = itemName.indexOfChar('(');
+        const auto bankName = paren > 0 ? itemName.substring(0, paren).trim() : itemName;
+        const auto range = paren > 0 ? itemName.substring(paren + 1).upToFirstOccurrenceOf(")", false, false)
+                                           .replace("-", juce::CharPointer_UTF8(" \xe2\x80\x93 ")) : juce::String();
+        g.setColour(AppTheme::palette().textPrimary);
+        g.setFont(juce::Font(AppTheme::uiFont(14.0f)).boldened());
+        g.drawText(bankName, 6, 0, width - 12, height, juce::Justification::centredLeft, true);
+        g.setColour(AppTheme::palette().textMuted);
+        g.setFont(juce::Font(AppTheme::uiFont(12.0f)));
+        g.drawText(range, 6, 0, width - 14, height, juce::Justification::centredRight, true);
     }
     else
     {
-        g.setColour(textColor);
-        g.setFont(juce::Font(AppTheme::uiFont(isLoaded ? 12.5f : 12.0f)));
+        // A patch: its location in the bank, muted, then its name
+        const int colon = itemName.indexOf(": ");
+        const auto location = colon > 0 ? itemName.substring(0, colon) : juce::String();
+        const auto name = colon > 0 ? itemName.substring(colon + 2) : itemName;
 
-        if (isLoaded)
-        {
-            // Draw play indicator
-            g.setFont(juce::Font(AppTheme::uiFont(10.0f)));
-            g.drawText(juce::CharPointer_UTF8("\xe2\x96\xb6"), 2, 0, 12, height, juce::Justification::centredLeft);
-            g.setFont(juce::Font(AppTheme::uiFont(12.5f)));
-            g.drawText(itemName, 16, 0, width - 16, height, juce::Justification::centredLeft, true);
-        }
-        else
-        {
-            g.drawText(itemName, 4, 0, width - 4, height, juce::Justification::centredLeft, true);
-        }
+        g.setColour(isLoaded ? AppTheme::palette().accentActive : AppTheme::palette().textMuted);
+        g.setFont(juce::Font(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(),
+                                               11.5f * AppTheme::uiFontScale(), juce::Font::plain)));
+        g.drawText(location, 8, 0, 40, height, juce::Justification::centredLeft, false);
+
+        g.setColour(empty ? AppTheme::palette().textMuted : textColor);
+        g.setFont(juce::Font(AppTheme::uiFont(13.0f)));
+        g.drawText(name, 54, 0, width - 60, height, juce::Justification::centredLeft, true);
     }
 }
 

@@ -173,7 +173,7 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     statusLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
     addAndMakeVisible(statusLabel);
 
-    listBox.setRowHeight(30);
+    listBox.setRowHeight(32);
     addAndMakeVisible(listBox);
 
     applyTheme();
@@ -287,8 +287,9 @@ void DiskPresetBrowserPanel::rebuildVisibleEntries()
 
     // Just the count: the library path never fit beside it, so it moves to
     // the tooltip for whoever needs to know which folder this is.
-    statusLabel.setText(juce::String(visibleEntryIndices.size()) + " of "
-                            + juce::String(allEntries.size()) + " files",
+    statusLabel.setText(visibleEntryIndices.size() == allEntries.size()
+                            ? juce::String(allEntries.size()) + " files"
+                            : juce::String(visibleEntryIndices.size()) + " of " + juce::String(allEntries.size()),
                         juce::dontSendNotification);
     statusLabel.setTooltip(libraryRoot != juce::File() ? libraryRoot.getFullPathName() : juce::String());
 
@@ -299,25 +300,26 @@ void DiskPresetBrowserPanel::rebuildVisibleEntries()
 
 void DiskPresetBrowserPanel::resized()
 {
-    auto area = getLocalBounds().reduced(8);
+    auto area = getLocalBounds().reduced(12, 10);
 
-    auto searchRow = area.removeFromTop(34);
-    refreshButton.setBounds(searchRow.removeFromRight(34).reduced(1));
-    searchBox.setBounds(searchRow.withTrimmedRight(4).reduced(0, 2));
-    area.removeFromTop(4);
+    auto searchRow = area.removeFromTop(36);
+    refreshButton.setBounds(searchRow.removeFromRight(36));
+    searchBox.setBounds(searchRow.withTrimmedRight(8));
+    area.removeFromTop(10);
 
-    filterRowArea = area.removeFromTop(30);
+    filterRowArea = area.removeFromTop(28);
     layoutFilterRow();
-    area.removeFromTop(2);
+    area.removeFromTop(10);
 
     auto statusRow = area.removeFromTop(28);
-    nextButton.setBounds(statusRow.removeFromRight(26));
-    prevButton.setBounds(statusRow.removeFromRight(26));
+    nextButton.setBounds(statusRow.removeFromRight(28));
     statusRow.removeFromRight(4);
-    hidePch2Button.setBounds(statusRow.removeFromRight(juce::jmin(84, statusRow.getWidth() / 2)));
+    prevButton.setBounds(statusRow.removeFromRight(28));
+    statusRow.removeFromRight(12);
+    hidePch2Button.setBounds(statusRow.removeFromRight(juce::jmin(92, statusRow.getWidth() / 2)));
     statusLabel.setBounds(statusRow);
-    area.removeFromTop(4);
-    listBox.setBounds(area);
+    area.removeFromTop(8);
+    listBox.setBounds(area.withX(0).withWidth(getWidth()));
 }
 
 // Chips take the width their word needs and share out any room left over.
@@ -330,7 +332,7 @@ void DiskPresetBrowserPanel::layoutFilterRow()
 
     TypeChipButton* chips[] = { &allButton, &patchesButton, &snippetsButton, &banksButton, &setsButton };
     constexpr int numChips = static_cast<int>(std::size(chips));
-    const int gap = 3;
+    const int gap = 6;
     auto totalWidth = [&](int padding) {
         int w = gap * (numChips - 1);
         for (auto* c : chips)
@@ -338,15 +340,15 @@ void DiskPresetBrowserPanel::layoutFilterRow()
         return w;
     };
 
-    int padding = 14;
-    while (padding > 6 && totalWidth(padding) > row.getWidth())
+    // Each chip is as wide as its word needs, with room around it, and they sit side by side
+    // from the left. On a narrow panel the padding tightens instead: the labels are never cut.
+    int padding = 20;
+    while (padding > 8 && totalWidth(padding) > row.getWidth())
         padding -= 2;
 
-    const int spare = juce::jmax(0, row.getWidth() - totalWidth(padding));
-    for (int i = 0; i < numChips; ++i)
+    for (auto* c : chips)
     {
-        const int extra = spare / numChips + (i < spare % numChips ? 1 : 0);
-        chips[i]->setBounds(row.removeFromLeft(chips[i]->getIdealWidth(padding) + extra));
+        c->setBounds(row.removeFromLeft(c->getIdealWidth(padding)));
         row.removeFromLeft(gap);
     }
 }

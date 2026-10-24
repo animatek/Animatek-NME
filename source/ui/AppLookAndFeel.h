@@ -53,6 +53,62 @@ public:
         g.drawHorizontalLine(h - 1, 0.0f, static_cast<float>(w));
     }
 
+    // The open/close mark on a tree row: a chevron, pointing right when closed and down when open
+    void drawTreeviewPlusMinusBox(juce::Graphics& g, const juce::Rectangle<float>& area, juce::Colour,
+                                  bool isOpen, bool isMouseOver) override
+    {
+        const auto& pal = AppTheme::palette();
+        const float cx = area.getCentreX(), cy = area.getCentreY(), s = 3.6f;
+        juce::Path chevron;
+        if (isOpen)
+        {
+            chevron.startNewSubPath(cx - s, cy - s * 0.55f);
+            chevron.lineTo(cx, cy + s * 0.55f);
+            chevron.lineTo(cx + s, cy - s * 0.55f);
+        }
+        else
+        {
+            chevron.startNewSubPath(cx - s * 0.55f, cy - s);
+            chevron.lineTo(cx + s * 0.55f, cy);
+            chevron.lineTo(cx - s * 0.55f, cy + s);
+        }
+        g.setColour(isMouseOver ? pal.textPrimary : pal.textSecondary);
+        g.strokePath(chevron, juce::PathStrokeType(1.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
+
+    // A check box with rounded corners that fills with the accent when it is on
+    void drawToggleButton(juce::Graphics& g, juce::ToggleButton& button, bool isMouseOver, bool) override
+    {
+        const auto& pal = AppTheme::palette();
+        const float size = juce::jmin(18.0f, static_cast<float>(button.getHeight()) - 6.0f);
+        const auto box = juce::Rectangle<float>(2.0f, (static_cast<float>(button.getHeight()) - size) * 0.5f, size, size);
+        const bool on = button.getToggleState();
+        const bool enabled = button.isEnabled();
+
+        g.setColour(on ? pal.accentActive : isMouseOver ? pal.buttonHover : pal.inputBackground);
+        g.fillRoundedRectangle(box, 5.0f);
+        if (!on)
+        {
+            g.setColour(pal.borderColor);
+            g.drawRoundedRectangle(box.reduced(0.5f), 5.0f, 1.0f);
+        }
+        else
+        {
+            juce::Path tick;
+            tick.startNewSubPath(box.getX() + size * 0.26f, box.getCentreY());
+            tick.lineTo(box.getX() + size * 0.43f, box.getY() + size * 0.70f);
+            tick.lineTo(box.getX() + size * 0.76f, box.getY() + size * 0.30f);
+            g.setColour(pal.backgroundMain);
+            g.strokePath(tick, juce::PathStrokeType(2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        }
+
+        g.setColour(button.findColour(juce::ToggleButton::textColourId).withAlpha(enabled ? 1.0f : 0.5f));
+        g.setFont(AppTheme::uiFont(12.0f));
+        g.drawText(button.getButtonText(),
+                   button.getLocalBounds().withTrimmedLeft(static_cast<int>(size) + 10),
+                   juce::Justification::centredLeft, true);
+    }
+
     // Text fields with rounded corners, like the buttons
     void fillTextEditorBackground(juce::Graphics& g, int width, int height, juce::TextEditor& editor) override
     {

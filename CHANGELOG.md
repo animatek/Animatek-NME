@@ -4,6 +4,15 @@
 
 ### Changed
 
+- **Browser: more room, and the Synth tab redone** (2026-10-24, branch `ui-redesign`). Both tabs have
+  12px margins and 10px between the search, the chips and the list, instead of a squeeze. **Disk:** the
+  chips are as wide as their word and sit side by side from the left, no longer stretched across the
+  panel; the count row says "N files" (or "N of M" when filtered), with Hide 2.10 and the two arrows on
+  its right; 32px rows. **Synth:** a bank is its name in bold with its range ("101 - 199") quietly on the
+  right, the open/close mark is a chevron (the app-wide tree look), each patch is its location in a
+  muted mono number and then its name, rows are 30px (banks 36px), and the Hide empty check box and
+  the Refresh button share one row. **App-wide:** check boxes are rounded and fill with the accent when on.
+
 - **Browser (right panel) restyled** (2026-10-24, branch `ui-redesign`). The **Synth / Disk tabs** are
   flat now: just the word, with an underline in the accent under the front one (`AppLookAndFeel`).
   **Text fields app-wide get rounded corners** (6px, the focus ring too), so the search fields, the
