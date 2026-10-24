@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Header bar: the cable colours move between the morph dials and the snapshots** (2026-10-24,
+  branch `ui-redesign`), with a hairline on each side. The order is now: name, Voices, Load,
+  Store | morph | cable colours and S | snapshots, crossfader ... MUTATOR | heart, Patreon. Under
+  about 1355px they fold into the "Cables" button, in that same place. The free room is now between
+  the crossfader and MUTATOR.
+
 - **Header bar redesign, step 2** (2026-10-24, branch `ui-redesign`). ABCD moves out of the
   header to the left of the module chips (fixed, outside the scrolling strip). The module bar is
   restyled: flat tabs with an underline under the one showing, and the module chips as pills.

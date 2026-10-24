@@ -196,16 +196,32 @@ void PatchHeaderBar::morphSpinnerStep(int delta)
 
 void PatchHeaderBar::resized()
 {
-    // One layout pass: every element's rectangle is worked out here, left to right, and the
-    // paint code and the hit tests only read them. The right-hand group is anchored to the
-    // right edge, and the cable colours sit centred in the room that is left between them.
+    // One layout pass: every element's rectangle is worked out here and the paint code and the
+    // hit tests only read them. The right-hand group is anchored to the right edge first, so
+    // the left-hand flow knows how much room it has; the cable colours sit between the morph
+    // dials and the snapshots, and fold into one button when that room runs out.
     L = Layout{};
     const float h = static_cast<float>(getHeight());
     const float cy = h * 0.5f;
     constexpr float gap = 12.0f;
-    float x = 12.0f;
 
     auto sep = [this](float at) { L.seps.push_back(at); };
+
+    // Right edge, working inwards: Patreon, heart, a hairline, Mutator, a hairline
+    float rx = static_cast<float>(getWidth()) - 12.0f;
+    L.patreon = { rx - supportButtonSize, cy - supportButtonSize * 0.5f, supportButtonSize, supportButtonSize };
+    rx -= supportButtonSize + 4.0f;
+    L.donate = { rx - supportButtonSize, L.patreon.getY(), supportButtonSize, supportButtonSize };
+    rx -= supportButtonSize;
+    sep(rx - gap * 0.5f);
+    rx -= gap;
+    L.mutator = { rx - mutatorW, cy - 14.0f, mutatorW, 28.0f };
+    rx -= mutatorW;
+    sep(rx - gap * 0.5f);
+    rx -= gap;
+    const float rightStart = rx;
+
+    float x = 12.0f;
 
     // Patch name
     L.name = juce::Rectangle<int>(juce::roundToInt(x), 7, nameW, getHeight() - 14);
@@ -241,51 +257,38 @@ void PatchHeaderBar::resized()
     x += 4 * morphKnobSize + 3 * morphKnobSpacing + gap;
     sep(x - gap * 0.5f);
 
-    // Snapshots, with room after them for the interpolation time
-    for (int i = 0; i < 8; ++i)
-        L.snap[static_cast<size_t>(i)] = { x + i * (snapSize + snapGap), cy - snapSize * 0.5f, snapSize, snapSize };
-    x += 8 * snapSize + 7 * snapGap + 26.0f;
-    sep(x - gap * 0.5f);
-
-    // Crossfader A/B
-    L.xfade = { x, cy - 11.0f, xfadeW, 22.0f };
-    x += xfadeW + gap;
-    sep(x - gap * 0.5f);
-    const float leftEnd = x;
-
-    // Right edge, working inwards: Patreon, heart, a hairline, ABCD, Mutator, a hairline
-    float rx = static_cast<float>(getWidth()) - 12.0f;
-    L.patreon = { rx - supportButtonSize, cy - supportButtonSize * 0.5f, supportButtonSize, supportButtonSize };
-    rx -= supportButtonSize + 4.0f;
-    L.donate = { rx - supportButtonSize, L.patreon.getY(), supportButtonSize, supportButtonSize };
-    rx -= supportButtonSize;
-    sep(rx - gap * 0.5f);
-    rx -= gap;
-    L.mutator = { rx - mutatorW, cy - 14.0f, mutatorW, 28.0f };
-    rx -= mutatorW;
-    sep(rx - gap * 0.5f);
-    rx -= gap;
-    const float rightStart = rx;
-
-    // Cable colours and the shake key, centred in what is left
+    // Cable colours and the shake key, between the morph dials and the snapshots
+    const float snapsW = 8 * snapSize + 7 * snapGap + 26.0f;       // with room for the interpolation time
+    const float afterCables = snapsW + xfadeW + gap;               // what has to fit to their right
     const float groupW = numCableTypes * cableToggleSize + (numCableTypes - 1) * cableToggleSpacing + 10.0f + 24.0f;
-    L.cablesCompact = (rightStart - leftEnd) < groupW + 8.0f;
+    L.cablesCompact = (rightStart - x) < groupW + afterCables;
     if (L.cablesCompact)
     {
         // Not enough room for seven dots and a key: one button that opens them as a menu.
         const juce::Rectangle<float> away { -100.0f, -100.0f, 0.0f, 0.0f };
         L.cable.fill(away);
         L.shake = away;
-        L.cablesBtn = { rightStart - compactCablesW, cy - 11.0f, compactCablesW, 22.0f };
+        L.cablesBtn = { x, cy - 11.0f, compactCablesW, 22.0f };
+        x += compactCablesW + gap;
     }
     else
     {
-        float gx = leftEnd + (rightStart - leftEnd - groupW) * 0.5f;
         for (int i = 0; i < numCableTypes; ++i)
-            L.cable[static_cast<size_t>(i)] = { gx + i * (cableToggleSize + cableToggleSpacing), cy - cableToggleSize * 0.5f,
+            L.cable[static_cast<size_t>(i)] = { x + i * (cableToggleSize + cableToggleSpacing), cy - cableToggleSize * 0.5f,
                                                 static_cast<float>(cableToggleSize), static_cast<float>(cableToggleSize) };
-        L.shake = { gx + numCableTypes * (cableToggleSize + cableToggleSpacing) + 4.0f, cy - 11.0f, 24.0f, 22.0f };
+        L.shake = { x + numCableTypes * (cableToggleSize + cableToggleSpacing) + 4.0f, cy - 11.0f, 24.0f, 22.0f };
+        x += groupW + gap;
     }
+    sep(x - gap * 0.5f);
+
+    // Snapshots, with room after them for the interpolation time
+    for (int i = 0; i < 8; ++i)
+        L.snap[static_cast<size_t>(i)] = { x + i * (snapSize + snapGap), cy - snapSize * 0.5f, snapSize, snapSize };
+    x += snapsW;
+    sep(x - gap * 0.5f);
+
+    // Crossfader A/B
+    L.xfade = { x, cy - 11.0f, xfadeW, 22.0f };
 
     // Patch name editor
     if (patchNameEditor)
