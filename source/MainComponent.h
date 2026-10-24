@@ -21,6 +21,7 @@
 #include "ui/MainLayout.h"
 #include "ui/EditorOptionsDialog.h"
 #include "ui/PatchSettingsDialog.h"
+#include "ui/ShortcutsDialog.h"
 #include "ui/ThemeEditorWindow.h"
 #include "ui/CommunityThemesWindow.h"
 #include "ui/PresetBrowserWindow.h"
@@ -478,6 +479,7 @@ private:
     // The same for the other windows a button or a shortcut opens: asking again closes it, not a second one
     juce::Component::SafePointer<PatchSettingsDialog> patchSettingsDialog;
     juce::Component::SafePointer<EditorOptionsDialog> editorOptionsDialog;
+    juce::Component::SafePointer<ShortcutsDialog> shortcutsDialog;
 
     // Convenience accessors for current slot
     std::unique_ptr<Patch>& currentPatch() { return slotPatches[activeSlot]; }

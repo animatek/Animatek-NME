@@ -8,6 +8,13 @@
   instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
   to yours and quit without a picture. That run now counts as its own instance.
 
+- **Keyboard Shortcuts, like Editor Options** (2026-10-24, `main`). The window was a plain block of
+  monospaced text. It is now 880x640 with the groups (File, Edit, Canvas, Slots, Floaters, Sub-window,
+  Mutator) in a list at the left, the action at the left of each row and its keys as key caps at the right,
+  and a **filter** on top that searches the action and the keys of every group at once (grouped under
+  the name of each group that matches). It toggles like the other dialogs: asking again closes it. The list is
+  data in `ui/ShortcutsDialog.cpp`, and Ctrl+M (MIDI setup) is in it.
+
 - **Patch name field without the outline** (2026-10-24, `main`). The grey line round the name field is
   gone: only the darker ground says it is a field (a touch darker still), in the resting state and
   while typing.

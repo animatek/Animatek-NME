@@ -8,6 +8,7 @@
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
 #include "ui/AboutDialog.h"
+#include "ui/ShortcutsDialog.h"
 #include "ui/FlatCloseButton.h"
 #include "ui/EditorOptionsDialog.h"
 #include "ui/SaveSlotSetDialog.h"
@@ -3331,14 +3332,18 @@ void MainComponent::snapshotMenus(const juce::File& dir, int index)
     // The Keyboard Shortcuts window, then on to the rest
     showKeyboardShortcutsDialog();
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    juce::Timer::callAfterDelay(500, [safeThis, dir, shootWindow]() mutable {
+    juce::Timer::callAfterDelay(1000, [safeThis, dir, shootWindow]() mutable {
       if (!safeThis) return;
       auto& desktop = juce::Desktop::getInstance();
       for (int i = 0; i < desktop.getNumComponents(); ++i)
-        if (auto* dw = dynamic_cast<juce::DialogWindow*>(desktop.getComponent(i)))
+        if (auto* sd = dynamic_cast<ShortcutsDialog*>(desktop.getComponent(i)))
         {
-          shootWindow(*dw, "dialog-shortcuts");
-          dw->exitModalState(0);
+          shootWindow(*sd, "dialog-shortcuts");
+          sd->showGroupForSnapshot(2);
+          shootWindow(*sd, "dialog-shortcuts-canvas");
+          sd->setFilterForSnapshot("zoom");
+          shootWindow(*sd, "dialog-shortcuts-filter");
+          sd->dismiss();
           break;
         }
       juce::Timer::callAfterDelay(250, [safeThis, dir]() { if (safeThis) safeThis->saveSnapshotsAndQuit(dir); });
@@ -5417,128 +5422,11 @@ private:
 };
 
 void MainComponent::showKeyboardShortcutsDialog() {
-  // Keep in sync with manual/07-shortcuts.md
-  static const char* shortcutsText =
-      "FILE\n"
-      "  Ctrl+N              New patch\n"
-      "  Ctrl+O              Open patch\n"
-      "  Ctrl+S              Save\n"
-      "  Ctrl+Shift+S        Save as\n"
-      "  Ctrl+B              Preset browser\n"
-      "  Ctrl+P              Patch settings\n"
-      "  Ctrl+G              Synth settings\n"
-      "  Ctrl+,              Editor options\n"
-      "  Ctrl+Q              Quit\n"
-      "\n"
-      "EDIT\n"
-      "  Ctrl+Z              Undo\n"
-      "  Ctrl+Shift+Z, Ctrl+Y  Redo\n"
-      "  Ctrl+A              Select all modules (section)\n"
-      "  Ctrl+X / C / V      Cut / copy / paste modules\n"
-      "  Ctrl+D              Duplicate with cables\n"
-      "  Delete, Backspace   Delete selection\n"
-      "  Escape              Clear selection\n"
-      "  Arrow keys          Nudge selected modules\n"
-      "  Ctrl+R              Randomize parameters\n"
-      "  Ctrl+Shift+R        Randomize (gaussian)\n"
-      "\n"
-      "CANVAS\n"
-      "  Enter, Double-click Quick Add module at mouse\n"
-      "  F1                  Module help (hovered/selected)\n"
-      "  F5                  Parameter values overlay\n"
-      "  F7                  Morph groups overlay\n"
-      "  F8                  Knob assignments overlay\n"
-      "  F9                  MIDI CC assignments overlay\n"
-      "  F3 (or F10)         Module DSP cost overlay\n"
-      "  Double-click module Module DSP cost\n"
-      "  + / -               Step the control under the pointer\n"
-      "  Z                   Zoom to selection / reset\n"
-      "  Shift+Z             Reset zoom to 100%\n"
-      "  Ctrl++ / Ctrl+-     Zoom in / out\n"
-     #if JUCE_MAC
-      "  Cmd+wheel, pinch    Zoom around the pointer\n"
-     #else
-      "  Ctrl+wheel          Zoom around the pointer\n"
-     #endif
-      "  Ctrl+T              Cycle color theme\n"
-     #if JUCE_MAC
-      "  Cmd+Shift+W         Toggle wireframe modules\n"
-      "  Cmd+Shift+H         Toggle hardware look\n"
-     #else
-      "  Ctrl+W              Toggle wireframe modules\n"
-      "  Ctrl+H              Toggle hardware look\n"
-     #endif
-      "  Ctrl+I              Toggle inspector panel (left)\n"
-      "  Ctrl+Shift+I        Toggle patch browser (right)\n"
-      "  S                   Shake cables\n"
-      "  Middle-drag         Pan canvas\n"
-     #if JUCE_MAC
-      "  Cmd-drag connector  Re-route: lift the cable off that end and drop it\n"
-     #else
-      "  Ctrl-drag connector Re-route: lift the cable off that end and drop it\n"
-     #endif
-      "                      on another connector (Alt works too)\n"
-      "\n"
-      "SLOTS\n"
-      "  Ctrl+1..4           Switch to slot A..D (opens it if closed)\n"
-      "  " NME_SLOT_TOGGLE_CHORD "1..4     Show/hide slot A..D's sub-window\n"
-      "  F4 (or F11)         Focus mode: blow the focused slot up, and back\n"
-      "  Maximise button     Same, on that sub-window's title bar\n"
-      "  Ctrl+Shift+arrows   Move the focused slot to the neighbouring tile\n"
-      "                      (up/down only exist in the four-slot 2x2)\n"
-      "  Right-click slot    Show/hide that slot's sub-window\n"
-      "  Ctrl+click slot     Enable/disable without selecting\n"
-      "\n"
-      "  Open slots tile themselves: one fills the area, two split it, three\n"
-      "  go in thirds, four go 2x2. Dragging or resizing a sub-window leaves\n"
-      "  the windows where you put them; View > Slots > Tile Slots re-flows.\n"
-      "  The ABCD button (header bar, right of MUT) goes further and puts the\n"
-      "  slots back in A,B,C,D order within the tiling.\n"
-      "\n"
-      "FLOATERS\n"
-      "  Ctrl+5              Knob Floater\n"
-      "  Ctrl+6              Keyboard Floater\n"
-      "  Ctrl+7              Patch Notes\n"
-      "  Ctrl+8              Patch Mutator\n"
-      "  Ctrl+9              SysEx Monitor\n"
-      "\n"
-      "SUB-WINDOW (the one with focus)\n"
-      "  Ctrl+R / Ctrl+Shift+R  Randomize (uniform / gaussian)\n"
-      "  Ctrl+S / Ctrl+Shift+S  Save / Save as\n"
-      "  These act on that window's own slot and selection.\n"
-      "\n"
-      "PATCH MUTATOR (window focused)\n"
-      "  1-8                 Focus Mother / Children / Father\n"
-      "  O / T               Copy focused sound to Mother / Father\n"
-      "  E / U               Mutate from focused / from Mother\n"
-      "  N                   Randomize\n"
-      "  I / X               Interpolate / Cross (Mother+Father)\n"
-      "  S                   Save focused to Temporary Storage\n"
-      "  Shift+drag          Interpolate two sounds\n"
-      "  Ctrl+drag           Cross two sounds\n";
-
-  auto* editor = new juce::TextEditor();
-  editor->setMultiLine(true, false);
-  editor->setReadOnly(true);
-  editor->setScrollbarsShown(true);
-  editor->setCaretVisible(false);
-  editor->setFont(juce::Font(juce::Font::getDefaultMonospacedFontName(), 14.0f,
-                             juce::Font::plain));
-  editor->setColour(juce::TextEditor::backgroundColourId, AppTheme::palette().backgroundMain);
-  editor->setColour(juce::TextEditor::textColourId, AppTheme::palette().textPrimary);
-  editor->setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
-  editor->setText(juce::String::fromUTF8(shortcutsText));
-  editor->setIndents(20, 16);   // the text keeps its distance from the edge of the window
-  editor->setSize(480, 600);
-
-  juce::DialogWindow::LaunchOptions opts;
-  opts.content.setOwned(editor);
-  opts.dialogTitle = "Keyboard Shortcuts";
-  opts.dialogBackgroundColour = AppTheme::palette().backgroundMain;
-  opts.escapeKeyTriggersCloseButton = true;
-  opts.useNativeTitleBar = false;
-  opts.resizable = false;
-  announceDialogOnSynth(opts.launchAsync());
+  // Open already: asking again closes it (the list itself lives in ui/ShortcutsDialog.cpp)
+  if (shortcutsDialog != nullptr) { shortcutsDialog->dismiss(); return; }
+  auto* dialog = ShortcutsDialog::show(this);
+  shortcutsDialog = dialog;
+  announceDialogOnSynth(dialog);
 }
 
 juce::String MainComponent::makeSynthCaption()

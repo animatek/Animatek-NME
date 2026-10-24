@@ -121,6 +121,7 @@ set(NME_SHARED_SOURCES
     source/ui/MidiSettingsDialog.cpp
     source/ui/SynthSettingsDialog.cpp
     source/ui/EditorOptionsDialog.cpp
+    source/ui/ShortcutsDialog.cpp
     source/ui/QuickAddPopup.cpp
     source/ui/PatchBrowserPanel.cpp
     source/ui/PresetBrowserWindow.cpp
