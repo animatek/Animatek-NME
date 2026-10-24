@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <juce_gui_basics/juce_gui_basics.h>
 
 class DiskPresetBrowserPanel : public juce::Component,
@@ -85,7 +86,8 @@ private:
 
     void rebuildVisibleEntries();
     void layoutFilterRow();
-    void scanFolder(const juce::File& folder, Entry::Type type);
+    void scanFolder(const juce::File& folder, Entry::Type type,
+                    const std::vector<juce::File>& skipFolders = {});
     juce::String getTypeLabel(Entry::Type type) const;
     juce::String getTypeLabel(Entry& entry) const;
     // Sniffs the file on first use and caches the result on the entry, so

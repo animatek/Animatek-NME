@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **The Disk tab lists every .pch under the library folder** (2026-10-24, #106). It only looked
+  inside `Patches/`, `Snippets/`, `Banks/` and `Sets/`, so a library pointed at the folder where
+  someone already keeps their patches, spread over other subfolders, showed an empty list. Now any
+  `.pch` under the library root is a patch; `Snippets/`, `Banks/`, `Sets/` and `Presets/` keep their
+  own meaning and are not listed twice. The options hint says so. Checked in the Release build with
+  a library of `Leads/`, `Antiguos/Bass/` and `Snippets/`: 3 of 3 files, two patches and a snippet.
+
 - **Heart and Patreon buttons in the patch bar** (2026-10-24). Two small icon buttons in the far
   right corner, like GitHub's Sponsor button: a heart that opens the PayPal donation page and
   Patreon's mark that opens the Patreon page. The synth name box moves left to make room. The

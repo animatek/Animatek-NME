@@ -380,7 +380,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     styleLabel (libraryLabel, true);
     styleTextEditor (libraryPath);
     libraryPath.setText (options.presetLibraryRoot.getFullPathName(), juce::dontSendNotification);
-    libraryPath.setTextToShowWhenEmpty ("Choose a root folder. Animatek NME will create Patches and Snippets inside it.", p().textMuted);
+    libraryPath.setTextToShowWhenEmpty ("Choose a root folder. Every .pch under it shows in the Disk tab.", p().textMuted);
     styleBtn (browseLibraryButton);
     browseLibraryButton.onClick = [this]() { browseLibraryRoot(); };
     addAndMakeVisible (libraryLabel);

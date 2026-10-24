@@ -1,4 +1,5 @@
 #include "PresetBrowserWindow.h"
+#include <algorithm>
 #include "../model/PchFileIO.h"
 #include "AppTheme.h"
 
@@ -216,7 +217,14 @@ void DiskPresetBrowserPanel::refresh()
         return;
     }
 
-    scanFolder(libraryRoot.getChildFile("Patches"), Entry::Type::Patch);
+    // A patch is any .pch under the library folder, not only what is inside
+    // Patches/: people point the library at the folder they already keep their
+    // patches in (#106). The folders with a meaning of their own are left out,
+    // so a snippet or a bank backup is not listed twice.
+    const std::vector<juce::File> ownFolders {
+        libraryRoot.getChildFile("Snippets"), libraryRoot.getChildFile("Banks"),
+        libraryRoot.getChildFile("Sets"),     libraryRoot.getChildFile("Presets") };
+    scanFolder(libraryRoot, Entry::Type::Patch, ownFolders);
     scanFolder(libraryRoot.getChildFile("Snippets"), Entry::Type::Snippet);
     scanFolder(libraryRoot.getChildFile("Banks"), Entry::Type::Bank);
     scanFolder(libraryRoot.getChildFile("Sets"), Entry::Type::Set);
@@ -230,7 +238,8 @@ void DiskPresetBrowserPanel::refresh()
     rebuildVisibleEntries();
 }
 
-void DiskPresetBrowserPanel::scanFolder(const juce::File& folder, Entry::Type type)
+void DiskPresetBrowserPanel::scanFolder(const juce::File& folder, Entry::Type type,
+                                        const std::vector<juce::File>& skipFolders)
 {
     if (!folder.isDirectory())
         return;
@@ -238,6 +247,9 @@ void DiskPresetBrowserPanel::scanFolder(const juce::File& folder, Entry::Type ty
     for (juce::RangedDirectoryIterator it(folder, true, type == Entry::Type::Set ? "*.nmset" : "*.pch", juce::File::findFiles); it != juce::RangedDirectoryIterator(); ++it)
     {
         auto file = it->getFile();
+        if (std::any_of(skipFolders.begin(), skipFolders.end(),
+                        [&file](const juce::File& skip) { return file.isAChildOf(skip); }))
+            continue;
         Entry entry;
         entry.type = type;
         entry.file = file;
@@ -246,7 +258,7 @@ void DiskPresetBrowserPanel::scanFolder(const juce::File& folder, Entry::Type ty
         entry.displayName = type == Entry::Type::Bank
             ? file.getRelativePathFrom(folder).dropLastCharacters(4)
             : file.getFileNameWithoutExtension();
-        entry.relativePath = file.getRelativePathFrom(folder.getParentDirectory());
+        entry.relativePath = file.getRelativePathFrom(libraryRoot);
         allEntries.push_back(std::move(entry));
     }
 }
