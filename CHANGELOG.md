@@ -4,6 +4,15 @@
 
 ### Changed
 
+- **Inspector: the module and the assignments are two sections, shown together** (2026-10-24,
+  branch `ui-redesign`). Selecting a module used to swap the patch's assignments for that module's
+  own, so the module's name took over the "Assignments" heading. Now the header and the list top
+  show the module (name, area, DSP cost, its Parameters, its Presets) and, below, a section of its own,
+  **Assignments**, with the morph, knob and MIDI CC rows of the whole patch (with the number of
+  them), each naming the module it belongs to. With nothing selected the header says "Inspector /
+  Nothing selected" and only the assignments show. The section label ("ALL MOD...") no longer gets
+  cut off: it has the whole row when there is no DSP cost to share it with.
+
 - **Inspector rows and header restyled** (2026-10-24, branch `ui-redesign`). Flat rows with no
   zebra stripes: the parameter's name on the left in the secondary ink and its value on the right
   in a monospaced field (rows 30px, were 26); morph, knob and MIDI CC rows lose the boxed "x" for a

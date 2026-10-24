@@ -344,18 +344,16 @@ public:
         // and the next, which is why they are safe.
         module = resolveModule();
 
+        // Two sections: what the selected module has (parameters, presets), and the assignments
+        // of the whole patch, always, each row naming the module it belongs to.
         if (module != nullptr)
-        {
             buildParamsFromModule(module);
-            buildMorphsFromModule(module, singleSection);
-            buildHwFromModule(module, singleSection);
-        }
-        else if (patch != nullptr)
+        if (patch != nullptr)
         {
             buildMorphsFromPatch();
             buildHwFromPatch();
         }
-        else
+        else if (module == nullptr)
         {
             setSize(1, 1);
             repaint();
@@ -365,7 +363,7 @@ public:
         // Morph A/B fader carrier knob (global — shown in the patch-wide view).
         // Its real assignment lives on the morph pseudo-section, so it never
         // appears in the normal knob list; surface it here so it can be removed.
-        if (module == nullptr && morphFaderKnob >= 0
+        if (morphFaderKnob >= 0
             && KnobAssignmentMessage::isValidKnob(morphFaderKnob))
         {
             HwRow row;
@@ -423,6 +421,7 @@ public:
     enum class RowKind
     {
         ParamsTitle, ParamRow,
+        AssignmentsTitle, AssignmentsNone,
         MorphsTitle, MorphGroupHeader, MorphRow,
         KnobsTitle, KnobRow,
         CtrlsTitle, CtrlRow,
@@ -442,49 +441,13 @@ public:
             y += h;
         };
 
+        // The selected module first: its parameters and its presets...
         if (!paramRows.empty())
         {
             add(RowKind::ParamsTitle, -1, sectionTitleH);
             if (!paramsSectionCollapsed)
                 for (int i = 0; i < (int)paramRows.size(); ++i)
                     add(RowKind::ParamRow, i, rowH);
-            y += sectionGap;
-        }
-
-        if (!morphRows.empty())
-        {
-            add(RowKind::MorphsTitle, -1, sectionTitleH);
-            if (!morphsSectionCollapsed)
-            {
-                int prevGroup = -1;
-                for (int i = 0; i < (int)morphRows.size(); ++i)
-                {
-                    if (morphRows[size_t(i)].group != prevGroup)
-                    {
-                        prevGroup = morphRows[size_t(i)].group;
-                        add(RowKind::MorphGroupHeader, i, groupHeaderH);
-                    }
-                    add(RowKind::MorphRow, i, rowH);
-                }
-            }
-            y += sectionGap;
-        }
-
-        if (!knobRows.empty())
-        {
-            add(RowKind::KnobsTitle, -1, sectionTitleH);
-            if (!knobsSectionCollapsed)
-                for (int i = 0; i < (int)knobRows.size(); ++i)
-                    add(RowKind::KnobRow, i, rowH);
-            y += sectionGap;
-        }
-
-        if (!ctrlRows.empty())
-        {
-            add(RowKind::CtrlsTitle, -1, sectionTitleH);
-            if (!ctrlsSectionCollapsed)
-                for (int i = 0; i < (int)ctrlRows.size(); ++i)
-                    add(RowKind::CtrlRow, i, rowH);
             y += sectionGap;
         }
 
@@ -500,6 +463,53 @@ public:
                     if (!presetRowHidden(list[size_t(i)]))
                         add(RowKind::PresetRow, i, rowH);
                 add(RowKind::PresetSave, -1, rowH);
+            }
+            y += sectionGap;
+        }
+
+        // ...then the assignments of the whole patch, a section of their own
+        if (patch != nullptr)
+        {
+            add(RowKind::AssignmentsTitle, -1, sectionTitleH);
+            if (morphRows.empty() && knobRows.empty() && ctrlRows.empty())
+                add(RowKind::AssignmentsNone, -1, rowH);
+            y += 2;
+
+            if (!morphRows.empty())
+            {
+                add(RowKind::MorphsTitle, -1, sectionTitleH);
+                if (!morphsSectionCollapsed)
+                {
+                    int prevGroup = -1;
+                    for (int i = 0; i < (int)morphRows.size(); ++i)
+                    {
+                        if (morphRows[size_t(i)].group != prevGroup)
+                        {
+                            prevGroup = morphRows[size_t(i)].group;
+                            add(RowKind::MorphGroupHeader, i, groupHeaderH);
+                        }
+                        add(RowKind::MorphRow, i, rowH);
+                    }
+                }
+                y += sectionGap;
+            }
+
+            if (!knobRows.empty())
+            {
+                add(RowKind::KnobsTitle, -1, sectionTitleH);
+                if (!knobsSectionCollapsed)
+                    for (int i = 0; i < (int)knobRows.size(); ++i)
+                        add(RowKind::KnobRow, i, rowH);
+                y += sectionGap;
+            }
+
+            if (!ctrlRows.empty())
+            {
+                add(RowKind::CtrlsTitle, -1, sectionTitleH);
+                if (!ctrlsSectionCollapsed)
+                    for (int i = 0; i < (int)ctrlRows.size(); ++i)
+                        add(RowKind::CtrlRow, i, rowH);
+                y += sectionGap;
             }
         }
 
@@ -588,6 +598,8 @@ public:
                     return { HitType::PresetSave, -1 };
 
                 case RowKind::MorphGroupHeader:
+                case RowKind::AssignmentsTitle:
+                case RowKind::AssignmentsNone:
                     return {};
             }
         }
@@ -607,9 +619,8 @@ public:
         if (rowsAreStale())
             return;
 
-        bool isGlobal = (patch != nullptr && module == nullptr);
-        bool hasAny = !paramRows.empty() || !morphRows.empty() || !knobRows.empty()
-                    || !ctrlRows.empty() || hasPresetSection();
+        bool isGlobal = (patch != nullptr);
+        bool hasAny = patch != nullptr || !paramRows.empty() || hasPresetSection();
 
         if (!hasAny)
         {
@@ -642,6 +653,23 @@ public:
                     break;
                 case RowKind::ParamRow:
                     paintParamRow(g, row.bounds, row.index);
+                    break;
+
+                case RowKind::AssignmentsTitle:
+                {
+                    paintSectionTitle(g, y, "Assignments", sectionInk);
+                    g.setColour(AppTheme::palette().textMuted);
+                    g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
+                    g.drawText(juce::String(morphRows.size() + knobRows.size() + ctrlRows.size()),
+                               marginX, y, getWidth() - marginX * 2, sectionTitleH,
+                               juce::Justification::centredRight);
+                    break;
+                }
+                case RowKind::AssignmentsNone:
+                    g.setColour(AppTheme::palette().textMuted);
+                    g.setFont(AppTheme::uiFont(fontRow));
+                    g.drawText("None yet", marginX + 4, y, getWidth() - marginX * 2, rowH,
+                               juce::Justification::centredLeft);
                     break;
 
                 case RowKind::MorphsTitle:
@@ -1626,8 +1654,8 @@ void InspectorPanel::setPatch(Patch* p)
 
     if (currentModule() == nullptr)
     {
-        titleLabel.setText("Assignments", juce::dontSendNotification);
-        sectionLabel.setText("ALL MODULES", juce::dontSendNotification);
+        titleLabel.setText("Inspector", juce::dontSendNotification);
+        sectionLabel.setText("Nothing selected", juce::dontSendNotification);
         dspLabel.setText({}, juce::dontSendNotification);
         nameLabel.setVisible(false);
         nameEditor.setVisible(false);
@@ -1670,8 +1698,8 @@ void InspectorPanel::clearModule()
 
     if (currentPatch != nullptr)
     {
-        titleLabel.setText("Assignments", juce::dontSendNotification);
-        sectionLabel.setText("ALL MODULES", juce::dontSendNotification);
+        titleLabel.setText("Inspector", juce::dontSendNotification);
+        sectionLabel.setText("Nothing selected", juce::dontSendNotification);
         nameLabel.setVisible(false);
         nameEditor.setVisible(false);
         assignmentsList->setPatchWide(currentPatch);
@@ -1839,9 +1867,13 @@ void InspectorPanel::resized()
     const int knobMapSpace = currentPatch != nullptr && getWidth() >= 170 ? 116 : 0;
     titleLabel.setBounds(x, y, juce::jmax(0, w - knobMapSpace), rowH);   y += rowH + 2;
     // The cost shares the section row, right-aligned but kept clear of the knob
-    // map, which starts on the title row and hangs down over this one.
+    // map, which starts on the title row and hangs down over this one. With no cost to show
+    // (nothing selected) the section label has the whole row.
     const int rowW = juce::jmax(0, w - knobMapSpace);
-    const int dspW = juce::jmin(70, rowW / 2);
+    const int dspW = dspLabel.getText().isEmpty()
+        ? 0
+        : juce::jmin(juce::jmax(40, static_cast<int>(juce::Font(dspLabel.getFont()).getStringWidthFloat(dspLabel.getText())) + 6),
+                     rowW / 2);
     sectionLabel.setBounds(x, y, rowW - dspW, 14);
     dspLabel.setBounds(x + rowW - dspW, y, dspW, 14);   y += 14 + 4;
 
