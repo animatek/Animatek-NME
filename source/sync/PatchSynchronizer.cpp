@@ -115,6 +115,13 @@ void PatchSynchronizer::onCableAdded(int section, Connector* output, Connector* 
     bool outIsOutput = output->getDescriptor()->isOutput;
     bool inIsOutput = input->getDescriptor()->isOutput;
     SignalType color = output->getDescriptor()->signalType;
+    // The colour the canvas draws and a save writes: a chained cable follows its net's source
+    for (const auto& c : container.getConnections())
+        if (c.output == output && c.input == input)
+        {
+            color = container.colourOf(c);
+            break;
+        }
 
     // Create and send message
     // Protocol convention (from Java reference): destination (input) first, source (output) second
