@@ -421,7 +421,7 @@ public:
     enum class RowKind
     {
         ParamsTitle, ParamRow,
-        AssignmentsTitle, AssignmentsNone,
+        AssignmentsNone,
         MorphsTitle, MorphGroupHeader, MorphRow,
         KnobsTitle, KnobRow,
         CtrlsTitle, CtrlRow,
@@ -467,13 +467,11 @@ public:
             y += sectionGap;
         }
 
-        // ...then the assignments of the whole patch, a section of their own
+        // ...then the whole patch's macros, knobs and MIDI CC, each its own section
         if (patch != nullptr)
         {
-            add(RowKind::AssignmentsTitle, -1, sectionTitleH);
             if (morphRows.empty() && knobRows.empty() && ctrlRows.empty())
-                add(RowKind::AssignmentsNone, -1, rowH);
-            y += 2;
+                add(RowKind::AssignmentsNone, -1, rowH + 6);
 
             if (!morphRows.empty())
             {
@@ -598,7 +596,6 @@ public:
                     return { HitType::PresetSave, -1 };
 
                 case RowKind::MorphGroupHeader:
-                case RowKind::AssignmentsTitle:
                 case RowKind::AssignmentsNone:
                     return {};
             }
@@ -655,25 +652,15 @@ public:
                     paintParamRow(g, row.bounds, row.index);
                     break;
 
-                case RowKind::AssignmentsTitle:
-                {
-                    paintSectionTitle(g, y, "Assignments", sectionInk);
-                    g.setColour(AppTheme::palette().textMuted);
-                    g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
-                    g.drawText(juce::String(morphRows.size() + knobRows.size() + ctrlRows.size()),
-                               marginX, y, getWidth() - marginX * 2, sectionTitleH,
-                               juce::Justification::centredRight);
-                    break;
-                }
                 case RowKind::AssignmentsNone:
                     g.setColour(AppTheme::palette().textMuted);
                     g.setFont(AppTheme::uiFont(fontRow));
-                    g.drawText("None yet", marginX + 4, y, getWidth() - marginX * 2, rowH,
-                               juce::Justification::centredLeft);
+                    g.drawText("No macros, knobs or MIDI CC assigned yet", marginX + 4, y,
+                               getWidth() - marginX * 2, rowH + 6, juce::Justification::centredLeft, true);
                     break;
 
                 case RowKind::MorphsTitle:
-                    paintSectionTitle(g, y, "Morphs", sectionInk);
+                    paintSectionTitle(g, y, "Macros", sectionInk);
                     paintCollapseChevron(g, y, sectionInk, morphsSectionCollapsed, sectionTitleH);
                     break;
                 case RowKind::MorphGroupHeader:
@@ -1842,10 +1829,66 @@ void InspectorPanel::paint(juce::Graphics& g)
         }
     }
 
-    if (currentModule() != nullptr)
+    // "Knob panel" label beside the miniature, which is the panel's own and stays as it is
+    if (currentPatch != nullptr && getWidth() >= 170)
     {
+        g.setColour(theme.textMuted);
+        g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
+        g.drawText("KNOB PANEL", margin + 2, margin, getWidth() - margin * 2 - 116, 38,
+                   juce::Justification::centredLeft, true);
+    }
+
+    // The Module block: a heading with the module's own name in the accent, then its facts
+    {
+        const int w = getWidth();
         g.setColour(theme.borderColor);
-        g.fillRect(0, margin + rowH + 2 + 14 + 14 + margin * 2 + rowH + 4, getWidth(), 1);
+        g.fillRect(0, moduleTopY, w, 1);
+
+        g.setColour(theme.textMuted);
+        g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
+        g.drawText("MODULE", margin + 2, moduleTopY, w / 2, moduleHeaderH, juce::Justification::centredLeft, false);
+
+        auto* module = currentModule();
+        int y = moduleTopY + moduleHeaderH;
+        if (module == nullptr)
+        {
+            g.setColour(theme.textMuted);
+            g.setFont(AppTheme::uiFont(13.0f));
+            g.drawText("Nothing selected", margin + 6, y, w - margin * 2, moduleInfoRowH, juce::Justification::centredLeft);
+            return;
+        }
+
+        g.setColour(theme.accentActive);
+        g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
+        g.drawText(nameEditor.getText().toUpperCase(), w / 2, moduleTopY, w / 2 - margin - 2, moduleHeaderH,
+                   juce::Justification::centredRight, true);
+
+        // The module type, in full
+        g.setColour(theme.textPrimary);
+        g.setFont(AppTheme::uiFont(14.0f).withStyle("Bold"));
+        g.drawText(titleLabel.getText(), margin + 6, y, w - margin * 2 - 4, moduleInfoRowH, juce::Justification::centredLeft, true);
+        y += moduleInfoRowH;
+
+        const juce::Font mono(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(),
+                                                12.0f * AppTheme::uiFontScale(), juce::Font::plain));
+        auto fact = [&](const juce::String& label, const juce::String& value)
+        {
+            g.setColour(theme.textSecondary);
+            g.setFont(AppTheme::uiFont(13.0f));
+            g.drawText(label, margin + 6, y, w / 2, moduleInfoRowH, juce::Justification::centredLeft);
+            g.setColour(theme.textPrimary);
+            g.setFont(mono);
+            g.drawText(value, w / 2, y, w / 2 - margin - 2, moduleInfoRowH, juce::Justification::centredRight);
+            y += moduleInfoRowH;
+        };
+        fact("Area", currentSection() == 1 ? "Poly" : "Common");
+        auto* desc = module->getDescriptor();
+        fact("DSP cost", desc != nullptr ? formatDspCost(desc->cycles) : juce::String("--"));
+
+        // The name field has its label here
+        g.setColour(theme.textSecondary);
+        g.setFont(AppTheme::uiFont(13.0f));
+        g.drawText("Name", margin + 6, nameRowY, 50, moduleInfoRowH + 8, juce::Justification::centredLeft);
     }
 }
 
@@ -1860,31 +1903,38 @@ void InspectorPanel::paintOverChildren(juce::Graphics& g)
 
 void InspectorPanel::resized()
 {
-    int x = margin;
-    int w = getWidth() - margin * 2;
-    int y = margin;
+    // From the top: the knob panel (its miniature, which has a place of its own and does not
+    // change), the Module block (the selected module: its name, area, DSP cost and the name field),
+    // and then the list: the module's parameters and presets, and the patch's macros, knobs and CC.
+    const int x = margin;
+    const int w = getWidth() - margin * 2;
+    const bool hasMap = currentPatch != nullptr && getWidth() >= 170;
 
-    const int knobMapSpace = currentPatch != nullptr && getWidth() >= 170 ? 116 : 0;
-    titleLabel.setBounds(x, y, juce::jmax(0, w - knobMapSpace), rowH);   y += rowH + 2;
-    // The cost shares the section row, right-aligned but kept clear of the knob
-    // map, which starts on the title row and hangs down over this one. With no cost to show
-    // (nothing selected) the section label has the whole row.
-    const int rowW = juce::jmax(0, w - knobMapSpace);
-    const int dspW = dspLabel.getText().isEmpty()
-        ? 0
-        : juce::jmin(juce::jmax(40, static_cast<int>(juce::Font(dspLabel.getFont()).getStringWidthFloat(dspLabel.getText())) + 6),
-                     rowW / 2);
-    sectionLabel.setBounds(x, y, rowW - dspW, 14);
-    dspLabel.setBounds(x + rowW - dspW, y, dspW, 14);   y += 14 + 4;
+    int y = margin + (hasMap ? 38 + 10 : 0);
+    moduleTopY = y;
+    y += moduleHeaderH;
+
+    // The old header labels hold the texts, and are drawn by paint() now
+    titleLabel.setBounds({});
+    sectionLabel.setBounds({});
+    dspLabel.setBounds({});
+    nameLabel.setBounds({});
 
     if (currentModule() != nullptr)
     {
-        nameLabel.setBounds(x, y, w, 14);      y += 16;
-        nameEditor.setBounds(x, y, w, rowH);   y += rowH + margin;
-        y += 1 + margin;
+        y += moduleInfoRowH * 3;                 // full name, area, DSP cost
+        nameRowY = y;
+        nameEditor.setBounds(x + 52, y + 3, juce::jmax(0, w - 52), moduleInfoRowH + 2);
+        y += moduleInfoRowH + 8;
     }
+    else
+    {
+        nameRowY = -1;
+        y += moduleInfoRowH + 8;                 // "Nothing selected"
+    }
+    moduleBottomY = y;
 
-    int remaining = getHeight() - y - margin;
+    int remaining = getHeight() - y;
     if (remaining > 0)
     {
         morphViewport.setBounds(0, y, getWidth(), remaining);

@@ -103,6 +103,9 @@ private:
 
     static constexpr int margin = 8;
     static constexpr int rowH   = 24;
+    static constexpr int moduleHeaderH = 32;   // the "MODULE" heading
+    static constexpr int moduleInfoRowH = 28;  // each line of the Module block
+    int moduleTopY = 0, moduleBottomY = 0, nameRowY = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(InspectorPanel)
 };

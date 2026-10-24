@@ -4,6 +4,15 @@
 
 ### Changed
 
+- **Inspector: knob panel, Module, then Macros and Knobs** (2026-10-24, branch `ui-redesign`).
+  The panel is now laid out from the top as: the knob panel (its miniature, untouched, with a
+  "KNOB PANEL" label), a **Module** block (a "MODULE" heading with the module's own name in the
+  accent, the module type in full, its area, its DSP cost and a Name field), the module's
+  **Parameters** and **Presets**, and then the whole patch's **Macros** (the morph groups, renamed
+  from "Morphs"), **Knobs** and **MIDI CC**. The umbrella "Assignments" heading is gone, and with
+  nothing selected the Module block says "Nothing selected" while the macros, knobs and CC still show.
+  This replaces the entry below, which was the first attempt.
+
 - **Inspector: the module and the assignments are two sections, shown together** (2026-10-24,
   branch `ui-redesign`). Selecting a module used to swap the patch's assignments for that module's
   own, so the module's name took over the "Assignments" heading. Now the header and the list top
