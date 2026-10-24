@@ -43,7 +43,11 @@ PatchBrowserPanel::PatchBrowserPanel()
     // TreeView for patch browser
     treeView = std::make_unique<juce::TreeView>();
     treeView->setDefaultOpenness(false);  // Banks start collapsed
-    treeView->setIndentSize(14);   // just room for the chevron: the patches sit close to their bank
+    // A bank is a section heading with its own mark at the right (the same as the inspector's
+    // sections), so the tree draws no open/close button of its own and no indentation to speak of:
+    // the patches sit just under their bank, the way a section's rows do.
+    treeView->setOpenCloseButtonsVisible(false);
+    treeView->setIndentSize(6);
     addAndMakeVisible(*treeView);
 
     applyTheme();
@@ -112,7 +116,7 @@ void PatchBrowserPanel::resized()
         hideEmptyButton.setBounds(filterRow.removeFromLeft(juce::jmin(130, filterRow.getWidth())));
 
         // TreeView gets remaining space
-        treeView->setBounds(bounds.withTrimmedTop(2).reduced(4, 0));
+        treeView->setBounds(bounds.withTrimmedTop(2));
         treeView->setVisible(true);
         searchBox.setVisible(true);
         hideEmptyButton.setVisible(true);
@@ -343,17 +347,36 @@ void PatchBrowserPanel::PatchTreeItem::paintItem(juce::Graphics& g, int width, i
 
     if (section >= 0 && position == -1)
     {
-        // A bank: its name, and the range of locations it covers, quietly on the right
+        // A bank, drawn as a section heading like the inspector's: a rule above it, its name in
+        // small capitals, and the fold mark at the right (pointing up when folded, down when open)
         const int paren = itemName.indexOfChar('(');
-        const auto bankName = paren > 0 ? itemName.substring(0, paren).trim() : itemName;
-        const auto range = paren > 0 ? itemName.substring(paren + 1).upToFirstOccurrenceOf(")", false, false)
-                                           .replace("-", juce::CharPointer_UTF8(" \xe2\x80\x93 ")) : juce::String();
-        g.setColour(AppTheme::palette().textPrimary);
-        g.setFont(juce::Font(AppTheme::uiFont(14.0f)).boldened());
-        g.drawText(bankName, 6, 0, width - 12, height, juce::Justification::centredLeft, true);
-        g.setColour(AppTheme::palette().textMuted);
-        g.setFont(juce::Font(AppTheme::uiFont(12.0f)));
-        g.drawText(range, 6, 0, width - 14, height, juce::Justification::centredRight, true);
+        const auto bankName = (paren > 0 ? itemName.substring(0, paren).trim() : itemName).toUpperCase();
+
+        g.setColour(AppTheme::palette().borderColor);
+        g.fillRect(0, 0, width, 1);
+
+        g.setColour(AppTheme::palette().textSecondary);
+        g.setFont(juce::Font(AppTheme::uiFont(12.0f)).boldened());
+        g.drawText(bankName, 14, 0, width - 40, height, juce::Justification::centredLeft, true);
+
+        const float cx = static_cast<float>(width) - 18.0f;
+        const float cy = static_cast<float>(height) * 0.5f;
+        const float s = 3.5f;
+        juce::Path chevron;
+        if (!isOpen())
+        {
+            chevron.startNewSubPath(cx - s * 1.4f, cy + s * 0.7f);
+            chevron.lineTo(cx, cy - s * 0.7f);
+            chevron.lineTo(cx + s * 1.4f, cy + s * 0.7f);
+        }
+        else
+        {
+            chevron.startNewSubPath(cx - s * 1.4f, cy - s * 0.7f);
+            chevron.lineTo(cx, cy + s * 0.7f);
+            chevron.lineTo(cx + s * 1.4f, cy - s * 0.7f);
+        }
+        g.setColour(AppTheme::palette().textSecondary);
+        g.strokePath(chevron, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
     else
     {

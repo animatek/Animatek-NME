@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Synth tab: the banks as section headings** (2026-10-24, branch `ui-redesign`). Each bank is drawn
+  like the inspector's sections: a rule above it, its name in small capitals ("BANK 1", the 101-199
+  range is gone), and the fold mark at the right edge (up when folded, down when open). The tree draws
+  no open/close button of its own, so the patches sit right under their bank; a click anywhere on the
+  bank's row folds or unfolds it, as before.
+
 - **Synth tab: patch locations as pills, and the list closer to the left** (2026-10-24, branch
   `ui-redesign`). Each patch shows its location (101, 102...) as a pill in the style of the Disk
   list's type tags, blue for a patch, muted for an empty slot and in the accent for the one loaded
