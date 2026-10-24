@@ -31,21 +31,15 @@ namespace
             ? juce::Colours::black : juce::Colours::white;
     }
 
-    // Layout constants for section widths
-    constexpr int padL = 8;
-    constexpr int sepGap = 14;
-    constexpr int patchLblW = 48;
-    constexpr int patchNameW = 150;
-    // Store-to-bank button: diskette + the bank location the patch lives at
-    constexpr int storeBtnW = 60;
-    constexpr int patchSecW = patchLblW + patchNameW + storeBtnW + 12;
-    constexpr int voicesLblW = 54;
-    constexpr int voicesValW = 32;
-    constexpr int arrowBtnW = 16;
-    constexpr int voicesSecW = voicesLblW + voicesValW + arrowBtnW;
-    constexpr int loadLblW = 40;
-    constexpr int loadBarTotalW = 74;
-    constexpr int loadSecW = loadLblW + loadBarTotalW;
+    // Layout constants (see resized())
+    constexpr int nameW = 176;
+    constexpr float loadW = 104.0f;
+    constexpr float storeW = 92.0f;
+    constexpr float snapSize = 24.0f;
+    constexpr float snapGap = 4.0f;
+    constexpr float xfadeW = 112.0f;
+    constexpr float mutatorW = 76.0f;
+    constexpr float compactCablesW = 76.0f;
 }
 
 PatchHeaderBar::PatchHeaderBar()
@@ -177,31 +171,109 @@ void PatchHeaderBar::morphSpinnerStep(int delta)
 
 void PatchHeaderBar::resized()
 {
-    int x = padL;
-    patchSecX_ = x;     x += patchSecW + sepGap;
-    voicesSecX_ = x;    x += voicesSecW + sepGap;
-    loadSecX_ = x;      x += loadSecW + sepGap;
-    morphSecX_ = x;     x += 4 * (morphKnobSize + morphKnobSpacing) + sepGap;
-    cableSecX_ = x;
+    // One layout pass: every element's rectangle is worked out here, left to right, and the
+    // paint code and the hit tests only read them. The right-hand group is anchored to the
+    // right edge, and the cable colours sit centred in the room that is left between them.
+    L = Layout{};
+    const float h = static_cast<float>(getHeight());
+    const float cy = h * 0.5f;
+    constexpr float gap = 12.0f;
+    float x = 12.0f;
 
-    // Position patch name editor
+    auto sep = [this](float at) { L.seps.push_back(at); };
+
+    // Patch name
+    L.name = juce::Rectangle<int>(juce::roundToInt(x), 7, nameW, getHeight() - 14);
+    x += nameW + gap;
+
+    // Voices (label above, number and arrows below)
+    L.voicesLabel = { x, 5.0f, 56.0f, 12.0f };
+    L.voicesField = { x, 19.0f, 34.0f, 22.0f };
+    L.voicesUp    = { x + 36.0f, 19.0f, 14.0f, 11.0f };
+    L.voicesDown  = { x + 36.0f, 30.0f, 14.0f, 11.0f };
+    x += 52.0f + gap;
+    sep(x - gap * 0.5f);
+
+    // Load: PVA and E
+    L.loadPva = { x, cy - 14.0f, loadW, 13.0f };
+    L.loadE   = { x, cy + 1.0f,  loadW, 13.0f };
+    x += loadW + gap;
+    sep(x - gap * 0.5f);
+
+    // Store
+    L.store = { x, cy - 15.0f, storeW, 30.0f };
+    x += storeW + gap;
+    sep(x - gap * 0.5f);
+
+    // Morph
+    for (int i = 0; i < 4; ++i)
+        L.morph[static_cast<size_t>(i)] = { x + i * (morphKnobSize + morphKnobSpacing),
+                                            cy - morphKnobSize * 0.5f,
+                                            static_cast<float>(morphKnobSize), static_cast<float>(morphKnobSize) };
+    x += 4 * morphKnobSize + 3 * morphKnobSpacing + gap;
+    sep(x - gap * 0.5f);
+
+    // Snapshots, with room after them for the interpolation time
+    for (int i = 0; i < 8; ++i)
+        L.snap[static_cast<size_t>(i)] = { x + i * (snapSize + snapGap), cy - snapSize * 0.5f, snapSize, snapSize };
+    x += 8 * snapSize + 7 * snapGap + 26.0f;
+    sep(x - gap * 0.5f);
+
+    // Crossfader A/B
+    L.xfade = { x, cy - 11.0f, xfadeW, 22.0f };
+    x += xfadeW + gap;
+    sep(x - gap * 0.5f);
+    const float leftEnd = x;
+
+    // Right edge, working inwards: Patreon, heart, a hairline, ABCD, Mutator, a hairline
+    float rx = static_cast<float>(getWidth()) - 12.0f;
+    L.patreon = { rx - supportButtonSize, cy - supportButtonSize * 0.5f, supportButtonSize, supportButtonSize };
+    rx -= supportButtonSize + 4.0f;
+    L.donate = { rx - supportButtonSize, L.patreon.getY(), supportButtonSize, supportButtonSize };
+    rx -= supportButtonSize;
+    sep(rx - gap * 0.5f);
+    rx -= gap;
+    L.retile = { rx - 34.0f, cy - 11.0f, 34.0f, 22.0f };
+    rx -= 34.0f + 6.0f;
+    L.mutator = { rx - mutatorW, cy - 14.0f, mutatorW, 28.0f };
+    rx -= mutatorW;
+    sep(rx - gap * 0.5f);
+    rx -= gap;
+    const float rightStart = rx;
+
+    // Cable colours and the shake key, centred in what is left
+    const float groupW = numCableTypes * cableToggleSize + (numCableTypes - 1) * cableToggleSpacing + 10.0f + 24.0f;
+    L.cablesCompact = (rightStart - leftEnd) < groupW + 8.0f;
+    if (L.cablesCompact)
+    {
+        // Not enough room for seven dots and a key: one button that opens them as a menu.
+        const juce::Rectangle<float> away { -100.0f, -100.0f, 0.0f, 0.0f };
+        L.cable.fill(away);
+        L.shake = away;
+        L.cablesBtn = { rightStart - compactCablesW, cy - 11.0f, compactCablesW, 22.0f };
+    }
+    else
+    {
+        float gx = leftEnd + (rightStart - leftEnd - groupW) * 0.5f;
+        for (int i = 0; i < numCableTypes; ++i)
+            L.cable[static_cast<size_t>(i)] = { gx + i * (cableToggleSize + cableToggleSpacing), cy - cableToggleSize * 0.5f,
+                                                static_cast<float>(cableToggleSize), static_cast<float>(cableToggleSize) };
+        L.shake = { gx + numCableTypes * (cableToggleSize + cableToggleSpacing) + 4.0f, cy - 11.0f, 24.0f, 22.0f };
+    }
+
+    // Patch name editor
     if (patchNameEditor)
         patchNameEditor->setBounds(getPatchNameBounds());
 }
 
 juce::Rectangle<int> PatchHeaderBar::getPatchNameBounds() const
 {
-    int x = patchSecX_ + patchLblW;
-    return juce::Rectangle<int>(x, 6, patchNameW, getHeight() - 12);
+    return L.name;
 }
 
 juce::Rectangle<float> PatchHeaderBar::getStoreButtonBounds() const
 {
-    auto name = getPatchNameBounds();
-    return juce::Rectangle<float>(static_cast<float>(name.getRight() + 6),
-                                  static_cast<float>(name.getY()),
-                                  static_cast<float>(storeBtnW),
-                                  static_cast<float>(name.getHeight()));
+    return L.store;
 }
 
 bool PatchHeaderBar::isStoreButtonAt(juce::Point<int> pos) const
@@ -240,9 +312,7 @@ void PatchHeaderBar::setStoreUncertain(bool uncertain)
 
 juce::Rectangle<float> PatchHeaderBar::getMorphKnobBounds(int i) const
 {
-    float kx = static_cast<float>(morphSecX_ + i * (morphKnobSize + morphKnobSpacing));
-    float ky = (static_cast<float>(getHeight()) - morphKnobSize) / 2.0f - 5.0f;
-    return { kx, ky, static_cast<float>(morphKnobSize), static_cast<float>(morphKnobSize) };
+    return L.morph[static_cast<size_t>(juce::jlimit(0, 3, i))];
 }
 
 int PatchHeaderBar::getMorphKnobAt(juce::Point<int> pos) const
@@ -255,9 +325,7 @@ int PatchHeaderBar::getMorphKnobAt(juce::Point<int> pos) const
 
 juce::Rectangle<float> PatchHeaderBar::getCableToggleBounds(int i) const
 {
-    float cx = static_cast<float>(cableSecX_ + i * (cableToggleSize + cableToggleSpacing));
-    float cy = (static_cast<float>(getHeight()) - cableToggleSize) / 2.0f;
-    return { cx, cy, static_cast<float>(cableToggleSize), static_cast<float>(cableToggleSize) };
+    return L.cable[static_cast<size_t>(juce::jlimit(0, numCableTypes - 1, i))];
 }
 
 int PatchHeaderBar::getCableToggleAt(juce::Point<int> pos) const
@@ -270,10 +338,7 @@ int PatchHeaderBar::getCableToggleAt(juce::Point<int> pos) const
 
 juce::Rectangle<float> PatchHeaderBar::getShakeButtonBounds() const
 {
-    // Place "S" button right after the last cable toggle, with some spacing
-    float lastToggleRight = static_cast<float>(cableSecX_ + numCableTypes * (cableToggleSize + cableToggleSpacing));
-    float cy = (static_cast<float>(getHeight()) - cableToggleSize) / 2.0f;
-    return { lastToggleRight + 2.0f, cy, static_cast<float>(cableToggleSize), static_cast<float>(cableToggleSize) };
+    return L.shake;
 }
 
 bool PatchHeaderBar::isShakeButtonAt(juce::Point<int> pos) const
@@ -283,24 +348,17 @@ bool PatchHeaderBar::isShakeButtonAt(juce::Point<int> pos) const
 
 juce::Rectangle<float> PatchHeaderBar::getBugButtonBounds() const
 {
-    auto shakeBounds = getShakeButtonBounds();
-    return { shakeBounds.getRight() + 6.0f, shakeBounds.getY(),
-             80.0f, static_cast<float>(cableToggleSize) };
+    return {};
 }
 
-bool PatchHeaderBar::isBugButtonAt(juce::Point<int> pos) const
+bool PatchHeaderBar::isBugButtonAt(juce::Point<int>) const
 {
-    return getBugButtonBounds().expanded(2.0f).contains(pos.toFloat());
+    return false;   // the button left the bar: Help > Report a Bug is where it lives now
 }
 
 juce::Rectangle<float> PatchHeaderBar::getSnapshotButtonBounds(int index) const
 {
-    auto bugBounds = getBugButtonBounds();
-    float startX = bugBounds.getRight() + 12.0f;
-    float btnSize = static_cast<float>(cableToggleSize);
-    float spacing = 3.0f;
-    float cy = (static_cast<float>(getHeight()) - btnSize) / 2.0f;
-    return { startX + index * (btnSize + spacing), cy, btnSize, btnSize };
+    return L.snap[static_cast<size_t>(juce::jlimit(0, 7, index))];
 }
 
 int PatchHeaderBar::getSnapshotButtonAt(juce::Point<int> pos) const
@@ -313,9 +371,7 @@ int PatchHeaderBar::getSnapshotButtonAt(juce::Point<int> pos) const
 
 juce::Rectangle<float> PatchHeaderBar::getMorphFaderBounds() const
 {
-    // Between the snapshot row (past the interpolation-time label) and MUT.
-    auto last = getSnapshotButtonBounds(7);
-    return { last.getRight() + 28.0f, last.getY(), 76.0f, last.getHeight() };
+    return L.xfade;
 }
 
 bool PatchHeaderBar::isMorphFaderAt(juce::Point<int> pos) const
@@ -333,9 +389,7 @@ float PatchHeaderBar::morphFaderPosFromX(float x) const
 
 juce::Rectangle<float> PatchHeaderBar::getMutatorButtonBounds() const
 {
-    // Right of the morph fader
-    auto fader = getMorphFaderBounds();
-    return { fader.getRight() + 10.0f, fader.getY(), 36.0f, fader.getHeight() };
+    return L.mutator;
 }
 
 bool PatchHeaderBar::isMutatorButtonAt(juce::Point<int> pos) const
@@ -345,13 +399,7 @@ bool PatchHeaderBar::isMutatorButtonAt(juce::Point<int> pos) const
 
 juce::Rectangle<float> PatchHeaderBar::getRetileButtonBounds() const
 {
-    // Right of MUT, where the issue asked for it, but two rows tall instead of
-    // one: the face is a picture of the layout it produces (A|B over C|D), and
-    // two rows of letters do not fit in MUT's single-line height. The bar is
-    // 48px, so the extra height costs nothing.
-    auto mut = getMutatorButtonBounds();
-    constexpr float w = 34.0f, h = 22.0f;
-    return { mut.getRight() + 6.0f, mut.getCentreY() - h * 0.5f, w, h };
+    return L.retile;
 }
 
 bool PatchHeaderBar::isRetileButtonAt(juce::Point<int> pos) const
@@ -363,16 +411,12 @@ bool PatchHeaderBar::isRetileButtonAt(juce::Point<int> pos) const
 // synth name box makes room for them (supportBlockW).
 juce::Rectangle<float> PatchHeaderBar::getPatreonButtonBounds() const
 {
-    return { static_cast<float>(getWidth()) - supportEdge - supportButtonSize,
-             (static_cast<float>(getHeight()) - supportButtonSize) * 0.5f,
-             supportButtonSize, supportButtonSize };
+    return L.patreon;
 }
 
 juce::Rectangle<float> PatchHeaderBar::getDonateButtonBounds() const
 {
-    auto patreon = getPatreonButtonBounds();
-    return { patreon.getX() - 4.0f - supportButtonSize, patreon.getY(),
-             supportButtonSize, supportButtonSize };
+    return L.donate;
 }
 
 void PatchHeaderBar::setSnapshotFilled(int index, bool filled)
@@ -388,11 +432,12 @@ void PatchHeaderBar::setInterpolationProgress(float progress)
 
 PatchHeaderBar::ArrowHit PatchHeaderBar::getVoiceArrowAt(juce::Point<int> pos) const
 {
-    int ax = voicesSecX_ + voicesLblW + voicesValW;
-    auto area = juce::Rectangle<int>(ax, 0, arrowBtnW, getHeight());
-    if (!area.contains(pos))
-        return ArrowHit::None;
-    return pos.y < getHeight() / 2 ? ArrowHit::Up : ArrowHit::Down;
+    const auto p = pos.toFloat();
+    if (L.voicesUp.expanded(1.0f, 2.0f).contains(p))
+        return ArrowHit::Up;
+    if (L.voicesDown.expanded(1.0f, 2.0f).contains(p))
+        return ArrowHit::Down;
+    return ArrowHit::None;
 }
 
 bool PatchHeaderBar::getCableVisibility(int index) const
@@ -457,449 +502,324 @@ void PatchHeaderBar::drawMorphKnob(juce::Graphics& g, float cx, float cy, float 
     g.setColour(ink);
     g.drawLine(centerX + sinA * size * 0.15f, centerY - cosA * size * 0.15f,
                centerX + sinA * size * 0.4f, centerY - cosA * size * 0.4f, 2.0f);
-
-    // Caption below in the theme's ink, not the macro colour: the dial itself
-    // already carries the colour, and green M2 was unreadable against the light
-    // Nord Classic chrome. All four read as one row this way.
-    g.setColour(AppTheme::macroLabelInk());
-    g.setFont(AppTheme::uiFont(9.0f));
-    // 12 rather than 10: the caption box has to hold the scaled font without
-    // clipping, and the bar is 48 tall so there is room below the dial.
-    g.drawText(label, static_cast<int>(cx - 2), static_cast<int>(cy + size + 1),
-               static_cast<int>(size + 4), 12, juce::Justification::centred, false);
 }
 
-void PatchHeaderBar::drawLoadBar(juce::Graphics& g, int x, int y, int w, int h,
+void PatchHeaderBar::drawLoadBar(juce::Graphics& g, juce::Rectangle<float> r,
                                   float percent, const juce::String& label)
 {
-    // Inner label (PVA: / E:)
-    int lblW = 30;
-    g.setColour(AppTheme::palette().textSecondary);
-    g.setFont(AppTheme::uiFont(9.0f));
-    g.drawText(label, x, y, lblW, h, juce::Justification::centredLeft);
+    const auto& pal = AppTheme::palette();
+    g.setColour(pal.textMuted);
+    g.setFont(AppTheme::uiFont(10.0f).withStyle("Bold"));
+    g.drawText(label, r.withWidth(26.0f), juce::Justification::centredLeft, false);
 
-    int barX = x + lblW;
-    int barW = w - lblW;
-
-    // Bar background
-    g.setColour(AppTheme::palette().inputBackground);
-    g.fillRect(barX, y, barW, h);
-    g.setColour(AppTheme::palette().borderColor);
-    g.drawRect(barX, y, barW, h, 1);
+    auto bar = juce::Rectangle<float>(r.getX() + 28.0f, r.getCentreY() - 3.5f, 38.0f, 7.0f);
+    g.setColour(pal.inputBackground);
+    g.fillRoundedRectangle(bar, 3.5f);
+    g.setColour(pal.borderColor);
+    g.drawRoundedRectangle(bar.reduced(0.5f), 3.5f, 1.0f);
 
     if (percent >= 0.0f)
     {
-        int fillW = juce::jlimit(0, barW - 2, static_cast<int>(percent * (barW - 2)));
         juce::Colour barCol = percent < 0.6f  ? juce::Colour(0xff5a9a5a)
                             : percent < 0.85f ? juce::Colour(0xffb0a030)
                                               : juce::Colour(0xffcb4f4f);
         g.setColour(barCol);
-        g.fillRect(barX + 1, y + 1, fillW, h - 2);
+        g.fillRoundedRectangle(bar.withWidth(juce::jmax(2.0f, bar.getWidth() * juce::jlimit(0.0f, 1.0f, percent))), 3.5f);
+    }
 
-        g.setColour(juce::Colours::white);
-        g.setFont(AppTheme::uiFont(8.0f));
-        // One decimal, matching the original Clavia editor (e.g. "47.6%"); the
-        // load is a client-side estimate so a truncated integer read a hair high
-        // (a 99.5%-cycle patch showing "100%").
-        g.drawText(juce::String(percent * 100.0f, 1) + "%",
-                   barX, y, barW, h, juce::Justification::centred);
-    }
-    else
-    {
-        g.setColour(juce::Colour(0xff888888));
-        g.setFont(AppTheme::uiFont(8.0f));
-        g.drawText("--%", barX, y, barW, h, juce::Justification::centred);
-    }
+    // One decimal, matching the original Clavia editor (e.g. "47.6%"); the load is a
+    // client-side estimate, so a truncated integer read a hair high.
+    g.setColour(pal.textSecondary);
+    g.setFont(AppTheme::uiFont(10.0f));
+    g.drawText(percent >= 0.0f ? juce::String(percent * 100.0f, 1) + "%" : juce::String("--%"),
+               juce::Rectangle<float>(bar.getRight() + 4.0f, r.getY(), r.getRight() - bar.getRight() - 4.0f, r.getHeight()),
+               juce::Justification::centredLeft, false);
 }
 
 void PatchHeaderBar::paint(juce::Graphics& g)
 {
-    int h = getHeight();
+    const auto& pal = AppTheme::palette();
+    const int h = getHeight();
+    const float cy = static_cast<float>(h) * 0.5f;
 
-    // Background
-    g.fillAll(AppTheme::palette().backgroundPanel);
+    g.fillAll(pal.backgroundPanel);
 
     // Bottom border
-    g.setColour(AppTheme::palette().buttonActive);
+    g.setColour(pal.buttonActive);
     g.drawLine(0.0f, static_cast<float>(h) - 0.5f,
                static_cast<float>(getWidth()), static_cast<float>(h) - 0.5f, 1.0f);
 
-    // Separators between sections
-    auto drawSep = [&](int sectionX)
+    // Hairlines between the groups (no boxes, no group titles: the bar is flat)
+    g.setColour(pal.buttonActive);
+    for (float sx : L.seps)
+        g.drawLine(sx, cy - 12.0f, sx, cy + 12.0f, 1.0f);
+
+    // A small flat button: used by Store, the shake key and the Mutator
+    auto flatButton = [&](juce::Rectangle<float> r, bool hot, bool framed)
     {
-        float sx = static_cast<float>(sectionX) - sepGap * 0.5f;
-        g.setColour(AppTheme::palette().buttonActive);
-        g.drawLine(sx, 4.0f, sx, static_cast<float>(h - 4), 1.0f);
+        g.setColour(hot ? pal.buttonActive : (framed ? pal.buttonBackground : juce::Colours::transparentBlack));
+        g.fillRoundedRectangle(r, 5.0f);
+        if (framed)
+        {
+            g.setColour(pal.borderColor);
+            g.drawRoundedRectangle(r.reduced(0.5f), 5.0f, 1.0f);
+        }
     };
-    drawSep(voicesSecX_);
-    drawSep(loadSecX_);
-    drawSep(morphSecX_);
-    drawSep(cableSecX_);
 
-    // --- Patch Name ---
-    int x = patchSecX_;
-    g.setColour(AppTheme::palette().textSecondary);
-    g.setFont(AppTheme::uiFont(11.0f));
-    g.drawText("Patch:", x, 0, patchLblW, h, juce::Justification::centredLeft);
-    x += patchLblW;
-
-    // Only draw name if editor is not visible
+    // --- Patch name (no box; the editor label sits on it when it is clicked) ---
     if (!patchNameEditor || !patchNameEditor->isVisible())
     {
-        auto nameRect = juce::Rectangle<int>(x, 6, patchNameW, h - 12);
-        g.setColour(AppTheme::palette().inputBackground);
-        g.fillRoundedRectangle(nameRect.toFloat(), 3.0f);
-        g.setColour(AppTheme::palette().borderColor);
-        g.drawRoundedRectangle(nameRect.toFloat(), 3.0f, 1.0f);
-
-        juce::String patchName = patch ? patch->getName() : "No Patch";
-        g.setColour(juce::Colours::white);
-        g.setFont(AppTheme::uiFont(12.0f));
-        g.drawText(patchName, nameRect.reduced(6, 0), juce::Justification::centredLeft, true);
+        auto nameRect = L.name;
+        const bool has = patch != nullptr;
+        g.setColour(has ? pal.textPrimary : pal.textMuted);
+        g.setFont(AppTheme::uiFont(16.0f).withStyle("Bold"));
+        g.drawText(has ? patch->getName() : juce::String("No Patch"),
+                   nameRect.reduced(8, 0), juce::Justification::centredLeft, true);
     }
 
-    // --- Store to bank button (diskette + the location the patch lives at) ---
+    // --- Voices: label above, the number in a field with its arrows ---
     {
-        auto sb = getStoreButtonBounds();
+        g.setColour(pal.textMuted);
+        g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
+        g.drawText("Voices", L.voicesLabel, juce::Justification::centredLeft, false);
+
+        g.setColour(pal.inputBackground);
+        g.fillRoundedRectangle(L.voicesField, 4.0f);
+        g.setColour(pal.borderColor);
+        g.drawRoundedRectangle(L.voicesField.reduced(0.5f), 4.0f, 1.0f);
+
+        const int voices = patch ? patch->getHeader().voices : 0;
+        g.setColour(pal.textPrimary);
+        g.setFont(AppTheme::uiFont(13.0f));
+        g.drawText(juce::String(voices), L.voicesField, juce::Justification::centred, false);
+
+        g.setColour(pal.textSecondary);
+        auto arrow = [&](juce::Rectangle<float> r, bool up)
+        {
+            const float mx = r.getCentreX(), my = r.getCentreY();
+            juce::Path p;
+            if (up) p.addTriangle(mx, my - 2.5f, mx - 3.5f, my + 2.0f, mx + 3.5f, my + 2.0f);
+            else    p.addTriangle(mx - 3.5f, my - 2.0f, mx + 3.5f, my - 2.0f, mx, my + 2.5f);
+            g.fillPath(p);
+        };
+        arrow(L.voicesUp, true);
+        arrow(L.voicesDown, false);
+    }
+
+    // --- Load: PVA and E, each its own bar and number ---
+    drawLoadBar(g, L.loadPva, loadPva, "PVA");
+    drawLoadBar(g, L.loadE, loadE, "E");
+
+    // --- Store to bank (diskette, the word, and the location the patch lives at) ---
+    {
+        auto sb = L.store;
         const bool known = currentSection >= 0 && currentPosition >= 0;
         const bool live = storeEnabled && patch != nullptr;
+        flatButton(sb, live && storeHover, true);
 
-        g.setColour(live && storeHover ? AppTheme::palette().buttonActive
-                                       : AppTheme::palette().inputBackground);
-        g.fillRoundedRectangle(sb, 3.0f);
-        g.setColour(live ? AppTheme::palette().borderColor
-                         : AppTheme::palette().borderColor.withAlpha(0.4f));
-        g.drawRoundedRectangle(sb.reduced(0.5f), 3.0f, 1.0f);
-
-        // Diskette: body, shutter, label
         const float ds = 11.0f;
-        const float dx = sb.getX() + 6.0f;
+        const float dx = sb.getX() + 9.0f;
         const float dy = sb.getCentreY() - ds * 0.5f;
-        auto ink = live ? AppTheme::palette().textPrimary : AppTheme::palette().textMuted;
+        auto ink = live ? pal.textPrimary : pal.textMuted;
         g.setColour(ink);
         g.drawRoundedRectangle(dx, dy, ds, ds, 1.5f, 1.0f);
         g.fillRect(dx + 3.0f, dy + 1.0f, ds - 6.0f, ds * 0.35f);          // shutter
         g.fillRect(dx + 2.0f, dy + ds * 0.58f, ds - 4.0f, ds * 0.32f);    // label
 
-        g.setColour(live ? (known ? AppTheme::palette().textPrimary
-                                  : AppTheme::palette().textMuted)
-                         : AppTheme::palette().textMuted);
-        g.setFont(AppTheme::uiFont(10.0f).withStyle("Bold"));
+        g.setFont(AppTheme::uiFont(12.0f).withStyle("Bold"));
+        g.drawText("Store", juce::Rectangle<float>(dx + ds + 6.0f, sb.getY(), 38.0f, sb.getHeight()),
+                   juce::Justification::centredLeft, false);
+
+        g.setColour(live ? (known ? pal.textSecondary : pal.textMuted) : pal.textMuted);
+        g.setFont(AppTheme::uiFont(11.0f));
         juce::String loc = known
             ? juce::String(currentSection + 1) + ":" + juce::String(currentPosition + 1).paddedLeft('0', 2)
             : juce::String(storeUncertain ? "?" : "--");
-        g.drawText(loc, sb.withTrimmedLeft(ds + 9.0f).withTrimmedRight(3.0f).toNearestInt(),
-                   juce::Justification::centredLeft, false);
+        g.drawText(loc, sb.withTrimmedRight(8.0f).toNearestInt(), juce::Justification::centredRight, false);
     }
 
-    // --- Voices ---
-    x = voicesSecX_;
-    g.setColour(AppTheme::palette().textSecondary);
-    g.setFont(AppTheme::uiFont(11.0f));
-    g.drawText("Voices:", x, 0, voicesLblW, h, juce::Justification::centredLeft);
-    x += voicesLblW;
-
-    int voices = patch ? patch->getHeader().voices : 0;
-    g.setColour(juce::Colours::white);
-    g.drawText(juce::String(voices) + "/-", x, 0, voicesValW, h, juce::Justification::centredLeft);
-    x += voicesValW;
-
-    // Up/Down arrows
-    {
-        float arrowMidX = static_cast<float>(x) + arrowBtnW * 0.5f;
-        int midY = h / 2;
-
-        g.setColour(AppTheme::palette().textSecondary);
-        juce::Path up;
-        up.addTriangle(arrowMidX, static_cast<float>(midY - 7),
-                       arrowMidX - 4.0f, static_cast<float>(midY - 1),
-                       arrowMidX + 4.0f, static_cast<float>(midY - 1));
-        g.fillPath(up);
-
-        juce::Path down;
-        down.addTriangle(arrowMidX - 4.0f, static_cast<float>(midY + 1),
-                         arrowMidX + 4.0f, static_cast<float>(midY + 1),
-                         arrowMidX, static_cast<float>(midY + 7));
-        g.fillPath(down);
-    }
-
-    // --- Load ---
-    x = loadSecX_;
-    g.setColour(AppTheme::palette().textSecondary);
-    g.setFont(AppTheme::uiFont(11.0f));
-    g.drawText("Load:", x, 0, loadLblW, h, juce::Justification::centredLeft);
-
-    int barX = loadSecX_ + loadLblW;
-    int barH = 10;
-    int topBarY = h / 2 - barH - 1;
-    int botBarY = h / 2 + 1;
-    drawLoadBar(g, barX, topBarY, loadBarTotalW, barH, loadPva, "PVA:");
-    drawLoadBar(g, barX, botBarY, loadBarTotalW, barH, loadE, "E:");
-
-    // --- Morph Knobs ---
+    // --- Morph knobs ---
     for (int i = 0; i < 4; i++)
     {
-        auto kb = getMorphKnobBounds(i);
+        auto kb = L.morph[static_cast<size_t>(i)];
         float norm = 0.0f;
         if (patch)
             norm = static_cast<float>(patch->morphValues[static_cast<size_t>(i)]) / 127.0f;
-
         drawMorphKnob(g, kb.getX(), kb.getY(), kb.getWidth(), norm,
                       "M" + juce::String(i + 1), morphColours[i]);
     }
 
-    // --- Cable Visibility Toggles ---
-    for (int i = 0; i < numCableTypes; i++)
+    // --- Snapshots (1-8) ---
     {
-        auto tb = getCableToggleBounds(i);
-        bool vis = getCableVisibility(i);
-
-        if (vis)
-        {
-            g.setColour(cableColours[i]);
-            g.fillEllipse(tb);
-            g.setColour(cableColours[i].darker(0.3f));
-            g.drawEllipse(tb.reduced(0.5f), 1.0f);
-        }
-        else
-        {
-            g.setColour(cableColours[i].withAlpha(0.3f));
-            g.drawEllipse(tb.reduced(0.5f), 1.5f);
-        }
-    }
-
-    // --- Shake Cables Button ("S") ---
-    {
-        auto sb = getShakeButtonBounds();
-        g.setColour(AppTheme::palette().buttonBackground);
-        g.fillRoundedRectangle(sb, 3.0f);
-        g.setColour(AppTheme::palette().borderColor);
-        g.drawRoundedRectangle(sb.reduced(0.5f), 3.0f, 1.0f);
-        g.setColour(AppTheme::palette().textSecondary);
-        g.setFont(AppTheme::uiFont(10.0f).withStyle("Bold"));
-        g.drawText("S", sb.toNearestInt(), juce::Justification::centred, false);
-    }
-
-    // --- Bug Report Button ---
-    {
-        auto bb = getBugButtonBounds();
-        g.setColour(AppTheme::palette().buttonBackground);
-        g.fillRoundedRectangle(bb, 3.0f);
-        g.setColour(AppTheme::palette().borderColor);
-        g.drawRoundedRectangle(bb.reduced(0.5f), 3.0f, 1.0f);
-        g.setColour(AppTheme::palette().textSecondary);
-        g.setFont(AppTheme::uiFont(10.0f).withStyle("Bold"));
-        g.drawText("Report a bug", bb.toNearestInt(), juce::Justification::centred, false);
-    }
-
-    // --- Snapshot Buttons (1-8) ---
-    {
-        g.setFont(AppTheme::uiFont(9.0f).withStyle("Bold"));
+        g.setFont(AppTheme::uiFont(12.0f).withStyle("Bold"));
         for (int i = 0; i < 8; ++i)
         {
-            auto sb = getSnapshotButtonBounds(i);
-            bool filled = snapshotFilled[i];
-            bool active = (i == activeSnapshot);
+            auto sb = L.snap[static_cast<size_t>(i)];
+            const bool filled = snapshotFilled[i];
+            const bool active = (i == activeSnapshot);
 
-            // Background
-            const auto fill = active ? AppTheme::palette().buttonActive
-                                     : filled ? AppTheme::palette().borderColor
-                                              : AppTheme::palette().buttonBackground;
+            const auto fill = active ? pal.buttonActive
+                                     : filled ? pal.borderColor
+                                              : pal.buttonBackground;
             g.setColour(fill);
-            g.fillRoundedRectangle(sb, 2.0f);
+            g.fillRoundedRectangle(sb, 4.0f);
+            if (!active)
+            {
+                g.setColour(pal.borderColor);
+                g.drawRoundedRectangle(sb.reduced(0.5f), 4.0f, 1.0f);
+            }
 
-            // Border
-            g.setColour(active ? AppTheme::palette().textMuted : AppTheme::palette().borderColor);
-            g.drawRoundedRectangle(sb.reduced(0.5f), 2.0f, 1.0f);
-
-            // Number label
             g.setColour(active ? contrastingInk(fill)
-                               : filled ? AppTheme::palette().textPrimary : AppTheme::palette().textMuted);
+                               : filled ? pal.textPrimary : pal.textMuted);
             g.drawText(juce::String(i + 1), sb.toNearestInt(), juce::Justification::centred, false);
         }
 
-        // Interpolation time label (after last button)
+        // Interpolation time, after the last button
+        if (snapshotInterpSeconds > 0.0f)
         {
-            auto last = getSnapshotButtonBounds(7);
-            float labelX = last.getRight() + 4.0f;
-            float labelY = last.getY();
-            g.setFont(AppTheme::uiFont(9.0f));
-            if (snapshotInterpSeconds > 0.0f)
-            {
-                g.setColour(AppTheme::palette().textSecondary);
-                juce::String timeLabel = (snapshotInterpSeconds < 10.0f)
-                    ? juce::String(snapshotInterpSeconds, 0) + "s"
-                    : juce::String(juce::roundToInt(snapshotInterpSeconds)) + "s";
-                g.drawText(timeLabel, juce::Rectangle<float>(labelX, labelY, 24.0f, last.getHeight()),
-                           juce::Justification::centredLeft, false);
-            }
+            auto last = L.snap[7];
+            g.setFont(AppTheme::uiFont(10.0f));
+            g.setColour(pal.textSecondary);
+            g.drawText(juce::String(juce::roundToInt(snapshotInterpSeconds)) + "s",
+                       juce::Rectangle<float>(last.getRight() + 3.0f, last.getY(), 24.0f, last.getHeight()),
+                       juce::Justification::centredLeft, false);
         }
 
-        // Morph A/B fader (editor-side software morph between two captures)
-        {
-            auto fb = getMorphFaderBounds();
-            const bool ready = morphHasA && morphHasB;
-
-            // Track
-            g.setColour(AppTheme::palette().inputBackground);
-            g.fillRoundedRectangle(fb, 3.0f);
-            g.setColour(morphLearnArmed ? AppTheme::palette().buttonActive
-                                        : AppTheme::palette().borderColor);
-            g.drawRoundedRectangle(fb.reduced(0.5f), 3.0f, 1.0f);
-
-            // A / B end labels (dimmed until that endpoint is captured)
-            g.setFont(AppTheme::uiFont(8.0f).withStyle("Bold"));
-            g.setColour(morphHasA ? AppTheme::palette().textSecondary
-                                  : AppTheme::palette().textMuted);
-            g.drawText("A", juce::Rectangle<float>(fb.getX() + 2.0f, fb.getY(),
-                                                   9.0f, fb.getHeight()),
-                       juce::Justification::centred, false);
-            g.setColour(morphHasB ? AppTheme::palette().textSecondary
-                                  : AppTheme::palette().textMuted);
-            g.drawText("B", juce::Rectangle<float>(fb.getRight() - 11.0f, fb.getY(),
-                                                   9.0f, fb.getHeight()),
-                       juce::Justification::centred, false);
-
-            // Thumb
-            constexpr float inset = 11.0f;
-            float l = fb.getX() + inset, r = fb.getRight() - inset;
-            float thumbX = l + (r - l) * morphFaderPos;
-            auto thumbCol = !ready ? AppTheme::palette().textMuted
-                          : morphKnobAssigned ? AppTheme::palette().buttonActive
-                                              : AppTheme::palette().textSecondary;
-            g.setColour(thumbCol);
-            g.fillRoundedRectangle(thumbX - 2.0f, fb.getY() + 1.5f, 4.0f,
-                                   fb.getHeight() - 3.0f, 1.5f);
-        }
-
-        // Patch Mutator quick-access button
-        {
-            auto mb = getMutatorButtonBounds();
-            g.setColour(mutatorOpen ? AppTheme::palette().buttonActive
-                                    : AppTheme::palette().buttonBackground);
-            g.fillRoundedRectangle(mb, 2.0f);
-            g.setColour(mutatorOpen ? AppTheme::palette().textMuted
-                                    : AppTheme::palette().borderColor);
-            g.drawRoundedRectangle(mb.reduced(0.5f), 2.0f, 1.0f);
-            g.setColour(mutatorOpen ? contrastingInk(AppTheme::palette().buttonActive)
-                                    : AppTheme::palette().textSecondary);
-            g.setFont(AppTheme::uiFont(9.0f).withStyle("Bold"));
-            g.drawText("MUT", mb.toNearestInt(), juce::Justification::centred, false);
-        }
-
-        // ABCD: put the slot sub-windows back in order (#51)
-        {
-            auto rb = getRetileButtonBounds();
-            g.setColour(AppTheme::palette().buttonBackground);
-            g.fillRoundedRectangle(rb, 2.0f);
-            g.setColour(AppTheme::palette().borderColor);
-            g.drawRoundedRectangle(rb.reduced(0.5f), 2.0f, 1.0f);
-            // Nothing to reorder is said by the ink, not by hiding the button:
-            // it keeps its place in the bar so the row does not shuffle about.
-            const auto ink = retileEnabled ? AppTheme::palette().textSecondary
-                                           : AppTheme::palette().textMuted;
-
-            // The four letters sit in the quadrants they actually land in, with
-            // the tile divisions drawn between them, so the button reads as the
-            // arrangement it produces rather than as the word "ABCD".
-            auto cells = rb.reduced(2.0f);
-            g.setColour(ink.withAlpha(0.35f));
-            g.drawLine(cells.getCentreX(), cells.getY(),
-                       cells.getCentreX(), cells.getBottom(), 1.0f);
-            g.drawLine(cells.getX(), cells.getCentreY(),
-                       cells.getRight(), cells.getCentreY(), 1.0f);
-
-            g.setColour(ink);
-            g.setFont(AppTheme::uiFont(8.0f).withStyle("Bold"));
-            static const char* const tileLetters[] = { "A", "B", "C", "D" };
-            for (int i = 0; i < 4; ++i)
-            {
-                juce::Rectangle<float> cell(
-                    cells.getX() + static_cast<float>(i % 2) * cells.getWidth()  * 0.5f,
-                    cells.getY() + static_cast<float>(i / 2) * cells.getHeight() * 0.5f,
-                    cells.getWidth() * 0.5f, cells.getHeight() * 0.5f);
-                g.drawText(tileLetters[i], cell.toNearestInt(),
-                           juce::Justification::centred, false);
-            }
-        }
-
-        // Support: a heart for the PayPal donation and Patreon's mark, like the
-        // Sponsor button on GitHub. Small and quiet: the bar has no room to nag.
-        {
-            auto db = getDonateButtonBounds();
-            g.setColour(AppTheme::palette().buttonBackground);
-            g.fillRoundedRectangle(db, 2.0f);
-            g.setColour(AppTheme::palette().borderColor);
-            g.drawRoundedRectangle(db.reduced(0.5f), 2.0f, 1.0f);
-
-            // Two circles and a triangle make the heart; no font has to carry it.
-            const auto hc = db.getCentre();
-            constexpr float r = 3.4f;
-            juce::Path heart;
-            heart.addEllipse(hc.x - 2.0f * r + 0.4f, hc.y - r - 1.6f, 2.0f * r, 2.0f * r);
-            heart.addEllipse(hc.x - 0.4f, hc.y - r - 1.6f, 2.0f * r, 2.0f * r);
-            heart.addTriangle(hc.x - 2.0f * r + 0.6f, hc.y + 0.2f, hc.x + 2.0f * r - 0.6f, hc.y + 0.2f,
-                              hc.x, hc.y + 2.0f * r - 0.6f);
-            g.setColour(juce::Colour(0xffe0556b));
-            g.fillPath(heart);
-
-            auto pb = getPatreonButtonBounds();
-            g.setColour(AppTheme::palette().buttonBackground);
-            g.fillRoundedRectangle(pb, 2.0f);
-            g.setColour(AppTheme::palette().borderColor);
-            g.drawRoundedRectangle(pb.reduced(0.5f), 2.0f, 1.0f);
-
-            // Patreon's mark: a round head and a bar down its left side.
-            const auto pc = pb.getCentre();
-            g.setColour(juce::Colour(0xfff96854));
-            g.fillEllipse(pc.x - 0.5f, pc.y - 5.5f, 7.0f, 7.0f);
-            g.fillRect(pc.x - 4.5f, pc.y - 5.5f, 2.2f, 11.0f);
-        }
-
-        // Interpolation progress bar (below snapshot buttons)
+        // Interpolation progress bar, under the snapshot row
         if (interpolationProgress >= 0.0f)
         {
-            auto first = getSnapshotButtonBounds(0);
-            auto last = getSnapshotButtonBounds(7);
-            float barY = first.getBottom() + 1.0f;
-            float barW = last.getRight() - first.getX();
-            float barH = 2.0f;
-            g.setColour(AppTheme::palette().inputBackground);
-            g.fillRect(first.getX(), barY, barW, barH);
-            g.setColour(AppTheme::palette().textSecondary);
-            g.fillRect(first.getX(), barY, barW * interpolationProgress, barH);
+            auto first = L.snap[0];
+            auto last = L.snap[7];
+            const float barY = first.getBottom() + 2.0f;
+            const float barW = last.getRight() - first.getX();
+            g.setColour(pal.inputBackground);
+            g.fillRect(first.getX(), barY, barW, 2.0f);
+            g.setColour(pal.textSecondary);
+            g.fillRect(first.getX(), barY, barW * interpolationProgress, 2.0f);
         }
     }
 
-    // --- Synth Connection Indicator (right-aligned) ---
-    if (!synthName.isEmpty())
+    // --- Morph A/B fader (editor-side software morph between two captures) ---
     {
-        constexpr int synthNameW = 110;
-        constexpr int synthPad = 10;
-        int sx = getWidth() - synthNameW - synthPad - supportBlockW;
+        auto fb = L.xfade;
+        const bool ready = morphHasA && morphHasB;
 
-        // Separator
+        g.setColour(pal.inputBackground);
+        g.fillRoundedRectangle(fb, 5.0f);
+        g.setColour(morphLearnArmed ? pal.buttonActive : pal.borderColor);
+        g.drawRoundedRectangle(fb.reduced(0.5f), 5.0f, 1.0f);
+
+        g.setFont(AppTheme::uiFont(10.0f).withStyle("Bold"));
+        g.setColour(morphHasA ? pal.textSecondary : pal.textMuted);
+        g.drawText("A", juce::Rectangle<float>(fb.getX() + 3.0f, fb.getY(), 11.0f, fb.getHeight()),
+                   juce::Justification::centred, false);
+        g.setColour(morphHasB ? pal.textSecondary : pal.textMuted);
+        g.drawText("B", juce::Rectangle<float>(fb.getRight() - 14.0f, fb.getY(), 11.0f, fb.getHeight()),
+                   juce::Justification::centred, false);
+
+        constexpr float inset = 14.0f;
+        const float l = fb.getX() + inset, r = fb.getRight() - inset;
+        const float thumbX = l + (r - l) * morphFaderPos;
+        auto thumbCol = !ready ? pal.textMuted
+                      : morphKnobAssigned ? pal.buttonActive
+                                          : pal.textSecondary;
+        g.setColour(thumbCol);
+        g.fillRoundedRectangle(thumbX - 2.5f, fb.getY() + 3.0f, 5.0f, fb.getHeight() - 6.0f, 2.0f);
+    }
+
+    // --- Cable colours: click to hide or show one kind ---
+    if (L.cablesCompact)
+    {
+        flatButton(L.cablesBtn, false, true);
+        g.setColour(pal.textSecondary);
+        g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
+        g.drawText("Cables", L.cablesBtn.withTrimmedRight(14.0f).toNearestInt(), juce::Justification::centred, false);
+        const float ax = L.cablesBtn.getRight() - 12.0f, ay = L.cablesBtn.getCentreY();
+        juce::Path down;
+        down.addTriangle(ax - 3.5f, ay - 2.0f, ax + 3.5f, ay - 2.0f, ax, ay + 2.5f);
+        g.fillPath(down);
+    }
+    for (int i = 0; !L.cablesCompact && i < numCableTypes; i++)
+    {
+        auto tb = L.cable[static_cast<size_t>(i)];
+        if (getCableVisibility(i))
         {
-            float sepX = static_cast<float>(sx) - sepGap * 0.5f;
-            g.setColour(AppTheme::palette().buttonActive);
-            g.drawLine(sepX, 4.0f, sepX, static_cast<float>(h - 4), 1.0f);
+            g.setColour(cableColours[i]);
+            g.fillEllipse(tb);
         }
+        else
+        {
+            g.setColour(cableColours[i].withAlpha(0.45f));
+            g.drawEllipse(tb.reduced(1.0f), 2.0f);
+        }
+    }
 
-        // Synth name box
-        auto nameRect = juce::Rectangle<int>(sx, 6, synthNameW, h - 12);
-        g.setColour(AppTheme::palette().inputBackground);
-        g.fillRoundedRectangle(nameRect.toFloat(), 3.0f);
-        g.setColour(AppTheme::palette().borderColor);
-        g.drawRoundedRectangle(nameRect.toFloat(), 3.0f, 1.0f);
-        g.setColour(juce::Colours::white);
-        g.setFont(AppTheme::uiFont(11.0f));
-        g.drawText(synthName, nameRect.reduced(4, 0), juce::Justification::centredLeft, true);
+    // --- Shake cables ("S") ---
+    if (!L.cablesCompact)
+    {
+        flatButton(L.shake, false, true);
+        g.setColour(pal.textSecondary);
+        g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
+        g.drawText("S", L.shake.toNearestInt(), juce::Justification::centred, false);
+    }
+
+    // --- Patch Mutator ---
+    {
+        auto mb = L.mutator;
+        flatButton(mb, mutatorOpen, true);
+        g.setColour(mutatorOpen ? contrastingInk(pal.buttonActive) : pal.textSecondary);
+        g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
+        g.drawText("MUTATOR", mb.toNearestInt(), juce::Justification::centred, false);
+    }
+
+    // --- ABCD: put the slot sub-windows back in order (#51) ---
+    {
+        auto rb = L.retile;
+        flatButton(rb, false, true);
+        const auto ink = retileEnabled ? pal.textSecondary : pal.textMuted;
+
+        auto cells = rb.reduced(3.0f, 2.0f);
+        g.setColour(ink.withAlpha(0.35f));
+        g.drawLine(cells.getCentreX(), cells.getY(), cells.getCentreX(), cells.getBottom(), 1.0f);
+        g.drawLine(cells.getX(), cells.getCentreY(), cells.getRight(), cells.getCentreY(), 1.0f);
+
+        g.setColour(ink);
+        g.setFont(AppTheme::uiFont(8.0f).withStyle("Bold"));
+        static const char* const tileLetters[] = { "A", "B", "C", "D" };
+        for (int i = 0; i < 4; ++i)
+        {
+            juce::Rectangle<float> cell(
+                cells.getX() + static_cast<float>(i % 2) * cells.getWidth()  * 0.5f,
+                cells.getY() + static_cast<float>(i / 2) * cells.getHeight() * 0.5f,
+                cells.getWidth() * 0.5f, cells.getHeight() * 0.5f);
+            g.drawText(tileLetters[i], cell.toNearestInt(), juce::Justification::centred, false);
+        }
+    }
+
+    // --- Donate (heart) and Patreon, like GitHub's Sponsor button ---
+    {
+        auto db = L.donate;
+        flatButton(db, false, true);
+        const auto hc = db.getCentre();
+        constexpr float r = 3.4f;
+        juce::Path heart;
+        heart.addEllipse(hc.x - 2.0f * r + 0.4f, hc.y - r - 1.6f, 2.0f * r, 2.0f * r);
+        heart.addEllipse(hc.x - 0.4f, hc.y - r - 1.6f, 2.0f * r, 2.0f * r);
+        heart.addTriangle(hc.x - 2.0f * r + 0.6f, hc.y + 0.2f, hc.x + 2.0f * r - 0.6f, hc.y + 0.2f,
+                          hc.x, hc.y + 2.0f * r - 0.6f);
+        g.setColour(juce::Colour(0xffe0556b));
+        g.fillPath(heart);
+
+        auto pb = L.patreon;
+        flatButton(pb, false, true);
+        const auto pc = pb.getCentre();
+        g.setColour(juce::Colour(0xfff96854));
+        g.fillEllipse(pc.x - 0.5f, pc.y - 5.5f, 7.0f, 7.0f);
+        g.fillRect(pc.x - 4.5f, pc.y - 5.5f, 2.2f, 11.0f);
     }
 
     // Last, so the arrows sit on top of the dial they belong to.
-    morphSpinner.paint(g, { AppTheme::palette().inputBackground,
-                            AppTheme::palette().borderColor,
-                            AppTheme::macroLabelInk() });
+    morphSpinner.paint(g, { pal.inputBackground, pal.borderColor, AppTheme::macroLabelInk() });
 }
 
 // --- Mouse interaction ---
@@ -959,6 +879,12 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
     }
 
     // Cable toggles
+    if (L.cablesCompact && L.cablesBtn.contains(pos.toFloat()))
+    {
+        showCablesMenu();
+        return;
+    }
+
     int cableIdx = getCableToggleAt(pos);
     if (cableIdx >= 0)
     {
@@ -1104,6 +1030,27 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
         }
         return;
     }
+}
+
+void PatchHeaderBar::showCablesMenu()
+{
+    static const char* const names[numCableTypes] = { "Red (audio)", "Blue (control)", "Yellow (logic)",
+                                                      "Grey (master/slave)", "Green", "Purple", "White" };
+    juce::PopupMenu menu;
+    menu.addSectionHeader("Show cables");
+    for (int i = 0; i < numCableTypes; ++i)
+        menu.addColouredItem(100 + i, names[i], cableColours[i], true, getCableVisibility(i));
+    menu.addSeparator();
+    menu.addItem(200, "Shake cables");
+    menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetScreenArea(
+                           localAreaToGlobal(L.cablesBtn.toNearestInt())),
+        [this](int result)
+        {
+            if (result >= 100 && result < 100 + numCableTypes)
+                toggleCableVisibility(result - 100);
+            else if (result == 200 && shakeCablesCallback)
+                shakeCablesCallback();
+        });
 }
 
 void PatchHeaderBar::showMorphFaderMenu()

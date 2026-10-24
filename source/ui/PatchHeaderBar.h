@@ -1,5 +1,8 @@
 #pragma once
 
+#include <array>
+#include <vector>
+
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../model/Patch.h"
 #include "ValueSpinner.h"
@@ -125,7 +128,7 @@ public:
 private:
     void drawMorphKnob(juce::Graphics& g, float cx, float cy, float size,
                        float normalized, const juce::String& label, juce::Colour colour);
-    void drawLoadBar(juce::Graphics& g, int x, int y, int w, int h,
+    void drawLoadBar(juce::Graphics& g, juce::Rectangle<float> r,
                      float percent, const juce::String& label);
 
     int getMorphKnobAt(juce::Point<int> pos) const;
@@ -206,6 +209,7 @@ private:
     juce::Rectangle<float> getMorphFaderBounds() const;
     bool isMorphFaderAt(juce::Point<int> pos) const;
     void showMorphFaderMenu();
+    void showCablesMenu();
     float morphFaderPosFromX(float x) const;
     MorphFaderCallback morphFaderCallback;
     MorphSetEndpointCallback morphSetEndpointCallback;
@@ -242,17 +246,26 @@ public:
 
 private:
 
-    // Cached section X positions (computed in resized)
-    int patchSecX_ = 0;
-    int voicesSecX_ = 0;
-    int loadSecX_ = 0;
-    int morphSecX_ = 0;
-    int cableSecX_ = 0;
+    // Every element's rectangle, worked out once in resized(); paint and the hit tests read these.
+    struct Layout
+    {
+        juce::Rectangle<int> name;
+        juce::Rectangle<float> voicesLabel, voicesField, voicesUp, voicesDown;
+        juce::Rectangle<float> loadPva, loadE, store, xfade;
+        std::array<juce::Rectangle<float>, 4> morph;
+        std::array<juce::Rectangle<float>, 8> snap;
+        std::array<juce::Rectangle<float>, 7> cable;
+        juce::Rectangle<float> shake, mutator, retile, donate, patreon;
+        std::vector<float> seps;   // x of each hairline between groups
+        bool cablesCompact = false;  // too narrow for the dots: one "Cables" button and a menu
+        juce::Rectangle<float> cablesBtn;
+    };
+    Layout L;
 
-    static constexpr int morphKnobSize = 26;
+    static constexpr int morphKnobSize = 24;
     static constexpr int morphKnobSpacing = 8;
-    static constexpr int cableToggleSize = 14;
-    static constexpr int cableToggleSpacing = 5;
+    static constexpr int cableToggleSize = 16;
+    static constexpr int cableToggleSpacing = 6;
     static constexpr int numCableTypes = 7;
     static constexpr int paramSendIntervalMs = 50;
 

@@ -4,6 +4,17 @@
 
 ### Changed
 
+- **Header bar redesign, step 1** (2026-10-24, branch `ui-redesign`). Flat bar with no boxes
+  or group titles, in the order: patch name, Voices (number with its arrows), Load (PVA and E,
+  each with its bar and number), Store, the four morph dials, the eight snapshots, the A/B
+  crossfader, the cable colours with the shake key (centred in the room that is left),
+  MUTATOR, ABCD, and the heart and Patreon at the right edge. Every rectangle is now worked
+  out once in `resized()` and the paint and hit tests only read it. "Report a bug" left the bar
+  (Help > Report a Bug has it) and so did the synth name box (the synth list shows it). Too
+  narrow for the seven dots (under about 1376px) they become one "Cables" button with a menu.
+  ABCD moves to the module bar in the next step. Checked in the Release build at 1920px;
+  the narrow mode is built but was not looked at.
+
 - **The plugin keeps its patches in the DAW project** (2026-10-24, #94). `getStateInformation` /
   `setStateInformation` were empty, so a reopened project showed an empty editor. Now the project
   keeps the patch of every slot (as the .pch and .var the editor would save, in `model/SessionState`)
