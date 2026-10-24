@@ -9,6 +9,7 @@ namespace VersionCheck
 {
     constexpr const char* kTagsUrl    = "https://api.github.com/repos/animatek/Animatek-NME/tags?per_page=100";
     constexpr const char* kPatreonUrl = "https://www.patreon.com/collection/2038913";
+    constexpr const char* kDonateUrl  = "https://www.paypal.com/donate/?hosted_button_id=YATW56VC46ENE";
     constexpr juce::int64 kMaxTagsBytes = 512 * 1024;
 
     // "0.21.0" from "v0.21.0" or "0.21.0"; empty for anything else ("v0.22.0-rc1",

@@ -33,6 +33,7 @@ private:
 
     juce::TextButton websiteButton { "Website" };
     juce::TextButton patreonButton { "Patreon" };
+    juce::TextButton donateButton  { "Donate" };
     juce::TextButton githubButton  { "GitHub" };
     juce::TextButton copyButton    { "Copy version" };
 

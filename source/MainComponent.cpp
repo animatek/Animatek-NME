@@ -1616,6 +1616,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addSeparator();
     menu.addItem(53, "Animatek NME Website", true);
     menu.addItem(50, "Support the Project (Patreon)", true);
+    menu.addItem(56, "Donate (PayPal)...", true);
     menu.addItem(51, "Source Code (GitHub)", true);
     menu.addItem(52, "animatek.net", true);
   }
@@ -1790,6 +1791,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     editorOptions.newVersionSeen = editorOptions.latestVersion;
     editorOptions.save(appProperties.getUserSettings());
     menuItemsChanged();
+    break;
+  case 56:  // Donate
+    openURL(VersionCheck::kDonateUrl);
     break;
   case 51:  // GitHub
     openURL("https://github.com/animatek/Animatek-NME/");
