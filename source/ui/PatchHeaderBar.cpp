@@ -36,7 +36,7 @@ namespace
     constexpr float loadW = 104.0f;
     constexpr float snapSize = 24.0f;
     constexpr float snapGap = 4.0f;
-    constexpr float xfadeW = 104.0f;
+    constexpr float xfadeW = 150.0f;       // the crossfader's wanted width; it narrows to 96 when the bar is tight
     constexpr float mutatorW = 76.0f;
     constexpr float compactCablesW = 76.0f;
 }
@@ -227,15 +227,19 @@ void PatchHeaderBar::resized()
     // gets narrower (down to minNameW) rather than the crossfader running under the heart
     constexpr float minNameW = 104.0f;
     float nameWe = static_cast<float>(nameW);
+    float xfadeWe = xfadeW;
     auto contentW = [&](float cablesW)
     {
-        return nameWe + voicesW + loadW + storeW + morphW + cablesW + snapsW + xfadeW + mutatorW;
+        return nameWe + voicesW + loadW + storeW + morphW + cablesW + snapsW + xfadeWe + mutatorW;
     };
     const float avail = width - 2.0f * margin - rightW;
     L.cablesCompact = contentW(groupW) + numGaps * minGap > avail;
     const float cablesW = L.cablesCompact ? compactCablesW : groupW;
-    if (contentW(cablesW) + numGaps * minGap > avail)
-        nameWe = juce::jmax(minNameW, nameWe - (contentW(cablesW) + numGaps * minGap - avail));
+    // Squeeze in this order: the crossfader to 120, then the name, then the crossfader down to 96
+    auto overflow = [&] { return contentW(cablesW) + numGaps * minGap - avail; };
+    if (overflow() > 0.0f) xfadeWe = juce::jmax(120.0f, xfadeWe - overflow());
+    if (overflow() > 0.0f) nameWe  = juce::jmax(minNameW, nameWe - overflow());
+    if (overflow() > 0.0f) xfadeWe = juce::jmax(96.0f, xfadeWe - overflow());
     const float gap = juce::jlimit(minGap, maxGap, (avail - contentW(cablesW)) / numGaps);
 
     auto sep = [this](float at) { L.seps.push_back(at); };
@@ -304,11 +308,11 @@ void PatchHeaderBar::resized()
     x += snapsW + gap;
     sep(x - gap * 0.5f);
 
-    // The Mutator, then the A/B crossfader: both act on the sounds the snapshots hold
-    L.mutator = { x, cy - 14.0f, mutatorW, 28.0f };
-    x += mutatorW + gap;
+    // The A/B crossfader, then the Mutator: both act on the sounds the snapshots hold
+    L.xfade = { x, cy - 13.0f, xfadeWe, 26.0f };
+    x += xfadeWe + gap;
     sep(x - gap * 0.5f);
-    L.xfade = { x, cy - 11.0f, xfadeW, 22.0f };
+    L.mutator = { x, cy - 14.0f, mutatorW, 28.0f };
 
     // Patch name editor
     if (patchNameEditor)
@@ -431,7 +435,7 @@ bool PatchHeaderBar::isMorphFaderAt(juce::Point<int> pos) const
 float PatchHeaderBar::morphFaderPosFromX(float x) const
 {
     auto fb = getMorphFaderBounds();
-    constexpr float inset = 20.0f;  // room for the A/B end labels, as drawn in paint
+    constexpr float inset = 28.0f;  // room for the A/B end labels, as drawn in paint
     float l = fb.getX() + inset, r = fb.getRight() - inset;
     return juce::jlimit(0.0f, 1.0f, (x - l) / juce::jmax(1.0f, r - l));
 }
@@ -760,29 +764,31 @@ void PatchHeaderBar::paint(juce::Graphics& g)
         auto fb = L.xfade;
         const bool ready = morphHasA && morphHasB;
 
-        g.setFont(AppTheme::uiFont(12.0f).withStyle("Bold"));
+        g.setFont(AppTheme::uiFont(13.0f).withStyle("Bold"));
         g.setColour(morphHasA ? pal.textSecondary : pal.textMuted);
-        g.drawText("A", juce::Rectangle<float>(fb.getX(), fb.getY(), 14.0f, fb.getHeight()),
+        g.drawText("A", juce::Rectangle<float>(fb.getX(), fb.getY(), 18.0f, fb.getHeight()),
                    juce::Justification::centred, false);
         g.setColour(morphHasB ? pal.textSecondary : pal.textMuted);
-        g.drawText("B", juce::Rectangle<float>(fb.getRight() - 14.0f, fb.getY(), 14.0f, fb.getHeight()),
+        g.drawText("B", juce::Rectangle<float>(fb.getRight() - 18.0f, fb.getY(), 18.0f, fb.getHeight()),
                    juce::Justification::centred, false);
 
-        constexpr float inset = 20.0f;   // the same in morphFaderPosFromX: the thumb clears the A and the B
+        constexpr float inset = 28.0f;   // the same in morphFaderPosFromX: the thumb clears the A and the B
         const float l = fb.getX() + inset, r = fb.getRight() - inset;
-        const float thumbX = l + (r - l) * morphFaderPos;
+        // With no A and B captured yet there is nothing to blend: the thumb rests in the middle
+        const float pos = ready ? morphFaderPos : 0.5f;
+        const float thumbX = l + (r - l) * pos;
         const float ty = fb.getCentreY();
 
-        const auto track = juce::Rectangle<float>(l, ty - 2.0f, r - l, 4.0f);
+        const auto track = juce::Rectangle<float>(l, ty - 2.5f, r - l, 5.0f);
         g.setColour(pal.borderColor);
-        g.fillRoundedRectangle(track, 2.0f);
+        g.fillRoundedRectangle(track, 2.5f);
         if (ready)
         {
             g.setColour(pal.accentActive);
-            g.fillRoundedRectangle(track.withWidth(juce::jmax(2.0f, thumbX - l)), 2.0f);
+            g.fillRoundedRectangle(track.withWidth(juce::jmax(2.5f, thumbX - l)), 2.5f);
         }
 
-        const auto thumb = juce::Rectangle<float>(thumbX - 4.0f, ty - 8.0f, 8.0f, 16.0f);
+        const auto thumb = juce::Rectangle<float>(thumbX - 5.0f, ty - 10.0f, 10.0f, 20.0f);
         g.setColour(!ready ? pal.textMuted : pal.textPrimary);
         g.fillRoundedRectangle(thumb, 3.0f);
         if (morphLearnArmed || (ready && morphKnobAssigned))

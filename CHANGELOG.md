@@ -8,6 +8,12 @@
   instance only, so a picture-taking run (`NME_SNAPSHOT_DIR`) started while you had NME open handed over
   to yours and quit without a picture. That run now counts as its own instance.
 
+- **A/B crossfade: bigger, between the snapshots and the Mutator, resting in the middle**
+  (2026-10-24, branch `ui-redesign`). It moves to the right of the eight snapshots and the left of
+  MUTATOR; it is 150px wide (it was 104) and 26px tall, with 28px of room at each end for its letters (13px
+  bold), a 5px track and a 10x20 thumb. While there is no A and B captured, the thumb sits in the middle
+  instead of hard against the A; the value behind it is untouched.
+
 - **Snapshot run: a patch and every options page** (2026-10-24, branch `ui-redesign`). With
   `NME_SNAPSHOT_PATCH=<file.pch>` the picture-taking run opens that patch first, and Editor Options is
   pictured page by page (22 images in all). The A/B crossfade keeps 20px at each end for its letters, in
