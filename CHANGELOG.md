@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **The double-click on a module shows the whole "name  cost" badge** (2026-10-24, #104). The
+  badge was capped at 110px, so a long module name ("2/24dB Dynamic Multifilter", the slave
+  oscillators) cut off the DSP cost at the end. Now up to 240px, the longest name with its cost
+  being about 206px; a badge wider than its module starts at the module's left edge instead of
+  sticking out past the canvas. Checked in the Release build with the longest module name.
+
 - **Ctrl+B opens the right panel if it is folded away** (2026-10-24, #107). The Preset Browser is
   the right panel's Disk tab; with the panel hidden (Ctrl+Shift+I) Ctrl+B and File > Preset
   Browser only chose the tab and nothing showed. Now they unfold the panel first. Checked in the

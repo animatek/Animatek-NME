@@ -629,11 +629,16 @@ void PatchCanvas::paintModuleCostBadge(juce::Graphics& g, juce::Rectangle<int> m
 {
     g.setFont(juce::FontOptions("Fira Sans", 10.0f, juce::Font::bold));
     const float badgeH = 14.0f;
-    const float badgeW = juce::jlimit(18.0f, 110.0f,
+    // Wide enough for the longest "name  cost" (about 206px for "Level Multi
+    // (Attenuator/Phase Shift)"): at 110px the cost, which comes last, was cut off (#104).
+    const float badgeW = juce::jlimit(18.0f, 240.0f,
                                       g.getCurrentFont().getStringWidthFloat(text) + 10.0f);
 
-    juce::Rectangle<float> badge(moduleBounds.toFloat().getRight() - badgeW - 4.0f,
-                                 moduleBounds.toFloat().getY() + 3.0f, badgeW, badgeH);
+    // Hung from the module's top right; a badge wider than the module would stick
+    // out to the left, maybe past the canvas edge, so it starts at the left edge instead.
+    const auto mb = moduleBounds.toFloat();
+    const float badgeX = juce::jmax(mb.getX() + 3.0f, mb.getRight() - badgeW - 4.0f);
+    juce::Rectangle<float> badge(badgeX, mb.getY() + 3.0f, badgeW, badgeH);
 
     g.setColour(juce::Colour(0xff1c2229).withAlpha(0.92f));
     g.fillRoundedRectangle(badge, 3.0f);
