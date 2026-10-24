@@ -4,6 +4,11 @@
 
 ### Changed
 
+- **Header bar: the gap between groups grows with the window** (2026-10-24, branch
+  `ui-redesign`). The room the window has left over is shared out between the nine groups, from
+  18px (the minimum, narrow windows) up to 48px (a very wide one), instead of one fixed 12 or 18.
+  At 1920px the groups breathe and the free space on the right shrinks to what the 48px cap leaves.
+
 - **Header bar: more room between groups, and MUTATOR after the crossfader** (2026-10-24,
   branch `ui-redesign`). The gap between groups goes from 12 to 18px, with the hairline in the
   middle, and MUTATOR follows the A/B crossfader instead of sitting in the right-hand corner,
