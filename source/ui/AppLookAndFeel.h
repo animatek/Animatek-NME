@@ -288,6 +288,30 @@ public:
         g.drawFittedText(text, r.withTrimmedRight(shortcutW + (shortcutW > 0 ? 12 : 0)), juce::Justification::centredLeft, 1);
     }
 
+    // A flat progress bar: a rounded track, the fill in the accent, the percentage in plain type
+    void drawProgressBar(juce::Graphics& g, juce::ProgressBar& bar, int width, int height, double progress,
+                         const juce::String& textToShow) override
+    {
+        const auto& pal = AppTheme::palette();
+        const auto r = juce::Rectangle<float>(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
+        const float radius = juce::jmin(8.0f, r.getHeight() * 0.5f);
+        g.setColour(pal.inputBackground);
+        g.fillRoundedRectangle(r, radius);
+        g.setColour(pal.borderColor);
+        g.drawRoundedRectangle(r.reduced(0.5f), radius, 1.0f);
+        if (progress >= 0.0 && progress <= 1.0)
+        {
+            g.setColour(bar.findColour(juce::ProgressBar::foregroundColourId));
+            g.fillRoundedRectangle(r.withWidth(juce::jmax(r.getHeight(), r.getWidth() * static_cast<float>(progress))), radius);
+        }
+        if (textToShow.isNotEmpty())
+        {
+            g.setFont(juce::Font(AppTheme::uiFont(13.0f)).boldened());
+            g.setColour(pal.textPrimary);
+            g.drawText(textToShow, r.toNearestInt(), juce::Justification::centred, false);
+        }
+    }
+
     // The title bar of the windows JUCE draws itself (the floaters, the browser window, About): the
     // same as the dialogs', the ground colour, the title bold at the left, a rule under it
     void drawDocumentWindowTitleBar(juce::DocumentWindow& window, juce::Graphics& g, int w, int h, int, int,

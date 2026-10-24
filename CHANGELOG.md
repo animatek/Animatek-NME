@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **Ctrl+T works whatever has the keyboard, and the progress bars are thicker** (2026-10-24, branch
+  `ui-redesign`). A menu that is open, or a dialog, swallowed the key press, so Ctrl+T did nothing: a
+  light timer now watches the keyboard and cycles the theme then too (only when no window took the press
+  a moment before, so it never fires twice). The progress bars (the bank transfer ones) were a thin
+  strip with a tiny percentage: they are 26px tall, rounded, with the fill in the accent and the
+  percentage in 13px bold.
+
 - **Bank Transfer redesigned** (2026-10-24, branch `ui-redesign`). Save Bank to Disk, Backup All Banks and
   Send Bank to Synth: 520x440, muted section labels, taller fields with larger type, a thinner progress
   bar, Editor Options' title bar and a footer band with Cancel and **Start** (filled with the accent).

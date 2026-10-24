@@ -220,6 +220,12 @@ private:
     void applyUiTheme(int index, bool persist);
     // The user picks a theme: applyUiTheme plus the render style the theme sets (#90).
     void chooseUiTheme(int index);
+    // Ctrl+T, whoever has the keyboard: the main window and the floaters take it as a key press; an open
+    // menu or a dialog swallows it, so a light timer watches the keyboard for those
+    void cycleUiThemeFromKey();
+    std::unique_ptr<juce::Timer> themeKeyTimer;
+    juce::uint32 lastThemeKeyMs = 0;
+    bool themeKeyWasDown = false;
     void importThemeFile();
     void exportCurrentTheme();
     void loadCommunityIndexCache();

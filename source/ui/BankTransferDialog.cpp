@@ -353,8 +353,8 @@ void BankTransferDialog::resized()
     infoLabel.setBounds(pad, y, w, 48);
     y += 48 + gap;
 
-    progressBar.setBounds(pad, y, w, 12);
-    y += 12 + gap;
+    progressBar.setBounds(pad, y, w, 26);
+    y += 26 + gap;
 
     statusLabel.setBounds(pad, y, w, 40);
 

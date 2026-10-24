@@ -1073,6 +1073,25 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     explicit EmulatorScanTimer(MainComponent& m) : mc(m) {}
     void timerCallback() override { mc.scanForEmulators(); }
   };
+  // Ctrl+T while a menu is open (or a dialog has the focus): those take the key press, so the keyboard
+  // itself is watched, and only when no window handled the press a moment ago
+  struct ThemeKeyTimer : public juce::Timer {
+    MainComponent& mc;
+    explicit ThemeKeyTimer(MainComponent& m) : mc(m) {}
+    void timerCallback() override
+    {
+      const bool down = juce::Process::isForegroundProcess()
+                     && juce::ModifierKeys::currentModifiers.isCommandDown()
+                     && juce::KeyPress::isKeyCurrentlyDown('t');
+      if (down && !mc.themeKeyWasDown
+          && juce::Time::getMillisecondCounter() - mc.lastThemeKeyMs > 400)
+        mc.cycleUiThemeFromKey();
+      mc.themeKeyWasDown = down;
+    }
+  };
+  themeKeyTimer = std::make_unique<ThemeKeyTimer>(*this);
+  themeKeyTimer->startTimer(40);
+
   emulatorScanTimer = std::make_unique<EmulatorScanTimer>(*this);
   emulatorScanTimer->startTimer(3000);
 
@@ -1261,9 +1280,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
   }
   if (key == juce::KeyPress('t', juce::ModifierKeys::commandModifier, 0))
   {
-    chooseUiTheme(editorOptions.uiThemeIndex + 1);
-    mainLayout->getStatusBar().showMessage(
-        "Theme: " + ThemeRegistry::get(editorOptions.uiThemeIndex).name, 2500);
+    cycleUiThemeFromKey();
     return true;
   }
   // On macOS the naked Cmd+W belongs to "close window" and fired both ways
@@ -3255,6 +3272,14 @@ void MainComponent::applyUiTheme(int index, bool persist) {
     editorOptions.save(appProperties.getUserSettings());
 }
 
+void MainComponent::cycleUiThemeFromKey()
+{
+  lastThemeKeyMs = juce::Time::getMillisecondCounter();
+  chooseUiTheme(editorOptions.uiThemeIndex + 1);
+  mainLayout->getStatusBar().showMessage(
+      "Theme: " + ThemeRegistry::get(editorOptions.uiThemeIndex).name, 2500);
+}
+
 void MainComponent::chooseUiTheme(int index) {
   const int n = ThemeRegistry::count();
   index = ((index % n) + n) % n;
@@ -4227,9 +4252,7 @@ bool MainComponent::handleFloaterShortcut(const juce::KeyPress& key) {
       // Ctrl+T cycles the theme from the main window (MainComponent::
       // keyPressed) — forward it here too so it also works while a floater
       // or slot window has keyboard focus instead of only the main one.
-      chooseUiTheme(editorOptions.uiThemeIndex + 1);
-      mainLayout->getStatusBar().showMessage(
-          "Theme: " + ThemeRegistry::get(editorOptions.uiThemeIndex).name, 2500);
+      cycleUiThemeFromKey();
       return true;
     default: return false;
   }
