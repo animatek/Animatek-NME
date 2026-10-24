@@ -134,6 +134,7 @@ public:
     bool keyPressed (const juce::KeyPress& key) override;
     void mouseDown  (const juce::MouseEvent& e) override;
     void mouseDrag  (const juce::MouseEvent& e) override;
+    void mouseUp    (const juce::MouseEvent& e) override;
 
     // Returns the dialog, so a caller can watch for it closing and can hook up
     // the live callbacks above.
@@ -179,6 +180,7 @@ private:
 
     EditorOptions options;
     juce::ComponentDragger dragger;
+    bool draggingWindow = false;   // a drag that began on the title bar
     FlatCloseButton closeButton;
 
     // Appearance

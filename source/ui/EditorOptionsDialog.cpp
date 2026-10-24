@@ -26,6 +26,10 @@ static void styleBtn (juce::TextButton& b)
 static void styleTextEditor (juce::TextEditor& e)
 {
     e.setReadOnly (true);
+    // A size that fills the field, and the text centred in it, both ways
+    e.setFont (juce::Font (AppTheme::uiFont (14.0f)));
+    e.setJustification (juce::Justification::centredLeft);
+    e.setIndents (12, 0);
     e.setColour (juce::TextEditor::backgroundColourId, p().inputBackground);
     e.setColour (juce::TextEditor::textColourId,       p().textSecondary);
     e.setColour (juce::TextEditor::outlineColourId,    p().borderColor);
@@ -702,11 +706,22 @@ void EditorOptionsDialog::mouseDown (const juce::MouseEvent& e)
             return;
         }
 
-    if (e.getPosition().getY() < titleBarH)
+    // Only a press on the title bar drags the window; any other press must not, or the next
+    // little movement of the mouse would carry the window off by where the last drag started
+    draggingWindow = e.getPosition().getY() < titleBarH;
+    if (draggingWindow)
         dragger.startDraggingComponent (this, e);
 }
+
+void EditorOptionsDialog::mouseUp (const juce::MouseEvent&)
+{
+    draggingWindow = false;
+}
 void EditorOptionsDialog::mouseDrag (const juce::MouseEvent& e)
-    { dragger.dragComponent (this, e, nullptr); }
+{
+    if (draggingWindow)
+        dragger.dragComponent (this, e, nullptr);
+}
 
 void EditorOptionsDialog::close()
 {

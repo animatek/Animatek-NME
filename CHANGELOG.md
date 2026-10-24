@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Editor Options: the window no longer moves by itself, and its text fields read better**
+  (2026-10-24, branch `ui-redesign`). Picking a page in the sidebar could carry the whole dialog across
+  the screen: `mouseDrag` dragged the window on any movement, with the anchor of the last time the
+  title bar was dragged. Now only a press that starts on the title bar drags. The library path and the
+  MCP command fields use size 14 with the text centred in the field (it sat small at the top).
+
 - **Every window wears a thin outline** (2026-10-24, branch `ui-redesign`). A dialog or a floater on
   the same dark ground as what is behind it melted into it. The dialogs (Editor Options, About, MIDI
   Setup, Bank Transfer, Patch and Synth Settings, Patch Location, Save Slot Set, Slot Select) draw a 1px
