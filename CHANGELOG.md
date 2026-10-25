@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### Added
+
+- **Device > Update Synth OS** (2026-10-25, branch `os-update`). Installs an OS image into a G1's flash
+  over MIDI, as Clavia's OS updater does, on a real G1 or on G1-Emu. Laid out like Editor Options:
+  **Warning** (the risk, plainly: it opens there, and Install waits for its box to be ticked), **Install
+  OS** (the image, the synth it goes to, the speed, the transfer), **Update mode** (how a G1 or G1-Emu
+  gets ready) and **Recovery** (the ways back). The synth list offers every port NME has open with its
+  state, and picks the one in update mode, so with a G1 and G1-Emu both there the OS goes only where it
+  is awaited. The format (`source/midi/OsUpdate.*`) was read from the G1's boot ROM and checked against a
+  capture of Clavia's 3.03b updater: the same messages byte for byte but the last one's padding. A synth
+  in its update mode (its IAm carries 7F) is no longer taken for a connected one: the status bar says so
+  and the opening sequence does not start. Nothing of Clavia's comes with NME: the user brings the image.
+  Checked: `nme_tests` (201, with `test_os_update.cpp` and a new connection case); the C++ stream against
+  the updater's capture (3,439 of 3,440 messages identical, the last differing only in padding); and by
+  Javier with G1-Emu in update mode on its direct link, a G1 on a UM-ONE also open: the OS went to
+  G1-Emu only, its checksum was answered right, Store, Update completed, and G1-Emu booted it.
+
 ## 0.23.0 — 2026-10-24
 
 The new look. The whole interface is redrawn in a flat, dark style with one amber accent: the header

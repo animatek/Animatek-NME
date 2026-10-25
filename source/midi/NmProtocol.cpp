@@ -50,6 +50,8 @@ void NmProtocol::processIncoming(const uint8_t* data, size_t length)
 {
     if (!sendFn)
         return;
+    if (onRawIncoming)
+        onRawIncoming(data, length);
 
     auto msg = SysEx::decode(data, length);
     if (msg.valid && msg.checksumPresent && !msg.checksumValid)

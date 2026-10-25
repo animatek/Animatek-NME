@@ -45,6 +45,10 @@ public:
     // already on the wire (if any) still gets its reply.
     int discardQueued(int tag);
 
+    // Every frame that comes in, whole (F0 ... F7), before it is decoded: for the
+    // OS update, whose answers are not editor messages.
+    std::function<void(const uint8_t*, size_t)> onRawIncoming;
+
     // Feed incoming SysEx data (called from MIDI input handler)
     void processIncoming(const uint8_t* data, size_t length);
 

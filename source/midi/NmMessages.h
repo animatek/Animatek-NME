@@ -26,6 +26,8 @@ struct IAmMessage
     int versionLow = 3;
     int serial = -1;
     int deviceId = -1;
+    // A synth in its boot ROM's update utility, waiting for an OS (OsUpdate.h)
+    bool updateMode = false;
 
     std::vector<uint8_t> encode() const;
     static IAmMessage decode(const uint8_t* data, size_t length);

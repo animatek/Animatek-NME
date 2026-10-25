@@ -175,6 +175,11 @@ int classifyGetPatchReply(const std::vector<uint8_t>& entry)
 ConnectionManager::ConnectionManager()
 {
     protocol.addListener(this);
+    protocol.onRawIncoming = [this](const uint8_t* data, size_t length)
+    {
+        if (onRawSysEx)
+            onRawSysEx(data, length);
+    };
 }
 
 ConnectionManager::~ConnectionManager()
@@ -332,6 +337,7 @@ void ConnectionManager::disconnect(const juce::String& reason)
     bankUploadResultCallback = nullptr;
 
     forgetSynthState("disconnect");
+    updateMode = false;
 
     protocol.setSendFunction({});
     if (midiDevice)
@@ -358,8 +364,22 @@ juce::Array<juce::MidiDeviceInfo> ConnectionManager::getAvailableOutputDevices()
 void ConnectionManager::onIAmReceived(const IAmMessage& msg)
 {
     // sender=1 means the synth is responding
+    if (msg.sender == 1 && msg.updateMode)
+    {
+        // Its boot ROM's update utility (Shift + Store at power-on): it waits for an OS and
+        // takes nothing else, so the opening sequence would only time out. Not connected.
+        cancelHandshakeTimeout();
+        if (! updateMode)
+            std::cout << "[SYNTH] The synth is in its update mode, waiting for an OS" << std::endl;
+        updateMode = true;
+        if (status.state == State::Connected)
+            forgetSynthState("synth in update mode");
+        setStatus(State::Disconnected, "Synth in update mode (Device > Update Synth OS...)");
+        return;
+    }
     if (msg.sender == 1)
     {
+        updateMode = false;
         // The G1 does not only answer an IAm, it announces itself, over and
         // over: the dumps on issue #73 settle into one every three seconds for
         // as long as the synth is on, with nothing asked of it. Every one of
@@ -1315,6 +1335,18 @@ void ConnectionManager::sendRawSysEx(const std::vector<uint8_t>& sysex)
         return;
 
     protocol.sendRawSysEx(sysex);
+}
+
+void ConnectionManager::greetSynth()
+{
+    if (hasOpenPorts())
+        sendHandshake();
+}
+
+void ConnectionManager::sendOsUpdateMessage(const std::vector<uint8_t>& sysex)
+{
+    if (hasOpenPorts())
+        protocol.sendRawSysEx(sysex);
 }
 
 void ConnectionManager::sendNoteOn(int note, int velocity)

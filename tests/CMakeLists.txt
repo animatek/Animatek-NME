@@ -47,6 +47,7 @@ target_sources(nme_tests PRIVATE
     test_community_themes.cpp
     test_version_check.cpp
     test_mutator.cpp
+    test_os_update.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp
@@ -66,6 +67,7 @@ target_sources(nme_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/source/model/PchFileIO.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/SysExCodec.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/UploadPacketizer.cpp
+    ${CMAKE_SOURCE_DIR}/source/midi/OsUpdate.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/NmMessages.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/NmProtocol.cpp
     ${CMAKE_SOURCE_DIR}/source/midi/MidiMonitor.cpp

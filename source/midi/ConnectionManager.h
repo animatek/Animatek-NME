@@ -95,6 +95,15 @@ public:
     void sendNoteOn(int note, int velocity);
     void sendNoteOff(int note);
     void sendRawSysEx(const std::vector<uint8_t>& sysex);       // Fire-and-forget (no ACK needed)
+
+    // OS update (OsUpdate.h). A synth in its boot ROM's update utility answers the greeting
+    // but is not connected: it takes nothing an editor sends but the update, which goes out
+    // as long as the ports are open. greetSynth() asks who is there.
+    bool isInUpdateMode() const { return updateMode; }
+    void greetSynth();
+    void sendOsUpdateMessage(const std::vector<uint8_t>& sysex);
+    // Every frame the synth sends, whole, before it is decoded (the update's answers).
+    std::function<void(const uint8_t*, size_t)> onRawSysEx;
     void sendAckedSysEx(const std::vector<uint8_t>& sysex,
                         bool allowNewPatchInSlotReply = false); // Queued, waits for ACK before next
     bool isAckedQueueIdle() const { return ackedQueue.empty() && !ackedQueueWaiting; }
@@ -391,6 +400,7 @@ private:
     PatchLoadProgressCallback patchLoadProgressCallback;
     PatchLoadIncompleteCallback patchLoadIncompleteCallback;
 
+    bool updateMode = false;   // the last IAm came from the update utility
     // Global light/meter arrays updated by synth messages
     int globalLightValues[128] = {};
     int globalMeterValues[128] = {};

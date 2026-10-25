@@ -1,4 +1,5 @@
 #include "NmMessages.h"
+#include "OsUpdate.h"
 #include "../model/BitStream.h"
 #include "../model/BitStreamWriter.h"
 
@@ -33,6 +34,7 @@ IAmMessage IAmMessage::decode(const uint8_t* data, size_t length)
         msg.serial = (data[4] << 7) | data[5];
         msg.deviceId = data[6];
     }
+    msg.updateMode = OsUpdate::isUpdateModeIAm(data, length);
 
     return msg;
 }

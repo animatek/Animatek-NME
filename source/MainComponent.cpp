@@ -5,6 +5,7 @@
 #include "model/PchFileIO.h"
 #include "model/SessionState.h"
 #include "ui/BankTransferDialog.h"
+#include "ui/OsUpdateDialog.h"
 #include "ui/MidiSettingsDialog.h"
 #include "ui/PatchLocationDialog.h"
 #include "ui/AboutDialog.h"
@@ -1636,6 +1637,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addItem(34, "Save Bank to Disk...", connected);
     menu.addItem(35, "Send Bank to Synth...", connected);
     menu.addItem(36, "Backup All Banks to Library...", connected);
+    menu.addSeparator();
+    menu.addItem(38, "Update Synth OS...", true);
   }
   else if (menuIndex == 4) // Help
   {
@@ -1787,6 +1790,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 35:
     BankTransferDialog::show(this, BankTransferDialog::Mode::SendToSynth,
                              bankTransfer, synthHub.active());
+    break;
+  case 38:
+    OsUpdateDialog::show(this, synthHub);
     break;
   case 36:
     if (editorOptions.presetLibraryRoot == juce::File()) {

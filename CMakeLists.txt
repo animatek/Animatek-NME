@@ -127,6 +127,7 @@ set(NME_SHARED_SOURCES
     source/ui/PatchBrowserPanel.cpp
     source/ui/PresetBrowserWindow.cpp
     source/ui/BankTransferDialog.cpp
+    source/ui/OsUpdateDialog.cpp
     source/ui/KnobFloaterWindow.cpp
     source/ui/KeyboardFloaterWindow.cpp
     source/ui/PatchNotesFloaterWindow.cpp
@@ -138,6 +139,7 @@ set(NME_SHARED_SOURCES
     # MIDI/SysEx
     source/midi/SysExCodec.cpp
     source/midi/UploadPacketizer.cpp
+    source/midi/OsUpdate.cpp
     source/midi/NmMessages.cpp
     source/midi/NmProtocol.cpp
     source/midi/MidiDeviceManager.cpp

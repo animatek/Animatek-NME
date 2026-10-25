@@ -2,6 +2,7 @@
 #include "midi/ConnectionManager.h"
 #include "model/Patch.h"
 #include "model/PatchSerializer.h"
+#include "midi/OsUpdate.h"
 
 using Frames = std::vector<std::vector<uint8_t>>;
 
@@ -377,4 +378,34 @@ TEST_CASE("A port that leaves the system disconnects the editor")
 
     CHECK_FALSE(connection.isConnected());
     CHECK(lastStatus.startsWith("MIDI port gone"));
+}
+
+TEST_CASE("A synth in its update mode answers but is not connected")
+{
+    // The boot ROM's update utility (Shift + Store at power-on) answers the
+    // greeting with 7F where the OS puts its serial; it takes nothing but an
+    // OS, so the opening sequence must not start, and the checksum's answer
+    // must reach whoever is sending the update.
+    ConnectionManager connection;
+    Frames frames;
+    auto& protocol = connection.getProtocol();
+    protocol.setSendFunction([&frames](const std::vector<uint8_t>& frame) { frames.push_back(frame); });
+    bool accepted = false;
+    connection.onRawSysEx = [&accepted](const uint8_t* data, size_t length) {
+        accepted = accepted || OsUpdate::isChecksumAccepted(data, length);
+    };
+
+    receive(protocol, NmCmd::IAm, {1, 3, 3, 0x7F, 1, 8, 1});
+    CHECK_FALSE(connection.isConnected());
+    CHECK(connection.isInUpdateMode());
+
+    const uint8_t answer[] = {0xF0, 0x33, 0x00, 0x06, 0x7F, 0xF7};
+    protocol.processIncoming(answer, sizeof(answer));
+    CHECK(accepted);
+    CHECK_FALSE(connection.isConnected());
+
+    // Restarted with its new OS: a normal greeting connects as ever
+    receive(protocol, NmCmd::IAm, {1, 3, 3});
+    CHECK(connection.isConnected());
+    CHECK_FALSE(connection.isInUpdateMode());
 }
