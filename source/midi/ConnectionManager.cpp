@@ -414,7 +414,7 @@ void ConnectionManager::onIAmReceived(const IAmMessage& msg)
         setStatus(State::Connected,
                   "Connected: Nord Modular v" +
                   juce::String(msg.versionHigh) + "." +
-                  juce::String(msg.versionLow) + (modsOs ? " (G1-Mods)" : ""));
+                  juce::String(msg.versionLow) + (modsOs ? " - MODDED OS (G1-Mods)" : ""));
 
         // Start fallback timer: if synth doesn't send SlotActivated within 3s,
         // default to slot 0

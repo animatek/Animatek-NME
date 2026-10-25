@@ -29,6 +29,7 @@
   On bringing it over: Note Out (type 60) and its Gate thru are in the layer too; a bank upload a
   slot refuses for a layer module is told it failed instead of waiting; `test_mods_categories`
   takes a family the G1 has not (Note Out's MIDI) at the end of the list, as the code always put it.
+  The status bar says "- MODDED OS (G1-Mods)" after the version (2026-10-25).
 
 - **Device > Update Synth OS** (2026-10-25, branch `os-update`). Installs an OS image into a G1's flash
   over MIDI, as Clavia's OS updater does, on a real G1 or on G1-Emu. Laid out like Editor Options:
