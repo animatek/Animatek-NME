@@ -1,6 +1,18 @@
 #include "ParameterEncoder.h"
 #include <iostream>
+#include <map>
 #include <set>
+
+static std::map<int, std::vector<int>>& widthsFromData()
+{
+    static std::map<int, std::vector<int>> widths;
+    return widths;
+}
+
+void ParameterEncoder::setWidthsFromData(int moduleType, std::vector<int> widths)
+{
+    widthsFromData()[moduleType] = std::move(widths);
+}
 
 std::vector<int> ParameterEncoder::getParameterBitWidths(int moduleType)
 {
@@ -455,6 +467,8 @@ std::vector<int> ParameterEncoder::getParameterBitWidths(int moduleType)
             return {1};
 
         default:
+            if (auto found = widthsFromData().find(moduleType); found != widthsFromData().end())
+                return found->second;
             // Unknown module type — will fall back to all-7-bit encoding in caller.
             // Log once per unknown type to help identify missing entries.
             static std::set<int> warnedTypes;

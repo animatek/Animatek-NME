@@ -13,6 +13,7 @@
 #include <vector>
 
 class Patch;
+struct ModuleDescriptor;
 
 // Text for an error code the synth returns (sc 0x7e); see ConnectionManager.cpp
 const char* synthErrorName(int code);
@@ -47,6 +48,20 @@ public:
     void disconnect(const juce::String& reason = "Disconnected");
 
     bool isConnected() const { return status.state == State::Connected; }
+
+    // G1-Mods: whether the OS on this port has their module types. Such an OS says so in its IAm,
+    // version 3.09 instead of Clavia's 3.03 (G1-Mods' builder; Clavia never released a 3.09), so
+    // it is known on connecting and forgotten on disconnecting. Without it nothing with one of
+    // them goes to this synth: a Clavia OS would take the type for another module, or none.
+    // uploadPatch refuses such a patch and says which module.
+    static constexpr int kModsVersionHigh = 3, kModsVersionLow = 9;
+    static bool isModsVersion(int high, int low) { return high == kModsVersionHigh && low == kModsVersionLow; }
+    void setModsOs(bool on) { modsOs = on; }   // what the IAm said; tests set it by hand
+    bool hasModsOs() const { return modsOs; }
+    bool takesModule(const ModuleDescriptor& d) const;
+    juce::String firstModuleRefused(const Patch& patch) const;   // empty: it takes them all
+    using RefusedCallback = std::function<void(int slot, const juce::String& module)>;
+    void setRefusedCallback(RefusedCallback cb) { refusedCallback = std::move(cb); }
     // Ports (or a direct link) still open, whatever the state says: a synth that did not answer in
     // time is "Disconnected" but still listened to, and comes back by itself when it speaks.
     bool hasOpenPorts() const { return midiDevice != nullptr && midiDevice->isConnected(); }
@@ -382,6 +397,8 @@ private:
     PatchDataCallback patchDataCallback;
     ParameterChangeCallback parameterChangeCallback;
     SynthErrorCallback synthErrorCallback;
+    RefusedCallback refusedCallback;
+    bool modsOs = false;
     SlotChangedCallback slotChangedCallback;
     SlotsEnabledCallback slotsEnabledCallback;
     UploadCompleteCallback uploadCompleteCallback;

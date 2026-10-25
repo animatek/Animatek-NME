@@ -8,6 +8,7 @@
 #include "../protocol/MidiCtrlAssignmentMessage.h"
 #include "../model/PatchSerializer.h"
 #include "../model/Patch.h"
+#include "../model/ModuleDescriptions.h"
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -408,11 +409,12 @@ void ConnectionManager::onIAmReceived(const IAmMessage& msg)
 
         status.synthVersionHigh = msg.versionHigh;
         status.synthVersionLow = msg.versionLow;
+        modsOs = isModsVersion(msg.versionHigh, msg.versionLow);
 
         setStatus(State::Connected,
                   "Connected: Nord Modular v" +
                   juce::String(msg.versionHigh) + "." +
-                  juce::String(msg.versionLow));
+                  juce::String(msg.versionLow) + (modsOs ? " (G1-Mods)" : ""));
 
         // Start fallback timer: if synth doesn't send SlotActivated within 3s,
         // default to slot 0
@@ -953,6 +955,20 @@ void ConnectionManager::notifyBankUploadResult(bool success)
     });
 }
 
+bool ConnectionManager::takesModule(const ModuleDescriptor& d) const
+{
+    return modsOs || !ModuleDescriptions::isModsCategory(d.category);
+}
+
+juce::String ConnectionManager::firstModuleRefused(const Patch& patch) const
+{
+    for (int section = 0; section < 2; ++section)
+        for (const auto& m : patch.getContainer(section).getModules())
+            if (const auto* d = m->getDescriptor(); d != nullptr && !takesModule(*d))
+                return d->fullname;
+    return {};
+}
+
 void ConnectionManager::uploadPatch(int slot, const Patch& patch)
 {
     startUpload(slot, patch, -1, 0);
@@ -971,6 +987,16 @@ void ConnectionManager::startUpload(int slot, const Patch& patch, int bankSectio
         return;
 
     const bool toBank = bankSection >= 0;
+
+    if (const auto refused = firstModuleRefused(patch); refused.isNotEmpty())
+    {
+        std::cout << "[CONN] upload refused: " << refused << " needs an OS with G1-Mods" << std::endl;
+        if (refusedCallback)
+            refusedCallback(slot, refused);
+        if (toBank)
+            notifyBankUploadResult(false);   // told it failed, not left waiting
+        return;
+    }
 
     if (!toBank)
     {
@@ -2602,6 +2628,8 @@ void ConnectionManager::onError(const ErrorMessage& msg)
 
 void ConnectionManager::setStatus(State state, const juce::String& message)
 {
+    if (state != State::Connected)
+        modsOs = false;   // the next synth on this port says again what it has
     status.state = state;
     status.message = message;
 

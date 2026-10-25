@@ -70,6 +70,10 @@ public:
      */
     std::vector<std::vector<uint8_t>> serialize(const Patch& patch);
 
+    // The bit width a parameter takes in a patch, from its maximum (matches
+    // PatchParser::bitWidth). Public for the G1-Mods layer's widths (MainComponent).
+    static int bitWidth(int maxValue);
+
 private:
     // Section serializers
     std::vector<uint8_t> serializePatchName(const Patch& patch, int bankSection = -1,
@@ -89,6 +93,4 @@ private:
     // Helper: find the containerIndex of the module owning a connector
     int findModuleContainerIndex(const ModuleContainer& container, const Connector* conn) const;
 
-    // Helper: compute bit width needed for a max value (matches PatchParser::bitWidth)
-    static int bitWidth(int maxValue);
 };

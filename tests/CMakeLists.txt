@@ -18,6 +18,7 @@ target_sources(nme_tests PRIVATE
     test_cable_nets.cpp
     test_cable_colours.cpp
     test_store_confirmation.cpp
+    test_mods_categories.cpp
     test_patch_title.cpp
     test_patch_file_name.cpp
     test_seq_note_names.cpp

@@ -1745,10 +1745,18 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
                 }
         };
 
-        auto addSubMenuIfNotEmpty = [&addMenu](const juce::String& title, juce::PopupMenu& subMenu)
+        // Each family's submenu, and right under it the modules a modified OS adds to that
+        // family (G1-Mods: "<family> (mods)" in modules.xml), if there are any.
+        auto addSubMenuIfNotEmpty = [this, &addMenu](const juce::String& title, juce::PopupMenu& subMenu,
+                                                    const juce::String& category)
         {
             if (subMenu.getNumItems() > 0)
                 addMenu.addSubMenu(title, subMenu);
+            juce::PopupMenu mods;
+            for (const auto* desc : moduleDescs->getModulesInCategory(ModuleDescriptions::modsCategoryFor(category)))
+                mods.addItem(1000 + desc->index, desc->fullname + " (" + formatDspCost(desc->cycles) + ")");
+            if (mods.getNumItems() > 0)
+                addMenu.addSubMenu(title + " (mods)", mods);
         };
 
         {
@@ -1766,7 +1774,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             sub.addSeparator();
             addModuleItem(sub, "NoteDetect", "Note detector");
             addModuleItem(sub, "KeybSplit", "Keyboard Split");
-            addSubMenuIfNotEmpty("IN/OUT", sub);
+            addSubMenuIfNotEmpty("IN/OUT", sub, "In/Out");
         }
         {
             juce::PopupMenu sub;
@@ -1789,7 +1797,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             sub.addSeparator();
             addModuleItem(sub, "PercOsc", "Percussion OSC");
             addModuleItem(sub, "DrumSynth", "Drumsound synthesizer");
-            addSubMenuIfNotEmpty("OSC", sub);
+            addSubMenuIfNotEmpty("OSC", sub, "Oscillator");
         }
         {
             juce::PopupMenu sub;
@@ -1810,7 +1818,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             addModuleItem(sub, "RandomGen", "Random generator");
             addModuleItem(sub, "RndPulsGen", "Random puls generator");
             addModuleItem(sub, "PatternGen", "Clocked pattern generator");
-            addSubMenuIfNotEmpty("LFO", sub);
+            addSubMenuIfNotEmpty("LFO", sub, "LFO");
         }
         {
             juce::PopupMenu sub;
@@ -1821,7 +1829,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             addModuleItem(sub, "Multi-Env", "Multistage Envelope");
             sub.addSeparator();
             addModuleItem(sub, "EnvFollower", "Envelope Follower");
-            addSubMenuIfNotEmpty("ENV", sub);
+            addSubMenuIfNotEmpty("ENV", sub, "Envelope");
         }
         {
             juce::PopupMenu sub;
@@ -1839,7 +1847,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             sub.addSeparator();
             addModuleItem(sub, "EqMid", "Parametric Eq");
             addModuleItem(sub, "EqShelving", "Hi and lo shelving eq");
-            addSubMenuIfNotEmpty("FILTER", sub);
+            addSubMenuIfNotEmpty("FILTER", sub, "Filter");
         }
         {
             juce::PopupMenu sub;
@@ -1862,7 +1870,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             addModuleItem(sub, "1-4Switch", "1-4 Switch");
             sub.addSeparator();
             addModuleItem(sub, "Amplifier", "Amplifier");
-            addSubMenuIfNotEmpty("MIXER", sub);
+            addSubMenuIfNotEmpty("MIXER", sub, "Mixer");
         }
         {
             juce::PopupMenu sub;
@@ -1885,7 +1893,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             addModuleItem(sub, "Expander", "Expander");
             addModuleItem(sub, "RingMod", "Ring and amplitude modulator");
             addModuleItem(sub, "Digitizer", "Digitizer");
-            addSubMenuIfNotEmpty("AUDIO", sub);
+            addSubMenuIfNotEmpty("AUDIO", sub, "Audio");
         }
         {
             juce::PopupMenu sub;
@@ -1902,7 +1910,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             sub.addSeparator();
             addModuleItem(sub, "ControlMixer", "Control signal mixer");
             addModuleItem(sub, "NoteVelScal", "Note and Vel Scaler");
-            addSubMenuIfNotEmpty("CTRL", sub);
+            addSubMenuIfNotEmpty("CTRL", sub, "Control");
         }
         {
             juce::PopupMenu sub;
@@ -1920,7 +1928,7 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             sub.addSeparator();
             addModuleItem(sub, "ClkDiv", "Clock divider");
             addModuleItem(sub, "ClkDivFix", "Clock divider, fixed");
-            addSubMenuIfNotEmpty("LOGIC", sub);
+            addSubMenuIfNotEmpty("LOGIC", sub, "Logic");
         }
         {
             juce::PopupMenu sub;
@@ -1928,7 +1936,9 @@ void PatchCanvas::mouseDown(const juce::MouseEvent& e)
             addModuleItem(sub, "EventSeq", "Event Sequencer");
             addModuleItem(sub, "NoteSeqB", "Note Sequencer B");
             addModuleItem(sub, "CtrlSeq", "Control Sequencer");
-            addSubMenuIfNotEmpty("SEQUENCER", sub);
+            // the loader spells the family "Sequencer" (modules.xml has "Seqencer"), and so
+            // does the G1-Mods category, "Sequencer (mods)"
+            addSubMenuIfNotEmpty("SEQUENCER", sub, "Sequencer");
         }
 
         menu.addSubMenu("Add Module", addMenu);

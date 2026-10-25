@@ -55,6 +55,9 @@ public:
     void menuItemSelected(int menuItemID, int topLevelMenuIndex) override;
 
     ModuleDescriptions& getModuleDescriptions() { return moduleDescs; }
+    // G1-Mods: whether the slot's synth's OS has this module (it said 3.09 on connecting).
+    bool slotTakesModule(int slot, const ModuleDescriptor& d) const
+    { return !SynthSlot::valid(slot) || synthHub.forSlot(slot).takesModule(d); }
 
     // DAW project recall (the plugin, #94): the patch in every slot and the slot on screen,
     // as a block the host keeps in the project. Restoring puts the patches back in the
@@ -209,6 +212,11 @@ private:
     void importSnippet();
     void importSnippetFromFile(int slot, const juce::File& file);
     void importSnippetFromFile(int slot, const juce::File& file, int targetGridX, int targetGridY);
+    // G1-Mods: a slot only takes their modules when its synth's OS has them (it said 3.09 on
+    // connecting). Returns false, and says why on the status bar, when the slot's synth would not.
+    bool slotTakesTypes(int slot, const std::vector<int>& typeIds);
+    // The module bar and menus offer them while the active synth has that OS.
+    void refreshModsForActiveSynth();
     void saveSnippet(SnipData snip);
     void choosePresetLibraryFolder();
     void applyEditorOptions(const EditorOptions& opts);

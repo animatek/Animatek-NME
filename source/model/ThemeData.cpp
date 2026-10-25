@@ -527,6 +527,8 @@ void ThemeData::parseLight(const juce::XmlElement& elem, ModuleTheme& theme)
     tl.type = elem.getStringAttribute("type", "led");
     if (elem.hasAttribute("ledOnValue"))
         tl.ledOnValue = elem.getIntAttribute("ledOnValue");
+    tl.steps = juce::jlimit(1, 16, elem.getIntAttribute("steps", 16));
+    tl.bits = elem.getBoolAttribute("bits", false);
 
     theme.lights.push_back(tl);
 }

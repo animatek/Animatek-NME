@@ -6,6 +6,8 @@
 // the category names modules.xml uses.
 static juce::String tabLabelFor(const juce::String& category)
 {
+    if (ModuleDescriptions::isModsCategory(category))
+        return tabLabelFor(category.dropLastCharacters(juce::String(" (mods)").length())) + " mods";
     if (category == "Oscillator") return "Osc";
     if (category == "Envelope")   return "Env";
     if (category == "Control")    return "Ctrl";
@@ -101,7 +103,11 @@ void ModuleIconBar::rebuildTabs()
         const auto available = moduleDescs->getCategories();
         for (const auto& c : originalCategoryOrder())
             if (available.contains(c))
+            {
                 categories.add(c);
+                if (available.contains(ModuleDescriptions::modsCategoryFor(c)))
+                    categories.add(ModuleDescriptions::modsCategoryFor(c));
+            }
         for (const auto& c : available)
             if (!categories.contains(c))
                 categories.add(c);

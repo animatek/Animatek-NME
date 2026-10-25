@@ -152,6 +152,23 @@ Module* findConnectorOwner(ModuleContainer& container, const Connector* connecto
     return nullptr;
 }
 
+// A module of the G1-Mods layer only exists for a client while the active synth's OS has them
+// (it said 3.09 on connecting): a Clavia OS would not have it.
+void requireOffered(MainComponent& owner, const ModuleDescriptor& d)
+{
+    if (!owner.getModuleDescriptions().isOffered(d))
+        throw McpError{ "mods_not_shown", d.name + " is a G1-Mods module; the active synth's OS "
+                                          "is not a G1-Mods build" };
+}
+
+// And it only goes into a slot whose own synth has them, whichever synth is active.
+void requireTaken(MainComponent& owner, int slot, const ModuleDescriptor& d)
+{
+    if (!owner.slotTakesModule(slot, d))
+        throw McpError{ "mods_not_on_synth", d.name + " is a G1-Mods module; slot " + juce::String(slot)
+                                             + "'s synth's OS is not a G1-Mods build" };
+}
+
 void ensurePatchEditable(MainComponent& owner)
 {
     if (owner.isPatchTransferInProgress())
@@ -504,6 +521,8 @@ juce::var McpRequestHandler::listModuleTypes(const juce::var& params)
     {
         if (category.isNotEmpty() && !d.category.equalsIgnoreCase(category))
             continue;
+        if (!owner_.getModuleDescriptions().isOffered(d))
+            continue;
         modules.add(moduleTypeToVar(d, includeConnectors));
     }
 
@@ -618,6 +637,7 @@ juce::var McpRequestHandler::describeModuleType(const juce::var& params)
         if (!descriptor)
             throw McpError{ "unknown_module_type", "No module type named " + wanted };
     }
+    requireOffered(owner_, *descriptor);
 
     auto result = moduleTypeToVar(*descriptor, /*includeConnectors=*/true);
 
@@ -886,6 +906,7 @@ juce::var McpRequestHandler::addModule(const juce::var& params)
 
     if (!descriptor)
         throw McpError{ "unknown_type", "No module type matches the given typeId/typeName" };
+    requireTaken(owner_, slot, *descriptor);
     if (!descriptor->instantiable)
         throw McpError{ "not_instantiable", descriptor->name + " cannot be instantiated" };
 
@@ -1070,6 +1091,7 @@ juce::var McpRequestHandler::replaceModule(const juce::var& params)
         throw McpError{ "missing_param", "typeId or typeName is required" };
     if (!descriptor)
         throw McpError{ "unknown_type", "No module type matches the given typeId/typeName" };
+    requireTaken(owner_, slot, *descriptor);
 
     const auto* current = module->getDescriptor();
     if (descriptor->index == current->index)
