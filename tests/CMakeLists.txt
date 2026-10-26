@@ -48,6 +48,7 @@ target_sources(nme_tests PRIVATE
     test_version_check.cpp
     test_mutator.cpp
     test_os_update.cpp
+    test_synth_model.cpp
 
     # The units under test, pulled straight from the app tree
     ${CMAKE_SOURCE_DIR}/source/model/LightMeterLayout.cpp

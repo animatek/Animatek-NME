@@ -40,6 +40,7 @@ public:
         juce::String message = "Disconnected";
         int synthVersionHigh = 0;
         int synthVersionLow = 0;
+        SynthModel synthModel = SynthModel::Unknown;   // from the device byte of the synth's IAm
     };
 
     // Connection management
@@ -47,6 +48,10 @@ public:
     void disconnect(const juce::String& reason = "Disconnected");
 
     bool isConnected() const { return status.state == State::Connected; }
+    // A Micro Modular answered: one slot, one DSP, and its own panel (Nord Micro Modular).
+    // How many slots the synth on this connection has: the Micro's one, or the rack's four.
+    int slotCount() const { return status.synthModel == SynthModel::Micro ? 1 : 4; }
+    bool isMicroModular() const { return status.state == State::Connected && status.synthModel == SynthModel::Micro; }
     // Ports (or a direct link) still open, whatever the state says: a synth that did not answer in
     // time is "Disconnected" but still listened to, and comes back by itself when it speaks.
     bool hasOpenPorts() const { return midiDevice != nullptr && midiDevice->isConnected(); }

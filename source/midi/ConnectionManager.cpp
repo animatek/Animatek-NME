@@ -408,9 +408,13 @@ void ConnectionManager::onIAmReceived(const IAmMessage& msg)
 
         status.synthVersionHigh = msg.versionHigh;
         status.synthVersionLow = msg.versionLow;
+        status.synthModel = msg.model();
+        if (status.synthModel == SynthModel::Micro)
+            std::cout << "[SYNTH] A Micro Modular answered (device byte 2): one slot, one DSP" << std::endl;
 
         setStatus(State::Connected,
-                  "Connected: Nord Modular v" +
+                  juce::String(status.synthModel == SynthModel::Micro ? "Connected: Nord Micro Modular v"
+                                                                      : "Connected: Nord Modular v") +
                   juce::String(msg.versionHigh) + "." +
                   juce::String(msg.versionLow));
 

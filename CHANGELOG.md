@@ -4,6 +4,21 @@
 
 ### Added
 
+- **A Micro Modular shows one slot** (2026-10-26). With a Micro connected its row in
+  the slot bar has one button (A), the Slot menu lists only A, and the others cannot be opened, focused or
+  toggled from the keyboard: `ConnectionManager::slotCount()`, `SlotBar::setSlotCount`,
+  `MainComponent::slotExists`. The slot windows the synth asks for are limited to that one. The Slot-select
+  dialog still shows four buttons. Checked: the whole Release build compiles and NME connects to G1-Emu's
+  Micro model ("Connected: Nord Micro Modular v3.3"); Javier confirmed the one-slot bar.
+
+- **NME knows when the synth is a Micro Modular** (2026-10-26). The device
+  byte of a synth's IAm (0 keyboard, 1 rack, 2 Micro, from `docs/RESEARCH.md`) is now read:
+  `IAmMessage::model()`, `ConnectionManager::Status::synthModel` and `isMicroModular()`. The connection
+  line says "Connected: Nord Micro Modular v3.3" and the MCP `get_synth_status` gives `synthModel`
+  (`rack`, `micro`, `keyboard`). Written for G1-Emu's new Micro model (its OS answers `02`). Checked: the new
+  `test_synth_model.cpp` (the rack's and the Micro's real payloads, 7 assertions) passes, the whole
+  Release build compiles, and NME connected to G1-Emu's Micro model, loaded a patch and played it (Javier).
+
 - **Device > Update Synth OS** (2026-10-25, branch `os-update`). Installs an OS image into a G1's flash
   over MIDI, as Clavia's OS updater does, on a real G1 or on G1-Emu. Laid out like Editor Options:
   **Warning** (the risk, plainly: it opens there, and Install waits for its box to be ticked), **Install

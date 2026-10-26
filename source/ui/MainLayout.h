@@ -55,6 +55,8 @@ public:
     // Rows are shown only for synths that are there (or being edited): four empty rows of
     // "No synth" are four rows of nothing. The bar's height follows.
     void setRowShown(int synth, bool shown);
+    // A Micro Modular has one slot: the others get no button (nothing to draw, click or drop onto).
+    void setSlotCount(int synth, int count);
     int getPreferredHeight() const;
     // Emulators found that no port is left for: said in the header, so a fifth (or ninth) synth
     // is not silently left out.
@@ -86,6 +88,7 @@ private:
     juce::Rectangle<int> numBounds[kMaxSynths], nameBounds[kMaxSynths], loadBounds[kMaxSynths];
     juce::String synthName[kMaxSynths];
     bool rowShown[kMaxSynths] = { true };
+    int  slotCounts[kMaxSynths] = { kSlotsPerSynth, kSlotsPerSynth, kSlotsPerSynth, kSlotsPerSynth, kSlotsPerSynth, kSlotsPerSynth, kSlotsPerSynth, kSlotsPerSynth };
     int waitingEmulators = 0;
     // The panel's frame: a header with a rule above it (the inspector ends there), the rows, and
     // a margin before the status bar.

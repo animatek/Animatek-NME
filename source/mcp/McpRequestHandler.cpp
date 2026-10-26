@@ -1449,8 +1449,11 @@ juce::var McpRequestHandler::getSynthStatus(const juce::var& /*params*/)
                   : status.state == ConnectionManager::State::Connecting ? "connecting" : "disconnected");
     result->setProperty("message", status.message);
     if (connected)
+    {
         result->setProperty("synthOsVersion", juce::String(status.synthVersionHigh) + "."
             + juce::String(status.synthVersionLow).paddedLeft('0', 2));
+        result->setProperty("synthModel", juce::String(IAmMessage::modelName(status.synthModel)).toLowerCase());
+    }
     // null until the synth on this connection has sent its settings, so a client that
     // just switched synths never reads the previous one's name.
     result->setProperty("synthName", owner_.areSynthSettingsFromThisConnection()
