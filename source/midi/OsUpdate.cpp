@@ -78,8 +78,8 @@ std::string checkImage(const std::vector<uint8_t>& image)
     if (image.size() < kMinImageBytes)
         return "It is too small to be a G1 OS (" + std::to_string(image.size()) + " bytes).";
     if (image.size() > kMaxImageBytes)
-        return "It is too big for the G1's flash (" + std::to_string(image.size()) + " bytes, at most "
-             + std::to_string(kMaxImageBytes) + ").";
+        return "It is too big for an OS update (" + std::to_string(image.size()) + " bytes, at most "
+             + std::to_string(kMaxImageBytes) + ": the G1 erases only that much of its flash).";
     if (image.size() % 4 != 0)
         return "Its size is not a whole number of long words, which no G1 OS image has.";
     // Every G1 OS starts by masking the interrupts: move.w #$2700,sr

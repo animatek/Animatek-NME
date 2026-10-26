@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Update Synth OS refuses an image the G1 cannot take** (2026-10-26): at most 393,184 bytes, not
+  458,716. The G1's update utility erases only the flash's first six sectors, so a longer image is
+  written over the seventh unerased: it worked once on a real G1 and then failed with "Write Error"
+  (G1-Mods' NOTES.md, "The first real G1"). Checked: `test_os_update.cpp` (the largest image that
+  fits, and one long word more refused); the same update installed OS images on a real G1 that day,
+  Clavia's 3.03b among them.
+
 ### Added
 
 - **The G1-Mods layer, per synth** (2026-10-18, branch `mods-layer`; brought onto 0.23 and the OS update on 2026-10-25, branch `mods-layer-2`). The module types a
@@ -24,12 +33,28 @@
   formatters. Tests: `test_mods_categories` (without them NME offers exactly Clavia's, the layer
   adds only free types and replaces none, the encoder has no case of its own for them, a synth
   without them takes none, 3.09 and only 3.09 is theirs); plain and ASan/UBSan pass; G1-Mods'
-  `check_mark.py` boots both OSes in G1-Emu (3.03 and 3.09). Only tried in G1-Emu: nothing of
-  this has been on a real G1.
+  `check_mark.py` boots both OSes in G1-Emu (3.03 and 3.09). On a real G1 (2026-10-26): NME
+  installed G1-Mods' OS with all 13 modules through Update Synth OS, knew it (MODDED OS) and every
+  module played (Javier).
   On bringing it over: Note Out (type 60) and its Gate thru are in the layer too; a bank upload a
   slot refuses for a layer module is told it failed instead of waiting; `test_mods_categories`
   takes a family the G1 has not (Note Out's MIDI) at the end of the list, as the code always put it.
   The status bar says "- MODDED OS (G1-Mods)" after the version (2026-10-25).
+
+- **A Micro Modular shows one slot** (2026-10-26). With a Micro connected its row in
+  the slot bar has one button (A), the Slot menu lists only A, and the others cannot be opened, focused or
+  toggled from the keyboard: `ConnectionManager::slotCount()`, `SlotBar::setSlotCount`,
+  `MainComponent::slotExists`. The slot windows the synth asks for are limited to that one. The Slot-select
+  dialog still shows four buttons. Checked: the whole Release build compiles and NME connects to G1-Emu's
+  Micro model ("Connected: Nord Micro Modular v3.3"); Javier confirmed the one-slot bar.
+
+- **NME knows when the synth is a Micro Modular** (2026-10-26). The device
+  byte of a synth's IAm (0 keyboard, 1 rack, 2 Micro, from `docs/RESEARCH.md`) is now read:
+  `IAmMessage::model()`, `ConnectionManager::Status::synthModel` and `isMicroModular()`. The connection
+  line says "Connected: Nord Micro Modular v3.3" and the MCP `get_synth_status` gives `synthModel`
+  (`rack`, `micro`, `keyboard`). Written for G1-Emu's new Micro model (its OS answers `02`). Checked: the new
+  `test_synth_model.cpp` (the rack's and the Micro's real payloads, 7 assertions) passes, the whole
+  Release build compiles, and NME connected to G1-Emu's Micro model, loaded a patch and played it (Javier).
 
 - **Device > Update Synth OS** (2026-10-25, branch `os-update`). Installs an OS image into a G1's flash
   over MIDI, as Clavia's OS updater does, on a real G1 or on G1-Emu. Laid out like Editor Options:

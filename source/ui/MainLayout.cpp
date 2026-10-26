@@ -103,6 +103,16 @@ void SlotBar::setRowShown(int synth, bool shown)
         onRowsChanged();
 }
 
+void SlotBar::setSlotCount(int synth, int count)
+{
+    count = juce::jlimit(1, kSlotsPerSynth, count);
+    if (synth < 0 || synth >= kMaxSynths || slotCounts[synth] == count)
+        return;
+    slotCounts[synth] = count;
+    resized();
+    repaint();
+}
+
 int SlotBar::getPreferredHeight() const
 {
     int rows = 0;
@@ -142,7 +152,8 @@ void SlotBar::resized()
         row.removeFromLeft(2);
         const int firstButtonX = row.getX();
         for (int l = 0; l < kSlotsPerSynth; ++l)
-            slotBounds[SynthSlot::global(synth, l)] = row.removeFromLeft(buttonW).withTrimmedRight(3);
+            slotBounds[SynthSlot::global(synth, l)] =
+                l < slotCounts[synth] ? row.removeFromLeft(buttonW).withTrimmedRight(3) : juce::Rectangle<int>();
         row.removeFromLeft(3);
         nameBounds[synth] = row;
         loadBounds[synth] = load.withTrimmedLeft(firstButtonX - load.getX());

@@ -507,6 +507,8 @@ private:
     void notifySynthOfSlot(int slot);
     void refreshForActiveSynth();
     bool isSynthShown(int synth) const;
+    int  slotsOfSynth(int synth) const;   // the Micro Modular's one, or the rack's four
+    bool slotExists(int slot) const;      // false for the slots a Micro does not have
     void updateSlotBarRows();
     // A synth's name where the user sees it: its row in the slot bar and its slot windows.
     void setSynthDisplayName(int synth, const juce::String& name);

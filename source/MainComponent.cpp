@@ -1601,8 +1601,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     juce::PopupMenu slotMenu;
     for (int i = 0; i < numSlots; ++i)
     {
-        if (!isSynthShown(SynthSlot::synthOf(i)))
-            continue;   // a synth that is not there has no slots to show
+        if (!isSynthShown(SynthSlot::synthOf(i)) || !slotExists(i))
+            continue;   // a synth that is not there has no slots to show, nor has a Micro its B-D
         auto letter = SynthSlot::label(i);
         auto name = slotPatches[i] ? slotPatches[i]->getName() : juce::String("empty");
         // Ctrl+Shift+1..4 are the active synth's four slots; the others have the menu.
@@ -2061,7 +2061,7 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
 }
 
 void MainComponent::switchToSlot(int slot, bool notifySynth, bool bringOnScreen) {
-  if (slot < 0 || slot >= numSlots)
+  if (!slotExists(slot))
     return;
 
   // Bringing the slot on screen focuses its sub-window, which reports back
@@ -2319,6 +2319,15 @@ bool MainComponent::isSynthShown(int synth) const {
   return cm.isConnected() || cm.getStatus().state == ConnectionManager::State::Connecting;
 }
 
+int MainComponent::slotsOfSynth(int synth) const {
+  return synthHub.synth(synth).slotCount();
+}
+
+bool MainComponent::slotExists(int slot) const {
+  return slot >= 0 && slot < numSlots
+      && SynthSlot::localOf(slot) < slotsOfSynth(SynthSlot::synthOf(slot));
+}
+
 void MainComponent::updateSlotBarRows() {
   for (int synth = 0; synth < kMaxSynths; ++synth)
     mainLayout->getSlotBar().setRowShown(synth, isSynthShown(synth));
@@ -2417,7 +2426,7 @@ void MainComponent::toggleFocusMode() {
 }
 
 void MainComponent::toggleSlotOpen(int slot) {
-  if (slot < 0 || slot >= numSlots)
+  if (!slotExists(slot))
     return;
 
   auto& area = mainLayout->getPatchArea();
@@ -4418,7 +4427,7 @@ void MainComponent::reconcileSlotWindowsWithSynth(int synth, const std::array<bo
                                                             synthHub.synth(synth).getCurrentSlot()));
 
   uint32_t desiredMask = 1u << focused;  // focused slot must always remain reachable
-  for (int l = 0; l < kSlotsPerSynth; ++l)
+  for (int l = 0; l < slotsOfSynth(synth); ++l)
     if (enabled[static_cast<size_t>(l)])
       desiredMask |= 1u << (first + l);
 
@@ -5151,6 +5160,8 @@ void MainComponent::onConnectionStatusChanged(
   const bool isActive = (synth == synthHub.activeSynth());
   if (isActive)
     refreshModsForActiveSynth();   // a G1-Mods OS says so on connecting
+  // A Micro Modular has one slot: its row in the slot bar shows one button.
+  mainLayout->getSlotBar().setSlotCount(synth, slotsOfSynth(synth));
   {
     auto* info = new juce::DynamicObject();
     info->setProperty("state", connected ? "connected"

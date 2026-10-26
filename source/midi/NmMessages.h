@@ -19,6 +19,16 @@ namespace NmCmd
     constexpr uint8_t PatchPacketBase = 0x1c;
 }
 
+// The device byte of a synth's IAm: which Nord Modular answered (docs/RESEARCH.md, "Device
+// Identification"). The Micro has one slot and one DSP, no 18 knobs.
+enum class SynthModel
+{
+    Unknown  = -1,
+    Keyboard = 0,
+    Rack     = 1,
+    Micro    = 2
+};
+
 struct IAmMessage
 {
     int sender = 0;       // 0 = PC, 1 = Synth
@@ -28,6 +38,16 @@ struct IAmMessage
     int deviceId = -1;
     // A synth in its boot ROM's update utility, waiting for an OS (OsUpdate.h)
     bool updateMode = false;
+
+    // The model that answered; Unknown for the editor's own IAm and for a byte not listed.
+    SynthModel model() const
+    {
+        return sender == 1 && deviceId >= 0 && deviceId <= 2 ? static_cast<SynthModel>(deviceId) : SynthModel::Unknown;
+    }
+    static const char* modelName(SynthModel m)
+    {
+        return m == SynthModel::Keyboard ? "Keyboard" : m == SynthModel::Rack ? "Rack" : m == SynthModel::Micro ? "Micro" : "Unknown";
+    }
 
     std::vector<uint8_t> encode() const;
     static IAmMessage decode(const uint8_t* data, size_t length);
