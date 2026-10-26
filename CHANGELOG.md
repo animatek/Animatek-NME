@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Update Synth OS refuses an image the G1 cannot take** (2026-10-26): at most 393,184 bytes, not
+  458,716. The G1's update utility erases only the flash's first six sectors, so a longer image is
+  written over the seventh unerased: it worked once on a real G1 and then failed with "Write Error"
+  (G1-Mods' NOTES.md, "The first real G1"). Checked: `test_os_update.cpp` (the largest image that
+  fits, and one long word more refused); the same update installed OS images on a real G1 that day,
+  Clavia's 3.03b among them.
+
 ### Added
 
 - **A Micro Modular shows one slot** (2026-10-26). With a Micro connected its row in

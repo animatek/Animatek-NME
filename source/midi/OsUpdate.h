@@ -30,9 +30,12 @@ namespace OsUpdate
 {
     constexpr uint32_t kFlashAddress = 0x300020;   // the OS, past the flash's 32-byte header
     constexpr int kBlockBytes = 112;
-    // The flash keeps the OS only up to $70000, where the patch banks start;
-    // the loader also copies one long word past the image.
-    constexpr size_t kMaxImageBytes = 0x70000 - 0x20 - 4;
+    // The update utility erases only the flash's sectors 0-5 ($300000-$35FFFF,
+    // its erase loop at ROM $5894), so an image ends before $360000. A longer
+    // one is written over sector 6 unerased: it works while that sector is
+    // blank and fails with "Write Error" once it holds anything (found on a
+    // real G1, 2026-10-26; G1-Mods' NOTES.md, "The first real G1").
+    constexpr size_t kMaxImageBytes = 0x60000 - 0x20;
     constexpr size_t kMinImageBytes = 0x10000;
 
     struct Version { int major = 3; int minor = 3; };
