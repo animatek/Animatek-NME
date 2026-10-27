@@ -1,7 +1,7 @@
 ; The Windows installer for the Patreon builds: Inno Setup 6, built by build-binaries.yml from the
 ; same folder as the ZIP (AnimatekNME.exe, README.txt, LICENSE.txt, BUILD-INFO.txt).
 ;
-;   iscc /DAppVersion=0.23.0 /DStageDir=..\..\stage packaging\windows\AnimatekNME.iss
+;   iscc /DAppVersion=0.24.0 /DStageDir=..\..\stage packaging\windows\AnimatekNME.iss
 ;
 ; Installed for the current user, in %LOCALAPPDATA%\Programs: no administrator, no UAC prompt.
 ; A new version replaces the previous one in place. Settings, themes and patches live in the

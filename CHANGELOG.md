@@ -1,15 +1,18 @@
 # Changelog
 
-## 0.23.0 — 2026-10-27
+## 0.24.0 — 2026-10-27
 
-The new look. The whole interface is redrawn in a flat, dark style with one amber accent: the header
-bar, the module bar, the inspector, both browsers, every menu, every dialog and floater, and a status bar
-with the inspector, browser, MIDI and options buttons. Underneath: the plugin keeps its patches in the
-DAW project (#94), a UI size option for 4K screens (#105), banks that go straight to the synth's memory,
-a Mutator that mutates like the G2's, Device > Update Synth OS, a Micro Modular
-shown with one slot, and a handful of fixes reported by email and by issue. The
-entries below are in the order they were made, newest first; the redesign ones say "branch
-`ui-redesign`", which was merged into `main` on 2026-10-24.
+NME installs an OS into a G1 (Device > Update Synth OS), on a real G1 or on G1-Emu, and knows a
+Micro Modular, which it shows with its one slot.
+
+### Fixed
+
+- **Update Synth OS refuses an image the G1 cannot take** (2026-10-26): at most 393,184 bytes, not
+  458,716. The G1's update utility erases only the flash's first six sectors, so a longer image is
+  written over the seventh unerased: it worked once on a real G1 and then failed with "Write Error"
+  (G1-Mods' NOTES.md, "The first real G1"). Checked: `test_os_update.cpp` (the largest image that
+  fits, and one long word more refused); the same update installed OS images on a real G1 that day,
+  Clavia's 3.03b among them.
 
 ### Added
 
@@ -42,6 +45,16 @@ entries below are in the order they were made, newest first; the redesign ones s
   the updater's capture (3,439 of 3,440 messages identical, the last differing only in padding); and by
   Javier with G1-Emu in update mode on its direct link, a G1 on a UM-ONE also open: the OS went to
   G1-Emu only, its checksum was answered right, Store, Update completed, and G1-Emu booted it.
+
+## 0.23.0 — 2026-10-24
+
+The new look. The whole interface is redrawn in a flat, dark style with one amber accent: the header
+bar, the module bar, the inspector, both browsers, every menu, every dialog and floater, and a status bar
+with the inspector, browser, MIDI and options buttons. Underneath: the plugin keeps its patches in the
+DAW project (#94), a UI size option for 4K screens (#105), banks that go straight to the synth's memory,
+a Mutator that mutates like the G2's, and a handful of fixes reported by email and by issue. The
+entries below are in the order they were made, newest first; the redesign ones say "branch
+`ui-redesign`", which was merged into `main` on 2026-10-24.
 
 ### Changed
 
@@ -596,13 +609,6 @@ entries below are in the order they were made, newest first; the redesign ones s
   variations do not store them.
 
 ### Fixed
-
-- **Update Synth OS refuses an image the G1 cannot take** (2026-10-26): at most 393,184 bytes, not
-  458,716. The G1's update utility erases only the flash's first six sectors, so a longer image is
-  written over the seventh unerased: it worked once on a real G1 and then failed with "Write Error"
-  (G1-Mods' NOTES.md, "The first real G1"). Checked: `test_os_update.cpp` (the largest image that
-  fits, and one long word more refused); the same update installed OS images on a real G1 that day,
-  Clavia's 3.03b among them.
 
 - **Screenshots from the editor itself** (2026-10-24, `main`). The picture-taking run (`NME_SNAPSHOT_DIR`)
   takes three more settings, for making screenshots without touching the desktop: `NME_SNAPSHOT_SIZE=1920x1080`
