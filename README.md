@@ -17,8 +17,10 @@ same application:
   repository: no missing pieces, no disabled features, no separate "pro" branch. See
   [Building](#building) below.
 
-That is why the repo has no GitHub Releases: binaries are distributed through Patreon,
-while the code stays GPLv3 for anyone who wants to compile it, fork it, or read it.
+That is why the [GitHub Releases](https://github.com/animatek/Animatek-NME/releases) carry
+the release notes but no binaries: those are distributed through Patreon, while the code stays
+GPLv3 for anyone who wants to compile it, fork it, or read it. NME tells you when a new version
+is out.
 
 ## Support the project
 
@@ -42,14 +44,18 @@ Animatek NME lets you edit Nord Modular G1 patches from a modern desktop applica
 
 - Connect to the synth over MIDI SysEx, auto-detect ports, and keep editor/synth state in sync.
 - Load, edit, save, and store `.pch` patches.
-- Work with all four hardware slots, each with independent patch state and undo history.
+- Work with all four hardware slots, each with independent patch state and undo history, and
+  with more than one synth at a time (real G1s and [G1-Emu](https://github.com/animatek/G1-Emu)
+  instances, the emulator found on its own over a direct link).
+- Recognise a Micro Modular and show its one slot.
 - Build patches visually with modules, cables, parameters, morphs, hardware knob assignments, and MIDI CC mappings.
 - Browse synth memory and local disk presets from the integrated right-side browser.
 - Save and import snippets as reusable `.pch` module groups.
-- Transfer whole banks: save a synth bank to a folder, send a folder of patches to a bank,
-  or mirror-backup all 9 banks into the preset library in one action.
-- Breed new sounds interactively with the **Patch Mutator** (mutate / randomize / interpolate
-  / cross), and store up to 8 patch variations per slot.
+- Transfer whole banks straight to and from the synth's memory, as Clavia's editor does
+  (`.pchList` included), or mirror-backup all 9 banks into the preset library in one action.
+- Install an OS image into a G1 over MIDI with **Device > Update Synth OS** (you bring the image).
+- Breed new sounds interactively with the **Patch Mutator**, which mutates the way the G2's
+  does (mutate / randomize / interpolate / cross), and store up to 8 patch variations per slot.
 - Watch MIDI traffic live with the **SysEx Monitor** for protocol debugging.
 - Use contextual module help based on the original Nord Modular Editor documentation.
 
@@ -66,13 +72,17 @@ Animatek NME lets you edit Nord Modular G1 patches from a modern desktop applica
   (`Banks/Bank1`-`Bank9` mirror folders), all with progress and cancellation.
 - Disk preset browser with configurable preset library folder, recursive `.pch` scanning, search, and patch/snippet/bank filters. Bank backups load like any patch.
 - Randomize, initialize, parameter locks, snapshots, cable visibility tools, canvas zoom, and module help.
-- **Patch Mutator** (G2-style interactive sound breeder) with Gaussian mutation, harmonic
-  oscillator mutation, crossover, interpolation, Quick Locks, and 8 persistent patch variations.
+- **Patch Mutator** (G2-style interactive sound breeder): a shape per parameter, set-up switches
+  left alone, Probability tied to Range, crossover, interpolation, Quick Locks, and 8 persistent
+  patch variations.
 - **SysEx Monitor** floater for live TX/RX MIDI logging (works in console-less release builds).
 - Configurable synth **send speed** (parameter throughput) to balance responsiveness vs. reliability.
-- 13 color themes (cycled with `Ctrl+T`), with Nord as the default, plus a persistent
-  wireframe module mode (`Ctrl+W`).
-- Experimental VST3/CLAP plugin targets.
+- A flat, dark interface with one amber accent, a **UI size** option from 100% to 300% for 4K
+  screens, and an optional skeuomorphic **Hardware look**.
+- Themes in one Themes window: a colour editor, single-file import and export, and community
+  themes from [animatek/nme-themes](https://github.com/animatek/nme-themes) (`Ctrl+T` cycles them),
+  plus a persistent wireframe module mode (`Ctrl+W`).
+- VST3/CLAP plugin that keeps the slots' patches in the DAW project.
 
 ## Documentation
 
