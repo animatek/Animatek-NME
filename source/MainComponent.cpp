@@ -2565,6 +2565,13 @@ bool MainComponent::replacePatchInSlot(int slot, std::unique_ptr<Patch> patch,
       patchNotesFloaterWindow->setPatch(slotPatches[slot].get());
     refreshSnapshotUi();
     updateDspLoadDisplay();
+    // The bar names the patch on screen. A patch from disk used to leave the name of the
+    // last one the synth sent, and whatever error the synth had last reported (#113).
+    const bool linked = synthHub.isConnectedSlot(slot);
+    mainLayout->getStatusBar().setConnectionStatus(
+        linked ? "Connected - " + slotPatches[slot]->getName()
+               : juce::String("Slot ") + SynthSlot::label(slot) + " - " + slotPatches[slot]->getName(),
+        linked);
   }
 
   mainLayout->getSlotBar().setSlotName(slot, slotPatches[slot]->getName());

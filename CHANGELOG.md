@@ -14,6 +14,10 @@
 
 ### Fixed
 
+- **Status bar names the patch that is on screen** (issue #113, 2026-10-29): loading a patch from disk
+  left the name of the last patch the synth had sent, and a synth error ("Error from synth (code N)")
+  stayed in the bar after later loads worked. Disk loads now rewrite the bar. Still open from the same
+  issue: why the synth's error replaces the connection state (see #115). Not yet tried with a synth.
 - **Loading a slot set into a Micro Modular no longer ends with a false warning** (issue #119,
   2026-10-29): the Micro has one slot and never reports which slots are enabled, so the closing step
   of switching slots on and off could only fail with "the synth has not reported which slots are
