@@ -42,6 +42,10 @@
 
 ### Fixed
 
+- **Update Synth OS says what a whole ROM is** (2026-10-29): a 512 KB file (what G1-Emu boots, and what
+  the G1-Mods web builder hands out beside the update image) was refused with "too big for an OS
+  update", which does not tell you that you picked the wrong one of the two downloads. It now says it
+  is a whole ROM and which file to use. Checked: unit test; unit tests pass.
 - **Patch Mutator: right-click on a slot can save the current sound there** (issue #114, 2026-10-29):
   every entry of the menu needed a sound already in the slot, so an empty slot offered nothing to
   click. New first entry, "Save Current Sound Here", works on any box (Mother, Children, Father,

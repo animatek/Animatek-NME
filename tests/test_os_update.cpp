@@ -81,6 +81,7 @@ TEST_CASE("OS update: only an image that can be a G1 OS goes")
     CHECK(OsUpdate::checkImage(fakeImage()).empty());
     CHECK(! OsUpdate::checkImage(fakeImage(1024)).empty());
     CHECK(! OsUpdate::checkImage(fakeImage(0x70000)).empty());
+    CHECK(OsUpdate::checkImage(fakeImage(0x80000)).find("whole 512 KB ROM") != std::string::npos);   // the ROM, not the image
     CHECK(OsUpdate::checkImage(fakeImage(0x60000 - 0x20)).empty());     // all the update erases
     CHECK(! OsUpdate::checkImage(fakeImage(0x60000 - 0x1C)).empty());   // a long word into sector 6
     CHECK(! OsUpdate::checkImage(fakeImage(0x5E001)).empty());

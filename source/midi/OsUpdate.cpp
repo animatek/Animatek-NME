@@ -77,6 +77,12 @@ std::string checkImage(const std::vector<uint8_t>& image)
 {
     if (image.size() < kMinImageBytes)
         return "It is too small to be a G1 OS (" + std::to_string(image.size()) + " bytes).";
+    // The whole ROM of a G1 (512 KB) is what G1-Emu boots, and the web builder hands it out
+    // beside the OS update image: the two get mixed up, so say which is which.
+    if (image.size() == 0x80000)
+        return "This is a whole 512 KB ROM, which is for G1-Emu, not an update image. For a G1 you want "
+               "the OS update that comes with it (the web builder's \"OS update\" download, "
+               "or tools/g1update.py fromrom).";
     if (image.size() > kMaxImageBytes)
         return "It is too big for an OS update (" + std::to_string(image.size()) + " bytes, at most "
              + std::to_string(kMaxImageBytes) + ": the G1 erases only that much of its flash).";
