@@ -14,6 +14,11 @@
 
 ### Fixed
 
+- **Patch Mutator: right-click on a slot can save the current sound there** (issue #114, 2026-10-29):
+  every entry of the menu needed a sound already in the slot, so an empty slot offered nothing to
+  click. New first entry, "Save Current Sound Here", works on any box (Mother, Children, Father,
+  Temporary Storage and Variations; in a variation slot it is stored in the patch as well). Checked:
+  builds, unit tests pass; not yet tried by hand.
 - **Status bar names the patch that is on screen** (issue #113, 2026-10-29): loading a patch from disk
   left the name of the last patch the synth had sent, and a synth error ("Error from synth (code N)")
   stayed in the bar after later loads worked. Disk loads now rewrite the bar. Still open from the same

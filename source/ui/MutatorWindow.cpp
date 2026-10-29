@@ -616,6 +616,10 @@ void MutatorPanel::showBoxMenu(int index)
     juce::PopupMenu menu;
     const bool filled = box(index).snap.filled;
 
+    // Everything below needs a sound in the box, so an empty slot showed a menu of greyed-out
+    // entries: this is the one that works on it (issue #114).
+    menu.addItem(5, "Save Current Sound Here", static_cast<bool>(onCaptureCurrent));
+    menu.addSeparator();
     menu.addItem(1, "Set as Mother", filled);
     menu.addItem(2, "Set as Father", filled);
     menu.addSeparator();
@@ -632,6 +636,14 @@ void MutatorPanel::showBoxMenu(int index)
         else if (result == 2) copyToParent(index, kFather);
         else if (result == 3) { focusBox(index, false); saveFocusedToTemp(); }
         else if (result == 4) { box(index).snap = ParamSnapshot(); box(index).repaint(); }
+        else if (result == 5 && onCaptureCurrent)
+        {
+            box(index).snap = onCaptureCurrent();
+            box(index).repaint();
+            // A variation slot is the patch's own, so it is stored there too, not just shown
+            if (index >= kVarFirst && onStoreToVariation)
+                onStoreToVariation(index - kVarFirst, box(index).snap);
+        }
         else if (result >= 100 && result < 108 && onStoreToVariation)
             onStoreToVariation(result - 100, box(index).snap);
     });
