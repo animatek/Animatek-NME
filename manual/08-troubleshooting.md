@@ -1,5 +1,13 @@
 # 8. Troubleshooting
 
+## The log file
+
+Whatever goes wrong, the editor writes what it was doing to a log file, one per run, with a time
+stamp on every line (MIDI traffic, connection changes, synth errors). **Help > Open Log Folder**
+opens the folder; the ten latest runs are kept. When you report a problem, attach the log of the
+run where it happened. On Windows the folder is `%APPDATA%\AnimatekNME\Logs`, on macOS
+`~/Library/Application Support/AnimatekNME/Logs`, on Linux `~/.config/AnimatekNME/Logs`.
+
 ## The editor doesn't find the synth
 
 - Check that **both** MIDI directions are cabled: synth OUT → interface IN and

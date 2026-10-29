@@ -7,6 +7,7 @@
 #include <iostream>
 #include <set>
 #include "ui/WindowOwner.h"
+#include "AppLog.h"
 
 class NmeApplication : public juce::JUCEApplication
 {
@@ -22,6 +23,8 @@ public:
 
     void initialise(const juce::String&) override
     {
+        AppLog::start("Animatek NME " + getApplicationVersion());
+
         juce::PropertiesFile::Options options;
         options.applicationName = "AnimatekNME";
         options.filenameSuffix = ".settings";
@@ -67,6 +70,7 @@ public:
             }
         }
         mainWindow.reset();
+        AppLog::stop();
     }
 
     void systemRequestedQuit() override

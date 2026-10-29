@@ -4,6 +4,15 @@
 
 ### Added
 
+- **A log file for every run** (issue #115, 2026-10-29): everything the editor wrote to the console now
+  also goes to `AnimatekNME/Logs/nme-<date>-<time>-<id>.log` in the user's application data folder
+  (`%APPDATA%` on Windows), a time stamp on each line, the ten latest runs kept, 20 MB at most per run.
+  Windows has no console, which is why only the emulator had a log. Help > Open Log Folder opens it,
+  the synth-error message now points there instead of at "the console", and every connection state
+  change is logged (`[CONN]`). Manual chapter 8 (English and Spanish) explains it. Checked: a run
+  writes its log with time stamps; the editor's own plugin build does not use it. Still open from the
+  issue: the "code 3" and "code 6" errors come from the synth itself ("Error in synth", "Unfinished
+  bubble"), and the connection that only a Windows restart recovered needs a log from that run.
 - **Knob panel of the inspector shows a Micro Modular's three knobs** (issue #111, 2026-10-29): with a
   Micro as the synth being edited, the miniature of the front panel shows its one column of three
   knobs, titled "KNOB PANEL - MICRO", instead of the G1's eighteen. Assignments the patch holds on
@@ -40,8 +49,7 @@
   builds, unit tests pass; not yet tried by hand.
 - **Status bar names the patch that is on screen** (issue #113, 2026-10-29): loading a patch from disk
   left the name of the last patch the synth had sent, and a synth error ("Error from synth (code N)")
-  stayed in the bar after later loads worked. Disk loads now rewrite the bar. Still open from the same
-  issue: why the synth's error replaces the connection state (see #115). Not yet tried with a synth.
+  stayed in the bar after later loads worked. Disk loads now rewrite the bar. Not yet tried with a synth.
 - **Loading a slot set into a Micro Modular no longer ends with a false warning** (issue #119,
   2026-10-29): the Micro has one slot and never reports which slots are enabled, so the closing step
   of switching slots on and off could only fail with "the synth has not reported which slots are

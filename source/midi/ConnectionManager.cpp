@@ -2645,6 +2645,7 @@ void ConnectionManager::setStatus(State state, const juce::String& message)
 {
     status.state = state;
     status.message = message;
+    std::cout << "[CONN] state=" << static_cast<int>(state) << " \"" << message << "\"" << std::endl;
 
     if (statusCallback)
         statusCallback(status);

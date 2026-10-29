@@ -1,6 +1,7 @@
 #include "MainComponent.h"
 #include "midi/SynthLink.h"
 #include "ui/KnobMenu.h"
+#include "AppLog.h"
 #include "ui/KnobDrag.h"
 #include "model/PatchParser.h"
 #include "model/PchFileIO.h"
@@ -946,7 +947,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     }
     mainLayout->getStatusBar().showMessage(
         "ERROR: " + (kMaxSynths > 1 ? "Synth " + juce::String(s + 1) + ": " : juce::String()) + "Synth error code " + juce::String(errorCode)
-        + " (" + description + "): check console for details", 8000);
+        + " (" + description + "): details in Help > Open Log Folder", 8000);
   }); });
 
   // Wire toolbar buttons
@@ -1681,6 +1682,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     menu.addSeparator();
     menu.addItem(43, "Report a Bug...", true);
     menu.addItem(44, "Show Beta Warning...", true);
+    menu.addSeparator();
+    menu.addItem(46, "Open Log Folder", true);
   }
   else if (menuIndex == 5) // About
   {
@@ -1856,6 +1859,10 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 44:  // Show Beta Warning
     showBetaWarning(true);
+    break;
+  case 46:  // Open Log Folder
+    AppLog::folder().createDirectory();
+    AppLog::folder().revealToUser();
     break;
   case 45:  // Keyboard Shortcuts
     showKeyboardShortcutsDialog();

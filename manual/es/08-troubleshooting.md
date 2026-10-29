@@ -1,5 +1,13 @@
 # 8. Resolución de problemas
 
+## El archivo de registro
+
+Pase lo que pase, el editor escribe lo que estaba haciendo en un archivo de registro, uno por sesión,
+con la hora en cada línea (tráfico MIDI, cambios de conexión, errores del sinte). **Help > Open Log
+Folder** abre la carpeta; se guardan las diez últimas sesiones. Al avisar de un problema, adjunta el
+registro de la sesión en la que ocurrió. En Windows la carpeta es `%APPDATA%\AnimatekNME\Logs`, en macOS
+`~/Library/Application Support/AnimatekNME/Logs` y en Linux `~/.config/AnimatekNME/Logs`.
+
 ## El editor no encuentra el sintetizador
 
 - Comprueba que hay cable en las **dos** direcciones: OUT del sintetizador → IN
