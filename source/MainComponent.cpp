@@ -1359,6 +1359,10 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
       toggleLeftPanel();
     return true;
   }
+  if (key == juce::KeyPress('l', juce::ModifierKeys::commandModifier, 0)) {
+    toggleSlotLock();
+    return true;
+  }
   // C shows or hides every cable at once (issue #116). Plain letter, so it only gets here when
   // nothing that takes text has the keyboard, the way S shakes the cables.
   if (key.getTextCharacter() == 'c' && !key.getModifiers().isAnyModifierKeyDown()) {
@@ -1519,6 +1523,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     addShortcutItem(menu, 3, "Save", "Ctrl+S");
     addShortcutItem(menu, 4, "Save As...", "Ctrl+Shift+S");
     menu.addSeparator();
+    // The editor option that skips the slot question, at hand: lock the loads to the slot on
+    // screen while browsing, unlock to be asked again (issue #117).
+    addShortcutItem(menu, 14, "Lock Loading to Active Slot", "Ctrl+L", true, !editorOptions.askSlotOnOpen);
     menu.addItem(13, "Open Slot Set...");
     menu.addItem(12, "Save Slot Set...");
     menu.addSeparator();
@@ -1734,6 +1741,9 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 13:
     openSlotSetWithChooser();
+    break;
+  case 14:
+    toggleSlotLock();
     break;
   case 5:
     importSnippet();
@@ -2445,6 +2455,18 @@ void MainComponent::leaveViewMode() {
   menuItemsChanged();
 }
 
+void MainComponent::toggleSlotLock() {
+  editorOptions.askSlotOnOpen = !editorOptions.askSlotOnOpen;
+  editorOptions.save(appProperties.getUserSettings());
+  menuItemsChanged();
+  mainLayout->getStatusBar().showMessage(
+      editorOptions.askSlotOnOpen
+          ? "Slot unlocked: opening a patch asks which slot"
+          : juce::String("Slot locked: patches open straight into slot ")
+                + SynthSlot::label(activeSlot) + " (Ctrl+L to unlock)",
+      3000);
+}
+
 void MainComponent::toggleSlotOpen(int slot) {
   if (!slotExists(slot))
     return;
@@ -2869,7 +2891,8 @@ void MainComponent::loadPatchFromFile(const juce::File &file, int targetSlot, bo
 void MainComponent::openPatchFileWithChooser(const juce::File &file) {
   // Turned off in the editor options: every open goes to the slot on screen,
   // uploaded like any other, with no question asked (issue #59).
-  if (!editorOptions.askSlotOnOpen) {
+  // A Micro Modular has the one slot, so there is nothing to choose either (issue #117).
+  if (!editorOptions.askSlotOnOpen || synthHub.active().slotCount() == 1) {
     loadPatchFromFile(file, activeSlot, /*localOnly=*/false);
     return;
   }

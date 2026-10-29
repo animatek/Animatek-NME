@@ -253,6 +253,7 @@ private:
     void applyThemeLive(const EditorTheme& theme);   // theme editor preview, not in the registry
     void showThemeEditor();
     void toggleWireframe();
+    void toggleSlotLock();    // Ctrl+L: opens go straight to the active slot, no question (#117)
     void toggleLeftPanel();   // Ctrl+I: inspector column (issue #38)
     void toggleRightPanel();  // Ctrl+Shift+I: patch browser
     // Zen (F6): the editing view with everything but the patch out of the way.

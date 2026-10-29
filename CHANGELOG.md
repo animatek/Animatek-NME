@@ -4,6 +4,12 @@
 
 ### Added
 
+- **Lock opening to the active slot** (issue #117, 2026-10-29): File > Lock Loading to Active Slot, or
+  `Ctrl+L`, makes every patch opened from disk (File > Open, the Disk browser with Enter or a double
+  click) go straight into the slot on screen with no question, until it is unlocked. It is the editor
+  option *Ask which slot when opening a patch*, now one keystroke away. A Micro Modular, which has
+  one slot, is never asked. Not done: loading from the Synth browser with Enter. Checked: builds,
+  unit tests pass; not yet tried by hand.
 - **Hide or show all cables at once** (issue #116, 2026-10-29): `C` hides every cable colour, or shows
   them all when none is on, and in the header you can press on one colour circle and swipe across the
   others to set them the same way (the first one pressed decides show or hide). The folded cables

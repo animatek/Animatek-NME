@@ -57,6 +57,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl+H` | Toggle hardware look (**macOS: `Cmd+Shift+H`**) |
 | `Ctrl+I` | Toggle the inspector panel (left side) |
 | `Ctrl+Shift+I` | Toggle the patch browser (right side) |
+| `Ctrl+L` | Lock opening to the active slot: patches open straight into it, with no question, until you press it again. Same switch as *Ask which slot when opening a patch* in Editor Options. A Micro Modular never asks |
 | `S` | Shake cables |
 | `C` | Show or hide all cables at once. In the header, press on one cable colour and swipe over the others to set them all the same way |
 | Middle-drag | Pan the canvas |
