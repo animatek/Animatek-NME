@@ -3147,6 +3147,9 @@ void MainComponent::updateStoreLocationDisplay() {
   headerBar.setCurrentLocation(synthHub.getSlotBankSection(activeSlot),
                                synthHub.getSlotBankPosition(activeSlot));
   headerBar.setStoreUncertain(!slotBankCandidates[activeSlot].empty());
+  // Same moments (connecting, changing slot or synth): the inspector's miniature of the knob
+  // panel follows the model of the synth being edited (issue #111).
+  mainLayout->getInspector().setMicroModel(synthHub.active().isMicroModular());
 }
 
 bool MainComponent::storeSlotPatchToBank(int slot, int bankSection, int position,

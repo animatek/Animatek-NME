@@ -23,6 +23,10 @@ public:
     // Set the current patch (for patch-wide morph view when no module selected)
     void setPatch(Patch* patch);
 
+    // A Micro Modular has three knobs, not the G1's eighteen: its miniature of the front panel
+    // shows just those (issue #111). Assignments on the other knobs stay in the patch and in the list.
+    void setMicroModel(bool micro);
+
     // Called when the user selects a module on the canvas
     void setModule(Module* module, int section);
     void clearModule();
@@ -106,6 +110,7 @@ private:
     static constexpr int moduleHeaderH = 32;   // the "MODULE" heading
     static constexpr int moduleInfoRowH = 28;  // each line of the Module block
     int moduleTopY = 0, moduleBottomY = 0, nameRowY = -1;
+    bool microModel = false;    // the synth being edited is a Micro Modular: three knobs
     bool moduleShown = false;   // the Module block is there only while a module is selected
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(InspectorPanel)

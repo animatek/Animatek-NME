@@ -1823,6 +1823,14 @@ void InspectorPanel::setSharedSettings(juce::PropertiesFile* settings)
     }
 }
 
+void InspectorPanel::setMicroModel(bool micro)
+{
+    if (microModel == micro)
+        return;
+    microModel = micro;
+    repaint();
+}
+
 void InspectorPanel::setMorphFaderKnob(int knobIndex, int carrierGroup)
 {
     assignmentsList->setMorphFaderKnob(knobIndex, carrierGroup);
@@ -1844,8 +1852,14 @@ void InspectorPanel::paint(juce::Graphics& g)
         constexpr float groupGap = 3.0f;
         constexpr float cellW = 12.0f;
         constexpr float groupPad = 3.0f;
-        const int groupColumns[] = { 2, 2, 1, 1 };
-        auto map = juce::Rectangle<float>(static_cast<float>(getWidth() - margin) - mapW,
+        // The G1: six columns in four groups. The Micro: one column, its three knobs.
+        const std::vector<int> groupColumns = microModel ? std::vector<int>{ 1 }
+                                                         : std::vector<int>{ 2, 2, 1, 1 };
+        float groupsW = 0.0f;
+        for (int columns : groupColumns)
+            groupsW += groupPad * 2.0f + columns * cellW + groupGap;
+        groupsW -= groupGap;
+        auto map = juce::Rectangle<float>(static_cast<float>(getWidth() - margin) - juce::jmin(mapW, groupsW),
                                           static_cast<float>(margin), mapW, mapH);
         float x = map.getX();
         int knobColumn = 0;
@@ -1904,7 +1918,7 @@ void InspectorPanel::paint(juce::Graphics& g)
     {
         g.setColour(theme.textMuted);
         g.setFont(AppTheme::uiFont(11.0f).withStyle("Bold"));
-        g.drawText("KNOB PANEL", margin + 2, margin, getWidth() - margin * 2 - 116, 38,
+        g.drawText(microModel ? "KNOB PANEL - MICRO" : "KNOB PANEL", margin + 2, margin, getWidth() - margin * 2 - (microModel ? 44 : 116), 38,
                    juce::Justification::centredLeft, true);
     }
 

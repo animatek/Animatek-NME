@@ -4,6 +4,12 @@
 
 ### Added
 
+- **Knob panel of the inspector shows a Micro Modular's three knobs** (issue #111, 2026-10-29): with a
+  Micro as the synth being edited, the miniature of the front panel shows its one column of three
+  knobs, titled "KNOB PANEL - MICRO", instead of the G1's eighteen. Assignments the patch holds on
+  other knobs are untouched and still appear in the inspector's list. Assumes the Micro's knobs are
+  knobs 1-3 of the patch; to be confirmed on a real Micro. The Knob Floater still shows all of them.
+  Checked: builds, unit tests pass; not yet tried by hand.
 - **Lock opening to the active slot** (issue #117, 2026-10-29): File > Lock Loading to Active Slot, or
   `Ctrl+L`, makes every patch opened from disk (File > Open, the Disk browser with Enter or a double
   click) go straight into the slot on screen with no question, until it is unlocked. It is the editor
