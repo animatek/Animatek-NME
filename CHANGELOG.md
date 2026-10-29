@@ -14,6 +14,11 @@
 
 ### Fixed
 
+- **Loading a slot set into a Micro Modular no longer ends with a false warning** (issue #119,
+  2026-10-29): the Micro has one slot and never reports which slots are enabled, so the closing step
+  of switching slots on and off could only fail with "the synth has not reported which slots are
+  enabled yet", after the patch had loaded fine. That step is skipped on a Micro. Not yet tried on a
+  Micro; saving the A-B snapshot inside a set is still open.
 - **Synth patch browser no longer empties itself** (issue #112, 2026-10-29): the name list was wiped
   when a fetch started and the partial list was published when the fetch was cut short (cancelled by a
   patch operation, or the fixed 10 s timeout, too short for a Micro or a slow USB driver). The fetch

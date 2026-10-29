@@ -416,7 +416,9 @@ void MainComponent::slotSetLoadTick() {
       --load.settleTicks;
       return;
     }
-    if (connected && !synthConn.setSlotPins(load.mask))
+    // A Micro Modular has the one slot and never reports an enable mask: there is
+    // nothing to switch on or off, and asking would only end in a false warning (#119).
+    if (connected && !synthConn.isMicroModular() && !synthConn.setSlotPins(load.mask))
       load.failed.add("No slot was switched on or off: the synth has not reported which "
                       "slots are enabled yet");
     finishSlotSetLoad();
