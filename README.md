@@ -6,7 +6,7 @@ to run on current macOS, Windows, and Linux systems without requiring an old Jav
 
 ## Status and how to get it
 
-**Animatek NME is in active beta** (current version 0.24.0, see
+**Animatek NME is in active beta** (current version 0.25.0, see
 [CHANGELOG.md](CHANGELOG.md)). There are two ways to get it, and both give you the
 same application:
 
@@ -47,7 +47,9 @@ Animatek NME lets you edit Nord Modular G1 patches from a modern desktop applica
 - Work with all four hardware slots, each with independent patch state and undo history, and
   with more than one synth at a time (real G1s and [G1-Emu](https://github.com/animatek/G1-Emu)
   instances, the emulator found on its own over a direct link).
-- Recognise a Micro Modular and show its one slot.
+- Recognise a Micro Modular and show its one slot, its three knobs and its slot sets.
+- Offer the new module types of a **G1-Mods** OS (needs 0.25) to a synth that has it, and install that OS
+  from the web builder's update file.
 - Build patches visually with modules, cables, parameters, morphs, hardware knob assignments, and MIDI CC mappings.
 - Browse synth memory and local disk presets from the integrated right-side browser.
 - Save and import snippets as reusable `.pch` module groups.
@@ -57,6 +59,9 @@ Animatek NME lets you edit Nord Modular G1 patches from a modern desktop applica
 - Breed new sounds interactively with the **Patch Mutator**, which mutates the way the G2's
   does (mutate / randomize / interpolate / cross), and store up to 8 patch variations per slot.
 - Watch MIDI traffic live with the **SysEx Monitor** for protocol debugging.
+- **Zen** (F6) and **Performance** (Shift+F6) views, **Hide/Show all cables** (C) and a lock that opens
+  every patch into the active slot (Ctrl+L).
+- Write a **log file** of every run (Help > Open Log Folder) for bug reports.
 - Use contextual module help based on the original Nord Modular Editor documentation.
 
 ## Main Features

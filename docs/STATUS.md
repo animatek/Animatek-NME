@@ -1,6 +1,6 @@
 # Animatek NME Status
 
-Current version: **0.23.0** (released 2026-10-24)
+Current version: **0.25.0** (2026-10-29; the tag and the binaries follow the Patreon post)
 
 The project was renamed from **Nomad2026** to **Animatek NME — Nord Modular Editor G1** in 0.6.0.
 
@@ -45,6 +45,14 @@ This file tracks the current project state at a practical level. Detailed versio
 
 ## Recent Milestones
 
+- **0.25.0**: the G1-Mods layer in `main`: NME offers the module types of a G1-Mods OS (version 3.09 on
+  connecting) to a synth that has it. Zen (F6) and Performance (Shift+F6) views, Hide/Show all cables (C),
+  a lock that opens every patch into the active slot (Ctrl+L), a log file for every run (Help > Open Log
+  Folder), the Micro Modular's three knobs in the inspector and the Knob menus, and fixes: the synth's
+  patch list no longer empties, the status bar names the patch on screen, the Mutator's slots take the
+  current sound, slot sets load on a Micro, Update Synth OS says what a whole ROM is.
+- **0.24.0**: Update Synth OS (install an OS image into a G1 or G1-Emu over MIDI) and the Micro Modular,
+  shown with its one slot.
 - **0.23.0**: the new look. The whole interface is redrawn flat and dark with one amber accent:
   the header bar (name field, macro dials, cable colours, snapshots, A/B crossfade, MUTATOR), the
   module bar, the inspector (the module and its own knobs, macros and CCs), both browsers, every menu,
