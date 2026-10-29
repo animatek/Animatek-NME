@@ -1359,6 +1359,12 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
       toggleLeftPanel();
     return true;
   }
+  // C shows or hides every cable at once (issue #116). Plain letter, so it only gets here when
+  // nothing that takes text has the keyboard, the way S shakes the cables.
+  if (key.getTextCharacter() == 'c' && !key.getModifiers().isAnyModifierKeyDown()) {
+    mainLayout->getHeaderBar().toggleAllCables();
+    return true;
+  }
   // F6 is Zen mode (editing, panels out of the way), Shift+F6 Performance mode (only the
   // modules and the header's macros). Escape leaves either (issue #118).
   if (key == juce::KeyPress::F6Key) {

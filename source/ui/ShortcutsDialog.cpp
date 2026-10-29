@@ -61,6 +61,7 @@ const std::vector<ShortcutsDialog::Group>& ShortcutsDialog::groups()
             { "Ctrl+I", "Toggle inspector panel (left)" },
             { "Ctrl+Shift+I", "Toggle patch browser (right)" },
             { "S", "Shake cables" },
+            { "C", "Show or hide all cables" },
             { "Middle-drag", "Pan canvas" },
             { NME_SC_REROUTE, "Re-route: lift the cable off that end and drop it on another connector (Alt works too)" } } },
         { "Slots", "Open slots tile themselves: one fills the area, two split it, three go in thirds, four go 2x2. "

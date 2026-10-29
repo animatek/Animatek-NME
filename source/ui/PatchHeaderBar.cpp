@@ -503,20 +503,35 @@ bool PatchHeaderBar::getCableVisibility(int index) const
 
 void PatchHeaderBar::toggleCableVisibility(int index)
 {
+    setCableVisibility(index, !getCableVisibility(index));
+}
+
+void PatchHeaderBar::setCableVisibility(int index, bool visible)
+{
     if (!patch) return;
     auto& hdr = patch->getHeader();
     switch (index)
     {
-        case 0: hdr.cableVisRed    = !hdr.cableVisRed; break;
-        case 1: hdr.cableVisBlue   = !hdr.cableVisBlue; break;
-        case 2: hdr.cableVisYellow = !hdr.cableVisYellow; break;
-        case 3: hdr.cableVisGray   = !hdr.cableVisGray; break;
-        case 4: hdr.cableVisGreen  = !hdr.cableVisGreen; break;
-        case 5: hdr.cableVisPurple = !hdr.cableVisPurple; break;
-        case 6: hdr.cableVisWhite  = !hdr.cableVisWhite; break;
+        case 0: hdr.cableVisRed    = visible; break;
+        case 1: hdr.cableVisBlue   = visible; break;
+        case 2: hdr.cableVisYellow = visible; break;
+        case 3: hdr.cableVisGray   = visible; break;
+        case 4: hdr.cableVisGreen  = visible; break;
+        case 5: hdr.cableVisPurple = visible; break;
+        case 6: hdr.cableVisWhite  = visible; break;
     }
     repaint();
     if (cableVisCallback) cableVisCallback();
+}
+
+void PatchHeaderBar::toggleAllCables()
+{
+    if (!patch) return;
+    bool anyShown = false;
+    for (int i = 0; i < numCableTypes; ++i)
+        anyShown = anyShown || getCableVisibility(i);
+    for (int i = 0; i < numCableTypes; ++i)
+        setCableVisibility(i, !anyShown);
 }
 
 // --- Drawing ---
@@ -940,7 +955,9 @@ void PatchHeaderBar::mouseDown(const juce::MouseEvent& e)
     int cableIdx = getCableToggleAt(pos);
     if (cableIdx >= 0)
     {
-        toggleCableVisibility(cableIdx);
+        cableSwipeShow = !getCableVisibility(cableIdx);
+        cableSwipe = true;
+        setCableVisibility(cableIdx, cableSwipeShow);
         return;
     }
 
@@ -1085,6 +1102,7 @@ void PatchHeaderBar::showCablesMenu()
     for (int i = 0; i < numCableTypes; ++i)
         menu.addColouredItem(100 + i, names[i], cableColours[i], true, getCableVisibility(i));
     menu.addSeparator();
+    menu.addItem(201, "Show / hide all cables");
     menu.addItem(200, "Shake cables");
     menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetScreenArea(
                            localAreaToGlobal(L.cablesBtn.toNearestInt())),
@@ -1092,6 +1110,8 @@ void PatchHeaderBar::showCablesMenu()
         {
             if (result >= 100 && result < 100 + numCableTypes)
                 toggleCableVisibility(result - 100);
+            else if (result == 201)
+                toggleAllCables();
             else if (result == 200 && shakeCablesCallback)
                 shakeCablesCallback();
         });
@@ -1305,6 +1325,14 @@ void PatchHeaderBar::showMorphKnobContextMenu(int morphIndex)
 
 void PatchHeaderBar::mouseDrag(const juce::MouseEvent& e)
 {
+    if (cableSwipe)
+    {
+        const int idx = getCableToggleAt(e.getPosition());
+        if (idx >= 0 && getCableVisibility(idx) != cableSwipeShow)
+            setCableVisibility(idx, cableSwipeShow);
+        return;
+    }
+
     if (morphDragging)
     {
         morphFaderPos = morphFaderPosFromX(static_cast<float>(e.getPosition().x));
@@ -1337,6 +1365,12 @@ void PatchHeaderBar::mouseDrag(const juce::MouseEvent& e)
 
 void PatchHeaderBar::mouseUp(const juce::MouseEvent& e)
 {
+    if (cableSwipe)
+    {
+        cableSwipe = false;
+        return;
+    }
+
     // Give the pointer back before anything else can return early.
     KnobDrag::end(e, *this);
 

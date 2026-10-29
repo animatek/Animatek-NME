@@ -45,6 +45,9 @@ public:
     void setCableVisibilityCallback(CableVisibilityCallback cb) { cableVisCallback = std::move(cb); }
     void setNameChangeCallback(NameChangeCallback cb) { nameChangeCallback = std::move(cb); }
     void setQuickSaveCallback(QuickSaveCallback cb) { quickSaveCallback = std::move(cb); }
+    // One switch for every colour: hides them all, or shows them all when none is on.
+    // The Toggle Cables shortcut (C).
+    void toggleAllCables();
     void setShakeCablesCallback(ShakeCablesCallback cb) { shakeCablesCallback = std::move(cb); }
     void setKnobAssignCallback(KnobAssignCallback cb) { knobAssignCallback = std::move(cb); }
     void setMidiCtrlAssignCallback(MidiCtrlAssignCallback cb) { midiCtrlAssignCallback = std::move(cb); }
@@ -134,7 +137,12 @@ private:
     ArrowHit getVoiceArrowAt(juce::Point<int> pos) const;
 
     void toggleCableVisibility(int index);
+    void setCableVisibility(int index, bool visible);
     bool getCableVisibility(int index) const;
+    // Swipe over the colour circles: the first one pressed decides whether the swipe shows or
+    // hides, and every circle the pointer crosses is set to that (issue #116).
+    bool cableSwipe = false;
+    bool cableSwipeShow = false;
 
     Patch* patch = nullptr;
     float loadPva = -1.0f;

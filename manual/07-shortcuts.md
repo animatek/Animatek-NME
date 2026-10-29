@@ -58,6 +58,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl+I` | Toggle the inspector panel (left side) |
 | `Ctrl+Shift+I` | Toggle the patch browser (right side) |
 | `S` | Shake cables |
+| `C` | Show or hide all cables at once. In the header, press on one cable colour and swipe over the others to set them all the same way |
 | Middle-drag | Pan the canvas |
 | `Ctrl`-drag a connector | Re-route: lift the cable off that end and drop it on another connector (`Cmd` or `Alt` also work). One undo step |
 

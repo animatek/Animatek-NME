@@ -4,6 +4,11 @@
 
 ### Added
 
+- **Hide or show all cables at once** (issue #116, 2026-10-29): `C` hides every cable colour, or shows
+  them all when none is on, and in the header you can press on one colour circle and swipe across the
+  others to set them the same way (the first one pressed decides show or hide). The folded cables
+  menu has "Show / hide all cables" too. These are the patch's own cable switches, saved with it.
+  Checked: builds, unit tests pass; not yet tried by hand.
 - **Zen mode (F6) and Performance mode (Shift+F6)** (issue #118, 2026-10-29): Zen closes the inspector and
   the patch browser and zooms every module of each open slot to fill the area; pressing it again
   puts the panels and the zoom back. Performance goes further: it also takes away the module bar,
