@@ -1652,7 +1652,9 @@ void ConnectionManager::cancelPatchListFetch(const char* reason)
 
     // Deliver what we have so any UI waiting on the list leaves its
     // loading state — resumePatchListIfInterrupted() replaces it with the
-    // full list once the interrupting operation finishes.
+    // full list once the interrupting operation finishes. The positions the
+    // fetch did not reach keep the names they had.
+    commitPatchListFetch();
     if (patchListCallback)
         patchListCallback(patchListNames);
 }
@@ -1759,9 +1761,13 @@ void ConnectionManager::requestPatchList()
         return;
     }
 
-    // Initialize patch list to 891 empty entries (9 banks × 99 positions)
-    patchListNames.clear();
-    patchListNames.resize(9 * 99, "");  // All initially empty
+    // The published list stays as it is while the new one streams in: wiping
+    // it here left the browser empty whenever the fetch was cut short.
+    if (patchListNames.size() != 9 * 99)
+        patchListNames.assign(9 * 99, "");
+    patchListFetch.assign(9 * 99, "");
+    patchListReached = 0;
+    patchListActivityMs = juce::Time::getMillisecondCounter();
 
     fetchingPatchList = true;
     patchListLoaded = false;
@@ -1785,22 +1791,48 @@ void ConnectionManager::requestPatchList()
 
     protocol.sendMessage(NmCmd::PatchHandling, 0, payload, /*expectsReply=*/true, /*addChecksum=*/true);
 
-    // Start timeout
-    int generation = patchListGeneration;
+    // Start timeout: it counts the silence, not the whole fetch
+    armPatchListTimeout(patchListGeneration);
+}
+
+void ConnectionManager::armPatchListTimeout(int generation)
+{
     auto aliveFlag = alive;
     juce::Timer::callAfterDelay(patchListTimeoutMs, [this, generation, aliveFlag]()
     {
         if (!*aliveFlag) return;
-        if (generation == patchListGeneration && fetchingPatchList)
+        if (generation != patchListGeneration || !fetchingPatchList)
+            return;
+
+        const auto silent = juce::Time::getMillisecondCounter() - patchListActivityMs;
+        if (silent < static_cast<juce::uint32>(patchListTimeoutMs))
         {
-            std::cout << "[PATCHLIST] TIMEOUT - delivering partial results" << std::endl;
-            DBG("Patch list timeout - delivering partial results");
-            fetchingPatchList = false;
-            patchListLoaded = true;
-            if (patchListCallback)
-                patchListCallback(patchListNames);
+            // Still answering: wait out the rest of the silence window
+            armPatchListTimeout(generation);
+            return;
         }
+
+        std::cout << "[PATCHLIST] TIMEOUT - delivering partial results" << std::endl;
+        DBG("Patch list timeout - delivering partial results");
+        fetchingPatchList = false;
+        patchListLoaded = true;
+        commitPatchListFetch();
+        if (patchListCallback)
+            patchListCallback(patchListNames);
     });
+}
+
+void ConnectionManager::commitPatchListFetch()
+{
+    if (patchListFetch.empty())
+        return;
+    if (patchListNames.size() != patchListFetch.size())
+        patchListNames.assign(patchListFetch.size(), "");
+
+    const auto reached = std::min(static_cast<size_t>(std::max(patchListReached, 0)), patchListFetch.size());
+    for (size_t i = 0; i < reached; ++i)
+        patchListNames[i] = patchListFetch[i];
+    patchListFetch.clear();
 }
 
 void ConnectionManager::onPatchListReceived(const AckMessage& msg)
@@ -1846,6 +1878,7 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
                   << " entries, nextSection=" << response.nextSection
                   << " nextPosition=" << response.nextPosition << std::endl;
 
+    patchListActivityMs = juce::Time::getMillisecondCounter();
     const int requestLinearIndex = patchListSection * 99 + patchListPosition;
     int nextLinearIndex = requestLinearIndex;
 
@@ -1853,9 +1886,9 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
     for (const auto& entry : response.entries)
     {
         int index = entry.section * 99 + entry.position;
-        if (index >= 0 && index < static_cast<int>(patchListNames.size()))
+        if (index >= 0 && index < static_cast<int>(patchListFetch.size()))
         {
-            patchListNames[static_cast<size_t>(index)] = entry.name.empty() ? "" : entry.name;
+            patchListFetch[static_cast<size_t>(index)] = entry.name.empty() ? "" : entry.name;
             nextLinearIndex = std::max(nextLinearIndex, index + 1);
             if (verboseLog)
                 std::cout << "[PATCHLIST]   Entry: section=" << entry.section
@@ -1868,13 +1901,17 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
         + " entries from section " + juce::String(patchListSection)
         + " position " + juce::String(patchListPosition));
 
+    patchListReached = std::max(patchListReached, nextLinearIndex);
+
     // Check if we're done
-    if (response.nextSection < 0 || nextLinearIndex >= static_cast<int>(patchListNames.size()))
+    if (response.nextSection < 0 || nextLinearIndex >= static_cast<int>(patchListFetch.size()))
     {
-        std::cout << "[PATCHLIST] COMPLETE! Total entries in array: " << patchListNames.size() << std::endl;
+        std::cout << "[PATCHLIST] COMPLETE! Total entries in array: " << patchListFetch.size() << std::endl;
         DBG("Patch list complete!");
         fetchingPatchList = false;
         patchListLoaded = true;
+        patchListReached = static_cast<int>(patchListFetch.size());
+        commitPatchListFetch();
         if (patchListCallback)
             patchListCallback(patchListNames);
         return;
@@ -1887,7 +1924,7 @@ void ConnectionManager::onPatchListReceived(const AckMessage& msg)
     {
         nextLinearIndex = response.nextSection >= 0
             ? response.nextSection * 99 + response.nextPosition
-            : static_cast<int>(patchListNames.size());
+            : static_cast<int>(patchListFetch.size());
     }
 
     patchListSection = nextLinearIndex / 99;

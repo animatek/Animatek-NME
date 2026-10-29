@@ -555,9 +555,18 @@ private:
     StoreConfirmCallback storeConfirmCallback;
     void finishStoreConfirmation(bool confirmed);
     std::vector<std::string> patchListNames;  // 891 entries (9 banks × 99 positions)
+    // A fetch fills this, never patchListNames: the published list keeps the
+    // names the browser already shows until the new ones are in, and a fetch
+    // that dies halfway only overwrites the positions it reached.
+    std::vector<std::string> patchListFetch;
+    int patchListReached = 0;               // linear index up to which patchListFetch is filled
+    juce::uint32 patchListActivityMs = 0;   // last response of the running fetch
+    void armPatchListTimeout(int generation);
+    void commitPatchListFetch();            // fold patchListFetch into patchListNames
     PatchListCallback patchListCallback;
-    // patchListTimeoutMs: 891 patches × one request/response each.
-    // Measured at ~8-9 s on a real G1; 10 s allows for occasional retransmits.
+    // patchListTimeoutMs: how long the synth may stay silent during the fetch.
+    // The whole list takes ~8-9 s on a real G1 and longer through a Micro or a
+    // slow USB driver, so the clock restarts with every response.
     static constexpr int patchListTimeoutMs = 10000;
     // After cancelPatchListFetch, in-flight responses from the old stream must
     // drain before a new fetch starts, or they get filed at wrong positions.
