@@ -4,7 +4,7 @@
 
 ### Added
 
-- **Zen mode (F6) and Performance mode (F12)** (issue #118, 2026-10-29): Zen closes the inspector and
+- **Zen mode (F6) and Performance mode (Shift+F6)** (issue #118, 2026-10-29): Zen closes the inspector and
   the patch browser and zooms every module of each open slot to fill the area; pressing it again
   puts the panels and the zoom back. Performance goes further: it also takes away the module bar,
   the status bar and all the cables (a view setting, the cable switches saved in the patch are

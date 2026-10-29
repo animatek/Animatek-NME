@@ -256,7 +256,7 @@ private:
     void toggleLeftPanel();   // Ctrl+I: inspector column (issue #38)
     void toggleRightPanel();  // Ctrl+Shift+I: patch browser
     // Zen (F6): the editing view with everything but the patch out of the way.
-    // Performance (F12): no panels, bars or cables, only the modules and the macros
+    // Performance (Shift+F6): no panels, bars or cables, only the modules and the macros
     // of the header. Both remember what was on screen and give it back (issue #118).
     enum class ViewMode { Normal, Zen, Performance };
     void toggleViewMode(ViewMode mode);

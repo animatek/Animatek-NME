@@ -1359,13 +1359,13 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
       toggleLeftPanel();
     return true;
   }
-  // F6 is Zen mode (editing, panels out of the way), F12 Performance mode (only the
+  // F6 is Zen mode (editing, panels out of the way), Shift+F6 Performance mode (only the
   // modules and the header's macros). Escape leaves either (issue #118).
   if (key == juce::KeyPress::F6Key) {
     toggleViewMode(ViewMode::Zen);
     return true;
   }
-  if (key == juce::KeyPress::F12Key) {
+  if (key == juce::KeyPress(juce::KeyPress::F6Key, juce::ModifierKeys::shiftModifier, 0)) {
     toggleViewMode(ViewMode::Performance);
     return true;
   }
@@ -1624,7 +1624,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
 
     menu.addSeparator();
     addShortcutItem(menu, 116, "Zen Mode", "F6", true, viewMode == ViewMode::Zen);
-    addShortcutItem(menu, 117, "Performance Mode", "F12", true, viewMode == ViewMode::Performance);
+    addShortcutItem(menu, 117, "Performance Mode", "Shift+F6", true, viewMode == ViewMode::Performance);
     menu.addSeparator();
     menu.addItem(69, "Module Icon Bar", true, mainLayout->isModuleIconBarVisible());
     addShortcutItem(menu, 67, "Inspector Panel", "Ctrl+I", true, mainLayout->isLeftPanelVisible());

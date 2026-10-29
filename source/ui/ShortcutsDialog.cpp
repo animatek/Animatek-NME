@@ -71,7 +71,7 @@ const std::vector<ShortcutsDialog::Group>& ShortcutsDialog::groups()
             { NME_SC_SLOT_TOGGLE, "Show or hide slot A..D's sub-window" },
             { "F4, F11", "Focus mode: blow the focused slot up, and back" },
             { "F6", "Zen mode: panels away, every module zoomed to fill the area; again to restore" },
-            { "F12", "Performance mode: no panels, bars or cables, only the modules and the header macros; Esc or F12 to leave" },
+            { "Shift+F6", "Performance mode: no panels, bars or cables, only the modules and the header macros; Esc or Shift+F6 to leave" },
             { "Maximise button", "The same, on that sub-window's title bar" },
             { "Ctrl+Shift+arrows", "Move the focused slot to the neighbouring tile (up and down only in the 2x2)" },
             { "Right-click slot", "Show or hide that slot's sub-window" },

@@ -69,7 +69,7 @@ On macOS, `Ctrl` is `Cmd`.
 | `Ctrl+Shift+1`..`Ctrl+Shift+4` | Show/hide slot A..D's sub-window (**macOS: `Cmd+Alt+1`..`Cmd+Alt+4`**, because macOS keeps `Cmd+Shift+3` and `Cmd+Shift+4` for its screen capture) |
 | `F4` (or `F11`) | Focus mode: blow the focused slot up to the full area, and back. `F4` is the advertised key because macOS reserves `F11` for Show Desktop |
 | `F6` | Zen mode: closes the inspector and the patch browser and zooms every module to fill the area; press again to restore the panels and the zoom |
-| `F12` | Performance mode: Zen plus no module bar, no status bar and no cables. What stays is the modules and the header with the macros and snapshots. `Esc` or `F12` leaves |
+| `Shift+F6` | Performance mode: Zen plus no module bar, no status bar and no cables. What stays is the modules and the header with the macros and snapshots. `Esc` or `Shift+F6` leaves |
 | Maximise button | The same, on that sub-window's own title bar |
 | `Ctrl+Shift+` arrows | Move the focused slot to the neighbouring tile, swapping with whatever is there. Up and down only exist in the four-slot 2x2; nothing happens at an edge |
 | Right-click a slot row | Show/hide that slot's sub-window |
