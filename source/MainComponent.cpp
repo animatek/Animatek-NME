@@ -963,7 +963,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   // lacks them (it did not say 3.09 on connecting).
   forEachSynth([this](int s, ConnectionManager& cm) {
     cm.setRefusedCallback([this, s](int, const juce::String& module) {
-      juce::MessageManager::callAsync([safeThis = juce::Component::SafePointer<MainComponent>(this), s, module] {
+      // A named SafePointer, as everywhere else in this file: MSVC reads `this` in an init-capture
+      // of a lambda inside a lambda as the outer lambda, and the Windows build refused it.
+      juce::Component::SafePointer<MainComponent> safeThis(this);
+      juce::MessageManager::callAsync([safeThis, s, module] {
         if (safeThis)
           safeThis->mainLayout->getStatusBar().showMessage(
               "Not sent: " + module + " is a G1-Mods module, and synth " + juce::String(s + 1)

@@ -76,6 +76,10 @@ run, and the Micro Modular's three knobs.
 
 ### Fixed
 
+- **The Windows build compiles again** (2026-10-29): the refused-module message of the G1-Mods layer built its
+  `SafePointer` inside a lambda's init-capture, which MSVC reads as the outer lambda's `this`
+  (`error C2440`); it is a named `SafePointer`, as in the rest of the file. Found by the Patreon build of
+  0.25.0, which failed only on Windows. Checked: the Linux build and the tests pass; the Windows build is run again.
 - **Update Synth OS says what a whole ROM is** (2026-10-29): a 512 KB file (what G1-Emu boots, and what
   the G1-Mods web builder hands out beside the update image) was refused with "too big for an OS
   update", which does not tell you that you picked the wrong one of the two downloads. It now says it
