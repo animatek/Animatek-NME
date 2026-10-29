@@ -1,6 +1,7 @@
 #include "PatchCanvasComponent.h"
 #include "QuickAddPopup.h"
 #include "KnobDrag.h"
+#include "KnobMenu.h"
 #include "PartialArrows.h"
 #include "../model/ModulePlacement.h"
 #include "../model/ModuleReplacement.h"
@@ -3122,50 +3123,7 @@ void PatchCanvas::showParameterContextMenu(Module& m, int section, Parameter& pa
     }
     {
         juce::PopupMenu knobSubMenu;
-        // Knob 1-6
-        for (int k = 0; k < 6; ++k)
-        {
-            juce::String label = "Knob " + juce::String(k + 1);
-            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
-                label += " (used)";
-            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
-        }
-        knobSubMenu.addSeparator();
-        // Knob 7-12
-        for (int k = 6; k < 12; ++k)
-        {
-            juce::String label = "Knob " + juce::String(k + 1);
-            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
-                label += " (used)";
-            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
-        }
-        knobSubMenu.addSeparator();
-        // Knob 13-15
-        for (int k = 12; k < 15; ++k)
-        {
-            juce::String label = "Knob " + juce::String(k + 1);
-            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
-                label += " (used)";
-            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
-        }
-        knobSubMenu.addSeparator();
-        // Knob 16-18
-        for (int k = 15; k < 18; ++k)
-        {
-            juce::String label = "Knob " + juce::String(k + 1);
-            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
-                label += " (used)";
-            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
-        }
-        knobSubMenu.addSeparator();
-        // Pedal=19, After touch=20, On/Off switch=22 (18 and 21 unused in the wire format)
-        for (int k : { 19, 20, 22 })
-        {
-            juce::String label = KnobAssignmentMessage::getKnobName(k);
-            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
-                label += " (used)";
-            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
-        }
+        KnobMenu::fill(knobSubMenu, patch, currentKnob);
         knobSubMenu.addSeparator();
         knobSubMenu.addItem(99, "Disable", currentKnob >= 0);
         menu.addSubMenu("Knob", knobSubMenu);

@@ -7,7 +7,9 @@
 - **Knob panel of the inspector shows a Micro Modular's three knobs** (issue #111, 2026-10-29): with a
   Micro as the synth being edited, the miniature of the front panel shows its one column of three
   knobs, titled "KNOB PANEL - MICRO", instead of the G1's eighteen. Assignments the patch holds on
-  other knobs are untouched and still appear in the inspector's list. Assumes the Micro's knobs are
+  other knobs are untouched and still appear in the inspector's list. The "Knob" submenu of a
+  parameter's and a morph's context menu lists just those three knobs and After touch (no pedals on a
+  Micro); a knob the target already has stays in the list, ticked. Assumes the Micro's knobs are
   knobs 1-3 of the patch; to be confirmed on a real Micro. The Knob Floater still shows all of them.
   Checked: builds, unit tests pass; not yet tried by hand.
 - **Lock opening to the active slot** (issue #117, 2026-10-29): File > Lock Loading to Active Slot, or

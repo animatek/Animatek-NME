@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "midi/SynthLink.h"
+#include "ui/KnobMenu.h"
 #include "ui/KnobDrag.h"
 #include "model/PatchParser.h"
 #include "model/PchFileIO.h"
@@ -3149,6 +3150,7 @@ void MainComponent::updateStoreLocationDisplay() {
   headerBar.setStoreUncertain(!slotBankCandidates[activeSlot].empty());
   // Same moments (connecting, changing slot or synth): the inspector's miniature of the knob
   // panel follows the model of the synth being edited (issue #111).
+  KnobMenu::microModel = synthHub.active().isMicroModular();
   mainLayout->getInspector().setMicroModel(synthHub.active().isMicroModular());
 }
 

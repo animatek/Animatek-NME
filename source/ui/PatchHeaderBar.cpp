@@ -1,6 +1,7 @@
 #include "PatchHeaderBar.h"
 #include "AppTheme.h"
 #include "KnobDrag.h"
+#include "KnobMenu.h"
 #include "VersionCheck.h"
 #include "../protocol/KnobAssignmentMessage.h"
 
@@ -1144,22 +1145,7 @@ void PatchHeaderBar::showMorphFaderMenu()
     // synth via a spare morph group as carrier). Ids 100+k.
     {
         juce::PopupMenu knobSub;
-        auto addKnob = [&](int k, const juce::String& name)
-        {
-            juce::String label = name;
-            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned)
-                label += " (used)";
-            knobSub.addItem(100 + k, label);
-        };
-        for (int k = 0; k < 6; ++k)  addKnob(k, "Knob " + juce::String(k + 1));
-        knobSub.addSeparator();
-        for (int k = 6; k < 12; ++k) addKnob(k, "Knob " + juce::String(k + 1));
-        knobSub.addSeparator();
-        for (int k = 12; k < 15; ++k) addKnob(k, "Knob " + juce::String(k + 1));
-        knobSub.addSeparator();
-        for (int k = 15; k < 18; ++k) addKnob(k, "Knob " + juce::String(k + 1));
-        knobSub.addSeparator();
-        for (int k : { 19, 20, 22 }) addKnob(k, KnobAssignmentMessage::getKnobName(k));
+        KnobMenu::fill(knobSub, patch, -1);
         menu.addSubMenu("Knob", knobSub);
     }
 
@@ -1218,46 +1204,7 @@ void PatchHeaderBar::showMorphKnobContextMenu(int morphIndex)
     // Knob assignment submenu
     {
         juce::PopupMenu knobSubMenu;
-        for (int k = 0; k < 6; ++k)
-        {
-            juce::String label = "Knob " + juce::String(k + 1);
-            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
-                label += " (used)";
-            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
-        }
-        knobSubMenu.addSeparator();
-        for (int k = 6; k < 12; ++k)
-        {
-            juce::String label = "Knob " + juce::String(k + 1);
-            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
-                label += " (used)";
-            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
-        }
-        knobSubMenu.addSeparator();
-        for (int k = 12; k < 15; ++k)
-        {
-            juce::String label = "Knob " + juce::String(k + 1);
-            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
-                label += " (used)";
-            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
-        }
-        knobSubMenu.addSeparator();
-        for (int k = 15; k < 18; ++k)
-        {
-            juce::String label = "Knob " + juce::String(k + 1);
-            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
-                label += " (used)";
-            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
-        }
-        knobSubMenu.addSeparator();
-        // Pedal=19, After touch=20, On/Off switch=22 (18 and 21 unused in the wire format)
-        for (int k : { 19, 20, 22 })
-        {
-            juce::String label = KnobAssignmentMessage::getKnobName(k);
-            if (patch != nullptr && patch->knobAssignments[static_cast<size_t>(k)].assigned && k != currentKnob)
-                label += " (used)";
-            knobSubMenu.addItem(100 + k, label, true, k == currentKnob);
-        }
+        KnobMenu::fill(knobSubMenu, patch, currentKnob);
         knobSubMenu.addSeparator();
         knobSubMenu.addItem(99, "Disable", currentKnob >= 0);
         menu.addSubMenu("Knob", knobSubMenu);
