@@ -271,6 +271,8 @@ juce_add_binary_data(NmeData SOURCES
     data/modules.xml
     data/transformations.xml
     data/classic-theme.xml
+    data/mods-modules.xml
+    data/mods-theme.xml
     data/credits.txt
     data/images/single/decoration-1.png
     data/images/single/decoration-2.png

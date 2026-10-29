@@ -1,0 +1,540 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The G1-Mods layer: the module types a modified OS adds, loaded on top of
+     classic-theme.xml. Written by G1-Mods' tools/make_nme_data.py (its layer mode), from its
+     modules/ folders: change them there, not here. GPL-3.0-only. -->
+<modules>
+	<module component-id="m120" width="255" height="30">
+		<name>FlipFlop</name>
+		<label x="96" y="17">Rst</label>
+		<connector x="114" y="16" size="13" class="cLOGIC">
+			<connector component-id="c3" alt="rst" />
+		</connector>
+		<label x="132" y="17">Clk</label>
+		<connector x="152" y="16" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="clk" />
+		</connector>
+		<label x="164" y="2">In</label>
+		<connector x="170" y="1" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="in" />
+		</connector>
+		<button x="186" y="7" width="26" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p1" alt="type" />
+			<btn index="0">D</btn>
+			<btn index="1">RS</btn>
+		</button>
+		<light component-id="ledQ" type="led" x="226" y="4" width="7" height="7" />
+		<label x="218" y="2">Q</label>
+		<connector x="236" y="1" size="13" class="cLOGIC">
+			<connector component-id="c4" alt="Q" />
+		</connector>
+		<label x="216" y="17">nQ</label>
+		<connector x="236" y="16" size="13" class="cLOGIC">
+			<connector component-id="c5" alt="NotQ" />
+		</connector>
+	</module>
+	<module component-id="m123" width="255" height="60">
+		<name>5-Step Seq</name>
+		<label x="5" y="16">Clk</label>
+		<connector x="6" y="28" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="clock" />
+		</connector>
+		<label x="27" y="16">Rst</label>
+		<connector x="28" y="28" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="reset" />
+		</connector>
+		<light component-id="ledStep1-5" type="led-array" steps="5" x="55" y="18" width="175" height="7" />
+		<label x="55" y="16" width="11" height="10" align="centre">1</label>
+		<label x="90" y="16" width="11" height="10" align="centre">2</label>
+		<label x="125" y="16" width="11" height="10" align="centre">3</label>
+		<label x="160" y="16" width="11" height="10" align="centre">4</label>
+		<label x="195" y="16" width="11" height="10" align="centre">5</label>
+		<knob x="62" y="28" size="21">
+			<parameter component-id="p1" alt="step 1" />
+		</knob>
+		<knob x="97" y="28" size="21">
+			<parameter component-id="p2" alt="step 2" />
+		</knob>
+		<knob x="132" y="28" size="21">
+			<parameter component-id="p3" alt="step 3" />
+		</knob>
+		<knob x="167" y="28" size="21">
+			<parameter component-id="p4" alt="step 4" />
+		</knob>
+		<knob x="202" y="28" size="21">
+			<parameter component-id="p5" alt="step 5" />
+		</knob>
+		<label x="233" y="16">Out</label>
+		<connector x="236" y="28" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="out" />
+		</connector>
+	</module>
+	<module component-id="m124" width="255" height="75">
+		<name>Turing Machine</name>
+		<label x="5" y="17">Clk</label>
+		<connector x="6" y="28" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="clock" />
+		</connector>
+		<label x="30" y="17">Prob</label>
+		<knob x="52" y="20" size="21">
+			<parameter component-id="p1" alt="prob" />
+		</knob>
+		<label x="84" y="17">Length</label>
+		<textDisplay x="84" y="28" width="22" height="14">
+			<parameter component-id="p2" alt="length" />
+		</textDisplay>
+		<knob x="110" y="20" size="21">
+			<parameter component-id="p2" alt="length" />
+		</knob>
+		<button x="138" y="24" width="28" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p3" alt="lock" />
+			<btn index="0">Lock</btn>
+			<btn index="1">Lock</btn>
+		</button>
+		<label x="170" y="17">Scale</label>
+		<knob x="194" y="20" size="21">
+			<parameter component-id="p4" alt="scale" />
+		</knob>
+		<label x="222" y="17">CV</label>
+		<connector x="236" y="28" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="cv" />
+		</connector>
+		<label x="5" y="58">Gates</label>
+		<light component-id="ledBits" type="led-array" steps="8" bits="true" x="40" y="47" width="200" height="7" />
+		<connector x="46" y="57" size="13" class="cLOGIC">
+			<connector component-id="c3" alt="gate 1" />
+		</connector>
+		<connector x="71" y="57" size="13" class="cLOGIC">
+			<connector component-id="c4" alt="gate 2" />
+		</connector>
+		<connector x="96" y="57" size="13" class="cLOGIC">
+			<connector component-id="c5" alt="gate 3" />
+		</connector>
+		<connector x="121" y="57" size="13" class="cLOGIC">
+			<connector component-id="c6" alt="gate 4" />
+		</connector>
+		<connector x="146" y="57" size="13" class="cLOGIC">
+			<connector component-id="c7" alt="gate 5" />
+		</connector>
+		<connector x="171" y="57" size="13" class="cLOGIC">
+			<connector component-id="c8" alt="gate 6" />
+		</connector>
+		<connector x="196" y="57" size="13" class="cLOGIC">
+			<connector component-id="c9" alt="gate 7" />
+		</connector>
+		<connector x="221" y="57" size="13" class="cLOGIC">
+			<connector component-id="c10" alt="gate 8" />
+		</connector>
+	</module>
+	<module component-id="m125" width="255" height="45">
+		<name>Scale Quantizer</name>
+		<label x="5" y="17">In</label>
+		<connector x="6" y="28" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<label x="28" y="17">Root</label>
+		<textDisplay x="28" y="28" width="22" height="14">
+			<parameter component-id="p1" alt="root" />
+		</textDisplay>
+		<knob x="54" y="20" size="21">
+			<parameter component-id="p1" alt="root" />
+		</knob>
+		<label x="82" y="17">Scale</label>
+		<textDisplay x="82" y="28" width="62" height="14">
+			<parameter component-id="p2" alt="scale" />
+		</textDisplay>
+		<knob x="148" y="20" size="21">
+			<parameter component-id="p2" alt="scale" />
+		</knob>
+		<label x="176" y="17">Oct</label>
+		<textDisplay x="176" y="28" width="20" height="14">
+			<parameter component-id="p3" alt="octave" />
+		</textDisplay>
+		<knob x="200" y="20" size="21">
+			<parameter component-id="p3" alt="octave" />
+		</knob>
+		<label x="230" y="17">Out</label>
+		<connector x="236" y="28" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="out" />
+		</connector>
+	</module>
+	<module component-id="m126" width="255" height="45">
+		<name>8Counter</name>
+		<label x="5" y="17">Clk</label>
+		<connector x="6" y="28" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="clock" />
+		</connector>
+		<label x="27" y="17">Rst</label>
+		<connector x="28" y="28" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="reset" />
+		</connector>
+		<light component-id="ledStep1-8" type="led-array" steps="8" x="50" y="18" width="200" height="7" />
+		<connector x="56" y="28" size="13" class="cLOGIC">
+			<connector component-id="c3" alt="out 1" />
+		</connector>
+		<connector x="81" y="28" size="13" class="cLOGIC">
+			<connector component-id="c4" alt="out 2" />
+		</connector>
+		<connector x="106" y="28" size="13" class="cLOGIC">
+			<connector component-id="c5" alt="out 3" />
+		</connector>
+		<connector x="131" y="28" size="13" class="cLOGIC">
+			<connector component-id="c6" alt="out 4" />
+		</connector>
+		<connector x="156" y="28" size="13" class="cLOGIC">
+			<connector component-id="c7" alt="out 5" />
+		</connector>
+		<connector x="181" y="28" size="13" class="cLOGIC">
+			<connector component-id="c8" alt="out 6" />
+		</connector>
+		<connector x="206" y="28" size="13" class="cLOGIC">
+			<connector component-id="c9" alt="out 7" />
+		</connector>
+		<connector x="231" y="28" size="13" class="cLOGIC">
+			<connector component-id="c10" alt="out 8" />
+		</connector>
+	</module>
+	<module component-id="m101" width="255" height="60">
+		<name>Mux8-1</name>
+		<label x="5" y="17">Ctrl</label>
+		<connector x="6" y="28" size="13" class="cCONTROL">
+			<connector component-id="c9" alt="ctrl" />
+		</connector>
+		<label x="30" y="17">Sel</label>
+		<textDisplay x="30" y="28" width="18" height="14">
+			<parameter component-id="p1" alt="sel" />
+		</textDisplay>
+		<knob x="52" y="20" size="21">
+			<parameter component-id="p1" alt="sel" />
+		</knob>
+		<label x="226" y="17">Out</label>
+		<connector x="236" y="28" size="13" class="cCONTROL">
+			<connector component-id="c10" alt="out" />
+		</connector>
+		<label x="5" y="47">In</label>
+		<light component-id="ledSel1-8" type="led-array" steps="8" x="50" y="38" width="200" height="7" />
+		<connector x="56" y="46" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="in 1" />
+		</connector>
+		<connector x="81" y="46" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="in 2" />
+		</connector>
+		<connector x="106" y="46" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="in 3" />
+		</connector>
+		<connector x="131" y="46" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="in 4" />
+		</connector>
+		<connector x="156" y="46" size="13" class="cCONTROL">
+			<connector component-id="c5" alt="in 5" />
+		</connector>
+		<connector x="181" y="46" size="13" class="cCONTROL">
+			<connector component-id="c6" alt="in 6" />
+		</connector>
+		<connector x="206" y="46" size="13" class="cCONTROL">
+			<connector component-id="c7" alt="in 7" />
+		</connector>
+		<connector x="231" y="46" size="13" class="cCONTROL">
+			<connector component-id="c8" alt="in 8" />
+		</connector>
+	</module>
+	<module component-id="m6" width="255" height="60">
+		<name>Random</name>
+		<label x="5" y="15">Clk</label>
+		<connector x="6" y="30" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="clock" />
+		</connector>
+		<label x="27" y="15">Rst</label>
+		<connector x="28" y="30" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="reset" />
+		</connector>
+		<label x="46" y="15">Seed</label>
+		<knob x="46" y="26" size="21">
+			<parameter component-id="p1" alt="seed" />
+		</knob>
+		<button x="70" y="29" width="28" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p2" alt="poly" />
+			<btn index="0">Mono</btn>
+			<btn index="1">Poly</btn>
+		</button>
+		<button x="70" y="47" width="28" height="12" cyclic="true" landscape="false">
+			<parameter component-id="p7" alt="unipolar" />
+			<btn index="0">Bi</btn>
+			<btn index="1">Uni</btn>
+		</button>
+		<label x="102" y="15">Step</label>
+		<knob x="102" y="26" size="21">
+			<parameter component-id="p3" alt="step" />
+		</knob>
+		<label x="128" y="15">Edge</label>
+		<knob x="128" y="26" size="21">
+			<parameter component-id="p4" alt="edge" />
+		</knob>
+		<label x="154" y="15">Prob</label>
+		<knob x="154" y="26" size="21">
+			<parameter component-id="p5" alt="prob" />
+		</knob>
+		<label x="180" y="15">Len</label>
+		<knob x="180" y="26" size="21">
+			<parameter component-id="p6" alt="length" />
+		</knob>
+		<textDisplay x="179" y="48" width="23" height="11">
+			<parameter component-id="p6" alt="length" />
+		</textDisplay>
+		<label x="208" y="15">Out</label>
+		<connector x="210" y="30" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="out" />
+		</connector>
+		<label x="230" y="15">Trig</label>
+		<connector x="236" y="30" size="13" class="cLOGIC">
+			<connector component-id="c4" alt="trig" />
+		</connector>
+	</module>
+	<module component-id="m41" width="255" height="90">
+		<name>Bits</name>
+		<label x="5" y="15">Clk</label>
+		<connector x="6" y="26" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="clock" />
+		</connector>
+		<label x="27" y="15">Rst</label>
+		<connector x="28" y="26" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="reset" />
+		</connector>
+		<label x="50" y="15">In</label>
+		<connector x="50" y="26" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="in" />
+		</connector>
+		<button x="76" y="25" width="90" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p1" alt="mode" />
+			<btn index="0">Count</btn>
+			<btn index="1">A&gt;D</btn>
+			<btn index="2">D&gt;A</btn>
+		</button>
+		<label x="222" y="15">Out</label>
+		<connector x="236" y="26" size="13" class="cCONTROL">
+			<connector component-id="c12" alt="out" />
+		</connector>
+		<label x="5" y="47">B in</label>
+		<connector x="56" y="46" size="13" class="cLOGIC">
+			<connector component-id="c4" alt="b1" />
+		</connector>
+		<connector x="81" y="46" size="13" class="cLOGIC">
+			<connector component-id="c5" alt="b2" />
+		</connector>
+		<connector x="106" y="46" size="13" class="cLOGIC">
+			<connector component-id="c6" alt="b3" />
+		</connector>
+		<connector x="131" y="46" size="13" class="cLOGIC">
+			<connector component-id="c7" alt="b4" />
+		</connector>
+		<connector x="156" y="46" size="13" class="cLOGIC">
+			<connector component-id="c8" alt="b5" />
+		</connector>
+		<connector x="181" y="46" size="13" class="cLOGIC">
+			<connector component-id="c9" alt="b6" />
+		</connector>
+		<connector x="206" y="46" size="13" class="cLOGIC">
+			<connector component-id="c10" alt="b7" />
+		</connector>
+		<connector x="231" y="46" size="13" class="cLOGIC">
+			<connector component-id="c11" alt="b8" />
+		</connector>
+		<label x="5" y="74">Bits</label>
+		<light component-id="ledBits" type="led-array" steps="8" bits="true" x="50" y="64" width="200" height="7" />
+		<connector x="56" y="73" size="13" class="cLOGIC">
+			<connector component-id="c13" alt="bit 1" />
+		</connector>
+		<connector x="81" y="73" size="13" class="cLOGIC">
+			<connector component-id="c14" alt="bit 2" />
+		</connector>
+		<connector x="106" y="73" size="13" class="cLOGIC">
+			<connector component-id="c15" alt="bit 3" />
+		</connector>
+		<connector x="131" y="73" size="13" class="cLOGIC">
+			<connector component-id="c16" alt="bit 4" />
+		</connector>
+		<connector x="156" y="73" size="13" class="cLOGIC">
+			<connector component-id="c17" alt="bit 5" />
+		</connector>
+		<connector x="181" y="73" size="13" class="cLOGIC">
+			<connector component-id="c18" alt="bit 6" />
+		</connector>
+		<connector x="206" y="73" size="13" class="cLOGIC">
+			<connector component-id="c19" alt="bit 7" />
+		</connector>
+		<connector x="231" y="73" size="13" class="cLOGIC">
+			<connector component-id="c20" alt="bit 8" />
+		</connector>
+	</module>
+	<module component-id="m42" width="255" height="60">
+		<name>Level</name>
+		<label x="6" y="15">A</label>
+		<connector x="6" y="26" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="a" />
+		</connector>
+		<label x="28" y="15">B</label>
+		<connector x="28" y="26" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="b" />
+		</connector>
+		<button x="50" y="25" width="150" height="16" cyclic="false" landscape="true">
+			<parameter component-id="p1" alt="mode" />
+			<btn index="0">ModAmt</btn>
+			<btn index="1">MinMax</btn>
+			<btn index="2">T&amp;H</btn>
+			<btn index="3">Window</btn>
+		</button>
+		<label x="214" y="15">1</label>
+		<connector x="212" y="26" size="13" class="cCONTROL">
+			<connector component-id="c3" alt="out 1" />
+		</connector>
+		<label x="238" y="15">2</label>
+		<connector x="236" y="26" size="13" class="cCONTROL">
+			<connector component-id="c4" alt="out 2" />
+		</connector>
+		<label x="5" y="45">Amount</label>
+		<knob x="44" y="38" size="21">
+			<parameter component-id="p2" alt="amount" />
+		</knob>
+		<label x="86" y="45">Lo</label>
+		<textDisplay x="100" y="42" width="24" height="14">
+			<parameter component-id="p3" alt="lo" />
+		</textDisplay>
+		<knob x="128" y="38" size="21">
+			<parameter component-id="p3" alt="lo" />
+		</knob>
+		<label x="164" y="45">Hi</label>
+		<textDisplay x="178" y="42" width="24" height="14">
+			<parameter component-id="p4" alt="hi" />
+		</textDisplay>
+		<knob x="206" y="38" size="21">
+			<parameter component-id="p4" alt="hi" />
+		</knob>
+	</module>
+	<module component-id="m55" width="255" height="45">
+		<name>Envelope</name>
+		<label x="5" y="16">Gate</label>
+		<connector x="6" y="27" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="gate" />
+		</connector>
+		<button x="28" y="26" width="30" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p1" alt="mode" />
+			<btn index="0">Gate</btn>
+			<btn index="1">Trig</btn>
+		</button>
+		<label x="65" y="13">A</label>
+		<knob x="62" y="22" size="21">
+			<parameter component-id="p2" alt="attack" />
+		</knob>
+		<label x="91" y="13">D1</label>
+		<knob x="88" y="22" size="21">
+			<parameter component-id="p3" alt="decay 1" />
+		</knob>
+		<label x="117" y="13">L1</label>
+		<knob x="114" y="22" size="21">
+			<parameter component-id="p4" alt="level 1" />
+		</knob>
+		<label x="143" y="13">D2</label>
+		<knob x="140" y="22" size="21">
+			<parameter component-id="p5" alt="decay 2" />
+		</knob>
+		<label x="169" y="13">S</label>
+		<knob x="166" y="22" size="21">
+			<parameter component-id="p6" alt="sustain" />
+		</knob>
+		<label x="195" y="13">R</label>
+		<knob x="192" y="22" size="21">
+			<parameter component-id="p7" alt="release" />
+		</knob>
+		<label x="216" y="16">Env</label>
+		<connector x="218" y="27" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="env" />
+		</connector>
+		<label x="236" y="16">End</label>
+		<connector x="238" y="27" size="13" class="cLOGIC">
+			<connector component-id="c3" alt="end" />
+		</connector>
+	</module>
+	<module component-id="m56" width="255" height="45">
+		<name>Osc String</name>
+		<label x="5" y="16">Trig</label>
+		<connector x="6" y="27" size="13" class="cLOGIC">
+			<connector component-id="c1" alt="trig" />
+		</connector>
+		<label x="28" y="16">Pitch</label>
+		<connector x="30" y="27" size="13" class="cCONTROL">
+			<connector component-id="c2" alt="pitch" />
+		</connector>
+		<label x="54" y="16">Exc</label>
+		<connector x="54" y="27" size="13" class="cAUDIO">
+			<connector component-id="c3" alt="exc" />
+		</connector>
+		<label x="78" y="16">Note</label>
+		<textDisplay x="78" y="27" width="28" height="14">
+			<parameter component-id="p1" alt="note" />
+		</textDisplay>
+		<knob x="110" y="20" size="21">
+			<parameter component-id="p1" alt="note" />
+		</knob>
+		<label x="140" y="16">Decay</label>
+		<knob x="144" y="24" size="21">
+			<parameter component-id="p2" alt="decay" />
+		</knob>
+		<label x="176" y="16">Damp</label>
+		<knob x="178" y="24" size="21">
+			<parameter component-id="p3" alt="damp" />
+		</knob>
+		<label x="230" y="16">Out</label>
+		<connector x="236" y="27" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+	</module>
+	<module component-id="m60" width="255" height="30">
+		<name>Note Out</name>
+		<label x="62" y="2">Note</label>
+		<connector x="66" y="13" size="13" class="cCONTROL">
+			<connector component-id="c1" alt="note" />
+		</connector>
+		<label x="92" y="2">Gate</label>
+		<connector x="96" y="13" size="13" class="cLOGIC">
+			<connector component-id="c2" alt="gate" />
+		</connector>
+		<label x="122" y="2">Chan</label>
+		<textDisplay x="122" y="13" width="22" height="14">
+			<parameter component-id="p1" alt="chan" />
+		</textDisplay>
+		<knob x="146" y="9" size="18">
+			<parameter component-id="p1" alt="chan" />
+		</knob>
+		<label x="172" y="2">Vel</label>
+		<textDisplay x="172" y="13" width="22" height="14">
+			<parameter component-id="p2" alt="vel" />
+		</textDisplay>
+		<knob x="196" y="9" size="18">
+			<parameter component-id="p2" alt="vel" />
+		</knob>
+		<label x="232" y="2">Thru</label>
+		<connector x="236" y="13" size="13" class="cLOGIC">
+			<connector component-id="c3" alt="thru" />
+		</connector>
+	</module>
+	<module component-id="m121" width="255" height="30">
+		<name>Mix1-1A</name>
+		<connector x="53" y="8" size="13" class="cAUDIO">
+			<connector component-id="c1" alt="in" />
+		</connector>
+		<connector x="190" y="8" size="13" class="cAUDIO">
+			<connector component-id="c2" alt="chain" />
+		</connector>
+		<connector x="234" y="8" size="13" class="cAUDIO">
+			<connector component-id="c4" alt="out" />
+		</connector>
+		<knob x="70" y="4" size="21">
+			<parameter component-id="p1" alt="level" />
+		</knob>
+		<button x="100" y="7" width="30" height="16" cyclic="true" landscape="false">
+			<parameter component-id="p2" alt="on" />
+			<btn index="0">Ch 1</btn>
+			<btn index="1">Ch 1</btn>
+		</button>
+		<label x="158" y="9">Chain</label>
+	</module>
+</modules>

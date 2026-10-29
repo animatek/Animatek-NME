@@ -263,6 +263,13 @@ void PatchSynchronizer::onModuleAdded(int section, Module* module)
         return;
     }
 
+    if (!connMgr_.takesModule(*descriptor))
+    {
+        std::cout << "[SYNC] NewModule not sent: " << descriptor->name
+                  << " needs an OS with G1-Mods" << std::endl;
+        return;
+    }
+
     int pid = connMgr_.getPatchId(slot_);
     int typeId = descriptor->index;
     int moduleIndex = module->getContainerIndex();

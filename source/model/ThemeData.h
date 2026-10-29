@@ -83,6 +83,8 @@ struct ThemeLight
     int width = 7, height = 7;
     juce::String type;      // "led" or "meter"
     int ledOnValue = -1;    // if >= 0: LED activates when paired meter reaches this value
+    int steps = 16;         // led-array: how many LEDs in the row (a sequencer's steps)
+    bool bits = false;      // led-array: one LED a bit of the meter's 14-bit value, not one lit step
 };
 
 struct ThemeGroupBox

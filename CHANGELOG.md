@@ -77,6 +77,34 @@ Micro Modular, which it shows with its one slot.
 
 ### Added
 
+- **The G1-Mods layer, per synth** (2026-10-18, branch `mods-layer`; brought onto 0.23 and the OS update on 2026-10-25, branch `mods-layer-2`). The module types a
+  modified OS adds (G1-Mods: FlipFlop, Mix1-1A, 5-Step Seq, Turing Machine, Scale Quantizer,
+  8Counter, Mux8-1, Random, Bits, Level, Envelope, Osc String) live in files of their own,
+  `data/mods-modules.xml` and `data/mods-theme.xml`, written by G1-Mods' `make_nme_data.py
+  --layer` and loaded on top of Clavia's, which stay byte for byte as they were. They are always
+  loaded, so a patch with one opens. **NME knows which synths have them**: G1-Mods' builder
+  marks its OS, whose IAm says version **3.09** instead of 3.03 (Clavia never released a 3.09;
+  Clavia's editor 3.03 still connects to it), so each connection knows on connecting and
+  forgets on disconnecting (`ConnectionManager::isModsVersion`), and the status says "(G1-Mods)".
+  With several synths a Clavia OS can sit next to a modified one: the module bar, menus and
+  quick add offer them only while the active synth has them; a slot of another synth refuses
+  them however they come (dropped, pasted, a snippet, the MCP's add or replace), and its
+  connection never sends one: a patch with one is not uploaded, and the status bar says which
+  module. A layer module never replaces a Clavia type. Their parameter widths come from their
+  `maxValue` (`ParameterEncoder::setWidthsFromData`), as a whole patch's already did, so a new
+  module needs no C++. Also from the old `g1-mods` branch: each family's "(mods)" tab and
+  submenu, led-arrays with `steps` and `bits`, and the Scale Quantizer's and Random's
+  formatters. Tests: `test_mods_categories` (without them NME offers exactly Clavia's, the layer
+  adds only free types and replaces none, the encoder has no case of its own for them, a synth
+  without them takes none, 3.09 and only 3.09 is theirs); plain and ASan/UBSan pass; G1-Mods'
+  `check_mark.py` boots both OSes in G1-Emu (3.03 and 3.09). On a real G1 (2026-10-26): NME
+  installed G1-Mods' OS with all 13 modules through Update Synth OS, knew it (MODDED OS) and every
+  module played (Javier).
+  On bringing it over: Note Out (type 60) and its Gate thru are in the layer too; a bank upload a
+  slot refuses for a layer module is told it failed instead of waiting; `test_mods_categories`
+  takes a family the G1 has not (Note Out's MIDI) at the end of the list, as the code always put it.
+  The status bar says "- MODDED OS (G1-Mods)" after the version (2026-10-25).
+
 - **A Micro Modular shows one slot** (2026-10-26). With a Micro connected its row in
   the slot bar has one button (A), the Slot menu lists only A, and the others cannot be opened, focused or
   toggled from the keyboard: `ConnectionManager::slotCount()`, `SlotBar::setSlotCount`,

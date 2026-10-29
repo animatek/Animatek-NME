@@ -14,14 +14,22 @@ bool ModuleDescriptions::loadFromXmlString(const juce::String& xmlString)
     return loadFromXml(juce::XmlDocument::parse(xmlString));
 }
 
-bool ModuleDescriptions::loadFromXml(std::unique_ptr<juce::XmlElement> xml)
+bool ModuleDescriptions::addFromXmlString(const juce::String& xmlString)
+{
+    return loadFromXml(juce::XmlDocument::parse(xmlString), true);
+}
+
+bool ModuleDescriptions::loadFromXml(std::unique_ptr<juce::XmlElement> xml, bool add)
 {
     if (xml == nullptr)
         return false;
 
-    modules.clear();
-    indexLookup.clear();
-    nameLookup.clear();
+    if (!add)
+    {
+        modules.clear();
+        indexLookup.clear();
+        nameLookup.clear();
+    }
 
     auto* body = xml->getChildByName("body");
     if (body == nullptr)
@@ -29,7 +37,9 @@ bool ModuleDescriptions::loadFromXml(std::unique_ptr<juce::XmlElement> xml)
 
     for (auto* elem = body->getFirstChildElement(); elem != nullptr; elem = elem->getNextElement())
     {
-        if (elem->getTagName() == "module")
+        // an added file never replaces a type already there: Clavia's stay Clavia's
+        if (elem->getTagName() == "module"
+            && !(add && indexLookup.count(elem->getIntAttribute("index", -1)) > 0))
             parseModule(*elem);
     }
 
@@ -141,8 +151,18 @@ juce::StringArray ModuleDescriptions::getCategories() const
 {
     juce::StringArray cats;
     for (auto& m : modules)
-        if (m.instantiable && !cats.contains(m.category))
+        if (m.instantiable && !cats.contains(m.category) && !isModsCategory(m.category))
             cats.add(m.category);
+    if (!modsShown)
+        return cats;
+    // each "<family> (mods)" right after its family; one with no family goes at the end
+    for (auto& m : modules)
+        if (m.instantiable && isModsCategory(m.category) && !cats.contains(m.category))
+        {
+            const auto family = m.category.dropLastCharacters(juce::String(" (mods)").length());
+            const int at = cats.indexOf(family);
+            cats.insert(at >= 0 ? at + 1 : cats.size(), m.category);
+        }
     return cats;
 }
 
@@ -184,7 +204,7 @@ std::vector<const ModuleDescriptor*> ModuleDescriptions::getModulesInCategory(co
 {
     std::vector<const ModuleDescriptor*> result;
     for (auto& m : modules)
-        if (m.instantiable && m.category == category)
+        if (m.instantiable && m.category == category && isOffered(m))
             result.push_back(&m);
 
     const auto found = originalModuleOrder().find(category);

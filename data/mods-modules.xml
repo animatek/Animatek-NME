@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The G1-Mods layer: the module types a modified OS adds, loaded on top of
+     modules.xml. Written by G1-Mods' tools/make_nme_data.py (its layer mode), from its
+     modules/ folders: change them there, not here. GPL-3.0-only. -->
+<ModuleDescriptions>
+<body>
+  <module component-id="m120" index="120" name="FlipFlop" fullname="Flip-Flop D/RS (G1-Mods)" category="Logic (mods)">
+    <image type="screenshot" src="img/modules/module-89.png" width="256" height="30" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-89.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-89.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="clk" type="input" signal="logic" />
+    <connector component-id="c2" index="1" name="in" type="input" signal="logic" />
+    <connector component-id="c3" index="2" name="rst" type="input" signal="logic" />
+    <connector component-id="c4" index="0" name="Q" type="output" signal="logic" />
+    <connector component-id="c5" index="1" name="NotQ" type="output" signal="logic" />
+    <light component-id="ledQ" name="LED Q" index="0" type="led" />
+    <!-- parameter(s) -->
+    <parameter component-id="p1" index="0" name="type" class="parameter" maxValue="1" extension="m1" />
+    <parameter component-id="m1" index="0" name="morph:type" class="morph" role="morph"  minValue="-1" maxValue="1" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="0.8" />
+    <attribute name="x-mem" type="double" value="0.25" />
+    <attribute name="y-mem" type="double" value="0.0" />
+    <attribute name="prog-mem" type="double" value="1.75" />
+    <attribute name="dyn-mem" type="double" value="0.25" />
+    <attribute name="zero-page" type="double" value="0.875" />
+    <attribute name="height" type="integer" value="2" />
+    <attribute name="background" value="#fc8642" />
+  </module>
+  <module component-id="m123" index="123" name="5-StepSeq" fullname="5-Step Sequencer, one knob a step (G1-Mods)" category="Sequencer (mods)">
+    <image type="screenshot" src="img/modules/module-91.png" width="256" height="105" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-91.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-91.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="clock" type="input" signal="logic" />
+    <connector component-id="c2" index="1" name="reset" type="input" signal="logic" />
+    <connector component-id="c3" index="0" name="out" type="output" signal="control" />
+    <!-- parameter(s) -->
+    <parameter component-id="p1" index="0" name="step 1" class="parameter" defaultValue="64" formatter="value-64" extension="m1" />
+    <parameter component-id="p2" index="1" name="step 2" class="parameter" defaultValue="64" formatter="value-64" extension="m2" />
+    <parameter component-id="p3" index="2" name="step 3" class="parameter" defaultValue="64" formatter="value-64" extension="m3" />
+    <parameter component-id="p4" index="3" name="step 4" class="parameter" defaultValue="64" formatter="value-64" extension="m4" />
+    <parameter component-id="p5" index="4" name="step 5" class="parameter" defaultValue="64" formatter="value-64" extension="m5" />
+    <parameter component-id="m1" index="0" name="morph:step 1" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m2" index="1" name="morph:step 2" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m3" index="2" name="morph:step 3" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m4" index="3" name="morph:step 4" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m5" index="4" name="morph:step 5" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <light component-id="ledStep1-5" type="led-array" name="Step 1-5" minValue="0" maxValue="5" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="0.6" />
+    <attribute name="x-mem" type="double" value="0.3" />
+    <attribute name="y-mem" type="double" value="0.0" />
+    <attribute name="prog-mem" type="double" value="0.9" />
+    <attribute name="dyn-mem" type="double" value="0.5" />
+    <attribute name="zero-page" type="double" value="0.875" />
+    <attribute name="height" type="integer" value="4" />
+    <attribute name="background" value="#e5babf" />
+  </module>
+  <module component-id="m124" index="124" name="TuringMachine" fullname="Turing Machine, a looping random shift register with eight gates (G1-Mods)" category="Sequencer (mods)">
+    <image type="screenshot" src="img/modules/module-91.png" width="256" height="105" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-91.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-91.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="clock" type="input" signal="logic" />
+    <connector component-id="c2" index="0" name="cv" type="output" signal="control" />
+    <connector component-id="c3" index="1" name="gate 1" type="output" signal="logic" />
+    <connector component-id="c4" index="2" name="gate 2" type="output" signal="logic" />
+    <connector component-id="c5" index="3" name="gate 3" type="output" signal="logic" />
+    <connector component-id="c6" index="4" name="gate 4" type="output" signal="logic" />
+    <connector component-id="c7" index="5" name="gate 5" type="output" signal="logic" />
+    <connector component-id="c8" index="6" name="gate 6" type="output" signal="logic" />
+    <connector component-id="c9" index="7" name="gate 7" type="output" signal="logic" />
+    <connector component-id="c10" index="8" name="gate 8" type="output" signal="logic" />
+    <!-- parameter(s) -->
+    <parameter component-id="p1" index="0" name="prob" class="parameter" defaultValue="64" formatter="value-64" extension="m1" />
+    <parameter component-id="p2" index="1" name="length" class="parameter" maxValue="15" defaultValue="7" formatter="value+1" extension="m2" />
+    <parameter component-id="p3" index="2" name="lock" class="parameter" maxValue="1" formatter="fmtOffOn" extension="m3" />
+    <parameter component-id="p4" index="3" name="scale" class="parameter" defaultValue="127" extension="m4" />
+    <parameter component-id="m1" index="0" name="morph:prob" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m2" index="1" name="morph:length" class="morph" role="morph"  minValue="-15" maxValue="15" />
+    <parameter component-id="m3" index="2" name="morph:lock" class="morph" role="morph"  minValue="-1" maxValue="1" />
+    <parameter component-id="m4" index="3" name="morph:scale" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <light component-id="ledBits" type="led-array" name="Bits 1-8" minValue="0" maxValue="255" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="0.9" />
+    <attribute name="x-mem" type="double" value="0.35" />
+    <attribute name="y-mem" type="double" value="0.0" />
+    <attribute name="prog-mem" type="double" value="2.0" />
+    <attribute name="dyn-mem" type="double" value="0.5" />
+    <attribute name="zero-page" type="double" value="0.875" />
+    <attribute name="height" type="integer" value="5" />
+    <attribute name="background" value="#e5babf" />
+  </module>
+  <module component-id="m125" index="125" name="ScaleQuant" fullname="Scale Quantizer, a pitch to the nearest note of a scale (G1-Mods)" category="Control (mods)">
+    <image type="screenshot" src="img/modules/module-98.png" width="256" height="30" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-98.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-98.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="in" type="input" signal="control" />
+    <connector component-id="c2" index="0" name="out" type="output" signal="control" />
+    <!-- parameter(s) -->
+    <parameter component-id="p1" index="0" name="root" class="parameter" maxValue="11" formatter="fmtRootNote" extension="m1" />
+    <parameter component-id="p2" index="1" name="scale" class="parameter" maxValue="15" defaultValue="1" formatter="fmtScaleName" extension="m2" />
+    <parameter component-id="p3" index="2" name="octave" class="parameter" maxValue="8" defaultValue="4" formatter="fmtOctaveShift" extension="m3" />
+    <parameter component-id="m1" index="0" name="morph:root" class="morph" role="morph"  minValue="-11" maxValue="11" />
+    <parameter component-id="m2" index="1" name="morph:scale" class="morph" role="morph"  minValue="-15" maxValue="15" />
+    <parameter component-id="m3" index="2" name="morph:octave" class="morph" role="morph"  minValue="-8" maxValue="8" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="0.35" />
+    <attribute name="x-mem" type="double" value="0.5" />
+    <attribute name="y-mem" type="double" value="0.0" />
+    <attribute name="prog-mem" type="double" value="0.75" />
+    <attribute name="dyn-mem" type="double" value="0.5" />
+    <attribute name="zero-page" type="double" value="0.875" />
+    <attribute name="height" type="integer" value="3" />
+    <attribute name="background" value="#c9d4a6" />
+  </module>
+  <module component-id="m126" index="126" name="8Counter" fullname="8 Counter, one output a step (G1-Mods)" category="Logic (mods)">
+    <image type="screenshot" src="img/modules/module-89.png" width="256" height="30" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-89.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-89.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="clock" type="input" signal="logic" />
+    <connector component-id="c2" index="1" name="reset" type="input" signal="logic" />
+    <connector component-id="c3" index="0" name="out 1" type="output" signal="logic" />
+    <connector component-id="c4" index="1" name="out 2" type="output" signal="logic" />
+    <connector component-id="c5" index="2" name="out 3" type="output" signal="logic" />
+    <connector component-id="c6" index="3" name="out 4" type="output" signal="logic" />
+    <connector component-id="c7" index="4" name="out 5" type="output" signal="logic" />
+    <connector component-id="c8" index="5" name="out 6" type="output" signal="logic" />
+    <connector component-id="c9" index="6" name="out 7" type="output" signal="logic" />
+    <connector component-id="c10" index="7" name="out 8" type="output" signal="logic" />
+    <light component-id="ledStep1-8" type="led-array" name="Step 1-8" minValue="0" maxValue="8" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="0.6" />
+    <attribute name="x-mem" type="double" value="0.2" />
+    <attribute name="y-mem" type="double" value="0.0" />
+    <attribute name="prog-mem" type="double" value="1.5" />
+    <attribute name="dyn-mem" type="double" value="0.5" />
+    <attribute name="zero-page" type="double" value="0.875" />
+    <attribute name="height" type="integer" value="3" />
+    <attribute name="background" value="#fc8642" />
+  </module>
+  <module component-id="m101" index="101" name="Mux8-1" fullname="8 to 1 selector, by a knob and a level (G1-Mods)" category="Mixer (mods)">
+    <image type="screenshot" src="img/modules/module-79.png" width="256" height="30" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-79.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-79.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="in 1" type="input" signal="control" />
+    <connector component-id="c2" index="1" name="in 2" type="input" signal="control" />
+    <connector component-id="c3" index="2" name="in 3" type="input" signal="control" />
+    <connector component-id="c4" index="3" name="in 4" type="input" signal="control" />
+    <connector component-id="c5" index="4" name="in 5" type="input" signal="control" />
+    <connector component-id="c6" index="5" name="in 6" type="input" signal="control" />
+    <connector component-id="c7" index="6" name="in 7" type="input" signal="control" />
+    <connector component-id="c8" index="7" name="in 8" type="input" signal="control" />
+    <connector component-id="c9" index="8" name="ctrl" type="input" signal="control" />
+    <connector component-id="c10" index="0" name="out" type="output" signal="control" />
+    <!-- parameter(s) -->
+    <parameter component-id="p1" index="0" name="sel" class="parameter" maxValue="7" formatter="value+1" extension="m1" />
+    <parameter component-id="m1" index="0" name="morph:sel" class="morph" role="morph"  minValue="-7" maxValue="7" />
+    <light component-id="ledSel1-8" type="led-array" name="Sel 1-8" minValue="0" maxValue="8" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="0.5" />
+    <attribute name="x-mem" type="double" value="0.1" />
+    <attribute name="y-mem" type="double" value="0.0" />
+    <attribute name="prog-mem" type="double" value="1.0" />
+    <attribute name="dyn-mem" type="double" value="0.25" />
+    <attribute name="zero-page" type="double" value="0.875" />
+    <attribute name="height" type="integer" value="4" />
+    <attribute name="background" value="#bfcde0" />
+  </module>
+  <module component-id="m6" index="6" name="Random" fullname="Random, clocked, with Seed, Poly, Step, Edge, Prob, Length and Uni/Bi (G1-Mods)" category="LFO (mods)">
+    <image type="screenshot" src="img/modules/module-110.png" width="256" height="30" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-110.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-110.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="clock" type="input" signal="logic" />
+    <connector component-id="c2" index="1" name="reset" type="input" signal="logic" />
+    <connector component-id="c3" index="0" name="out" type="output" signal="control" />
+    <connector component-id="c4" index="1" name="trig" type="output" signal="logic" />
+    <!-- parameter(s) -->
+    <parameter component-id="p1" index="0" name="seed" class="parameter" maxValue="127" defaultValue="0" extension="m1" />
+    <parameter component-id="p2" index="1" name="poly" class="parameter" maxValue="1" defaultValue="0" formatter="fmtOffOn" extension="m2" />
+    <parameter component-id="p3" index="2" name="step" class="parameter" maxValue="127" defaultValue="127" extension="m3" />
+    <parameter component-id="p4" index="3" name="edge" class="parameter" maxValue="127" defaultValue="0" extension="m4" />
+    <parameter component-id="p5" index="4" name="prob" class="parameter" maxValue="127" defaultValue="64" extension="m5" />
+    <parameter component-id="p6" index="5" name="length" class="parameter" maxValue="16" defaultValue="0" formatter="fmtLoopLength" extension="m6" />
+    <parameter component-id="p7" index="6" name="unipolar" class="parameter" maxValue="1" defaultValue="0" formatter="fmtOffOn" extension="m7" />
+    <parameter component-id="m1" index="0" name="morph:seed" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m2" index="1" name="morph:poly" class="morph" role="morph"  minValue="-1" maxValue="1" />
+    <parameter component-id="m3" index="2" name="morph:step" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m4" index="3" name="morph:edge" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m5" index="4" name="morph:prob" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m6" index="5" name="morph:length" class="morph" role="morph"  minValue="-16" maxValue="16" />
+    <parameter component-id="m7" index="6" name="morph:unipolar" class="morph" role="morph"  minValue="-1" maxValue="1" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="1.0" />
+    <attribute name="x-mem" type="double" value="0.5" />
+    <attribute name="y-mem" type="double" value="0.0" />
+    <attribute name="prog-mem" type="double" value="2.5" />
+    <attribute name="dyn-mem" type="double" value="0.5" />
+    <attribute name="zero-page" type="double" value="0.875" />
+    <attribute name="height" type="integer" value="4" />
+    <attribute name="background" value="#d9c3e6" />
+  </module>
+  <module component-id="m41" index="41" name="Bits" fullname="Bits: a binary counter, A to D and D to A (G1-Mods)" category="Logic (mods)">
+    <image type="screenshot" src="img/modules/module-89.png" width="256" height="30" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-89.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-89.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="clock" type="input" signal="logic" />
+    <connector component-id="c2" index="1" name="reset" type="input" signal="logic" />
+    <connector component-id="c3" index="2" name="in" type="input" signal="control" />
+    <connector component-id="c4" index="3" name="b1" type="input" signal="logic" />
+    <connector component-id="c5" index="4" name="b2" type="input" signal="logic" />
+    <connector component-id="c6" index="5" name="b3" type="input" signal="logic" />
+    <connector component-id="c7" index="6" name="b4" type="input" signal="logic" />
+    <connector component-id="c8" index="7" name="b5" type="input" signal="logic" />
+    <connector component-id="c9" index="8" name="b6" type="input" signal="logic" />
+    <connector component-id="c10" index="9" name="b7" type="input" signal="logic" />
+    <connector component-id="c11" index="10" name="b8" type="input" signal="logic" />
+    <connector component-id="c12" index="0" name="out" type="output" signal="control" />
+    <connector component-id="c13" index="1" name="bit 1" type="output" signal="logic" />
+    <connector component-id="c14" index="2" name="bit 2" type="output" signal="logic" />
+    <connector component-id="c15" index="3" name="bit 3" type="output" signal="logic" />
+    <connector component-id="c16" index="4" name="bit 4" type="output" signal="logic" />
+    <connector component-id="c17" index="5" name="bit 5" type="output" signal="logic" />
+    <connector component-id="c18" index="6" name="bit 6" type="output" signal="logic" />
+    <connector component-id="c19" index="7" name="bit 7" type="output" signal="logic" />
+    <connector component-id="c20" index="8" name="bit 8" type="output" signal="logic" />
+    <!-- parameter(s) -->
+    <parameter component-id="p1" index="0" name="mode" class="parameter" maxValue="2" extension="m1" />
+    <parameter component-id="m1" index="0" name="morph:mode" class="morph" role="morph"  minValue="-2" maxValue="2" />
+    <light component-id="ledBits" type="led-array" name="Bits 1-8" minValue="0" maxValue="255" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="0.9" />
+    <attribute name="x-mem" type="double" value="0.3" />
+    <attribute name="y-mem" type="double" value="0.0" />
+    <attribute name="prog-mem" type="double" value="2.0" />
+    <attribute name="dyn-mem" type="double" value="0.5" />
+    <attribute name="zero-page" type="double" value="0.875" />
+    <attribute name="height" type="integer" value="6" />
+    <attribute name="background" value="#fc8642" />
+  </module>
+  <module component-id="m42" index="42" name="Level" fullname="Level: ModAmt, MinMax, Track and Hold, Window (G1-Mods)" category="Mixer (mods)">
+    <image type="screenshot" src="img/modules/module-111.png" width="256" height="30" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-111.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-111.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="a" type="input" signal="control" />
+    <connector component-id="c2" index="1" name="b" type="input" signal="control" />
+    <connector component-id="c3" index="0" name="out 1" type="output" signal="control" />
+    <connector component-id="c4" index="1" name="out 2" type="output" signal="control" />
+    <!-- parameter(s) -->
+    <parameter component-id="p1" index="0" name="mode" class="parameter" maxValue="3" extension="m1" />
+    <parameter component-id="p2" index="1" name="amount" class="parameter" defaultValue="127" extension="m2" />
+    <parameter component-id="p3" index="2" name="lo" class="parameter" defaultValue="64" formatter="value-64" extension="m3" />
+    <parameter component-id="p4" index="3" name="hi" class="parameter" defaultValue="96" formatter="value-64" extension="m4" />
+    <parameter component-id="m1" index="0" name="morph:mode" class="morph" role="morph"  minValue="-3" maxValue="3" />
+    <parameter component-id="m2" index="1" name="morph:amount" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m3" index="2" name="morph:lo" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m4" index="3" name="morph:hi" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="0.4" />
+    <attribute name="x-mem" type="double" value="0.3" />
+    <attribute name="y-mem" type="double" value="0.0" />
+    <attribute name="prog-mem" type="double" value="1.0" />
+    <attribute name="dyn-mem" type="double" value="0.5" />
+    <attribute name="zero-page" type="double" value="0.875" />
+    <attribute name="height" type="integer" value="4" />
+    <attribute name="background" value="#bfcde0" />
+  </module>
+  <module component-id="m55" index="55" name="Envelope" fullname="Envelope: ADDSR, or one shot (D, H, AHD) (G1-Mods)" category="Envelope (mods)">
+    <image type="screenshot" src="img/modules/module-20.png" width="256" height="30" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-20.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-20.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="gate" type="input" signal="logic" />
+    <connector component-id="c2" index="0" name="env" type="output" signal="control" />
+    <connector component-id="c3" index="1" name="end" type="output" signal="logic" />
+    <!-- parameter(s) -->
+    <parameter component-id="p1" index="0" name="mode" class="parameter" maxValue="1" extension="m1" />
+    <parameter component-id="p2" index="1" name="attack" class="parameter" defaultValue="0" extension="m2" />
+    <parameter component-id="p3" index="2" name="decay 1" class="parameter" defaultValue="40" extension="m3" />
+    <parameter component-id="p4" index="3" name="level 1" class="parameter" defaultValue="100" extension="m4" />
+    <parameter component-id="p5" index="4" name="decay 2" class="parameter" defaultValue="60" extension="m5" />
+    <parameter component-id="p6" index="5" name="sustain" class="parameter" defaultValue="80" extension="m6" />
+    <parameter component-id="p7" index="6" name="release" class="parameter" defaultValue="60" extension="m7" />
+    <parameter component-id="m1" index="0" name="morph:mode" class="morph" role="morph"  minValue="-1" maxValue="1" />
+    <parameter component-id="m2" index="1" name="morph:attack" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m3" index="2" name="morph:decay 1" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m4" index="3" name="morph:level 1" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m5" index="4" name="morph:decay 2" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m6" index="5" name="morph:sustain" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m7" index="6" name="morph:release" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="0.6" />
+    <attribute name="x-mem" type="double" value="0.6" />
+    <attribute name="y-mem" type="double" value="0.0" />
+    <attribute name="prog-mem" type="double" value="1.75" />
+    <attribute name="dyn-mem" type="double" value="0.5" />
+    <attribute name="zero-page" type="double" value="0.875" />
+    <attribute name="height" type="integer" value="3" />
+    <attribute name="background" value="#e0c896" />
+  </module>
+  <module component-id="m56" index="56" name="OscString" fullname="Osc String, a plucked string (Karplus-Strong) (G1-Mods)" category="Oscillator (mods)">
+    <image type="screenshot" src="img/modules/module-97.png" width="256" height="30" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-97.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-97.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="trig" type="input" signal="logic" />
+    <connector component-id="c2" index="1" name="pitch" type="input" signal="control" />
+    <connector component-id="c3" index="2" name="exc" type="input" signal="audio" />
+    <connector component-id="c4" index="0" name="out" type="output" signal="audio" />
+    <!-- parameter(s) -->
+    <parameter component-id="p1" index="0" name="note" class="parameter" defaultValue="64" formatter="fmtNote" extension="m1" />
+    <parameter component-id="p2" index="1" name="decay" class="parameter" defaultValue="100" extension="m2" />
+    <parameter component-id="p3" index="2" name="damp" class="parameter" defaultValue="90" extension="m3" />
+    <parameter component-id="m1" index="0" name="morph:note" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m2" index="1" name="morph:decay" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m3" index="2" name="morph:damp" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="16.0" />
+    <attribute name="x-mem" type="double" value="73.0" />
+    <attribute name="y-mem" type="double" value="0.0" />
+    <attribute name="prog-mem" type="double" value="4.5" />
+    <attribute name="dyn-mem" type="double" value="0.5" />
+    <attribute name="zero-page" type="double" value="1.75" />
+    <attribute name="height" type="integer" value="3" />
+    <attribute name="background" value="#d9c3a0" />
+  </module>
+  <module component-id="m60" index="60" name="NoteOut" fullname="Note Out, a gate and a note to the MIDI OUT (G1-Mods)" category="MIDI (mods)">
+    <image type="screenshot" src="img/modules/module-89.png" width="256" height="30" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-89.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-89.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="note" type="input" signal="control" />
+    <connector component-id="c2" index="1" name="gate" type="input" signal="logic" />
+    <connector component-id="c3" index="0" name="thru" type="output" signal="logic" />
+    <!-- parameter(s) -->
+    <parameter component-id="p1" index="0" name="chan" class="parameter" maxValue="15" formatter="value+1" extension="m1" />
+    <parameter component-id="p2" index="1" name="vel" class="parameter" defaultValue="100" extension="m2" />
+    <parameter component-id="m1" index="0" name="morph:chan" class="morph" role="morph"  minValue="-15" maxValue="15" />
+    <parameter component-id="m2" index="1" name="morph:vel" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="0.9" />
+    <attribute name="x-mem" type="double" value="0.35" />
+    <attribute name="y-mem" type="double" value="0.0" />
+    <attribute name="prog-mem" type="double" value="1.5" />
+    <attribute name="dyn-mem" type="double" value="0.25" />
+    <attribute name="zero-page" type="double" value="0.875" />
+    <attribute name="height" type="integer" value="2" />
+    <attribute name="background" value="#9fc3e0" />
+  </module>
+  <module component-id="m121" index="121" name="Mix1-1A" fullname="1 Input Chain Mixer (G1-Mods)" category="Mixer (mods)" role="mixer">
+    <image type="screenshot" src="img/modules/module-19.png" width="256" height="30" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-19.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-19.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="in" type="input" signal="audio" />
+    <connector component-id="c2" index="1" name="chain" type="input" signal="audio" />
+    <connector component-id="c4" index="0" name="out" type="output" signal="audio" />
+    <!-- parameter(s) -->
+    <parameter component-id="p1" index="0" name="level" class="parameter" defaultValue="127" extension="m1" role="audio,in,level" />
+    <parameter component-id="p2" index="1" name="on" class="parameter" maxValue="1" defaultValue="1" formatter="fmtOffOn" extension="m2" />
+    <parameter component-id="m1" index="0" name="morph:level" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m2" index="1" name="morph:on" class="morph" role="morph"  minValue="-1" maxValue="1" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="0.8895" />
+    <attribute name="x-mem" type="double" value="0.15625" />
+    <attribute name="y-mem" type="double" value="0.09375" />
+    <attribute name="prog-mem" type="double" value="0.21875" />
+    <attribute name="dyn-mem" type="double" value="0.375" />
+    <attribute name="zero-page" type="double" value="0.875" />
+    <attribute name="height" type="integer" value="2" />
+    <attribute name="background" value="#6CB5C0" />
+  </module>
+</body>
+</ModuleDescriptions>

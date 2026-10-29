@@ -354,6 +354,26 @@ static juce::String fmtPulseWidth (int value)
 static const char* const DATA_OFF_ON[] = { "Off", "On" };
 static juce::String fmtOffOn (int value) { return mapIndex (DATA_OFF_ON, value); }
 
+// G1-Mods Scale Quantizer: the root (C..B), the scale (as patch_rom.py's SCALES, in order) and
+// the octave shift (-4..+4)
+static juce::String fmtRootNote (int value)
+{
+    static const char* names[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+    return names[juce::jlimit (0, 11, value)];
+}
+static juce::String fmtScaleName (int value)
+{
+    static const char* names[] = { "Chromatc", "Major", "Minor", "Dorian", "Phrygian", "Lydian", "Mixolyd", "Locrian", "Harm Min", "Mel Min", "Maj Pent", "Min Pent", "Blues", "Whole Tn", "Hirajshi", "Dbl Harm" };
+    return names[juce::jlimit (0, 15, value)];
+}
+// G1-Mods Random: Length, 0 for none (the values never loop)
+static juce::String fmtLoopLength (int value) { return value == 0 ? juce::String ("Off") : juce::String (value); }
+static juce::String fmtOctaveShift (int value)
+{
+    const int shift = value - 4;
+    return shift > 0 ? "+" + juce::String (shift) : juce::String (shift);
+}
+
 static const char* const DATA_COMPANDER_RELEASE[] = {
     "125m","129m","124m","139m","144m","149m","154m","159m","165m","171m","177m","183m","189m",
     "196m","203m","210m","218m","225m","233m","241m","250m","259m","268m","277m","287m","297m",
@@ -581,6 +601,10 @@ static const std::unordered_map<juce::String, Fn>& registry()
         { "fmtTimbre",                fmtTimbre },
         { "fmtPulseWidth",            fmtPulseWidth },
         { "fmtOffOn",                 fmtOffOn },
+        { "fmtRootNote",              fmtRootNote },
+        { "fmtScaleName",             fmtScaleName },
+        { "fmtOctaveShift",           fmtOctaveShift },
+        { "fmtLoopLength",            fmtLoopLength },
         { "fmtCompanderRelease",      fmtCompanderRelease },
         { "fmtFilterSlope2",          fmtFilterSlope2 },
         { "fmtChannelSelectOut1",     fmtChannelSelectOut1 },

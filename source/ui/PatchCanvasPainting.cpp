@@ -2734,14 +2734,22 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
 
         if (tl.type == "led-array")
         {
-            // Row of 16 small LEDs distributed across `width`. The active step
-            // is read only from synth meter data, matching NOMAD's LightProcessor.
-            // No local timer is used: sequencers advance only from Clk pulses.
-            const int kSteps = 16;
+            // Row of small LEDs (16, or the theme's `steps`) distributed across
+            // `width`. The active step is read only from synth meter data, matching
+            // NOMAD's LightProcessor. No local timer is used: sequencers advance
+            // only from Clk pulses.
+            const int kSteps = tl.steps;
             int rawStep = (meterBase < 128) ? globalMeterValues[meterBase] : 16;
             int activeStep = -1;
             if (rawStep >= 0 && rawStep < kSteps)
                 activeStep = rawStep;
+            // `bits`: the OS sends the meter's word as two 7-bit values, the low
+            // 7 bits on B (this slot) and the next 7 on A (the next): one LED a bit
+            // (the G1-Mods Turing Machine's register).
+            int bitsValue = 0;
+            if (tl.bits && meterBase + 1 < 128)
+                bitsValue = (globalMeterValues[meterBase] & 0x7f)
+                          | ((globalMeterValues[meterBase + 1] & 0x7f) << 7);
 
             float ly = static_cast<float>(bounds.getY() + tl.y);
             float dotSize = juce::jmin(lh, lw / static_cast<float>(kSteps) - 1.0f);
@@ -2752,7 +2760,7 @@ void PatchCanvas::paintLights(juce::Graphics& g, const Module& m, int section, j
             {
                 float dx = lx + spacing * static_cast<float>(i) + (spacing - dotSize) * 0.5f;
                 float dy = ly + (lh - dotSize) * 0.5f;
-                bool on = (i == activeStep);
+                bool on = tl.bits ? ((bitsValue >> i) & 1) != 0 : (i == activeStep);
                 if (skeuoOn)
                 {
                     skeuo::drawLed(g, juce::Rectangle<float>(dx, dy, dotSize, dotSize), on,

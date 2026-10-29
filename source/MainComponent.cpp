@@ -33,6 +33,8 @@
 #include "protocol/MorphKeyboardAssignmentMessage.h"
 #include "protocol/KnobAssignmentMessage.h"
 #include "protocol/MidiCtrlAssignmentMessage.h"
+#include "protocol/ParameterEncoder.h"
+#include "model/PatchSerializer.h"
 #include "BinaryData.h"
 #include <iostream>
 #include <set>
@@ -113,6 +115,24 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     else DBG("WARNING: modules.xml not found!");
   }
 
+  // The G1-Mods layer: the modules a modified OS adds, in files of their own so Clavia's stay
+  // as they are. Always loaded, so a patch with one opens; offered only when asked for.
+  if (BinaryData::modsmodules_xmlSize > 0) {
+    moduleDescs.addFromXmlString(juce::String::createStringFromData(
+        BinaryData::modsmodules_xml, BinaryData::modsmodules_xmlSize));
+    for (const auto& d : moduleDescs.getAllModules()) {
+      if (!ModuleDescriptions::isModsCategory(d.category)) continue;
+      std::vector<std::pair<int, int>> byIndex;   // (index, width) of each real parameter
+      for (const auto& pd : d.parameters)
+        if (pd.paramClass == "parameter")
+          byIndex.push_back({pd.index, PatchSerializer::bitWidth(pd.maxValue)});
+      std::sort(byIndex.begin(), byIndex.end());
+      std::vector<int> widths;
+      for (const auto& [index, width] : byIndex) widths.push_back(width);
+      ParameterEncoder::setWidthsFromData(d.index, std::move(widths));
+    }
+  }
+
   DBG("Loaded " + juce::String(moduleDescs.getModuleCount()) + " module descriptions");
 
   // Load classic theme — prefer embedded BinaryData, fall back to disk
@@ -124,6 +144,10 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
     if (themePath.existsAsFile()) themeData.loadFromFile(themePath);
     else DBG("WARNING: classic-theme.xml not found!");
   }
+
+  if (BinaryData::modstheme_xmlSize > 0)
+    themeData.loadFromXmlString(juce::String::createStringFromData(
+        BinaryData::modstheme_xml, BinaryData::modstheme_xmlSize));   // added to Clavia's
 
   DBG("Loaded " + juce::String(themeData.getModuleThemeCount()) + " module themes");
 
@@ -934,6 +958,20 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       }
     });
   }); });
+
+  // G1-Mods: what is said when a patch with one of their modules is not sent to a synth whose OS
+  // lacks them (it did not say 3.09 on connecting).
+  forEachSynth([this](int s, ConnectionManager& cm) {
+    cm.setRefusedCallback([this, s](int, const juce::String& module) {
+      juce::MessageManager::callAsync([safeThis = juce::Component::SafePointer<MainComponent>(this), s, module] {
+        if (safeThis)
+          safeThis->mainLayout->getStatusBar().showMessage(
+              "Not sent: " + module + " is a G1-Mods module, and synth " + juce::String(s + 1)
+              + "'s OS has none (it is not a G1-Mods build)", 8000);
+      });
+    });
+  });
+  refreshModsForActiveSynth();
 
   forEachSynth([this](int s, ConnectionManager& cm) { cm.setSynthErrorCallback([this, s](int errorCode) {
     const juce::String description(synthErrorName(errorCode));
@@ -2342,8 +2380,30 @@ void MainComponent::updateSlotBarRows() {
     mainLayout->getSlotBar().setRowShown(synth, isSynthShown(synth));
 }
 
+void MainComponent::refreshModsForActiveSynth() {
+  const bool shown = synthHub.active().hasModsOs();
+  if (moduleDescs.areModsShown() == shown) return;
+  moduleDescs.setModsShown(shown);
+  if (mainLayout)
+    mainLayout->getModuleIconBar().setModuleDescriptions(&moduleDescs);   // its tabs again
+}
+
+bool MainComponent::slotTakesTypes(int slot, const std::vector<int>& typeIds) {
+  if (!SynthSlot::valid(slot)) return true;
+  const auto& cm = synthHub.forSlot(slot);
+  for (int t : typeIds)
+    if (const auto* d = moduleDescs.getModuleByIndex(t); d != nullptr && !cm.takesModule(*d)) {
+      mainLayout->getStatusBar().showMessage(
+          d->fullname + " is a G1-Mods module: synth " + juce::String(SynthSlot::synthOf(slot) + 1)
+          + "'s OS has none (it is not a G1-Mods build)", 6000);
+      return false;
+    }
+  return true;
+}
+
 void MainComponent::refreshForActiveSynth() {
   updateSlotBarRows();
+  refreshModsForActiveSynth();
   const int synth = synthHub.activeSynth();
   auto& cm = synthHub.synth(synth);
   bankTransfer.retarget(cm);
@@ -4946,9 +5006,10 @@ void MainComponent::wireSlotView(int slot) {
     undoMgr().beginNewTransaction("Display Change");
     undoMgr().perform(new CustomParameterChangeAction(*ctx(), section, moduleId, parameterId, oldValue, newValue));
   });
-  canvas.setModuleDropCallback([this, patch, ctx, undoMgr, updateLoad]
+  canvas.setModuleDropCallback([this, slot, patch, ctx, undoMgr, updateLoad]
       (int typeId, int section, int gridX, int gridY, const juce::String& name) {
     if (!patch() || !ctx()) return;
+    if (!slotTakesTypes(slot, {typeId})) return;
     // A transient message, NOT setConnectionStatus: this label is the
     // persistent status line, so an error posted there outlived its moment
     // by whole sessions (issue #65).
@@ -5125,9 +5186,12 @@ void MainComponent::wireSlotView(int slot) {
   // Paste and Duplicate insert a block of modules the same way the snippet
   // browser does, so they go through the same undoable action.
   canvas.setSnippetInsertCallback(
-      [patch, ctx, undoMgr, updateLoad](SnipData snip, int section, int offsetX, int offsetY) {
+      [this, slot, patch, ctx, undoMgr, updateLoad](SnipData snip, int section, int offsetX, int offsetY) {
         std::vector<std::pair<int, int>> created;
         if (!patch() || !ctx()) return created;
+        std::vector<int> types;
+        for (const auto& e : snip.entries) types.push_back(e.typeIndex);
+        if (!slotTakesTypes(slot, types)) return created;
 
         // perform() takes the action over and deletes it when it fails, so the
         // bare pointer is only good to read once it has reported success.
@@ -5216,6 +5280,8 @@ void MainComponent::onConnectionStatusChanged(
   bool connected = (status.state == ConnectionManager::State::Connected);
   auto& state = synthState[static_cast<size_t>(synth)];
   const bool isActive = (synth == synthHub.activeSynth());
+  if (isActive)
+    refreshModsForActiveSynth();   // a G1-Mods OS says so on connecting
   // A Micro Modular has one slot: its row in the slot bar shows one button.
   mainLayout->getSlotBar().setSlotCount(synth, slotsOfSynth(synth));
   {
@@ -6984,6 +7050,11 @@ void MainComponent::importSnippetFromFile(int slot, const juce::File& file,
   {
     mainLayout->getStatusBar().showMessage("ERROR: No modules found in file", 5000);
     return;
+  }
+  {
+    std::vector<int> types;
+    for (const auto& e : snip.entries) types.push_back(e.typeIndex);
+    if (!slotTakesTypes(slot, types)) return;
   }
 
   // Offset so snippet lands at the requested grid position.
