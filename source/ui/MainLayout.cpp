@@ -481,7 +481,8 @@ void MainLayout::resized()
 {
     auto area = getLocalBounds();
 
-    statusBar.setBounds(area.removeFromBottom(statusBarHeight));
+    if (statusBarVisible)
+        statusBar.setBounds(area.removeFromBottom(statusBarHeight));
     headerBar.setBounds(area.removeFromTop(headerBarHeight));
     if (moduleIconBarVisible)
         moduleIconBar.setBounds(area.removeFromTop(ModuleIconBar::preferredHeight));
@@ -507,6 +508,16 @@ void MainLayout::setModuleIconBarVisible(bool visible)
 
     moduleIconBarVisible = visible;
     moduleIconBar.setVisible(visible);
+    resized();
+}
+
+void MainLayout::setStatusBarVisible(bool visible)
+{
+    if (statusBarVisible == visible)
+        return;
+
+    statusBarVisible = visible;
+    statusBar.setVisible(visible);
     resized();
 }
 

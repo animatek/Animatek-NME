@@ -255,6 +255,12 @@ private:
     void toggleWireframe();
     void toggleLeftPanel();   // Ctrl+I: inspector column (issue #38)
     void toggleRightPanel();  // Ctrl+Shift+I: patch browser
+    // Zen (F6): the editing view with everything but the patch out of the way.
+    // Performance (F12): no panels, bars or cables, only the modules and the macros
+    // of the header. Both remember what was on screen and give it back (issue #118).
+    enum class ViewMode { Normal, Zen, Performance };
+    void toggleViewMode(ViewMode mode);
+    void leaveViewMode();
     void toggleModuleIconBar();  // View menu: the module palette strip (issue #17)
     void togglePresetBrowser();
     void showPresetBrowser();
@@ -287,6 +293,9 @@ private:
     // the stored one before it was ever read. Cleared when restore finishes.
     bool restoringMdiLayout = true;
     bool syncingSlotWindows = false;
+    // What was on screen before Zen or Performance took it away
+    ViewMode viewMode = ViewMode::Normal;
+    struct SavedView { bool left = true, right = true, iconBar = true; } savedView;
 
     void showMidiSettingsDialog();
     void showPatchSettingsDialog();

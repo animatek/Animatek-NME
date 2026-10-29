@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Zen mode (F6) and Performance mode (F12)** (issue #118, 2026-10-29): Zen closes the inspector and
+  the patch browser and zooms every module of each open slot to fill the area; pressing it again
+  puts the panels and the zoom back. Performance goes further: it also takes away the module bar,
+  the status bar and all the cables (a view setting, the cable switches saved in the patch are
+  untouched), leaving the modules and the header with the macros and snapshots. `Esc` leaves either.
+  View menu, shortcuts dialog and manual chapter 7 updated. Checked: builds, unit tests pass; not yet
+  tried by hand in the window.
+
+### Fixed
+
+- **Synth patch browser no longer empties itself** (issue #112, 2026-10-29): the name list was wiped
+  when a fetch started and the partial list was published when the fetch was cut short (cancelled by a
+  patch operation, or the fixed 10 s timeout, too short for a Micro or a slow USB driver). The fetch
+  now fills a buffer, only the positions it reached overwrite the shown names, and the timeout counts
+  the synth's silence instead of the whole fetch. Not yet tried on a real G1 or Micro.
+
 ## 0.24.0 — 2026-10-27
 
 NME installs an OS into a G1 (Device > Update Synth OS), on a real G1 or on G1-Emu, and knows a

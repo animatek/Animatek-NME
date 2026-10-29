@@ -107,6 +107,10 @@ public:
     void resetZoom();
     // Z: the first press zooms to the selection and remembers where it was, the next one goes back there
     void toggleZoomToSelection();
+    // Zen and Performance modes: zoom so every module fills the area, remembering the
+    // zoom and place it was at, and give that back on leaving.
+    void zoomToFitAll();
+    void leaveFitAll();
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
     // Trackpad pinch (macOS, and any platform JUCE feeds magnify events from).
     void mouseMagnify(const juce::MouseEvent& e, float scaleFactor) override;
@@ -703,6 +707,7 @@ private:
     ColorScheme activeScheme_ = kDarkTheme;
     ThemeId activeThemeId_ = ThemeId::Dark;
     inline static OverlayMode overlayMode = OverlayMode::Off;
+    inline static bool cablesHidden = false;
     // Every canvas alive right now. The overlay mode is editor-wide, so a key
     // that changes it has to repaint all of them, not only the one it reached.
     inline static std::vector<PatchCanvas*> liveCanvases;
@@ -760,6 +765,19 @@ public:
     static void setMutatorMode  (bool on)  { mutatorModeOn  = on;  }
     static float getCableOpacity()         { return cableOpacity; }
 
+    // Performance mode draws no cables at all. A view setting, not the patch's:
+    // the cable colour switches of the header are saved in the .pch and are left alone.
+    static bool areCablesHidden()          { return cablesHidden; }
+    static void setCablesHidden (bool hide)
+    {
+        if (cablesHidden == hide)
+            return;
+        cablesHidden = hide;
+        for (auto* c : liveCanvases)
+            if (c != nullptr)
+                c->repaint();
+    }
+
     // The overlay mode belongs to the editor, not to one canvas, so setting it
     // has to redraw every canvas on screen. Same rule the F-keys follow.
     static OverlayMode getOverlayMode()    { return overlayMode; }
@@ -788,6 +806,7 @@ private:
         return { juce::roundToInt(p.x / zoomLevel), juce::roundToInt(p.y / zoomLevel) };
     }
     void updateSizeForZoom();
+    void zoomToRect(int minX, int minY, int maxX, int maxY, float fill);
     // Zooms to `newZoom`, keeping the canvas point under the pointer where it
     // is. Shared by Ctrl+wheel and the trackpad pinch, which differ only in how
     // they arrive at the new level.
@@ -1056,6 +1075,16 @@ public:
     {
         polyCanvas.zoomToSelection();
         commonCanvas.zoomToSelection();
+    }
+    void zoomToFitAll()
+    {
+        polyCanvas.zoomToFitAll();
+        commonCanvas.zoomToFitAll();
+    }
+    void leaveFitAll()
+    {
+        polyCanvas.leaveFitAll();
+        commonCanvas.leaveFitAll();
     }
     void toggleZoomToSelection()
     {

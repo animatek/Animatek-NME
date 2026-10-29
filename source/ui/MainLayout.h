@@ -148,6 +148,9 @@ public:
     // so while that one is hidden slots stay reachable through Ctrl+1..4.
     void setLeftPanelVisible(bool visible);
     void setRightPanelVisible(bool visible);
+    // Performance mode hides the status bar too; the rest of the time it is always there.
+    void setStatusBarVisible(bool visible);
+    bool isStatusBarVisible() const { return statusBarVisible; }
     bool isLeftPanelVisible() const  { return leftPanelVisible; }
     bool isRightPanelVisible() const { return rightPanelVisible; }
 
@@ -182,6 +185,7 @@ private:
     juce::StretchableLayoutResizerBar resizerBar2 { &layoutManager, 3, true };
 
     bool moduleIconBarVisible = true;
+    bool statusBarVisible = true;
     bool leftPanelVisible  = true;
     bool rightPanelVisible = true;
     int  savedLeftWidth    = 210;   // preferred sizes below, restored on re-show

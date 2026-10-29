@@ -849,7 +849,7 @@ bool PatchCanvas::hasHiddenCable(const Connector& conn, const ModuleContainer& c
     if (patch == nullptr) return false;
 
     // If all cables are fully transparent, treat every connected cable as "hidden"
-    if (cableOpacity < 0.01f)
+    if (cableOpacity < 0.01f || cablesHidden)
     {
         for (auto& connection : container.getConnections())
             if (connection.output == &conn || connection.input == &conn)
@@ -4389,7 +4389,7 @@ void PatchCanvas::shakeCables()
 
 void PatchCanvas::paintCables(juce::Graphics& g, const ModuleContainer& container, int yOffset)
 {
-    if (cableOpacity < 0.01f)
+    if (cableOpacity < 0.01f || cablesHidden)
         return;
 
     // Connector-to-module lookup, rebuilt per paint. It is a sorted vector

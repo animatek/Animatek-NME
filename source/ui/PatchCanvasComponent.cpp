@@ -214,6 +214,11 @@ void PatchCanvas::zoomToSelection()
         maxY = juce::jmax(maxY, r.getBottom());
     }
 
+    zoomToRect(minX, minY, maxX, maxY, 0.9f);
+}
+
+void PatchCanvas::zoomToRect(int minX, int minY, int maxX, int maxY, float fill)
+{
     if (auto* vp = findParentComponentOfClass<juce::Viewport>())
     {
         int bw = maxX - minX;
@@ -222,7 +227,7 @@ void PatchCanvas::zoomToSelection()
         {
             float zx = static_cast<float>(vp->getWidth()) / static_cast<float>(bw);
             float zy = static_cast<float>(vp->getHeight()) / static_cast<float>(bh);
-            float newZoom = juce::jlimit(zoomMin, zoomMax, juce::jmin(zx, zy) * 0.9f);
+            float newZoom = juce::jlimit(zoomMin, zoomMax, juce::jmin(zx, zy) * fill);
             zoomLevel = newZoom;
             updateSizeForZoom();
 
@@ -232,6 +237,55 @@ void PatchCanvas::zoomToSelection()
         }
     }
     repaint();
+}
+
+void PatchCanvas::zoomToFitAll()
+{
+    if (patch == nullptr)
+        return;
+
+    int minX = 999999, minY = 999999, maxX = 0, maxY = 0;
+    auto& container = (mySection == 1) ? patch->getPolyVoiceArea() : patch->getCommonArea();
+    for (const auto& modulePtr : container.getModules())
+    {
+        const auto gpos = modulePtr->getPosition();
+        const int px = gpos.x * gridX;
+        const int py = gpos.y * gridY;
+        const int ph = modulePtr->getDescriptor() ? modulePtr->getDescriptor()->height * gridY : 60;
+        minX = juce::jmin(minX, px);
+        minY = juce::jmin(minY, py);
+        maxX = juce::jmax(maxX, px + gridX);
+        maxY = juce::jmax(maxY, py + ph);
+    }
+    for (const auto& c : patch->getComments())
+    {
+        if (c.section != mySection)
+            continue;
+        const auto r = getCommentBounds(c);
+        minX = juce::jmin(minX, r.getX());
+        minY = juce::jmin(minY, r.getY());
+        maxX = juce::jmax(maxX, r.getRight());
+        maxY = juce::jmax(maxY, r.getBottom());
+    }
+    if (maxX <= minX || maxY <= minY)
+        return;   // an empty area has nothing to fit
+
+    // Where it was before, for leaveFitAll(). Fitting again keeps the first place.
+    if (!zoomedToSelection)
+    {
+        auto* vp = findParentComponentOfClass<juce::Viewport>();
+        zoomBeforeSelection = zoomLevel;
+        viewBeforeSelection = vp != nullptr ? vp->getViewPosition() : juce::Point<int>();
+    }
+    zoomToRect(minX, minY, maxX, maxY, 0.97f);
+    zoomedToSelection = true;
+}
+
+void PatchCanvas::leaveFitAll()
+{
+    if (!zoomedToSelection)
+        return;   // zoomed by hand since: leave it where the user put it
+    toggleZoomToSelection();
 }
 
 void PatchCanvas::setSection(int s)

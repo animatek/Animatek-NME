@@ -1359,6 +1359,20 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
       toggleLeftPanel();
     return true;
   }
+  // F6 is Zen mode (editing, panels out of the way), F12 Performance mode (only the
+  // modules and the header's macros). Escape leaves either (issue #118).
+  if (key == juce::KeyPress::F6Key) {
+    toggleViewMode(ViewMode::Zen);
+    return true;
+  }
+  if (key == juce::KeyPress::F12Key) {
+    toggleViewMode(ViewMode::Performance);
+    return true;
+  }
+  if (key == juce::KeyPress::escapeKey && viewMode != ViewMode::Normal) {
+    leaveViewMode();
+    return true;
+  }
   // F4 blows the focused slot up to fill the work area and back, the way a
   // tiling window manager's monocle does. It lived on F11 first, but macOS
   // owns F11 for Show Desktop (issue #55); F11 stays as a quiet alias for
@@ -1608,6 +1622,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
     overlayMenu.addItem(115, "None", overlay != Overlay::Off);
     menu.addSubMenu("Overlays", overlayMenu);
 
+    menu.addSeparator();
+    addShortcutItem(menu, 116, "Zen Mode", "F6", true, viewMode == ViewMode::Zen);
+    addShortcutItem(menu, 117, "Performance Mode", "F12", true, viewMode == ViewMode::Performance);
     menu.addSeparator();
     menu.addItem(69, "Module Icon Bar", true, mainLayout->isModuleIconBarVisible());
     addShortcutItem(menu, 67, "Inspector Panel", "Ctrl+I", true, mainLayout->isLeftPanelVisible());
@@ -1900,6 +1917,12 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
     break;
   case 115:
     PatchCanvas::setOverlayMode(PatchCanvas::OverlayMode::Off);
+    break;
+  case 116:  // Zen Mode
+    toggleViewMode(ViewMode::Zen);
+    break;
+  case 117:  // Performance Mode
+    toggleViewMode(ViewMode::Performance);
     break;
   case 67:  // Inspector Panel
     toggleLeftPanel();
@@ -2363,6 +2386,57 @@ void MainComponent::toggleFocusMode() {
   area.setFocusMode(on);
   mainLayout->getStatusBar().showMessage(
       on ? "Focus mode on - F4 to go back to the tiling" : "Focus mode off", 2500);
+}
+
+void MainComponent::toggleViewMode(ViewMode mode) {
+  if (!mainLayout) return;
+  if (viewMode == mode) {
+    leaveViewMode();
+    return;
+  }
+  // Zen to Performance (or back) keeps what the first one saved: the way back
+  // is always to the editor as it was, not to the other mode.
+  if (viewMode == ViewMode::Normal) {
+    savedView.left = mainLayout->isLeftPanelVisible();
+    savedView.right = mainLayout->isRightPanelVisible();
+    savedView.iconBar = mainLayout->isModuleIconBarVisible();
+  }
+  const bool performance = mode == ViewMode::Performance;
+  viewMode = mode;
+
+  mainLayout->setLeftPanelVisible(false);
+  mainLayout->setRightPanelVisible(false);
+  mainLayout->setModuleIconBarVisible(performance ? false : savedView.iconBar);
+  mainLayout->setStatusBarVisible(!performance);
+  PatchCanvas::setCablesHidden(performance);
+
+  // The layout has to have handed the canvases their new size before they can fit
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  juce::MessageManager::callAsync([safeThis]() {
+    if (!safeThis || !safeThis->mainLayout || safeThis->viewMode == ViewMode::Normal) return;
+    safeThis->mainLayout->getPatchArea().forEachCanvas(
+        [](int, PatchCanvasComponent& c) { c.zoomToFitAll(); });
+  });
+  menuItemsChanged();
+}
+
+void MainComponent::leaveViewMode() {
+  if (!mainLayout || viewMode == ViewMode::Normal) return;
+  viewMode = ViewMode::Normal;
+
+  PatchCanvas::setCablesHidden(false);
+  mainLayout->setStatusBarVisible(true);
+  mainLayout->setModuleIconBarVisible(savedView.iconBar);
+  mainLayout->setLeftPanelVisible(savedView.left);
+  mainLayout->setRightPanelVisible(savedView.right);
+
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  juce::MessageManager::callAsync([safeThis]() {
+    if (!safeThis || !safeThis->mainLayout || safeThis->viewMode != ViewMode::Normal) return;
+    safeThis->mainLayout->getPatchArea().forEachCanvas(
+        [](int, PatchCanvasComponent& c) { c.leaveFitAll(); });
+  });
+  menuItemsChanged();
 }
 
 void MainComponent::toggleSlotOpen(int slot) {
