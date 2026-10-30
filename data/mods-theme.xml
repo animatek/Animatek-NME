@@ -577,7 +577,7 @@
 		</button>
 		<label x="158" y="9">Chain</label>
 	</module>
-	<module component-id="m122" width="255" height="45">
+	<module component-id="m122" width="255" height="75">
 		<name>CC Out</name>
 		<label x="6" y="14">In</label>
 		<connector x="8" y="25" size="13" class="cCONTROL">
@@ -612,5 +612,12 @@
 		<connector x="220" y="25" size="13" class="cCONTROL">
 			<connector component-id="c3" alt="thru" />
 		</connector>
+		<label x="116" y="48">Level %</label>
+		<textDisplay x="116" y="59" width="24" height="14">
+			<parameter component-id="p4" alt="level" />
+		</textDisplay>
+		<knob x="144" y="56" size="20">
+			<parameter component-id="p4" alt="level" />
+		</knob>
 	</module>
 </modules>

@@ -390,9 +390,11 @@
     <parameter component-id="p1" index="0" name="ctrl" class="parameter" defaultValue="1" extension="m1" />
     <parameter component-id="p2" index="1" name="value" class="parameter" defaultValue="0" extension="m2" />
     <parameter component-id="p3" index="2" name="chan" class="parameter" maxValue="15" formatter="value+1" extension="m3" />
+    <parameter component-id="p4" index="3" name="level" class="parameter" maxValue="100" defaultValue="100" extension="m4" />
     <parameter component-id="m1" index="0" name="morph:ctrl" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m2" index="1" name="morph:value" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m3" index="2" name="morph:chan" class="morph" role="morph"  minValue="-15" maxValue="15" />
+    <parameter component-id="m4" index="3" name="morph:level" class="morph" role="morph"  minValue="-100" maxValue="100" />
     <!-- custom attributes -->
     <attribute name="cycles" type="double" value="0.9" />
     <attribute name="x-mem" type="double" value="0.45" />
@@ -400,7 +402,7 @@
     <attribute name="prog-mem" type="double" value="1.5" />
     <attribute name="dyn-mem" type="double" value="0.25" />
     <attribute name="zero-page" type="double" value="1.125" />
-    <attribute name="height" type="integer" value="3" />
+    <attribute name="height" type="integer" value="5" />
     <attribute name="background" value="#9fc3e0" />
   </module>
 </body>
