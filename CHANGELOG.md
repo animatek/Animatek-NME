@@ -78,6 +78,7 @@ run, and the Micro Modular's three knobs.
 
 ### Fixed
 
+- **A program change on the synth's front panel loads in the editor again, after a long editing session** (2026-10-30): every cable or module added or deleted from NME counted an echo to expect from the synth, and the count only went back to zero on disconnect; the G1 does not always send that echo, so after enough edits (36 in Javier's session) each front-panel program change was taken for one of those echoes and swallowed, and the patch stayed as it was (it seemed tied to Zen and Performance mode, but it was not). An expected echo now lapses after four seconds with the edit queue idle.
 - **Six or more sequencers (or meters) now run on the panels** (2026-10-30): the synth numbers its meter pairs from 0 and sends five a message, and NME placed the second message's pairs on half the slots, so the sixth sequencer and later stood still on screen while they ran on the synth (found by Javier: Clavia's own editor showed them moving).
 - **The Windows build compiles again** (2026-10-29): the refused-module message of the G1-Mods layer built its
   `SafePointer` inside a lambda's init-capture, which MSVC reads as the outer lambda's `this`

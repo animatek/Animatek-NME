@@ -285,7 +285,7 @@ void ConnectionManager::forgetSynthState(const char* _why)
     ackedQueueWaiting = false;
     ackedQueueWaitingAllowsNewPatchInSlot = false;
     ++ackedQueueGeneration;
-    pendingSyncEchoes_ = 0;
+    pendingSyncEchoes_.clear();
     suppressNewPatchInSlot_ = false;
     suppressNextAutoFetch = false;
 
@@ -2228,7 +2228,7 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
             // A genuine patch change on the synth invalidates our model for
             // that slot. Echoes of our own edits/uploads (the suppress flags
             // below) don't — the model already reflects them.
-            const bool ownEcho = pendingSyncEchoes_ > 0 || suppressNewPatchInSlot_
+            const bool ownEcho = hasPendingSyncEcho() || suppressNewPatchInSlot_
                               || suppressNextAutoFetch || waitingForUploadAck;
             if (!ownEcho)
                 slotModelDelivered[static_cast<size_t>(msg.newPatchSlot)] = false;
@@ -2275,10 +2275,10 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         // suppressNewPatchInSlot_: set during upload-in-progress.
         // suppressNextAutoFetch: one-shot flag set after upload completes.
         // waitingForUploadAck: upload in progress — don't re-fetch.
-        if (pendingSyncEchoes_ > 0)
+        if (hasPendingSyncEcho())
         {
-            pendingSyncEchoes_--;
-            std::cout << "[SYNC] Consuming sync echo (remaining: " << pendingSyncEchoes_ << ")" << std::endl;
+            pendingSyncEchoes_.pop_front();
+            std::cout << "[SYNC] Consuming sync echo (remaining: " << pendingSyncEchoes_.size() << ")" << std::endl;
         }
         else if (suppressNewPatchInSlot_)
         {

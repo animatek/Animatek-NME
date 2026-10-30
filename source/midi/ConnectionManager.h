@@ -7,6 +7,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <deque>
 #include <functional>
 #include <map>
 #include <utility>
@@ -297,8 +298,11 @@ public:
 
     // Call after sending a structural edit (module/cable add/delete) that will
     // cause the synth to respond with NewPatchInSlot.  The next N NewPatchInSlot
-    // messages will be treated as echoes and suppressed.
-    void expectSyncEcho() { pendingSyncEchoes_++; }
+    // messages will be treated as echoes and suppressed. An echo that has not come
+    // within a few seconds (the synth does not always send one) stops being
+    // expected: left counting, a front-panel program change was taken for the
+    // echo of an edit from long before and the patch never loaded.
+    void expectSyncEcho() { pendingSyncEchoes_.push_back(juce::Time::getMillisecondCounter()); }
 
     // Legacy boolean suppress (for upload-in-progress protection).
     void setSuppressNewPatchInSlot(bool s) { suppressNewPatchInSlot_ = s; }
@@ -444,7 +448,17 @@ private:
     bool uploadWaitsForEditAck = false;    // Upload held until the edit already sent is ACKed (#63)
     bool suppressNextAutoFetch = false;    // Set after upload completes; clears on next NewPatchInSlot
     bool suppressNewPatchInSlot_ = false;  // Set during upload-in-progress
-    int pendingSyncEchoes_ = 0;            // Count of expected NewPatchInSlot echoes from sync edits
+    std::deque<std::uint32_t> pendingSyncEchoes_;   // When each expected NewPatchInSlot echo of a sync edit was asked for
+    // Drops the echoes too old to be one, while the edit queue is idle (a queued edit
+    // may still be waiting to go out), and says whether one is still expected.
+    bool hasPendingSyncEcho()
+    {
+        const auto now = juce::Time::getMillisecondCounter();
+        if (ackedQueue.empty() && !ackedQueueWaiting)
+            while (!pendingSyncEchoes_.empty() && now - pendingSyncEchoes_.front() > 4000)
+                pendingSyncEchoes_.pop_front();
+        return !pendingSyncEchoes_.empty();
+    }
     // Sequential upload state: one packet at a time, waiting for an ACK between
     // each. The cutting and framing rules live in UploadPacketizer (pure, unit
     // tested); this class only walks the packet list against the ACK stream.
