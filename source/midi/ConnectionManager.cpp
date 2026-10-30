@@ -2181,7 +2181,10 @@ void ConnectionManager::onNMInfoReceived(const NMInfoMessage& msg)
         // even slot = channel B (first byte of each pair), odd slot = channel A.
         // Which channel a given light reads is decided at the consumer
         // (PatchCanvas::paintLights), same as the Java pair semantics.
-        int base = msg.meterStartIndex;
+        // The start index counts pairs (the synth sends 5 pairs a message, so the second
+        // one starts at 5), and a pair takes two slots here: with 6 or more sequencers or
+        // meters the later ones landed on the wrong slots and stood still.
+        int base = msg.meterStartIndex * 2;
         bool changed = false;
         for (int i = 0; i < 5; ++i)
         {

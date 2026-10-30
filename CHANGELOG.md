@@ -78,6 +78,7 @@ run, and the Micro Modular's three knobs.
 
 ### Fixed
 
+- **Six or more sequencers (or meters) now run on the panels** (2026-10-30): the synth numbers its meter pairs from 0 and sends five a message, and NME placed the second message's pairs on half the slots, so the sixth sequencer and later stood still on screen while they ran on the synth (found by Javier: Clavia's own editor showed them moving).
 - **The Windows build compiles again** (2026-10-29): the refused-module message of the G1-Mods layer built its
   `SafePointer` inside a lambda's init-capture, which MSVC reads as the outer lambda's `this`
   (`error C2440`); it is a named `SafePointer`, as in the rest of the file. Found by the Patreon build of
