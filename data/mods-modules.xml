@@ -27,7 +27,7 @@
     <attribute name="height" type="integer" value="2" />
     <attribute name="background" value="#fc8642" />
   </module>
-  <module component-id="m123" index="123" name="5-StepSeq" fullname="5-Step Sequencer, one knob a step (G1-Mods)" category="Sequencer (mods)">
+  <module component-id="m123" index="123" name="8Steps" fullname="8Steps, an eight-step sequencer with Steps, Start and Reverse (G1-Mods)" category="Sequencer (mods)">
     <image type="screenshot" src="img/modules/module-91.png" width="256" height="105" />
     <image type="icon16x16" src="img/icons/16x16/module-id-91.png" width="16" height="16" />
     <image type="icon32x32" src="img/icons/32x32/module-id-91.png" width="32" height="32" />
@@ -40,20 +40,34 @@
     <parameter component-id="p3" index="2" name="step 3" class="parameter" defaultValue="64" formatter="value-64" extension="m3" />
     <parameter component-id="p4" index="3" name="step 4" class="parameter" defaultValue="64" formatter="value-64" extension="m4" />
     <parameter component-id="p5" index="4" name="step 5" class="parameter" defaultValue="64" formatter="value-64" extension="m5" />
+    <parameter component-id="p6" index="5" name="step 6" class="parameter" defaultValue="64" formatter="value-64" extension="m6" />
+    <parameter component-id="p7" index="6" name="step 7" class="parameter" defaultValue="64" formatter="value-64" extension="m7" />
+    <parameter component-id="p8" index="7" name="step 8" class="parameter" defaultValue="64" formatter="value-64" extension="m8" />
+    <parameter component-id="p9" index="8" name="steps" class="parameter" maxValue="7" defaultValue="7" formatter="value+1" extension="m9" />
+    <parameter component-id="p10" index="9" name="start" class="parameter" maxValue="7" defaultValue="0" formatter="value+1" extension="m10" />
+    <parameter component-id="p11" index="10" name="reverse" class="parameter" maxValue="1" defaultValue="0" formatter="fmtOffOn" extension="m11" />
+    <parameter component-id="p12" index="11" name="level" class="parameter" maxValue="100" defaultValue="100" extension="m12" />
     <parameter component-id="m1" index="0" name="morph:step 1" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m2" index="1" name="morph:step 2" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m3" index="2" name="morph:step 3" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m4" index="3" name="morph:step 4" class="morph" role="morph"  minValue="-127" maxValue="127" />
     <parameter component-id="m5" index="4" name="morph:step 5" class="morph" role="morph"  minValue="-127" maxValue="127" />
-    <light component-id="ledStep1-5" type="led-array" name="Step 1-5" minValue="0" maxValue="5" />
+    <parameter component-id="m6" index="5" name="morph:step 6" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m7" index="6" name="morph:step 7" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m8" index="7" name="morph:step 8" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m9" index="8" name="morph:steps" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m10" index="9" name="morph:start" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m11" index="10" name="morph:reverse" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m12" index="11" name="morph:level" class="morph" role="morph"  minValue="-100" maxValue="100" />
+    <light component-id="ledStep1-8" type="led-array" name="Step 1-8" minValue="0" maxValue="8" />
     <!-- custom attributes -->
-    <attribute name="cycles" type="double" value="0.6" />
-    <attribute name="x-mem" type="double" value="0.3" />
+    <attribute name="cycles" type="double" value="0.8" />
+    <attribute name="x-mem" type="double" value="0.5" />
     <attribute name="y-mem" type="double" value="0.0" />
-    <attribute name="prog-mem" type="double" value="0.9" />
+    <attribute name="prog-mem" type="double" value="1.2" />
     <attribute name="dyn-mem" type="double" value="0.5" />
-    <attribute name="zero-page" type="double" value="0.875" />
-    <attribute name="height" type="integer" value="4" />
+    <attribute name="zero-page" type="double" value="1.875" />
+    <attribute name="height" type="integer" value="6" />
     <attribute name="background" value="#e5babf" />
   </module>
   <module component-id="m124" index="124" name="TuringMachine" fullname="Turing Machine, a looping random shift register with eight gates (G1-Mods)" category="Sequencer (mods)">
@@ -364,6 +378,30 @@
     <attribute name="zero-page" type="double" value="0.875" />
     <attribute name="height" type="integer" value="2" />
     <attribute name="background" value="#6CB5C0" />
+  </module>
+  <module component-id="m122" index="122" name="CCOut" fullname="CC Out, a controller change to the MIDI OUT (G1-Mods)" category="MIDI (mods)">
+    <image type="screenshot" src="img/modules/module-89.png" width="256" height="30" />
+    <image type="icon16x16" src="img/icons/16x16/module-id-89.png" width="16" height="16" />
+    <image type="icon32x32" src="img/icons/32x32/module-id-89.png" width="32" height="32" />
+    <connector component-id="c1" index="0" name="in" type="input" signal="control" />
+    <connector component-id="c2" index="1" name="send" type="input" signal="logic" />
+    <connector component-id="c3" index="0" name="thru" type="output" signal="control" />
+    <!-- parameter(s) -->
+    <parameter component-id="p1" index="0" name="ctrl" class="parameter" defaultValue="1" extension="m1" />
+    <parameter component-id="p2" index="1" name="value" class="parameter" defaultValue="0" extension="m2" />
+    <parameter component-id="p3" index="2" name="chan" class="parameter" maxValue="15" formatter="value+1" extension="m3" />
+    <parameter component-id="m1" index="0" name="morph:ctrl" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m2" index="1" name="morph:value" class="morph" role="morph"  minValue="-127" maxValue="127" />
+    <parameter component-id="m3" index="2" name="morph:chan" class="morph" role="morph"  minValue="-15" maxValue="15" />
+    <!-- custom attributes -->
+    <attribute name="cycles" type="double" value="0.9" />
+    <attribute name="x-mem" type="double" value="0.45" />
+    <attribute name="y-mem" type="double" value="0.0" />
+    <attribute name="prog-mem" type="double" value="1.5" />
+    <attribute name="dyn-mem" type="double" value="0.25" />
+    <attribute name="zero-page" type="double" value="1.125" />
+    <attribute name="height" type="integer" value="3" />
+    <attribute name="background" value="#9fc3e0" />
   </module>
 </body>
 </ModuleDescriptions>

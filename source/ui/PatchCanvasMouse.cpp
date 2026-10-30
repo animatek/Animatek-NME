@@ -30,7 +30,10 @@ static std::set<juce::String> sequencerStepIds(const ModuleTheme& theme)
 static bool isSequencerStepParam(const ParameterDescriptor& pd,
                                  const std::set<juce::String>& stepIds)
 {
-    return stepIds.count(pd.componentId) != 0
+    // "step N" is a knob step (G1-Mods' 8Steps): its Rnd and Clr work on them too
+    const bool knobStep = pd.name.startsWith("step ") && pd.name.length() > 5
+                       && pd.name.substring(5).containsOnly("0123456789");
+    return stepIds.count(pd.componentId) != 0 || knobStep
         || (pd.name.startsWithIgnoreCase("seq ") && pd.name.containsIgnoreCase("step "));
 }
 

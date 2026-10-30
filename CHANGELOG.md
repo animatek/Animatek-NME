@@ -10,9 +10,11 @@ run, and the Micro Modular's three knobs.
 
 ### Added
 
+- **8Steps' Rnd and Clr** (2026-10-30). A sequencer's Rnd and Clr act on its "steps": the sliders, and the parameters named `seq N, step M`. Parameters named `step N` count too now (`PatchCanvasMouse.cpp`), which is what G1-Mods' 8Steps has, knobs and not sliders. The only other module with parameters of that name, NoteSeqA, has sliders, so nothing changes there. Not clicked: read from the code.
+
 - **The G1-Mods layer, per synth** (2026-10-18, branch `mods-layer`; brought onto 0.23 and the OS update on 2026-10-25, branch `mods-layer-2`; merged into `main` on 2026-10-29, for 0.25). The module types a
-  modified OS adds (G1-Mods: FlipFlop, Mix1-1A, 5-Step Seq, Turing Machine, Scale Quantizer,
-  8Counter, Mux8-1, Random, Bits, Level, Envelope, Osc String) live in files of their own,
+  modified OS adds (G1-Mods: FlipFlop, Mix1-1A, 8Steps, Turing Machine, Scale Quantizer,
+  8Counter, Mux8-1, Random, Bits, Level, Envelope, Osc String, Note Out, CCOut) live in files of their own,
   `data/mods-modules.xml` and `data/mods-theme.xml`, written by G1-Mods' `make_nme_data.py
   --layer` and loaded on top of Clavia's, which stay byte for byte as they were. They are always
   loaded, so a patch with one opens. **NME knows which synths have them**: G1-Mods' builder
