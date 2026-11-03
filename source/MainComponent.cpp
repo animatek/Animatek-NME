@@ -398,8 +398,23 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   }); });
 
   forEachSynth([this](int s, ConnectionManager& cm) { cm.setSynthSettingsCallback([this, s](const SynthSettings& settings) {
-    synthState[static_cast<size_t>(s)].settings = settings;
-    synthState[static_cast<size_t>(s)].settingsKnown = true;
+    auto& st = synthState[static_cast<size_t>(s)];
+    st.settings = settings;
+    st.settingsKnown = true;
+    // A name this editor gave: kept when the synth says it back; when it does not, it was ignored
+    // (sent under a patch id the synth no longer had, as a project opened), and is sent again, the
+    // same name, a few times. It used to stay "Modular" (Javier, 2026-11-03).
+    if (st.pendingAutoName.isNotEmpty()) {
+      if (juce::String(settings.name).trim() == st.pendingAutoName) {
+        st.pendingAutoName.clear();
+      } else if (st.autoNameAttempts < kAutoNameAttempts) {
+        st.autoNameTried = false;
+        std::cout << "[LINK] Port " << (s + 1) << " did not take the name \"" << st.pendingAutoName
+                  << "\": trying again" << std::endl;
+      } else {
+        st.pendingAutoName.clear();
+      }
+    }
     // A new G1-Emu instance starts as a copy of the standalone, name included: two synths called
     // the same cannot be told apart, so the emulator this editor connected by itself gets a name
     // of its own. Never a real G1, nor a port set by hand.
@@ -1023,6 +1038,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
 
   // A double-click on a synth's name renames it.
   mainLayout->onSynthRenameRequested = [this](int synth) { renameSynth(synth); };
+  mainLayout->onSynthMenuRequested = [this](int synth) { showSynthMenu(synth); };
 
   // A click on a synth's name: edit that synth, on the slot it has focused (or A).
   mainLayout->onSynthSelected = [this](int synth) {
@@ -2347,7 +2363,9 @@ bool MainComponent::giveDuplicateEmulatorAName(int synth) {
     "G1 Graphite", "G1 Sierra", "G1 Ozone", "G1 Pulsar", "G1 Ferro", "G1 Vapor", "G1 Delta",
     "G1 Garnet", "G1 Harbor", "G1 Kelvin", "G1 Lumen", "G1 Magma", "G1 Orbit", "G1 Prism" };
   juce::Random random;
-  juce::String name;
+  // The same name again when the first try did not stick (the settings came back without it).
+  juce::String name = state.pendingAutoName.isNotEmpty() && !taken.contains(state.pendingAutoName, true)
+                          ? state.pendingAutoName : juce::String();
   for (int tries = 0; tries < 64 && name.isEmpty(); ++tries) {
     const juce::String candidate(kNames[random.nextInt(static_cast<int>(std::size(kNames)))]);
     if (!taken.contains(candidate, true) && candidate != current)
@@ -2357,6 +2375,18 @@ bool MainComponent::giveDuplicateEmulatorAName(int synth) {
     return false;
 
   state.autoNameTried = true;
+  state.pendingAutoName = name;
+  ++state.autoNameAttempts;
+  // Whether it stuck is seen in the settings the synth sends back (setSynthSettingsCallback): asked
+  // for a moment later, as a synth that ignored them would never say.
+  {
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::Timer::callAfterDelay(2000, [safeThis, synth] {
+      if (safeThis != nullptr && safeThis->synthHub.synth(synth).isConnected()
+          && safeThis->synthState[static_cast<size_t>(synth)].pendingAutoName.isNotEmpty())
+        safeThis->synthHub.synth(synth).requestSynthSettings();
+    });
+  }
   std::cout << "[LINK] Port " << (synth + 1) << " answers to \"" << current
             << "\" (" << (factoryName ? "its factory name" : "another synth's name") << "): renaming it \""
             << name << "\"" << std::endl;
@@ -5324,8 +5354,11 @@ void MainComponent::onConnectionStatusChanged(
     // Some of what follows is only for a connection that is really closed: a synth that is slow
     // to answer is "Disconnected" with its ports (or link) still open, and answers later.
     const bool portsGone = !synthHub.synth(synth).hasOpenPorts();
-    if (portsGone)
+    if (portsGone) {
       state.autoNameTried = false;
+      state.pendingAutoName.clear();
+      state.autoNameAttempts = 0;
+    }
 
     // Reconciling with the synth is a once-per-connection thing, so losing the
     // connection arms it again for the next one.
@@ -5529,6 +5562,16 @@ void MainComponent::connectFoundEmulators(const std::vector<DirectLink::Instance
       giveDuplicateEmulatorAName(synth);
   }
 
+  lastFoundEmulators = found;
+  // An instance released by hand stays off its own, until it is chosen again or goes away.
+  for (int i = setAsideEmulators.size(); --i >= 0;) {
+    bool present = false;
+    for (const auto& inst : found)
+      present = present || DirectLink::deviceId(inst.port) == setAsideEmulators[i];
+    if (!present)
+      setAsideEmulators.remove(i);
+  }
+
   int waiting = 0;
   struct SetWaiting {
     MainComponent& mc; int& n;
@@ -5555,6 +5598,10 @@ void MainComponent::connectFoundEmulators(const std::vector<DirectLink::Instance
     if (onMidi)
       continue;
     const auto id = DirectLink::deviceId(inst.port);
+    if (setAsideEmulators.contains(id)) {
+      ++waiting;   // released by hand: it waits to be chosen
+      continue;
+    }
     // A port that last used this very instance gets it back; otherwise the first free one.
     int target = -1;
     for (int synth = 0; synth < kMaxSynths && target < 0; ++synth)
@@ -5579,6 +5626,122 @@ void MainComponent::connectFoundEmulators(const std::vector<DirectLink::Instance
     }
     handleConnectionRequest(target, id, id);
   }
+}
+
+// Releasing a port: its synth is disconnected and the port is left free. A G1-Emu released so is set
+// aside (not taken back by the next look); a real synth's port stops being kept for it.
+void MainComponent::releaseSynthPort(int synth) {
+  const auto id = synthState[static_cast<size_t>(synth)].lastInputId;
+  if (DirectLink::isDeviceId(id))
+    setAsideEmulators.addIfNotAlreadyThere(id);
+  if (auto* st = appProperties.getUserSettings()) {
+    st->setValue(portKey("midiRealSynth", synth), false);
+    st->setValue(portKey("midiAutoPort", synth), true);   // the emulators may take it
+    st->saveIfNeeded();
+  }
+  handleDisconnectionRequest(synth);
+  std::cout << "[PORT] Port " << (synth + 1) << " released by hand" << std::endl;
+}
+
+void MainComponent::showSynthMenu(int synth) {
+  auto& cm = synthHub.synth(synth);
+  const bool live = cm.isConnected() || cm.getStatus().state == ConnectionManager::State::Connecting
+                    || cm.hasOpenPorts();
+  juce::PopupMenu menu;
+  menu.addSectionHeader("Port " + juce::String(synth + 1));
+  menu.addItem(1, "Rename...", cm.isConnected());
+  menu.addItem(2, "Release port", live);
+  bool anyLive = false;
+  for (int s = 0; s < kMaxSynths; ++s)
+    anyLive = anyLive || synthHub.synth(s).isConnected() || synthHub.synth(s).hasOpenPorts();
+  menu.addItem(3, "Release all ports", anyLive);
+
+  // Who could take this port: G1-Emu instances no editor has (left waiting, or set aside), and MIDI
+  // inputs no port uses, with an output of the same name.
+  juce::PopupMenu to;
+  std::vector<DirectLink::Instance> emus;
+  for (const auto& inst : lastFoundEmulators)
+    if (!inst.busy) {
+      bool used = false;
+      for (int s = 0; s < kMaxSynths; ++s)
+        used = used || (synthState[static_cast<size_t>(s)].lastInputId == DirectLink::deviceId(inst.port)
+                        && (synthHub.synth(s).isConnected() || synthHub.synth(s).hasOpenPorts()));
+      if (!used)
+        emus.push_back(inst);
+    }
+  for (size_t i = 0; i < emus.size(); ++i)
+    to.addItem(100 + static_cast<int>(i), emus[i].name);
+  struct MidiPair { juce::String name, in, out; };
+  std::vector<MidiPair> midis;
+  const auto outs = ConnectionManager::getAvailableOutputDevices();
+  for (const auto& in : ConnectionManager::getAvailableInputDevices()) {
+    if (isEmulatorPort(in.identifier, in.name) || in.name.startsWith("Midi Through"))
+      continue;
+    bool used = false;
+    for (int s = 0; s < kMaxSynths; ++s)
+      used = used || (synthState[static_cast<size_t>(s)].lastInputId == in.identifier
+                      && (synthHub.synth(s).isConnected() || synthHub.synth(s).hasOpenPorts()));
+    if (used)
+      continue;
+    for (const auto& out : outs)
+      if (out.name == in.name) {
+        midis.push_back({in.name, in.identifier, out.identifier});
+        break;
+      }
+  }
+  if (!emus.empty() && !midis.empty())
+    to.addSeparator();
+  for (size_t i = 0; i < midis.size(); ++i)
+    to.addItem(200 + static_cast<int>(i), "MIDI: " + midis[i].name);
+  menu.addSubMenu("Switch to", to, !emus.empty() || !midis.empty());
+
+  juce::Component::SafePointer<MainComponent> safeThis(this);
+  menu.showMenuAsync(juce::PopupMenu::Options(), [safeThis, synth, emus, midis](int result) {
+    if (safeThis == nullptr || result == 0)
+      return;
+    auto& self = *safeThis;
+    if (result == 1) {
+      self.renameSynth(synth);
+      return;
+    }
+    if (result == 2) {
+      self.releaseSynthPort(synth);
+      return;
+    }
+    if (result == 3) {
+      // Every synth off its port, the emulators set aside: none comes back on its own.
+      for (int s = 0; s < kMaxSynths; ++s) {
+        auto& c = self.synthHub.synth(s);
+        if (c.isConnected() || c.hasOpenPorts() || c.getStatus().state == ConnectionManager::State::Connecting)
+          self.releaseSynthPort(s);
+      }
+      return;
+    }
+    juce::String in, out;
+    bool emulator = false;
+    if (result >= 100 && result < 100 + static_cast<int>(emus.size())) {
+      in = out = DirectLink::deviceId(emus[static_cast<size_t>(result - 100)].port);
+      emulator = true;
+    } else if (result >= 200 && result < 200 + static_cast<int>(midis.size())) {
+      in = midis[static_cast<size_t>(result - 200)].in;
+      out = midis[static_cast<size_t>(result - 200)].out;
+    } else {
+      return;
+    }
+    // What was on the port steps aside (a G1-Emu is not taken back on its own), the chosen one comes in.
+    const auto was = self.synthState[static_cast<size_t>(synth)].lastInputId;
+    if (DirectLink::isDeviceId(was) && was != in)
+      self.setAsideEmulators.addIfNotAlreadyThere(was);
+    self.setAsideEmulators.removeString(in);
+    if (auto* st = self.appProperties.getUserSettings()) {
+      st->setValue(portKey("midiEnabled", synth), true);
+      st->setValue(portKey("midiAutoOff", synth), false);
+      st->setValue(portKey("midiAutoPort", synth), emulator);
+      st->saveIfNeeded();
+    }
+    std::cout << "[PORT] Port " << (synth + 1) << " switched by hand to " << in << std::endl;
+    self.handleConnectionRequest(synth, in, out);
+  });
 }
 
 void MainComponent::attemptAutoConnect() {

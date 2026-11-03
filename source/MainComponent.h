@@ -400,8 +400,15 @@ private:
     bool autoConnectEmulatorsEnabled() const;
     bool isPortFreeForEmulator(int synth) const;
     static bool isEmulatorPort(const juce::String& id, const juce::String& name);
-    static constexpr int kUnknownPortTryMs = 5000;   // how long a port with no known synth is tried at start
+    static constexpr int kUnknownPortTryMs = 5000;
+    static constexpr int kAutoNameAttempts = 5;   // a name the synth ignored is sent again this often   // how long a port with no known synth is tried at start
     void connectFoundEmulators(const std::vector<DirectLink::Instance>& found);
+    // Right-click on a synth's name in the slot bar: rename it, release its port, or put another
+    // synth on it (a G1-Emu left waiting, a free MIDI port).
+    void showSynthMenu(int synth);
+    void releaseSynthPort(int synth);
+    std::vector<DirectLink::Instance> lastFoundEmulators;   // the last look's G1-Emu instances
+    juce::StringArray setAsideEmulators;   // released by hand: not connected on their own again
     std::unique_ptr<juce::Timer> emulatorScanTimer;
     bool emulatorScanRunning = false;
     void attemptAutoConnect(int synth);
@@ -484,6 +491,8 @@ private:
         juce::String lastInputId, lastOutputId;   // ports of its last good connection
         int autoConnectRetries = 5;
         bool autoNameTried = false;   // the editor named this emulator already, this connection
+        juce::String pendingAutoName;   // the name given, until the synth's settings come back with it
+        int autoNameAttempts = 0;       // how many times it was sent this connection
     };
     std::array<SynthState, kMaxSynths> synthState;
     SynthState& activeState() { return synthState[static_cast<size_t>(synthHub.activeSynth())]; }

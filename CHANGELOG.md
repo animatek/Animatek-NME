@@ -2,8 +2,33 @@
 
 ## Unreleased
 
+## 0.26.0 — 2026-11-03
+
+For G1-Emu alpha.29 and many synths at once. A synth's name has a right-click menu (release its port,
+release all, put a waiting G1-Emu or a MIDI port on it), a port is kept only for a real synth known
+to live there, emulators keep the names given to them, and a Micro Modular shows its one bank.
+
 ### Fixed
 
+- **Release all ports, and a quiet synth count** (2026-11-03, Javier). The right-click menu on a
+  synth's name has Release all ports: every synth off its port, the emulators set aside so none
+  comes back on its own. The slot panel's header says only the count ("1/8"), in the theme's
+  secondary colour on the right; "+8 G1-Emu waiting, ports full" in warning colour is gone, and the
+  emulators left waiting are in the panel's tooltip and in Switch to. Checked: builds, `nme_tests`
+  pass; tried by Javier.
+- **Right-click on a synth's name: Rename, Release port, Switch to** (2026-11-03, Javier: with more
+  than eight G1-Emu, one waited for good and there was no way to swap it in). Release port
+  disconnects the synth and leaves the port free; a G1-Emu released so is set aside (the next look
+  does not take it back on its own) and counts as waiting, and a real synth's port stops being
+  kept for it. Switch to lists the G1-Emu instances no editor has and the MIDI inputs no port uses
+  (with an output of the same name): the chosen one comes onto the port, and an emulator that was
+  there is set aside. Checked: builds, `nme_tests` pass; not yet tried by hand.
+- **An emulator's new name is checked, and sent again when it did not stick** (2026-11-03, Javier:
+  opening a project with many synths left some "Modular", now and then). The name was sent once per
+  connection and taken as done; sent under a patch id the synth no longer had, it was ignored, and
+  the settings coming back put "Modular" again. Now the synth is asked for its settings 2 s later
+  and, if the name is not there, the same name is sent again, up to five times. Checked: builds,
+  `nme_tests` pass; not yet tried by hand.
 - **A port is kept for a real synth only once one is known there** (2026-11-03, Javier: with eight
   G1-Emu open, one waited, "ports full", because Port 1 kept its USB MIDI interface with the G1
   off). Any saved MIDI device that was plugged in kept its port for a synth that might answer, so

@@ -21,6 +21,7 @@
 // toggle that slot's enable state (like the original 3.3 editor); plain click
 // moves focus.
 class SlotBar : public juce::Component,
+                public juce::SettableTooltipClient,
                 public juce::DragAndDropTarget,
                 private juce::Timer
 {
@@ -69,6 +70,7 @@ public:
     std::function<void(int)> onSlotChanged;
     std::function<void(int)> onSynthSelected;    // click on a synth's name box
     std::function<void(int)> onSynthRenameRequested;   // double-click on it
+    std::function<void(int)> onSynthMenuRequested;     // right-click on it: rename, release, switch
     std::function<void(int)> onSlotEnableToggled;  // Ctrl+click on this slot
     std::function<void(int)> onSlotViewToggled;  // Right-click: show/hide this slot
 
@@ -162,6 +164,7 @@ public:
     std::function<void(int)> onSlotChanged;  // called with the global slot index
     std::function<void(int)> onSynthSelected;
     std::function<void(int)> onSynthRenameRequested;
+    std::function<void(int)> onSynthMenuRequested;
     std::function<void(int)> onSlotViewToggled;  // right-click a slot row: show/hide its sub-window
 
 private:

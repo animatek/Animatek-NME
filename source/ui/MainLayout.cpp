@@ -126,6 +126,8 @@ void SlotBar::setWaitingEmulators(int count)
     if (waitingEmulators == count)
         return;
     waitingEmulators = count;
+    setTooltip(count > 0 ? juce::String(count) + " G1-Emu waiting: every port is taken. Right-click a synth's name to release it or switch to one of them."
+                         : juce::String());
     repaint(0, 0, getWidth(), kHeaderH);
 }
 
@@ -176,16 +178,11 @@ void SlotBar::paint(juce::Graphics& g)
     for (int synth = 0; synth < kMaxSynths; ++synth)
         if (synthName[synth].isNotEmpty())
             ++connected;
-    juce::String count = juce::String(connected) + " / " + juce::String(kMaxSynths);
+    // Only the count, quiet (Javier, 2026-11-03): the emulators left waiting are in the tooltip and
+    // in a synth's right-click menu (Switch to).
     g.setColour(pal.textSecondary);
     g.setFont(AppTheme::uiFont(11.0f));
-    if (waitingEmulators > 0)
-    {
-        // More emulators than ports: the ones left out are counted where it shows.
-        count = "+" + juce::String(waitingEmulators) + " G1-Emu waiting, ports full   " + count;
-        g.setColour(pal.accentWarning);
-    }
-    g.drawText(count, header, juce::Justification::centredRight, true);
+    g.drawText(juce::String(connected) + "/" + juce::String(kMaxSynths), header, juce::Justification::centredRight, true);
 
     for (int i = 0; i < numSlots; ++i)
     {
@@ -351,7 +348,12 @@ void SlotBar::mouseDown(const juce::MouseEvent& e)
     for (int synth = 0; synth < kMaxSynths; ++synth)
         if (nameBounds[synth].contains(pos))
         {
-            if (synthName[synth].isNotEmpty() && onSynthSelected)
+            if (e.mods.isPopupMenu())
+            {
+                if (onSynthMenuRequested)
+                    onSynthMenuRequested(synth);
+            }
+            else if (synthName[synth].isNotEmpty() && onSynthSelected)
                 onSynthSelected(synth);
             return;
         }
@@ -402,6 +404,10 @@ MainLayout::MainLayout(ModuleDescriptions& moduleDescs)
     slotBar.onSynthRenameRequested = [this](int synth) {
         if (onSynthRenameRequested)
             onSynthRenameRequested(synth);
+    };
+    slotBar.onSynthMenuRequested = [this](int synth) {
+        if (onSynthMenuRequested)
+            onSynthMenuRequested(synth);
     };
     slotBar.onSynthSelected = [this](int synth) {
         if (onSynthSelected)
