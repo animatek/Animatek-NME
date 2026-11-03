@@ -40,7 +40,8 @@ PatchLocationDialog::PatchLocationDialog(const juce::String& title,
                                          int  currentSlot,
                                          Callback cb,
                                          int  initialSection,
-                                         int  initialPosition)
+                                         int  initialPosition,
+                                         int  bankCount)
     : title_ (title), patchList_ (patchList), showSlot_ (showSlot), callback (std::move (cb)),
       initialPosition_ (initialPosition)
 {
@@ -69,9 +70,11 @@ PatchLocationDialog::PatchLocationDialog(const juce::String& title,
 
     // Bank
     styleLabel (bankLabel);
-    for (int b = 1; b <= 9; ++b)
+    // A Micro Modular has bank 1 only.
+    const int banks = juce::jlimit (1, 9, bankCount);
+    for (int b = 1; b <= banks; ++b)
         bankCombo.addItem ("Bank " + juce::String (b), b);
-    bankCombo.setSelectedItemIndex (juce::jlimit (0, 8, initialSection), juce::dontSendNotification);
+    bankCombo.setSelectedItemIndex (juce::jlimit (0, banks - 1, initialSection), juce::dontSendNotification);
     bankCombo.onChange = [this]() { updatePositionItems(); };
     styleCombo (bankCombo);
     addAndMakeVisible (bankLabel);
@@ -192,10 +195,11 @@ void PatchLocationDialog::show(juce::Component* parent,
                                 int  currentSlot,
                                 Callback cb,
                                 int  initialSection,
-                                int  initialPosition)
+                                int  initialPosition,
+                                int  bankCount)
 {
     auto* dlg = new PatchLocationDialog (title, patchList, showSlot, currentSlot, std::move (cb),
-                                         initialSection, initialPosition);
+                                         initialSection, initialPosition, bankCount);
 
     if (parent != nullptr)
     {

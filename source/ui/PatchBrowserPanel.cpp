@@ -134,6 +134,15 @@ void PatchBrowserPanel::setPatchList(const std::vector<std::string>& names)
     std::cout << "[INSPECTOR] Tree rebuilt and visible" << std::endl;
 }
 
+void PatchBrowserPanel::setBankCount(int banks)
+{
+    banks = juce::jlimit(1, 9, banks);
+    if (banks == bankCount)
+        return;
+    bankCount = banks;
+    rebuildTree(cachedPatchList);
+}
+
 void PatchBrowserPanel::applyFilters()
 {
     if (cachedPatchList.empty())
@@ -219,7 +228,8 @@ void PatchBrowserPanel::rebuildTree(const std::vector<std::string>& names)
 
     bool hasSearchFilter = currentSearchText.isNotEmpty();
 
-    for (int section = 0; section < 9; ++section)
+    // A Micro Modular has bank 1 only: banks 2-9 do not exist on it.
+    for (int section = 0; section < bankCount; ++section)
     {
         // Create bank node (e.g., "Bank 1 (101-199)")
         int displaySection = section + 1;

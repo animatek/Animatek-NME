@@ -399,6 +399,8 @@ private:
   private:
     bool autoConnectEmulatorsEnabled() const;
     bool isPortFreeForEmulator(int synth) const;
+    static bool isEmulatorPort(const juce::String& id, const juce::String& name);
+    static constexpr int kUnknownPortTryMs = 5000;   // how long a port with no known synth is tried at start
     void connectFoundEmulators(const std::vector<DirectLink::Instance>& found);
     std::unique_ptr<juce::Timer> emulatorScanTimer;
     bool emulatorScanRunning = false;

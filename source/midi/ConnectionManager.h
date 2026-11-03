@@ -68,6 +68,9 @@ public:
     // How many slots the synth on this connection has: the Micro's one, or the rack's four.
     int slotCount() const { return status.synthModel == SynthModel::Micro ? 1 : 4; }
     bool isMicroModular() const { return status.state == State::Connected && status.synthModel == SynthModel::Micro; }
+    // The banks the synth has: a Micro Modular has one (99 places; its OS refuses a Store into
+    // banks 2-9), the rack nine.
+    int bankCount() const { return isMicroModular() ? 1 : 9; }
     // Ports (or a direct link) still open, whatever the state says: a synth that did not answer in
     // time is "Disconnected" but still listened to, and comes back by itself when it speaks.
     bool hasOpenPorts() const { return midiDevice != nullptr && midiDevice->isConnected(); }

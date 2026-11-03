@@ -23,6 +23,8 @@ public:
 
     // Update the patch list from the synth
     void setPatchList(const std::vector<std::string>& names);
+    // The banks to list: 1 for a Micro Modular, 9 for the rack. Set before setPatchList.
+    void setBankCount(int banks);
     void setLoadingState(bool loading);
 
     // Mark which patch is currently loaded in the editor (section/position, -1 = none)
@@ -95,6 +97,7 @@ private:
     std::vector<std::string> cachedPatchList;
     juce::String currentSearchText;
     bool hideEmptySlots = false;
+    int bankCount = 9;   // 1 on a Micro Modular
 
     // Currently loaded patch location (-1 = unknown)
     int loadedSection = -1;

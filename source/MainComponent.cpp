@@ -367,6 +367,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       if (!safeThis) return;
       // The browser lists the bank of the synth being edited.
       if (s == safeThis->synthHub.activeSynth()) {
+        safeThis->mainLayout->getPatchBrowser().setBankCount(safeThis->synthHub.active().bankCount());
         safeThis->mainLayout->getPatchBrowser().setPatchList(names);
         safeThis->mainLayout->getPatchBrowser().setLoadingState(false);
       }
@@ -503,7 +504,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       [safeThis, section, position](const PatchLocationDialog::Result& r) {
         if (safeThis != nullptr && r.confirmed)
           safeThis->synthHub.active().copyPatchInBank(section, position, r.section, r.position, r.slot);
-      });
+      }, -1, -1, synthHub.active().bankCount());
   };
 
   mainLayout->getPatchBrowser().onPatchMove = [this](int section, int position) {
@@ -513,7 +514,7 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
       [safeThis, section, position](const PatchLocationDialog::Result& r) {
         if (safeThis != nullptr && r.confirmed)
           safeThis->synthHub.active().movePatchInBank(section, position, r.section, r.position, r.slot);
-      });
+      }, -1, -1, synthHub.active().bankCount());
   };
 
   forEachSynth([this](int s, ConnectionManager& cm) { cm.setPatchDataCallback(
@@ -1117,6 +1118,22 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
         std::cout << "[LINK] Port " << (synth + 1) << " handed back to the emulators" << std::endl;
       }
     st->setValue("emulatorPortsRepaired", true);
+    st->saveIfNeeded();
+  }
+
+  // A port is kept for a real synth only once a real synth is known to live there (midiRealSynth),
+  // whatever the interface: until 0.25 any saved MIDI device that was plugged in kept its port, so an
+  // interface with nothing behind it took a place from the emulators for good (Javier, 2026-11-03).
+  // Once, the MIDI devices saved by then (set by hand, or a real synth that connected) count as known.
+  if (auto* st = appProperties.getUserSettings();
+      st != nullptr && !st->getBoolValue("realSynthPortsLearned", false)) {
+    for (int synth = 0; synth < kMaxSynths; ++synth) {
+      const auto id = st->getValue(portKey("midiInputDevice", synth));
+      const auto name = st->getValue(portKey("midiInputName", synth));
+      if (id.isNotEmpty() && !isEmulatorPort(id, name))
+        st->setValue(portKey("midiRealSynth", synth), true);
+    }
+    st->setValue("realSynthPortsLearned", true);
     st->saveIfNeeded();
   }
 
@@ -2426,6 +2443,7 @@ void MainComponent::refreshForActiveSynth() {
     mainLayout->getHeaderBar().setSynthDspLoad(v[0], v[1], v[2], v[3]);
     mainLayout->getStatusBar().setVoiceCount(v[0] + v[1] + v[2] + v[3]);
   }
+  mainLayout->getPatchBrowser().setBankCount(cm.bankCount());
   mainLayout->getPatchBrowser().setPatchList(cm.getPatchList());
   mainLayout->getPatchBrowser().setLoadingState(cm.isConnected() && !cm.isPatchListLoaded());
   menuItemsChanged();
@@ -3081,7 +3099,7 @@ void MainComponent::storePatchToBank() {
       safeThis->storeAndReport(SynthSlot::global(synth, result.slot), result.section,
                                result.position);
     },
-    initialSection, initialPosition);
+    initialSection, initialPosition, synthHub.active().bankCount());
 }
 
 void MainComponent::quickStoreToBank() {
@@ -3238,8 +3256,10 @@ bool MainComponent::storeSlotPatchToBank(int slot, int bankSection, int position
     error = "Patch list not loaded yet";
     return false;
   }
-  if (bankSection < 0 || bankSection > 8 || position < 0 || position > 98) {
-    error = "bank must be 1-9 and position 1-99";
+  const int banks = synthHub.forSlot(slot).bankCount();
+  if (bankSection < 0 || bankSection >= banks || position < 0 || position > 98) {
+    error = banks == 1 ? "the Micro Modular has bank 1 only; position must be 1-99"
+                       : "bank must be 1-9 and position 1-99";
     return false;
   }
 
@@ -5378,6 +5398,17 @@ void MainComponent::onConnectionStatusChanged(
   // their edits again.
   if (connected) {
     saveMidiSettings(synth, state.lastInputId, state.lastOutputId);
+    // After the ports are saved (a new device there forgets the old one's synth): a real synth
+    // answered on a MIDI port, so that port is its place from now on (isPortFreeForEmulator).
+    const auto portName = synthHub.synth(synth).getConnectedPortName();
+    if (auto* st = appProperties.getUserSettings();
+        st != nullptr && portName.isNotEmpty() && !isEmulatorPort(state.lastInputId, portName)
+        && !st->getBoolValue(portKey("midiRealSynth", synth), false)) {
+      st->setValue(portKey("midiRealSynth", synth), true);
+      st->saveIfNeeded();
+      std::cout << "[PORT] Port " << (synth + 1) << ": a real synth answered on " << portName
+                << ", the port is kept for it" << std::endl;
+    }
     for (int l = 0; l < kSlotsPerSynth; ++l) {
       const int s = SynthSlot::global(synth, l);
       if (slotPatches[s] && !slotSynchronizers[s] && !slotIsLocal[s]) {
@@ -5458,6 +5489,11 @@ void MainComponent::scanForEmulators() {
 
 // A port an emulator may take: switched on in MIDI Setup (or never set), not connected, not
 // trying to connect, and not kept for MIDI ports of its own that are still around.
+// G1-Emu's own ways in: its direct link, or its virtual PC Port ("G1-Emu PC Port", "G1-Emu 2 PC Port"...).
+bool MainComponent::isEmulatorPort(const juce::String& id, const juce::String& name) {
+  return DirectLink::isDeviceId(id) || name.startsWith("G1-Emu");
+}
+
 bool MainComponent::isPortFreeForEmulator(int synth) const {
   const auto& cm = synthHub.synth(synth);
   if (cm.isConnected() || cm.getStatus().state == ConnectionManager::State::Connecting
@@ -5471,6 +5507,10 @@ bool MainComponent::isPortFreeForEmulator(int synth) const {
     return false;
   const auto& saved = synthState[static_cast<size_t>(synth)].lastInputId;
   if (saved.isEmpty() || DirectLink::isDeviceId(saved))
+    return true;
+  // Kept only for a real synth known to live behind it (midiRealSynth): an interface that never
+  // had one, or an emulator's own virtual port, does not keep its place.
+  if (st == nullptr || !st->getBoolValue(portKey("midiRealSynth", synth), false))
     return true;
   // MIDI ports only: listing the direct links would knock on every emulator from here.
   for (const auto& d : juce::MidiInput::getAvailableDevices())
@@ -5612,6 +5652,22 @@ void MainComponent::attemptAutoConnect(int synth) {
     state.lastInputId = resolvedInputId;
     state.lastOutputId = resolvedOutputId;
     synthHub.synth(synth).connect(resolvedInputId, resolvedOutputId);
+    // A port with no real synth known behind it is tried, not kept: if nothing answers, it is closed
+    // and left free for the first connection, automatic (an emulator) or by hand. One that a real
+    // synth answered on before keeps listening for it, as before.
+    if (!settings->getBoolValue(portKey("midiRealSynth", synth), false)) {
+      juce::Component::SafePointer<MainComponent> safeThis(this);
+      juce::Timer::callAfterDelay(kUnknownPortTryMs, [safeThis, synth, resolvedInputId]() {
+        if (safeThis == nullptr)
+          return;
+        auto& cm = safeThis->synthHub.synth(synth);
+        if (!cm.isConnected() && cm.hasOpenPorts()
+            && safeThis->synthState[static_cast<size_t>(synth)].lastInputId == resolvedInputId) {
+          std::cout << "[PORT] Port " << (synth + 1) << ": nothing answered, closed and left free" << std::endl;
+          cm.disconnect("Nothing answered: the port is free");
+        }
+      });
+    }
   } else {
     // ALSA may not have enumerated devices yet — retry a few times
     if (state.autoConnectRetries > 0 && (inputs.isEmpty() || outputs.isEmpty())) {
@@ -5634,6 +5690,10 @@ void MainComponent::saveMidiSettings(int synth, const juce::String &inputId,
   if (settings == nullptr)
     return;
 
+  // Another device on this port: whatever real synth was known there is not known here; it is
+  // learnt again when one answers (onConnectionStatusChanged).
+  if (settings->getValue(portKey("midiInputDevice", synth)) != inputId)
+    settings->setValue(portKey("midiRealSynth", synth), false);
   settings->setValue(portKey("midiInputDevice", synth), inputId);
   settings->setValue(portKey("midiOutputDevice", synth), outputId);
 

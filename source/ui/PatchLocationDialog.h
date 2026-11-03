@@ -29,7 +29,8 @@ public:
                         int  currentSlot,
                         Callback cb,
                         int  initialSection = -1,
-                        int  initialPosition = -1);
+                        int  initialPosition = -1,
+                        int  bankCount = 9);
 
     void paint   (juce::Graphics& g) override;
     void resized () override;
@@ -44,7 +45,8 @@ public:
                      int  currentSlot,
                      Callback cb,
                      int  initialSection = -1,
-                     int  initialPosition = -1);
+                     int  initialPosition = -1,
+                     int  bankCount = 9);   // 1 on a Micro Modular
 
 private:
     void updatePositionItems();

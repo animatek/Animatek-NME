@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Fixed
+
+- **A port is kept for a real synth only once one is known there** (2026-11-03, Javier: with eight
+  G1-Emu open, one waited, "ports full", because Port 1 kept its USB MIDI interface with the G1
+  off). Any saved MIDI device that was plugged in kept its port for a synth that might answer, so
+  an interface with nothing behind it took a place from the emulators for good. Now a port is kept
+  only when a real synth has answered on it (`midiRealSynth`, learnt on connecting through a MIDI
+  port that is not G1-Emu's direct link nor its "G1-Emu ... PC Port", and forgotten when the port
+  is given another device), whatever the interface is. At start, a saved port with no known synth
+  is tried for 5 s and, if nothing answers, closed and left free for the first connection,
+  automatic or by hand. Once, the MIDI devices saved by then count as known (they were set by hand
+  or connected). Checked: builds, `nme_tests` pass; not yet tried by hand.
+- **A Micro Modular shows and offers bank 1 only** (2026-11-03, Javier testing G1-Emu Micro). The
+  Micro has one bank of 99 places, and its OS refuses a Store into banks 2-9 (`0D bank 00 00 03`,
+  nothing written; found with G1-Emu's `g1storetest`), but the synth browser listed nine banks and
+  Store to Bank, Copy and Move offered them all. `ConnectionManager::bankCount()` (1 on a Micro, 9
+  on the rack) now drives the browser (`PatchBrowserPanel::setBankCount`), the bank box of the
+  location dialog, and Store to Bank's check, which says why. Checked: builds, `nme_tests` pass;
+  Javier saw one bank against G1-Emu Micro. Still listing nine: the bank transfer dialog.
+
 ## 0.25.0 — 2026-10-29
 
 NME knows the module types of a G1-Mods OS and offers them to a synth that has it. Two views for working
