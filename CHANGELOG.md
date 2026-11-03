@@ -980,7 +980,7 @@ entries below are in the order they were made, newest first; the redesign ones s
   Javier). The red/green/blue/alpha boxes took the theme's text colour on the picker's fixed dark
   background; they now have the editor window's own light-on-dark colours.
 - **Old 2.10 patches are converted as Clavia's editor converts them; most factory patches loaded
-  silent** (2026-10-13, G1-Emu issue #65). A 2.10 file was read with its values copied verbatim
+  silent** (2026-10-13, G1-Emu issue #65; first reported by Fredi, GitHub alfnot, by email in August). A 2.10 file was read with its values copied verbatim
   and its morph and assignment sections left out. The rules now come from Clavia's editor 3.03
   itself (`NME303.exe`, read for its behaviour in `G1originaleditor/notes/14-conversion-pch-2.10.md`):
   - in 13 modules (outputs, OscA/OscB/OscSlvA, LFOs, FilterE/FilterF, the 1-4 and 4-1 switches,
