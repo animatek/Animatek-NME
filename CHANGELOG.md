@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Release notes for 0.26.0** (2026-11-05, Claude): `docs/releases/RELEASE_NOTES_0.26.0.md`, the
+  text of the public release, with G1-Emu alpha.30 as the emulator to use. The synth menu (Rename,
+  Release port, Switch to) is marked as tried by Javier.
+
 ## 0.26.0 — 2026-11-03
 
 For G1-Emu alpha.29 and many synths at once. A synth's name has a right-click menu (release its port,
@@ -22,7 +26,7 @@ to live there, emulators keep the names given to them, and a Micro Modular shows
   does not take it back on its own) and counts as waiting, and a real synth's port stops being
   kept for it. Switch to lists the G1-Emu instances no editor has and the MIDI inputs no port uses
   (with an output of the same name): the chosen one comes onto the port, and an emulator that was
-  there is set aside. Checked: builds, `nme_tests` pass; not yet tried by hand.
+  there is set aside. Checked: builds, `nme_tests` pass; tried by Javier (2026-11-05).
 - **An emulator's new name is checked, and sent again when it did not stick** (2026-11-03, Javier:
   opening a project with many synths left some "Modular", now and then). The name was sent once per
   connection and taken as done; sent under a patch id the synth no longer had, it was ignored, and
