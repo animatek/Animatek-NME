@@ -51,7 +51,9 @@ JUCE lives at `JUCE/` as a git submodule (juce-framework/JUCE, 8.x). CI checks i
 with `submodules: recursive`; locally run `git submodule update --init` after a fresh clone.
 `.github/workflows/build-binaries.yml` (manual `workflow_dispatch`) builds Release
 binaries for Linux/Windows/macOS-universal as short-lived artifacts — binaries are
-distributed via Patreon, never as public GitHub Releases. Release binaries are normally
+distributed via Patreon and the Animatek store (SureCart, one-time 15 €, updates included:
+`https://animatek.net/products/animatek-nme/`, `VersionCheck::kStoreUrl`), never as public
+GitHub Releases. Release binaries are normally
 built locally (`VERSION=x.y.z bash packaging/build-appimage.sh`) and dropped into
 `#Ejecutables/<version>/`.
 

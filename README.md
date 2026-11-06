@@ -10,15 +10,19 @@ to run on current macOS, Windows, and Linux systems without requiring an old Jav
 [CHANGELOG.md](CHANGELOG.md)). There are two ways to get it, and both give you the
 same application:
 
-- **Ready-to-run builds** for macOS, Windows, and Linux are available to patrons at
-  [patreon.com/animatek](https://www.patreon.com/c/animatek). Patreon pays for the
-  hardware, the testing, and the per-platform packaging.
+- **Ready-to-run builds** for macOS, Windows, and Linux, two ways:
+  - as a patron at [patreon.com/animatek](https://www.patreon.com/c/animatek), or
+  - as a **one-time purchase (15 €)** in the
+    [Animatek store](https://animatek.net/products/animatek-nme/), updates included.
+    No subscription, no Patreon account needed.
+
+  Either one pays for the hardware, the testing, and the per-platform packaging.
 - **Building it yourself is free and fully supported.** Everything needed is in this
   repository: no missing pieces, no disabled features, no separate "pro" branch. See
   [Building](#building) below.
 
 That is why the [GitHub Releases](https://github.com/animatek/Animatek-NME/releases) carry
-the release notes but no binaries: those are distributed through Patreon, while the code stays
+the release notes but no binaries: those are distributed through Patreon and the store, while the code stays
 GPLv3 for anyone who wants to compile it, fork it, or read it. NME tells you when a new version
 is out.
 
@@ -30,8 +34,9 @@ to keep going:
 [![Patreon](https://img.shields.io/badge/Patreon-support-f96854?logo=patreon&logoColor=white)](https://www.patreon.com/c/animatek)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-0070ba?logo=paypal&logoColor=white)](https://www.paypal.com/donate/?hosted_button_id=YATW56VC46ENE)
 
-Patreon gives you the ready-to-run builds and the guides; a one-off donation is just a
-thank-you, nothing is locked behind it.
+Patreon gives you the ready-to-run builds and the guides; the
+[store](https://animatek.net/products/animatek-nme/) sells the same builds once, for 15 €,
+with the updates; a one-off donation is just a thank-you, nothing is locked behind it.
 
 > Nord Modular is a trademark of Clavia DMI AB. This project is an independent,
 > community-developed editor and is not affiliated with or endorsed by Clavia.

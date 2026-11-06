@@ -1762,17 +1762,23 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex,
   else if (menuIndex == 5) // About
   {
     if (newVersionOut()) {
+      // Two ways to get it (#97): Patreon, or a one-time purchase in the Animatek store
       const juce::String text = "Version " + editorOptions.latestVersion + " is out: get it on Patreon";
-      if (newVersionUnseen())
+      const juce::String storeText = "Version " + editorOptions.latestVersion + " is out: buy it once in the Animatek store";
+      if (newVersionUnseen()) {
         menu.addItem(55, text, true, false, AppLookAndFeel::newDot());
-      else
+        menu.addItem(57, storeText, true, false, AppLookAndFeel::newDot());
+      } else {
         menu.addItem(55, text);
+        menu.addItem(57, storeText);
+      }
       menu.addSeparator();
     }
     menu.addItem(54, "About Animatek NME...", true);
     menu.addSeparator();
     menu.addItem(53, "Animatek NME Website", true);
     menu.addItem(50, "Support the Project (Patreon)", true);
+    menu.addItem(58, "Buy the Builds (Animatek Store)", true);
     menu.addItem(56, "Donate (PayPal)...", true);
     menu.addItem(51, "Source Code (GitHub)", true);
     menu.addItem(52, "animatek.net", true);
@@ -1953,11 +1959,15 @@ void MainComponent::menuItemSelected(int menuItemID, int) {
   case 50:  // Patreon
     openURL(VersionCheck::kPatreonUrl);
     break;
-  case 55:  // A new version is out (#97): the dot goes, the item stays until it is installed
-    openURL(VersionCheck::kPatreonUrl);
+  case 55:  // A new version is out (#97): the dot goes, the items stay until it is installed
+  case 57:
+    openURL(menuItemID == 57 ? VersionCheck::kStoreUrl : VersionCheck::kPatreonUrl);
     editorOptions.newVersionSeen = editorOptions.latestVersion;
     editorOptions.save(appProperties.getUserSettings());
     menuItemsChanged();
+    break;
+  case 58:  // Animatek store: the builds as a one-time purchase
+    openURL(VersionCheck::kStoreUrl);
     break;
   case 56:  // Donate
     openURL(VersionCheck::kDonateUrl);

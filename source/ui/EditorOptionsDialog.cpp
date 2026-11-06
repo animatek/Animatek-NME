@@ -337,7 +337,8 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
     newVersionToggle.setToggleState (options.checkNewVersion, juce::dontSendNotification);
     newVersionToggle.setTooltip ("On startup, at most once a day, NME reads the release tags of "
                                  "github.com/animatek/Animatek-NME. When a newer version is out, About "
-                                 "gets a red dot and an item that opens Patreon. It never downloads anything.");
+                                 "gets a red dot and two items: one opens Patreon, the other the Animatek store. "
+                                 "It never downloads anything.");
     addAndMakeVisible (newVersionToggle);
     autoUploadToggle.setToggleState (options.autoUpload,     juce::dontSendNotification);
     askSlotToggle   .setToggleState (options.askSlotOnOpen,  juce::dontSendNotification);

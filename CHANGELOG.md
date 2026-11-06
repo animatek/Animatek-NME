@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The builds in the Animatek store too** (2026-11-06, Claude): a one-time purchase of 15 €, updates
+  included, besides Patreon. When a new version is out, About shows two items (Patreon and the store),
+  both with the red dot; About also has Buy the Builds (Animatek Store). The link is
+  `VersionCheck::kStoreUrl` (`animatek.net/products/animatek-nme/`, a SureCart product); README,
+  CLAUDE.md and the option's tooltip say so.
+
 - **Release notes for 0.26.0** (2026-11-05, Claude): `docs/releases/RELEASE_NOTES_0.26.0.md`, the
   text of the public release, with G1-Emu alpha.30 as the emulator to use. The synth menu (Rename,
   Release port, Switch to) is marked as tried by Javier.
