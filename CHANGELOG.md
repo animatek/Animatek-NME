@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **The builds in the Animatek store too** (2026-11-06, Claude): a one-time purchase of 15 €, updates
+- **The builds in the Animatek store too** (2026-11-06, Claude): a one-time purchase of 19 €, updates
   included, besides Patreon. When a new version is out, About shows two items (Patreon and the store),
   both with the red dot; About also has Buy the Builds (Animatek Store). The link is
   `VersionCheck::kStoreUrl` (`animatek.net/products/animatek-nme/`, a SureCart product); README,

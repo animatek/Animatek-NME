@@ -12,7 +12,7 @@ same application:
 
 - **Ready-to-run builds** for macOS, Windows, and Linux, two ways:
   - as a patron at [patreon.com/animatek](https://www.patreon.com/c/animatek), or
-  - as a **one-time purchase (15 €)** in the
+  - as a **one-time purchase (19 €)** in the
     [Animatek store](https://animatek.net/products/animatek-nme/), updates included.
     No subscription, no Patreon account needed.
 
@@ -35,7 +35,7 @@ to keep going:
 [![Donate](https://img.shields.io/badge/Donate-PayPal-0070ba?logo=paypal&logoColor=white)](https://www.paypal.com/donate/?hosted_button_id=YATW56VC46ENE)
 
 Patreon gives you the ready-to-run builds and the guides; the
-[store](https://animatek.net/products/animatek-nme/) sells the same builds once, for 15 €,
+[store](https://animatek.net/products/animatek-nme/) sells the same builds once, for 19 €,
 with the updates; a one-off donation is just a thank-you, nothing is locked behind it.
 
 > Nord Modular is a trademark of Clavia DMI AB. This project is an independent,
