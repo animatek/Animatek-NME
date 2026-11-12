@@ -566,7 +566,7 @@ void PatchCanvas::paintDragValueBadge(juce::Graphics& g)
         return;
 
     paintOverlayBadge(g, control, mod, *dragState.module, *dragState.parameter,
-                      getParameterValueText(*dragState.parameter));
+                      getParameterValueText(*dragState.module, *dragState.parameter));
 }
 
 void PatchCanvas::paintHoverBadge(juce::Graphics& g)
@@ -591,7 +591,7 @@ void PatchCanvas::paintHoverBadge(juce::Graphics& g)
     if (param == nullptr)
         return;
 
-    juce::String text = getParameterValueText(*param);
+    juce::String text = getParameterValueText(*hoverModule, *param);
 
     // On a display that rotates its units, the readout answers what the value
     // is in the units the box is NOT showing, which is what the original puts
@@ -699,7 +699,7 @@ juce::String PatchCanvas::getOverlayText(const Module& m, const Parameter& param
         return (group >= 0 && group < 4) ? "M" + juce::String(group + 1) : juce::String();
 
     if (overlayMode == OverlayMode::Values)
-        return getParameterValueText(param);
+        return getParameterValueText(m, param);
 
     // Assignment readouts. Both are reverse lookups: the patch stores them by
     // knob and by controller, and here we have the parameter and want to know
@@ -1156,24 +1156,11 @@ void PatchCanvas::paintKnobs(juce::Graphics& g, const Module& m, juce::Rectangle
         const bool flatKnob = activeScheme_.flatKnobs && !skeuoOn && !activeScheme_.wireframe;
         if (flatKnob)
         {
-            float origin = 0.0f;
-            if (param != nullptr)
-            {
-                auto* pd = param->getDescriptor();
-                const int range = pd->maxValue - pd->minValue;
-                if (range > 0)
-                {
-                    // Bipolar: a negative minimum, or (the usual case, 0..127 on the
-                    // wire) a default at the centre of the range: fine tune, pulse
-                    // width, KBT. The arc then grows from the centre.
-                    const float def = static_cast<float>(pd->defaultValue - pd->minValue)
-                                      / static_cast<float>(range);
-                    if (pd->minValue < 0 && pd->maxValue > 0)
-                        origin = static_cast<float>(-pd->minValue) / static_cast<float>(range);
-                    else if (std::abs(def - 0.5f) < 0.03f)
-                        origin = def;
-                }
-            }
+            // From the zero of a signed reading, the middle of a centred one,
+            // else the minimum; a polarity switch on the module decides (#123).
+            const float origin = param != nullptr && param->getDescriptor() != nullptr
+                ? ValueFormatters::arcOrigin(*param->getDescriptor(), &m)
+                : 0.0f;
             const auto flatCol = skeuo::flatKnobColours(activeScheme_.knobBase, activeScheme_.knobBorder,
                                                         activeScheme_.knobGrip, activeScheme_.moduleText,
                                                         activeScheme_.gridBackground, activeScheme_.knobArc);
@@ -2492,9 +2479,11 @@ void PatchCanvas::paintTextDisplays(juce::Graphics& g, const Module& m, juce::Re
             // Formatter: theme override (e.g. slave-osc partial ratio) wins over
             // the descriptor's formatter from modules.xml. ValueFormatters is the
             // C++ port of nmformat.js — single source of truth for value display.
-            const juce::String& fmtName = td.formatterOverride.isNotEmpty()
+            // inModule: the Constant's value reads through its polarity switch (#122).
+            const auto shownDesc = ValueFormatters::inModule(&m, *param->getDescriptor());
+            const juce::String fmtName = td.formatterOverride.isNotEmpty()
                 ? td.formatterOverride
-                : param->getDescriptor()->displayFormatter (ValueFormatters::preferNoteNames());
+                : shownDesc.displayFormatter (ValueFormatters::preferNoteNames());
 
             // Displays with a units setting read the same value through whichever
             // unit the patch has stored for them (issue #30).

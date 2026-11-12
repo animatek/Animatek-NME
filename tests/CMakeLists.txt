@@ -23,6 +23,8 @@ target_sources(nme_tests PRIVATE
     test_patch_file_name.cpp
     test_seq_note_names.cpp
     test_module_naming.cpp
+    test_param_polarity.cpp
+    test_var_morph_ab.cpp
     test_dangling_assignments.cpp
     test_midi_lifecycle.cpp
     test_synchronizer_new_module.cpp

@@ -633,12 +633,13 @@ juce::String PatchCanvas::formatInFreqUnit(const Module& m, const Parameter& val
                                    masterPitch->getValue() + valueParam.getValue() - 64);
 }
 
-juce::String PatchCanvas::getParameterValueText(const Parameter& param) const
+juce::String PatchCanvas::getParameterValueText(const Module& m, const Parameter& param) const
 {
-    auto* pd = param.getDescriptor();
-    if (pd == nullptr)
+    if (param.getDescriptor() == nullptr)
         return juce::String(param.getValue());
 
+    const auto shown = ValueFormatters::inModule(&m, *param.getDescriptor());
+    const auto* pd = &shown;
     const auto fmt = [pd](int v) { return ValueFormatters::format(*pd, v); };
     const auto start = fmt(param.getValue());
 

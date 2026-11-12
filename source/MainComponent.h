@@ -613,14 +613,12 @@ private:
     InterpolationState interpolation;
     std::unique_ptr<juce::Timer> interpolationTimer;
 
-    // Morph A/B fader state (single set for the active slot; reset on patch change)
-    ParamSnapshot morphA, morphB;
+    // The A-B ends and the control driving the fader live in the slot's
+    // variations, so they are saved and recalled with the patch (issue #119).
+    PatchVariations& ab() { return variations[activeSlot]; }
     struct MorphPair { int section, moduleId, paramId, aVal, bVal; };
     std::vector<MorphPair> morphPairs;     // cached differing params, rebuilt on capture
     bool morphLearnArmed = false;
-    int morphKnobSection = -1, morphKnobModule = -1, morphKnobParam = -1;
-    int morphKnobIndex = -1;    // physical knob (0..22) assigned as the fader carrier, -1 = none
-    int morphKnobMin = 0, morphKnobMax = 127;   // range of the learned knob's param
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)

@@ -1,4 +1,5 @@
 #include "ValueFormatters.h"
+#include "../model/Patch.h"
 
 #include <cmath>
 #include <unordered_map>
@@ -275,6 +276,14 @@ static juce::String fmtNoteScale (int value)
 static juce::String fmtOffset64_2 (int value)
 {
     return value == 127 ? juce::String ("64") : juce::String (value - 64);
+}
+
+// The Constant with its unipolar switch on (issue #122): 0 to 64 in steps of
+// one half, as the original editor and the synth's own display read it. The
+// top step reads 64 rather than 63.5, as the bipolar reading's does.
+static juce::String fmtUnipolar64_2 (int value)
+{
+    return juce::String (value == 127 ? 64.0 : value / 2.0, 1);
 }
 
 static juce::String fmtOscHz (int value)
@@ -591,6 +600,7 @@ static const std::unordered_map<juce::String, Fn>& registry()
         { "fmtSeqNote",               fmtSeqNote },
         { "fmtSeqInterval",           fmtSeqInterval },
         { "fmtOffset64_2",            fmtOffset64_2 },
+        { "fmtUnipolar64_2",          fmtUnipolar64_2 },
         { "fmtOscHz",                 fmtOscHz },
         { "fmtPartialRange",          fmtPartialRange },
         { "fmtPartials",              fmtPartials },
@@ -661,6 +671,64 @@ bool preferNoteNames()            { return preferNoteNamesFlag; }
 juce::String format (const ParameterDescriptor& pd, int value)
 {
     return format (pd.displayFormatter (preferNoteNamesFlag), value);
+}
+
+// The module's polarity switch: on, off, or no such switch.
+static int unipolarSwitch (const Module& m)
+{
+    for (const auto& p : m.getParameters())
+    {
+        const auto* d = p.getDescriptor();
+        if (d != nullptr && d->paramClass == "parameter" && d->name == "unipolar")
+            return p.getValue();
+    }
+    return -1;
+}
+
+ParameterDescriptor inModule (const Module* m, const ParameterDescriptor& pd)
+{
+    ParameterDescriptor shown = pd;
+    if (m != nullptr && pd.formatter == "fmtOffset64_2" && unipolarSwitch (*m) == 1)
+        shown.formatter = "fmtUnipolar64_2";
+    return shown;
+}
+
+float arcOrigin (const ParameterDescriptor& pd, const Module* m)
+{
+    const int range = pd.maxValue - pd.minValue;
+    if (range <= 0)
+        return 0.0f;
+    const auto at = [&] (int v) { return static_cast<float> (v - pd.minValue) / static_cast<float> (range); };
+
+    // A level module's switch says it outright: its value knob is the first one.
+    if (m != nullptr && pd.paramClass == "parameter" && pd.index == 0)
+    {
+        const int sw = unipolarSwitch (*m);
+        if (sw == 1) return 0.0f;
+        if (sw == 0) return at ((pd.minValue + pd.maxValue + 1) / 2);
+    }
+
+    // A value that reads signed, -N through 0 to +N, grows its arc from the 0.
+    const auto& fmt = pd.formatter;
+    const auto lo = format (fmt, pd.minValue).trim();
+    const auto hi = format (fmt, pd.maxValue).trim();
+    if (lo.startsWithChar ('-') && ! hi.startsWithChar ('-'))
+        for (int v = pd.minValue; v <= pd.maxValue; ++v)
+        {
+            const auto t = format (fmt, v).trim();
+            if (t.containsAnyOf ("0123456789") && ! t.startsWithChar ('-') && t.getDoubleValue() == 0.0)
+                return at (v);
+        }
+
+    // Not signed, but centred all the same: pulse width at 50 %, keyboard
+    // tracking at x1, and the bare numbers (gains, levels) whose default sits in
+    // the middle. A rate or a frequency also defaults to 64, and reads from its
+    // minimum (issue #123), which is why this no longer goes by the default alone.
+    const bool centred = fmt == "fmtPulseWidth" || fmt == "fmtFreqkbt" || fmt.isEmpty();
+    const float def = at (pd.defaultValue);
+    if (centred && std::abs (def - 0.5f) < 0.03f)
+        return def;
+    return 0.0f;
 }
 
 } // namespace ValueFormatters

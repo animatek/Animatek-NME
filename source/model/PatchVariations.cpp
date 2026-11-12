@@ -74,6 +74,10 @@ void PatchVariations::clear()
     }
     activeIndex = -1;
     mutationExcluded.clear();
+    morphA = {};
+    morphB = {};
+    morphFader = {};
+    morphPos = 0.0f;
 }
 
 bool PatchVariations::anyFilled() const
@@ -91,6 +95,29 @@ juce::String varToText(const PatchVariations& vars)
     out << "[VarFile]\n";
     out << "Version=1\n";
     out << "Active=" << vars.activeIndex << "\n";
+
+    // The A-B Snapshot goes before the variations. A reader from before it
+    // existed ignores lines until its first [Variation], so an older editor
+    // opens the file as it always did instead of folding these into one.
+    const auto writeEnd = [&out] (const char* name, const ParamSnapshot& s)
+    {
+        if (!s.filled) return;
+        out << "[" << name << "]\n";
+        out << "Morph=" << s.morphValues[0] << " " << s.morphValues[1] << " "
+            << s.morphValues[2] << " " << s.morphValues[3] << "\n";
+        for (const auto& e : s.entries)
+            out << e.section << " " << e.moduleId << " " << e.paramId << " " << e.value << "\n";
+    };
+    writeEnd ("MorphA", vars.morphA);
+    writeEnd ("MorphB", vars.morphB);
+    if (vars.hasMorphAB())
+    {
+        const auto& f = vars.morphFader;
+        out << "[MorphFader]\n";
+        out << "Control=" << f.section << " " << f.module << " " << f.param << " "
+            << f.knobIndex << " " << f.min << " " << f.max << "\n";
+        out << "Position=" << juce::String (vars.morphPos, 3) << "\n";
+    }
 
     for (int i = 0; i < PatchVariations::kNumSlots; ++i)
     {
@@ -123,7 +150,7 @@ bool varFromText(PatchVariations& vars, const juce::StringArray& lines)
 {
     vars.clear();
 
-    enum class Mode { None, Variation, Exclude };
+    enum class Mode { None, Variation, Exclude, Fader };
     Mode mode = Mode::None;
     ParamSnapshot* current = nullptr;
     bool valid = false;
@@ -155,6 +182,15 @@ bool varFromText(PatchVariations& vars, const juce::StringArray& lines)
             continue;
         }
         if (line == "[MutationExclude]") { mode = Mode::Exclude; current = nullptr; continue; }
+        if (line == "[MorphA]" || line == "[MorphB]")
+        {
+            current = (line == "[MorphA]") ? &vars.morphA : &vars.morphB;
+            current->filled = true;
+            mode = Mode::Variation;   // the same lines as a variation's
+            continue;
+        }
+        if (line == "[MorphFader]") { mode = Mode::Fader; current = nullptr; continue; }
+        if (line.startsWithChar ('['))   { mode = Mode::None; current = nullptr; continue; }
 
         if (mode == Mode::Variation && current != nullptr)
         {
@@ -170,6 +206,24 @@ bool varFromText(PatchVariations& vars, const juce::StringArray& lines)
             if (tokens.size() == 4)
                 current->entries.push_back({tokens[0].getIntValue(), tokens[1].getIntValue(),
                                             tokens[2].getIntValue(), tokens[3].getIntValue()});
+        }
+        else if (mode == Mode::Fader)
+        {
+            const auto rest = line.fromFirstOccurrenceOf("=", false, false);
+            if (line.startsWith("Control="))
+            {
+                auto t = juce::StringArray::fromTokens(rest, " ", "");
+                if (t.size() == 6)
+                {
+                    auto& f = vars.morphFader;
+                    f.section = t[0].getIntValue();  f.module = t[1].getIntValue();
+                    f.param = t[2].getIntValue();    f.knobIndex = t[3].getIntValue();
+                    f.min = t[4].getIntValue();      f.max = t[5].getIntValue();
+                    if (f.knobIndex < -1 || f.knobIndex > 22) f.knobIndex = -1;
+                }
+            }
+            else if (line.startsWith("Position="))
+                vars.morphPos = juce::jlimit(0.0f, 1.0f, rest.getFloatValue());
         }
         else if (mode == Mode::Exclude)
         {

@@ -111,23 +111,16 @@ public:
     // What the knob's value reads as: the parameter's own formatter (C4, 340 ms, -6 dB), or the number
     void setInfo(const juce::String& moduleName, const juce::String& paramName,
                  bool isAssigned, int minValue, int maxValue, int value,
-                 const ParameterDescriptor* pd = nullptr)
+                 const ParameterDescriptor* pd = nullptr, const Module* module = nullptr)
     {
         assigned = isAssigned;
         if (pd != nullptr)
-            formatter = [desc = *pd](int v) { return ValueFormatters::format(desc, v); };
+            formatter = [desc = ValueFormatters::inModule(module, *pd)](int v) { return ValueFormatters::format(desc, v); };
         else
             formatter = nullptr;
 
-        // A bipolar range (a negative minimum, or a default at its centre) grows its arc from the middle
-        arcLnF.origin = 0.0f;
-        if (pd != nullptr && pd->maxValue > pd->minValue)
-        {
-            const float range = static_cast<float>(pd->maxValue - pd->minValue);
-            const float def = static_cast<float>(pd->defaultValue - pd->minValue) / range;
-            if (pd->minValue < 0 && pd->maxValue > 0) arcLnF.origin = static_cast<float>(-pd->minValue) / range;
-            else if (std::abs(def - 0.5f) < 0.03f)    arcLnF.origin = def;
-        }
+        // Where the arc grows from: the zero of a signed value, the middle of a centred one (#123)
+        arcLnF.origin = pd != nullptr ? ValueFormatters::arcOrigin(*pd, module) : 0.0f;
 
         // An empty knob says "Free", with its number where the module's name goes
         setLabelText(moduleLabel, isAssigned ? moduleName : knobLabel);
@@ -307,7 +300,7 @@ void KnobFloaterPanel::refresh()
                       true,
                       pd != nullptr ? pd->minValue : 0,
                       pd != nullptr ? pd->maxValue : 127,
-                      param->getValue(), pd);
+                      param->getValue(), pd, module);
     }
 }
 

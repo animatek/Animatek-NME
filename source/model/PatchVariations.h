@@ -27,6 +27,20 @@ public:
     int activeIndex = -1;
     std::vector<std::pair<int, int>> mutationExcluded;  // {section, containerIndex}
 
+    // The A-B Snapshot (the header bar's morph fader): its two ends and the
+    // control that drives it. It belongs to the patch like the variations do,
+    // so it is saved with them and travels with a slot set (issue #119).
+    ParamSnapshot morphA, morphB;
+    struct MorphFader
+    {
+        int section = -1, module = -1, param = -1;   // the control driving it, -1: none
+        int knobIndex = -1;                          // front-panel knob assigned as its carrier, -1: none
+        int min = 0, max = 127;                      // range of that control
+    } morphFader;
+    float morphPos = 0.0f;                           // where the fader was left, 0 = A, 1 = B
+
+    bool hasMorphAB() const { return morphA.filled || morphB.filled || morphFader.param >= 0; }
+
     void captureFrom(const Patch& patch, int slot);
     void copySlot(int from, int to);
     void initFromDefaults(const Patch& patch, int slot);

@@ -331,7 +331,7 @@ private:
                                 const Parameter& param,
                                 const juce::String& textOverride = {});
     juce::String getOverlayText(const Module& m, const Parameter& param) const;
-    juce::String getParameterValueText(const Parameter& param) const;
+    juce::String getParameterValueText(const Module& m, const Parameter& param) const;
     void paintModuleFallback(juce::Graphics& g, const Module& m, juce::Rectangle<int> bounds);
 
     // Find parameter value by component-id (e.g. "p1")

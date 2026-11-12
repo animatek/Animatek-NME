@@ -818,7 +818,7 @@ public:
             return {};
         const auto* pd = r.param->getDescriptor();
         return pd == nullptr ? juce::String(r.param->getValue())
-                             : ValueFormatters::format(*pd, r.param->getValue());
+                             : ValueFormatters::format(ValueFormatters::inModule(module, *pd), r.param->getValue());
     }
 
     // A parameter the module wears as a button, drawn as one: lit while it is on
@@ -1163,7 +1163,7 @@ public:
         const auto* pd = r.param->getDescriptor();
         if (pd == nullptr) return;
 
-        const int newValue = valueFromText(*pd, typed);
+        const int newValue = valueFromText(ValueFormatters::inModule(module, *pd), typed);
         const int oldValue = r.param->getValue();
         if (newValue < 0 || newValue == oldValue)
             return;

@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **The A-B Snapshot is saved with the patch, and travels with a slot set** (2026-11-12, Claude; #119,
+  bacizone). Its two ends, the knob or control driving the fader and where the fader was left now live
+  in the slot's variations, so they go into the `.var` sidecar, the library's extras and a slot set's
+  folder, and each slot keeps its own instead of losing it on every slot switch. The new sections go
+  before the variations in the `.var`, where an older NME skips them; unknown sections are skipped
+  now too. Tests: `test_var_morph_ab.cpp`.
+
+- **The Constant reads 0 to 64 when unipolar, and flat knobs' arcs start where the value's zero is**
+  (2026-11-12, Claude; #122, #123, Nocticore). The Constant's value went by its own formatter alone
+  and always read -64..+64; it now reads through its polarity switch (0.0 to 64.0 in halves, as the
+  original editor and the synth show) on the module, the hover readout, the inspector and the knob
+  floater. A flat knob's arc started from the middle whenever the default was 64, which put ClkGen's
+  Rate (and LFO rates, frequencies) there and left NoteQuant's signed range at the minimum: it now
+  starts at the zero of a value that reads signed, the middle of pulse width, KBT and bare numbers
+  with a centred default, and follows a polarity switch (Constant, LevAdd, LevMult). Tests:
+  `test_param_polarity.cpp`.
+
+- **The MCP bridge pins `mcp` below 2** (2026-11-12, Claude; found while checking #99): mcp 2 renamed
+  `FastMCP` and the bridge did not start with a fresh install.
+
 - **The builds in the Animatek store too** (2026-11-06, Claude): a one-time purchase of 19 €, updates
   included, besides Patreon. When a new version is out, About shows two items (Patreon and the store),
   both with the red dot; About also has Buy the Builds (Animatek Store). The link is

@@ -46,7 +46,8 @@ struct PatchExtras
     bool isEmpty() const
     {
         return comments.empty() && notes.trim().isEmpty()
-            && !variations.anyFilled() && variations.mutationExcluded.empty();
+            && !variations.anyFilled() && variations.mutationExcluded.empty()
+            && !variations.hasMorphAB();
     }
 
     /** Puts `fingerprint` at the front, dropping any older copy of it. */
