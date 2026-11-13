@@ -228,6 +228,7 @@ if(NME_MCP_BRIDGE)
     target_sources(AnimatekNME PRIVATE
         source/mcp/McpBridgeServer.cpp
         source/mcp/McpRequestHandler.cpp
+        source/mcp/BridgeScript.cpp
     )
 endif()
 target_compile_definitions(AnimatekNME PRIVATE NME_MCP_BRIDGE=$<BOOL:${NME_MCP_BRIDGE}>)
@@ -292,6 +293,9 @@ juce_add_binary_data(NmeData SOURCES
     data/images/single/decoration-17.png
     data/images/single/decoration-18.png
     data/images/refresh-icon.svg
+    # The MCP bridge the editor writes to its data folder (BridgeScript, #99)
+    mcp-bridge/server.py
+    mcp-bridge/pyproject.toml
 )
 
 # --- Shared settings ---

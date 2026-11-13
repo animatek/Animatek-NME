@@ -25,6 +25,7 @@ target_sources(nme_tests PRIVATE
     test_module_naming.cpp
     test_param_polarity.cpp
     test_var_morph_ab.cpp
+    test_bridge_script.cpp
     test_dangling_assignments.cpp
     test_midi_lifecycle.cpp
     test_synchronizer_new_module.cpp
@@ -99,6 +100,7 @@ target_sources(nme_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/source/protocol/MorphAssignmentMessage.cpp
     ${CMAKE_SOURCE_DIR}/source/protocol/MorphRangeChangeMessage.cpp
     ${CMAKE_SOURCE_DIR}/source/mcp/McpEventLog.cpp
+    ${CMAKE_SOURCE_DIR}/source/mcp/BridgeScript.cpp
     ${CMAKE_SOURCE_DIR}/source/model/ModuleReplacement.cpp
     ${CMAKE_SOURCE_DIR}/source/model/KeyQuantScales.cpp
     ${CMAKE_SOURCE_DIR}/source/model/SlotSet.cpp

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **The MCP bridge comes with the editor, and an old copy of it is turned down** (2026-11-13, Claude;
+  #99, bacizone). `server.py` lived only in the source repository, so people downloaded it once and
+  their client kept running that copy long after a fix (the `port` error of #99, fixed in 0.23). The
+  editor now carries `server.py` and `pyproject.toml` (BinaryData) and writes them to its data folder
+  on every start (`%APPDATA%\AnimatekNME\mcp-bridge`, `~/Library/Application Support/...`,
+  `~/.config/...`), and Editor Options gives the command for that copy, with `python` and
+  `.venv\Scripts\python.exe` on Windows (it offered `python3` and `.venv/bin/python` there). Every
+  request from the script carries a fingerprint of it (FNV-1a over its bytes, CRs left out); one from
+  a different copy gets `bridge_mismatch`, with the command to register instead. A request with no
+  fingerprint (a script of one's own on the socket) is served as before. `source/mcp/BridgeScript.*`;
+  manual chapter 9 (EN, ES) and the bridge README say how. Checked against the running editor: the
+  folder is written and identical to the repo's script; the right fingerprint and none are served, a
+  wrong one is refused with the message; `get_synth_status` works through the installed copy. Tests:
+  `test_bridge_script.cpp`, plain and under ASan/UBSan.
+
 - **The A-B Snapshot is saved with the patch, and travels with a slot set** (2026-11-12, Claude; #119,
   bacizone). Its two ends, the knob or control driving the fader and where the fader was left now live
   in the slot's variations, so they go into the `.var` sidecar, the library's extras and a slot set's

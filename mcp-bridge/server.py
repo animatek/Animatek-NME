@@ -12,6 +12,7 @@ the JSON response. AnimatekNME must be running, with the bridge enabled
 """
 
 import json
+import os
 import socket
 from typing import Any, Optional
 
@@ -21,6 +22,23 @@ HOST = "127.0.0.1"
 PORT = 51027
 TIMEOUT_SECONDS = 10
 
+
+def _fingerprint(path: str) -> str:
+    """FNV-1a 64 over this file's bytes, carriage returns left out: what the editor computes over
+    the copy it ships (source/mcp/BridgeScript.cpp). A different one means this is not that copy."""
+    h = 0xCBF29CE484222325
+    with open(path, "rb") as f:
+        for byte in f.read():
+            if byte == 0x0D:
+                continue
+            h = ((h ^ byte) * 0x100000001B3) & 0xFFFFFFFFFFFFFFFF
+    return f"{h:016x}"
+
+
+# Sent with every request, so the editor can turn down a copy of this script other than its own
+# (issue #99: an old copy kept a long-fixed bug alive). The editor writes its copy to its data folder.
+_BRIDGE = {"fingerprint": _fingerprint(__file__), "path": os.path.abspath(__file__)}
+
 mcp = FastMCP("animatek-nme")
 
 
@@ -29,7 +47,7 @@ class BridgeError(RuntimeError):
 
 
 def _call(method: str, params: Optional[dict[str, Any]] = None) -> Any:
-    request = {"id": 1, "method": method, "params": params or {}}
+    request = {"id": 1, "method": method, "params": params or {}, "bridge": _BRIDGE}
     try:
         with socket.create_connection((HOST, PORT), timeout=TIMEOUT_SECONDS) as sock:
             sock.sendall((json.dumps(request) + "\n").encode("utf-8"))

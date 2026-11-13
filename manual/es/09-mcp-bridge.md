@@ -30,24 +30,38 @@ instancias se pelearían por el puerto.
 ## Configurar un cliente
 
 El editor escucha en el socket local (`127.0.0.1:51027` por defecto). El
-servidor MCP con el que habla tu cliente es `mcp-bridge/server.py`, incluido en
-el repositorio:
+servidor MCP con el que habla tu cliente es `mcp-bridge/server.py`. **El editor
+lo lleva dentro y lo escribe en su carpeta de datos cada vez que arranca**, así
+que no hay que bajarlo, y la copia que hay ahí es siempre la que necesita tu
+versión del editor:
+
+| Sistema | Carpeta |
+|---|---|
+| Windows | `%APPDATA%\AnimatekNME\mcp-bridge` |
+| macOS | `~/Library/Application Support/AnimatekNME/mcp-bridge` |
+| Linux | `~/.config/AnimatekNME/mcp-bridge` |
+
+Necesita Python 3.10 o posterior y el paquete `mcp` (la versión 1, no la 2),
+una sola vez:
 
 ```bash
-cd mcp-bridge
-python3 -m venv .venv
-.venv/bin/pip install -e .
+pip install "mcp>=1.2,<2"
 ```
 
-Después regístralo. Para Claude Code:
+Después regístralo. **Editor Options > MCP Bridge enseña el comando exacto, con
+la ruta, y un botón de Copiar.** Para Claude Code es algo así:
 
 ```bash
-claude mcp add animatek-nme -- /ruta/a/mcp-bridge/.venv/bin/python /ruta/a/mcp-bridge/server.py
+claude mcp add animatek-nme -- python3 "/home/tu/.config/AnimatekNME/mcp-bridge/server.py"
 ```
 
-Si el editor encuentra `mcp-bridge/` cerca de su propio ejecutable, rellena ese
-comando exacto en el panel de Editor Options por ti; si no, usa las rutas de tu
-propia copia. Animatek NME tiene que estar **abierto** con el puente activado;
+(`python` en vez de `python3` en Windows. Si haces un entorno virtual en esa
+carpeta, `.venv`, el comando usa su Python.)
+
+Registra esa ruta, no una copia tuya: cada petición lleva una huella del script,
+y el editor rechaza la de una copia distinta y dice qué comando usar. Así es
+como una copia vieja, que un cliente seguía arrancando mucho después de una
+actualización, traía de vuelta fallos ya arreglados. Animatek NME tiene que estar **abierto** con el puente activado;
 las herramientas devuelven un error claro si no lo está.
 
 ## Qué puede hacer un asistente

@@ -36,6 +36,9 @@
 #include "protocol/ParameterEncoder.h"
 #include "model/PatchSerializer.h"
 #include "BinaryData.h"
+#if NME_MCP_BRIDGE
+#include "mcp/BridgeScript.h"
+#endif
 #include <iostream>
 #include <set>
 #include <climits>
@@ -1229,7 +1232,16 @@ MainComponent::MainComponent(juce::ApplicationProperties &props)
   }
 
 #if NME_MCP_BRIDGE
-  mcpBridgeServer = std::make_unique<McpBridgeServer>(*this);
+  // The bridge script a client registers, written where Editor Options points: always the one
+  // this editor ships (#99). Done before the server, which hands its path out in refusals.
+  {
+    const auto dir = BridgeScript::folder();
+    if (!BridgeScript::install(dir.getChildFile("server.py"), BinaryData::server_py, BinaryData::server_pySize)
+        || !BridgeScript::install(dir.getChildFile("pyproject.toml"), BinaryData::pyproject_toml,
+                                  BinaryData::pyproject_tomlSize))
+      std::cout << "[MCP] Could not write the bridge script to " << dir.getFullPathName() << std::endl;
+  }
+  mcpBridgeServer = std::make_unique<McpBridgeServer>(*this, getMcpBridgeCommand());
   if (editorOptions.mcpBridgeEnabled)
     mcpBridgeServer->start();
 #endif
@@ -3568,19 +3580,20 @@ void MainComponent::setMcpBridgeEnabled(bool enabled) {
     mcpBridgeServer->stop();
 }
 
+// The command that registers the bridge with a client. A source checkout's own mcp-bridge/ near
+// the executable wins (a developer's build, with its venv); otherwise the copy the editor keeps
+// in its data folder, which every package has (#99).
 juce::String MainComponent::getMcpBridgeCommand() const {
+  const bool windows = (juce::SystemStats::getOperatingSystemType() & juce::SystemStats::Windows) != 0;
   auto dir = juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory();
   for (int i = 0; i < 6; ++i) {
-    auto serverPy = dir.getChildFile("mcp-bridge/server.py");
-    if (serverPy.existsAsFile()) {
-      auto venvPython = dir.getChildFile("mcp-bridge/.venv/bin/python");
-      juce::String pythonCmd = venvPython.existsAsFile() ? venvPython.getFullPathName()
-                                                          : juce::String("python3");
-      return pythonCmd + " " + serverPy.getFullPathName();
-    }
+    auto serverPy = dir.getChildFile("mcp-bridge").getChildFile("server.py");
+    if (serverPy.existsAsFile())
+      return BridgeScript::command(serverPy, windows);
     dir = dir.getParentDirectory();
   }
-  return {};
+  const auto installed = BridgeScript::folder().getChildFile("server.py");
+  return installed.existsAsFile() ? BridgeScript::command(installed, windows) : juce::String();
 }
 #endif
 

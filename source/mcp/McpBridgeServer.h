@@ -24,7 +24,8 @@ public:
     // running at a time (moreThanOneInstanceAllowed() == false).
     static constexpr int defaultPort = 51027;
 
-    McpBridgeServer(MainComponent& owner, int port = defaultPort);
+    // registerCommand: what a client running another copy of server.py is told to register (#99).
+    McpBridgeServer(MainComponent& owner, const juce::String& registerCommand, int port = defaultPort);
     ~McpBridgeServer() override;
 
     void start();
@@ -45,6 +46,8 @@ private:
 
     MainComponent& owner_;
     int port_;
+    juce::String expectedFingerprint_;   // of the server.py this editor ships (BridgeScript)
+    juce::String registerCommand_;       // what to register instead, for a client running another
     juce::StreamingSocket listener_;
     std::unique_ptr<McpRequestHandler> handler_;
     std::atomic<bool> bound_{false};  // true once createListener() actually succeeded

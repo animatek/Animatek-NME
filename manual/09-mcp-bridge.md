@@ -28,24 +28,37 @@ not built into the plugin, where several instances would fight over the port.
 ## Setting up a client
 
 The editor itself listens on the local socket (`127.0.0.1:51027` by default).
-The MCP server your client talks to is `mcp-bridge/server.py`, shipped with the
-source repository:
+The MCP server your client talks to is `mcp-bridge/server.py`. **The editor
+carries it and writes it to its own data folder every time it starts**, so you
+never download it, and the copy there is always the one your version of the
+editor needs:
+
+| System | Folder |
+|---|---|
+| Windows | `%APPDATA%\AnimatekNME\mcp-bridge` |
+| macOS | `~/Library/Application Support/AnimatekNME/mcp-bridge` |
+| Linux | `~/.config/AnimatekNME/mcp-bridge` |
+
+It needs Python 3.10 or later and the `mcp` package (version 1, not 2), once:
 
 ```bash
-cd mcp-bridge
-python3 -m venv .venv
-.venv/bin/pip install -e .
+pip install "mcp>=1.2,<2"
 ```
 
-Then register it. For Claude Code:
+Then register it. **Editor Options > MCP Bridge shows the exact command, with
+the path, and a Copy button.** For Claude Code it looks like this:
 
 ```bash
-claude mcp add animatek-nme -- /path/to/mcp-bridge/.venv/bin/python /path/to/mcp-bridge/server.py
+claude mcp add animatek-nme -- python3 "/home/you/.config/AnimatekNME/mcp-bridge/server.py"
 ```
 
-If the editor can find `mcp-bridge/` near its own executable it fills that exact
-command into the Editor Options panel for you; otherwise use the paths of your
-own copy. Animatek NME must be **running** with the bridge enabled; the tools
+(`python` instead of `python3` on Windows. If you make a virtual environment in
+that folder, `.venv`, the command uses its Python.)
+
+Register that path, not a copy of your own: every request carries a fingerprint
+of the script, and the editor turns down one from a different copy, with the
+command to use instead. That is how an old copy, kept by a client long after an
+update, used to bring back bugs that were already fixed. Animatek NME must be **running** with the bridge enabled; the tools
 return a clear error if it isn't.
 
 ## What an assistant can do

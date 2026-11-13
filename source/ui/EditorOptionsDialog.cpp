@@ -396,7 +396,7 @@ EditorOptionsDialog::EditorOptionsDialog(const EditorOptions& current,
 
     styleTextEditor (mcpBridgeCommand);
     mcpBridgeCommand.setText (mcpCommand, juce::dontSendNotification);
-    mcpBridgeCommand.setTextToShowWhenEmpty ("mcp-bridge/server.py not found next to the executable", p().textMuted);
+    mcpBridgeCommand.setTextToShowWhenEmpty ("The bridge script could not be written to the editor's data folder (see the log)", p().textMuted);
     mcpBridgeCommand.setTooltip ("The stdio command an MCP client (Claude Code, Claude Desktop, ...) "
                                  "needs to register this bridge. Select all + copy, or use the button.");
     styleBtn (mcpBridgeCopyButton);

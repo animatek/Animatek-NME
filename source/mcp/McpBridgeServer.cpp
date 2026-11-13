@@ -1,12 +1,16 @@
 #include "McpBridgeServer.h"
 #include "McpRequestHandler.h"
+#include "BridgeScript.h"
+#include "BinaryData.h"
 #include <juce_events/juce_events.h>
 #include <iostream>
 
-McpBridgeServer::McpBridgeServer(MainComponent& owner, int port)
+McpBridgeServer::McpBridgeServer(MainComponent& owner, const juce::String& registerCommand, int port)
     : juce::Thread("MCP Bridge"), owner_(owner), port_(port),
       handler_(std::make_unique<McpRequestHandler>(owner))
 {
+    expectedFingerprint_ = BridgeScript::fingerprint(BinaryData::server_py, BinaryData::server_pySize);
+    registerCommand_ = registerCommand;
 }
 
 McpBridgeServer::~McpBridgeServer()
@@ -90,6 +94,21 @@ void McpBridgeServer::handleConnection(juce::StreamingSocket& socket)
                 auto* err = new juce::DynamicObject();
                 err->setProperty("code", "bad_json");
                 err->setProperty("message", parseResult.getErrorMessage());
+                obj->setProperty("error", juce::var(err));
+                response = juce::var(obj);
+            }
+            else if (const auto refusal = BridgeScript::checkClient(request, expectedFingerprint_, registerCommand_,
+                                                                    JUCE_APPLICATION_VERSION_STRING);
+                     refusal.isNotEmpty())
+            {
+                // A copy of server.py other than the one this editor ships (#99): its tools may
+                // not match, which is how a long-fixed bug kept coming back.
+                auto* obj = new juce::DynamicObject();
+                obj->setProperty("id", request.getProperty("id", juce::var()));
+                obj->setProperty("ok", false);
+                auto* err = new juce::DynamicObject();
+                err->setProperty("code", "bridge_mismatch");
+                err->setProperty("message", refusal);
                 obj->setProperty("error", juce::var(err));
                 response = juce::var(obj);
             }

@@ -16,6 +16,14 @@ for the embedded side.
 
 ## Setup
 
+**You do not need this folder to use the bridge**: the editor carries
+`server.py` and writes it to its data folder on every start (`%APPDATA%\AnimatekNME\mcp-bridge`,
+`~/Library/Application Support/AnimatekNME/mcp-bridge`, `~/.config/AnimatekNME/mcp-bridge`), and
+Editor Options > MCP Bridge shows the command to register it. Each request carries a fingerprint
+of the script (`_BRIDGE`), and the editor turns down a copy other than the one it ships
+(`source/mcp/BridgeScript.*`). A build from this source tree finds this folder instead, which is
+what the steps below are for:
+
 ```bash
 cd mcp-bridge
 python3 -m venv .venv
