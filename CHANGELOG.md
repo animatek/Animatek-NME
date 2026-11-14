@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The two EQs have one name each, the original editor's** (2026-11-14, Claude; #126, bacizone asked
+  for one name). The EqMid's chip read "EQ Mid" and the right-click menu "Parametric Eq"; the
+  EqShelving's "Hi/Lo Shelving EQ" and "Hi and lo shelving eq". The chips now say "Parametric Eq" and
+  "Hi and lo shelving eq", as the menu and Clavia's module menu. Checked: the Release build compiles.
+
 - **The Disk tab's BANK view is a list of banks to step into** (2026-11-14, Claude; #125, bacizone).
   BANK listed every backup of every bank in one long list, each named `MM30bank1\patch`. It now
   shows the bank folders under `Banks/` (with how many patches each holds); a double click (or
