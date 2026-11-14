@@ -59,6 +59,12 @@ static juce::String chipLabelFor(const juce::String& fullname)
     if (fullname == "Quantizer")
         return fullname;
 
+    // "Center Freq EQ" hid the EqMid from people looking for it by any of the
+    // names it goes by everywhere else (#126): the original editor's help calls
+    // it EQ Mid, and so does this chip.
+    if (fullname == "Center Frequency Equalizer")
+        return "EQ Mid";
+
     return fullname.replace("Oscillator",  "Osc")
                    .replace("Generator",   "Gen")
                    .replace("Envelope",    "Env")

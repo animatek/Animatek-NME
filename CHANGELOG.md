@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The EqMid reads "EQ Mid" in the module bar** (2026-11-14, Claude; #126, bacizone). It was always
+  in the Filter tab, but its chip read "Center Freq EQ" (Clavia's full name, shortened), so anyone
+  looking for EqMid saw only the shelving EQ and took it for missing. "EQ Mid" is the name the
+  original editor's help gives it. `ModuleIconBar.cpp` (`chipLabelFor`). Checked: the Release build
+  compiles; the Filter tab not yet looked at on screen.
+
 - **The MCP bridge comes with the editor, and an old copy of it is turned down** (2026-11-13, Claude;
   #99, bacizone). `server.py` lived only in the source repository, so people downloaded it once and
   their client kept running that copy long after a fix (the `port` error of #99, fixed in 0.23). The
