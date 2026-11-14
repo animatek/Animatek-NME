@@ -1,5 +1,6 @@
 #include "PresetBrowserWindow.h"
 #include <algorithm>
+#include <map>
 #if !JUCE_MAC
  #include <filesystem>
 #endif
@@ -162,7 +163,8 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     allButton.onClick = [this]() { typeFilter = TypeFilter::All; rebuildVisibleEntries(); };
     patchesButton.onClick = [this]() { typeFilter = TypeFilter::Patches; rebuildVisibleEntries(); };
     snippetsButton.onClick = [this]() { typeFilter = TypeFilter::Snippets; rebuildVisibleEntries(); };
-    banksButton.onClick = [this]() { typeFilter = TypeFilter::Banks; rebuildVisibleEntries(); };
+    // BANK always opens on the list of banks, also when it is already the active filter (#125)
+    banksButton.onClick = [this]() { typeFilter = TypeFilter::Banks; showBankFolder({}); };
     setsButton.onClick = [this]() { typeFilter = TypeFilter::Sets; rebuildVisibleEntries(); };
 
     hidePch2Button.setTooltip("Hide legacy 2.10 patches (tagged PCH2 in the list)");
@@ -182,6 +184,14 @@ DiskPresetBrowserPanel::DiskPresetBrowserPanel()
     statusLabel.setFont(juce::Font(AppTheme::uiFont(12.0f)));
     addAndMakeVisible(statusLabel);
 
+    bankFolderBar.setTooltip("Back to the folder above");
+    bankFolderBar.onClick = [this]() {
+        showBankFolder(currentBankFolder.containsChar('/')
+                           ? currentBankFolder.upToLastOccurrenceOf("/", false, false)
+                           : juce::String());
+    };
+    addChildComponent(bankFolderBar);
+
     listBox.setRowHeight(32);
     addAndMakeVisible(listBox);
 
@@ -195,6 +205,8 @@ void DiskPresetBrowserPanel::applyTheme()
     searchBox.setColour(juce::TextEditor::textColourId, kText);
     searchBox.setColour(juce::TextEditor::outlineColourId, kSep);
     searchBox.setColour(juce::TextEditor::focusedOutlineColourId, AppTheme::palette().accentActive);
+    bankFolderBar.setColour(juce::TextButton::buttonColourId, AppTheme::palette().backgroundElevated);
+    bankFolderBar.setColour(juce::TextButton::textColourOffId, kBankTag);
     searchBox.setTextToShowWhenEmpty("Search patch, snippet or set...", kDim);
     statusLabel.setColour(juce::Label::textColourId, kDim);
     listBox.setColour(juce::ListBox::backgroundColourId, kPanel);
@@ -354,6 +366,11 @@ void DiskPresetBrowserPanel::scanFolder(const juce::File& root, const juce::File
             ? file.getRelativePathFrom(folder).dropLastCharacters(4)
             : file.getFileNameWithoutExtension();
         entry.relativePath = file.getRelativePathFrom(root);
+        if (type == Entry::Type::Bank)
+            entry.bankFolder = file.getParentDirectory().getRelativePathFrom(folder)
+                                   .replaceCharacter('\\', '/');
+        if (entry.bankFolder == ".")
+            entry.bankFolder = {};
         entry.file = std::move(file);
         out.push_back(std::move(entry));
     };
@@ -388,32 +405,103 @@ void DiskPresetBrowserPanel::scanFolder(const juce::File& root, const juce::File
 #endif
 }
 
+bool DiskPresetBrowserPanel::browsingBankFolders() const
+{
+    // A search looks through every bank at once, as before
+    return typeFilter == TypeFilter::Banks && searchBox.getText().trim().isEmpty();
+}
+
+void DiskPresetBrowserPanel::showBankFolder(const juce::String& folder)
+{
+    currentBankFolder = folder;
+    rebuildVisibleEntries();
+    listBox.deselectAllRows();
+    listBox.scrollToEnsureRowIsOnscreen(0);
+}
+
+bool DiskPresetBrowserPanel::isFolderRow(int row) const
+{
+    return row >= 0 && row < static_cast<int>(visibleRows.size())
+        && visibleRows[static_cast<size_t>(row)].entry < 0;
+}
+
 void DiskPresetBrowserPanel::rebuildVisibleEntries()
 {
-    visibleEntryIndices.clear();
+    visibleRows.clear();
     auto search = searchBox.getText().trim().toLowerCase();
+    const bool folders = browsingBankFolders();
+    int shownFiles = 0;
 
-    for (int i = 0; i < static_cast<int>(allEntries.size()); ++i)
+    // The BANK view is a folder tree (#125): the banks first, each one stepped into to see its
+    // patches, instead of every backup of every bank in one list.
+    if (folders)
     {
-        auto& e = allEntries[static_cast<size_t>(i)];
-        if (hidePch2 && e.legacyPatch210 == 1)
-            continue;
+        const juce::String prefix = currentBankFolder.isEmpty() ? juce::String() : currentBankFolder + "/";
+        std::map<juce::String, int> subfolders;
+        std::vector<Row> files;
+        for (int i = 0; i < static_cast<int>(allEntries.size()); ++i)
+        {
+            const auto& e = allEntries[static_cast<size_t>(i)];
+            if (e.type != Entry::Type::Bank)
+                continue;
+            if (e.bankFolder == currentBankFolder)
+                files.push_back({ i, {}, 0 });
+            else if (prefix.isEmpty() || e.bankFolder.startsWith(prefix))
+            {
+                const auto rest = e.bankFolder.substring(prefix.length());
+                ++subfolders[prefix + rest.upToFirstOccurrenceOf("/", false, false)];
+            }
+        }
+        std::vector<Row> folderRows;
+        for (const auto& [path, count] : subfolders)
+            folderRows.push_back({ -1, path, count });
+        std::sort(folderRows.begin(), folderRows.end(), [](const Row& a, const Row& b) {
+            return a.folder.compareNatural(b.folder) < 0;
+        });
+        visibleRows = std::move(folderRows);
+        shownFiles = static_cast<int>(files.size());
+        visibleRows.insert(visibleRows.end(), files.begin(), files.end());
+    }
+    else
+    {
+        for (int i = 0; i < static_cast<int>(allEntries.size()); ++i)
+        {
+            auto& e = allEntries[static_cast<size_t>(i)];
+            if (hidePch2 && e.legacyPatch210 == 1)
+                continue;
 
-        auto haystack = (e.displayName + " " + e.relativePath).toLowerCase();
-        if (search.isNotEmpty() && !haystack.contains(search))
-            continue;
+            auto haystack = (e.displayName + " " + e.relativePath).toLowerCase();
+            if (search.isNotEmpty() && !haystack.contains(search))
+                continue;
 
-        if (entryPassesTypeFilter(e))
-            visibleEntryIndices.push_back(i);
+            if (entryPassesTypeFilter(e))
+                visibleRows.push_back({ i, {}, 0 });
+        }
+        shownFiles = static_cast<int>(visibleRows.size());
+    }
+
+    // The folder the BANK view is in, pinned over the list however far it scrolls
+    const bool barShown = folders && currentBankFolder.isNotEmpty();
+    bankFolderBar.setButtonText(juce::String(juce::CharPointer_UTF8("\xe2\x86\x90  "))
+                                + currentBankFolder.replace("/", "  /  "));
+    if (bankFolderBar.isVisible() != barShown)
+    {
+        bankFolderBar.setVisible(barShown);
+        resized();
     }
 
     // Just the count: the library path never fit beside it, so it moves to
     // the tooltip for whoever needs to know which folder this is.
+    const int bankFolders = static_cast<int>(visibleRows.size()) - shownFiles;
     statusLabel.setText(scanning && allEntries.empty()
                             ? juce::String("Reading the library...")
-                            : visibleEntryIndices.size() == allEntries.size()
+                            : folders && currentBankFolder.isEmpty() && shownFiles == 0
+                                ? juce::String(bankFolders) + (bankFolders == 1 ? " bank" : " banks")
+                            : folders
+                                ? juce::String(shownFiles) + (shownFiles == 1 ? " patch" : " patches")
+                            : shownFiles == static_cast<int>(allEntries.size())
                                 ? juce::String(allEntries.size()) + " files"
-                                : juce::String(visibleEntryIndices.size()) + " of " + juce::String(allEntries.size()),
+                                : juce::String(shownFiles) + " of " + juce::String(allEntries.size()),
                         juce::dontSendNotification);
     statusLabel.setTooltip(libraryRoot != juce::File() ? libraryRoot.getFullPathName() : juce::String());
 
@@ -448,6 +536,11 @@ void DiskPresetBrowserPanel::resized()
     area.removeFromTop(5);
     rule2Y = area.getY();
     area.removeFromTop(1 + 2);
+    if (bankFolderBar.isVisible())
+    {
+        bankFolderBar.setBounds(area.removeFromTop(30).reduced(4, 1));
+        area.removeFromTop(2);
+    }
     listBox.setBounds(area.withX(0).withWidth(getWidth()));
 }
 
@@ -484,7 +577,7 @@ void DiskPresetBrowserPanel::layoutFilterRow()
 
 int DiskPresetBrowserPanel::getNumRows()
 {
-    return static_cast<int>(visibleEntryIndices.size());
+    return static_cast<int>(visibleRows.size());
 }
 
 void DiskPresetBrowserPanel::paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected)
@@ -492,14 +585,37 @@ void DiskPresetBrowserPanel::paintListBoxItem(int row, juce::Graphics& g, int wi
     if (row < 0 || row >= getNumRows())
         return;
 
-    auto& entry = allEntries[static_cast<size_t>(visibleEntryIndices[static_cast<size_t>(row)])];
-
     g.fillAll(kPanel);
     if (selected)
     {
         g.setColour(AppTheme::palette().backgroundElevated);
         g.fillRoundedRectangle(4.0f, 1.0f, static_cast<float>(width) - 8.0f, static_cast<float>(height) - 2.0f, 5.0f);
     }
+
+    const auto& shown = visibleRows[static_cast<size_t>(row)];
+    if (shown.entry < 0)
+    {
+        // A bank folder: its name and how many backups it holds; a double click steps in
+        auto tagArea = juce::Rectangle<int>(10, (height - 18) / 2, 50, 18);
+        g.setColour(kBankTag.withAlpha(0.22f));
+        g.fillRoundedRectangle(tagArea.toFloat(), 4.0f);
+        g.setColour(kBankTag);
+        g.setFont(juce::Font(AppTheme::uiFont(10.0f)).boldened());
+        g.drawText("FOLDER", tagArea, juce::Justification::centred, true);
+
+        const auto count = juce::String(shown.count) + (shown.count == 1 ? " patch" : " patches");
+        g.setFont(juce::Font(AppTheme::uiFont(12.0f)));
+        const int countWidth = 90;
+        g.setColour(kDim);
+        g.drawText(count, width - countWidth - 10, 0, countWidth, height, juce::Justification::centredRight, true);
+        g.setColour(AppTheme::palette().textPrimary);
+        g.setFont(juce::Font(AppTheme::uiFont(13.0f)).boldened());
+        g.drawText(shown.folder.fromLastOccurrenceOf("/", false, false), 70, 0, width - 78 - countWidth, height,
+                   juce::Justification::centredLeft, true);
+        return;
+    }
+
+    auto& entry = allEntries[static_cast<size_t>(shown.entry)];
 
     auto tagArea = juce::Rectangle<int>(10, (height - 18) / 2, 50, 18);
     auto tagColour = isLegacyPatch210(entry)            ? legacyPatchTagColour()
@@ -515,7 +631,10 @@ void DiskPresetBrowserPanel::paintListBoxItem(int row, juce::Graphics& g, int wi
 
     g.setColour(selected ? AppTheme::palette().textPrimary : AppTheme::palette().textPrimary.withAlpha(0.9f));
     g.setFont(juce::Font(AppTheme::uiFont(13.0f)));
-    g.drawText(entry.displayName, 70, 0, width - 78, height, juce::Justification::centredLeft, true);
+    // Inside a bank folder the folder is already over the list: just the patch's own name
+    const auto name = browsingBankFolders() && entry.type == Entry::Type::Bank
+                          ? entry.file.getFileNameWithoutExtension() : entry.displayName;
+    g.drawText(name, 70, 0, width - 78, height, juce::Justification::centredLeft, true);
 }
 
 void DiskPresetBrowserPanel::loadRow(int row)
@@ -523,7 +642,13 @@ void DiskPresetBrowserPanel::loadRow(int row)
     if (row < 0 || row >= getNumRows())
         return;
 
-    const auto& entry = allEntries[static_cast<size_t>(visibleEntryIndices[static_cast<size_t>(row)])];
+    const auto& shown = visibleRows[static_cast<size_t>(row)];
+    if (shown.entry < 0)
+    {
+        showBankFolder(shown.folder);
+        return;
+    }
+    const auto& entry = allEntries[static_cast<size_t>(shown.entry)];
     if (entry.type == Entry::Type::Snippet)
     {
         if (onSnippetChosen)
@@ -553,8 +678,11 @@ void DiskPresetBrowserPanel::stepSelection(int delta)
     const int current = listBox.getSelectedRow();
     // No selection yet: the first press picks an end rather than nothing, so a
     // freshly opened browser can be auditioned straight from the keyboard.
-    const int target = current < 0 ? (delta > 0 ? 0 : rows - 1)
-                                   : current + delta;
+    int target = current < 0 ? (delta > 0 ? 0 : rows - 1)
+                             : current + delta;
+    // The arrows audition patches: a bank folder on the way is passed over, not stepped into
+    while (target >= 0 && target < rows && isFolderRow(target))
+        target += delta > 0 ? 1 : -1;
     if (target < 0 || target >= rows)
         return;
 
@@ -565,6 +693,75 @@ void DiskPresetBrowserPanel::stepSelection(int delta)
 void DiskPresetBrowserPanel::listBoxItemDoubleClicked(int row, const juce::MouseEvent&)
 {
     loadRow(row);
+}
+
+void DiskPresetBrowserPanel::listBoxItemClicked(int row, const juce::MouseEvent& e)
+{
+    if (e.mods.isPopupMenu())
+        showRowMenu(row);
+}
+
+void DiskPresetBrowserPanel::showRowMenu(int row)
+{
+    if (row < 0 || row >= getNumRows())
+        return;
+    listBox.selectRow(row);
+
+    const auto& shown = visibleRows[static_cast<size_t>(row)];
+    const bool folder = shown.entry < 0;
+    const juce::File file = folder ? libraryRoot.getChildFile("Banks").getChildFile(shown.folder)
+                                   : allEntries[static_cast<size_t>(shown.entry)].file;
+
+    juce::PopupMenu menu;
+    menu.addItem(1, folder ? "Show folder" : "Show in folder");
+    if (!folder)
+    {
+        menu.addSeparator();
+        menu.addItem(2, "Delete from disk...");
+    }
+
+    juce::Component::SafePointer<DiskPresetBrowserPanel> safeThis(this);
+    menu.showMenuAsync(juce::PopupMenu::Options().withMousePosition(),
+                       [safeThis, file](int result)
+                       {
+                           if (safeThis == nullptr || result == 0)
+                               return;
+                           if (result == 1)
+                               file.revealToUser();
+                           else if (result == 2)
+                               safeThis->deleteEntryFromDisk(file);
+                       });
+}
+
+// Asked first, and to the trash where the system has one, so a wrong click can be undone there.
+// A patch's variations file (.var, beside it) goes with it: it means nothing on its own.
+void DiskPresetBrowserPanel::deleteEntryFromDisk(const juce::File& file)
+{
+    const auto sidecar = file.withFileExtension("var");
+    const bool hasSidecar = file.hasFileExtension("pch") && sidecar.existsAsFile();
+    juce::Component::SafePointer<DiskPresetBrowserPanel> safeThis(this);
+    juce::AlertWindow::showAsync(
+        juce::MessageBoxOptions()
+            .withIconType(juce::MessageBoxIconType::WarningIcon)
+            .withTitle("Delete from disk")
+            .withMessage("Delete \"" + file.getFileName() + "\"" + (hasSidecar ? " and its variations (.var)" : "")
+                         + " from the disk?\n\n" + file.getParentDirectory().getFullPathName()
+                         + "\n\nIt goes to the trash where the system has one.")
+            .withButton("Delete")
+            .withButton("Cancel")
+            .withAssociatedComponent(this),
+        [safeThis, file, sidecar, hasSidecar](int button)
+        {
+            if (button != 1 || safeThis == nullptr)
+                return;
+            const bool ok = file.moveToTrash() || file.deleteFile();
+            if (ok && hasSidecar && !sidecar.moveToTrash())
+                sidecar.deleteFile();
+            if (!ok)
+                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Delete from disk",
+                                                       "Could not delete " + file.getFullPathName());
+            safeThis->refresh();
+        });
 }
 
 // Enter loads whatever is selected, so the arrow keys the ListBox already
@@ -595,7 +792,9 @@ juce::var DiskPresetBrowserPanel::getDragSourceDescription(const juce::SparseSet
     if (row < 0 || row >= getNumRows())
         return {};
 
-    const auto& entry = allEntries[static_cast<size_t>(visibleEntryIndices[static_cast<size_t>(row)])];
+    if (isFolderRow(row))
+        return {};
+    const auto& entry = allEntries[static_cast<size_t>(visibleRows[static_cast<size_t>(row)].entry)];
 
     // A set is four slots at once: there is no one place to drop it.
     if (entry.type == Entry::Type::Set)

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **The Disk tab's BANK view is a list of banks to step into** (2026-11-14, Claude; #125, bacizone).
+  BANK listed every backup of every bank in one long list, each named `MM30bank1\patch`. It now
+  shows the bank folders under `Banks/` (with how many patches each holds); a double click (or
+  Enter) steps into one and lists only its patches, by their own names, with the folder pinned over
+  the list. A click on that bar goes one folder up (folders inside folders work), and pressing BANK
+  again goes back to the list of banks. Typing in the search still looks through every bank at
+  once, as before; the step arrows pass over folders. A right click on a row (Javier) gives
+  **Show in folder** (the file manager, on that file; on a bank folder, that folder) and **Delete from
+  disk...**, asked first, to the trash where the system has one, with the patch's `.var` beside it.
+  `PresetBrowserWindow.*`. Checked by Javier in the Release build: the bank folders, stepping in and
+  out, and both menu items work.
+
 - **The EqMid reads "EQ Mid" in the module bar** (2026-11-14, Claude; #126, bacizone). It was always
   in the Filter tab, but its chip read "Center Freq EQ" (Clavia's full name, shortened), so anyone
   looking for EqMid saw only the shelving EQ and took it for missing. "EQ Mid" is the name the

@@ -79,8 +79,21 @@ private:
         juce::File file;
         juce::String displayName;
         juce::String relativePath;
+        juce::String bankFolder;  // a bank backup's folder under Banks/, '/'-separated ("" at the top)
         int legacyPatch210 = -1;  // -1 = not sniffed yet, 0 = no, 1 = yes
     };
+
+    // One row of the list: an entry, or (in the BANK view) a bank folder to step into (#125).
+    struct Row
+    {
+        int entry = -1;           // index into allEntries, or -1 for a folder
+        juce::String folder;      // the folder's path under Banks/, for a folder row
+        int count = 0;            // the backups under that folder
+    };
+    bool isFolderRow(int row) const;
+    // Steps into a bank folder, or out of it ("" = the list of banks).
+    void showBankFolder(const juce::String& folder);
+    bool browsingBankFolders() const;
 
     // Loads the entry on `row`, whatever route asked for it: a double click,
     // Enter, or the step buttons.
@@ -93,6 +106,10 @@ private:
     int getNumRows() override;
     void paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected) override;
     void listBoxItemDoubleClicked(int row, const juce::MouseEvent&) override;
+    void listBoxItemClicked(int row, const juce::MouseEvent&) override;
+    // The right-click menu on a row: show it in the file manager, or delete it (with a question first).
+    void showRowMenu(int row);
+    void deleteEntryFromDisk(const juce::File& file);
     void returnKeyPressed(int lastRowSelected) override;
     void selectedRowsChanged(int lastRowSelected) override;
     juce::var getDragSourceDescription(const juce::SparseSet<int>& selectedRows) override;
@@ -131,6 +148,8 @@ private:
     StepIconButton prevButton { "Previous preset", -1 };
     StepIconButton nextButton { "Next preset", 1 };
     juce::Label statusLabel;
+    // Pinned over the list while inside a bank folder: its name, and a click goes one level up.
+    juce::TextButton bankFolderBar;
     juce::ListBox listBox { "Disk Presets", this };
 
     juce::Rectangle<int> filterRowArea;
@@ -139,7 +158,8 @@ private:
     int rule1Y = 0, rule2Y = 0;   // the two hairlines: under the filters, and over the list
     bool hidePch2 = false;   // when true, legacy 2.10 (.pch2) patches are hidden
     std::vector<Entry> allEntries;
-    std::vector<int> visibleEntryIndices;
+    std::vector<Row> visibleRows;
+    juce::String currentBankFolder;   // the bank folder the BANK view is in ("" = the list of banks)
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DiskPresetBrowserPanel)
 };
