@@ -275,6 +275,9 @@ private:
     void showPresetBrowser();
     void toggleKnobFloater();
     void toggleKeyboardFloater();
+    void ensureKeyboardFloater();
+    bool playComputerKey(const juce::KeyPress& key);  // Caps Lock keyboard (#124)
+    bool computerKeysAnnounced = false;
     void togglePatchNotesFloater();
     void toggleMutatorWindow();
     void toggleSysexMonitor();

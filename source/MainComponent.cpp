@@ -1,5 +1,7 @@
 #include "MainComponent.h"
 #include "midi/SynthLink.h"
+#include "midi/ComputerKeys.h"
+#include "ui/CapsLock.h"
 #include "ui/KnobMenu.h"
 #include "AppLog.h"
 #include "ui/KnobDrag.h"
@@ -1383,6 +1385,9 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
     return true;
   }
   if (key == juce::KeyPress::returnKey && PatchCanvas::dropPendingAtPointer())
+    return true;
+
+  if (playComputerKey(key))
     return true;
 
   if (key == juce::KeyPress(',', juce::ModifierKeys::commandModifier, 0))
@@ -4794,6 +4799,11 @@ void MainComponent::toggleKeyboardFloater() {
     return;
   }
 
+  ensureKeyboardFloater();
+  showFloaterWindow(*keyboardFloaterWindow, "keyboardFloater");
+}
+
+void MainComponent::ensureKeyboardFloater() {
   if (!keyboardFloaterWindow) {
     keyboardFloaterWindow = std::make_unique<KeyboardFloaterWindow>();
     keyboardFloaterWindow->onClosed = [this]() { saveFloaterState(); };
@@ -4806,10 +4816,38 @@ void MainComponent::toggleKeyboardFloater() {
     keyboardFloaterWindow->onNoteOff = [this](int note) {
       synthHub.active().sendNoteOff(note);
     };
+    keyboardFloaterWindow->onOctaveChanged = [this](const juce::String& c) {
+      if (mainLayout)
+        mainLayout->getStatusBar().showMessage("Keyboard octave: A plays " + c, 2000);
+    };
   }
 
   keyboardFloaterWindow->applyTheme();
-  showFloaterWindow(*keyboardFloaterWindow, "keyboardFloater");
+}
+
+// Caps Lock turns the computer keyboard into a keyboard for the synth (issue #124). The
+// floater plays the notes whether it is open or not, so DRONE, REPEAT and its octave
+// apply; open, it lights the keys as they sound. Text fields take their keys first, so
+// typing a name with Caps Lock on still types.
+bool MainComponent::playComputerKey(const juce::KeyPress& key) {
+  if (!juce::JUCEApplicationBase::isStandaloneApp()
+      || ComputerKeys::offsetForKey(key.getKeyCode()) == -1)
+    return false;
+  if (!keyboardFloaterWindow) {
+    if (!CapsLock::isOn())
+      return false;
+    ensureKeyboardFloater();
+  }
+  if (!keyboardFloaterWindow->playComputerKey(key)) {
+    computerKeysAnnounced = false;  // Caps Lock off: say it again next time
+    return false;
+  }
+  if (!computerKeysAnnounced && mainLayout) {
+    mainLayout->getStatusBar().showMessage(
+        "Caps Lock: the computer keyboard plays the synth (A-W-S... notes, Z/X octave)", 4000);
+    computerKeysAnnounced = true;
+  }
+  return true;
 }
 
 void MainComponent::togglePatchNotesFloater() {
@@ -4832,6 +4870,8 @@ void MainComponent::togglePatchNotesFloater() {
 }
 
 bool MainComponent::handleFloaterShortcut(const juce::KeyPress& key) {
+  if (playComputerKey(key))
+    return true;
   if (!key.getModifiers().isCommandDown() || key.getModifiers().isShiftDown())
     return false;
   int code = key.getKeyCode();

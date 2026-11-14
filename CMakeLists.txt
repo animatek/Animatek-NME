@@ -130,6 +130,7 @@ set(NME_SHARED_SOURCES
     source/ui/OsUpdateDialog.cpp
     source/ui/KnobFloaterWindow.cpp
     source/ui/KeyboardFloaterWindow.cpp
+    source/ui/CapsLock.cpp
     source/ui/PatchNotesFloaterWindow.cpp
     source/ui/MutatorWindow.cpp
     source/ui/SysexMonitorWindow.cpp

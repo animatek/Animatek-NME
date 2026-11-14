@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Caps Lock plays the synth from the computer keyboard** (2026-11-14, Claude; #124, bacizone).
+  In the standalone app, with Caps Lock on, the middle letter row is the white keys and the row
+  above it the black ones (A W S E D F T G Y H U J K O L P ;, C up to the E of the next octave; `;`
+  is `Ñ` on a Spanish layout), and Z/X shift the octave (C1 to C7, shared with the floater's Oct
+  buttons, shown on the status bar), the way Bitwig does it. The notes go
+  through the Keyboard Floater, so DRONE, REPEAT and its octave apply, and its keys light up when it
+  is open; it plays with the floater closed too. Text fields still take what you type. Caps Lock is
+  read from the system (`GetKeyState` on Windows, the event source flags on macOS, the keyboard LEDs
+  under `/sys/class/leds` on Linux). The floater's keyboard no longer has JUCE's own key mapping,
+  which only played while it had the focus and an octave off. In a DAW nothing changes: the host has
+  its own computer keyboard. `ComputerKeys.h`, `CapsLock.*`, `KeyboardFloaterWindow.*`,
+  `MainComponent.cpp`; the shortcuts dialog and `manual/07-shortcuts.md`. Checked: the tests pass,
+  plain and under ASan/UBSan (three new ones for the layout), and Javier played the notes and the
+  octave shift in the Release build on Linux.
+
 - **The two EQs have one name each, the original editor's** (2026-11-14, Claude; #126, bacizone asked
   for one name). The EqMid's chip read "EQ Mid" and the right-click menu "Parametric Eq"; the
   EqShelving's "Hi/Lo Shelving EQ" and "Hi and lo shelving eq". The chips now say "Parametric Eq" and

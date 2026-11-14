@@ -104,6 +104,17 @@ the same thing.
 | `Ctrl+8` | Patch Mutator |
 | `Ctrl+9` | SysEx Monitor |
 
+### Playing from the computer keyboard
+
+In the standalone app, with **Caps Lock** on, the computer keyboard plays the synth through the
+Keyboard Floater, so DRONE, REPEAT and its octave apply. The floater does not have to be open; when
+it is, its keys light up as they sound. Text fields still take what you type.
+
+| Key | Action |
+|-----|--------|
+| `A W S E D F T G Y H U J K O L P ;` | C up to the E of the next octave (`;` is `Ñ` on a Spanish layout) |
+| `Z` / `X` | Octave down / up |
+
 ## Sub-window (the one with focus)
 
 All of these act on that window's own slot and selection.

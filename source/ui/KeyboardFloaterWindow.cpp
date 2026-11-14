@@ -1,5 +1,7 @@
 #include "KeyboardFloaterWindow.h"
 #include "AppTheme.h"
+#include "CapsLock.h"
+#include "midi/ComputerKeys.h"
 
 #define kBg      (AppTheme::palette().backgroundMain)
 #define kText    (AppTheme::palette().textPrimary)
@@ -17,6 +19,10 @@ KeyboardFloaterPanel::KeyboardFloaterPanel()
     keyboard.setLowestVisibleKey(48);
     keyboard.setOctaveForMiddleC(4);
     keyboard.setScrollButtonsVisible(false);  // octave buttons handle navigation
+    // The component's own key mapping only worked while it had the focus and an
+    // octave away from what it showed; Caps Lock plays it now (playComputerKey).
+    keyboard.clearKeyMappings();
+    keyboard.setWantsKeyboardFocus(false);
     addAndMakeVisible(keyboard);
     keyboardState.addListener(this);
 
@@ -78,13 +84,79 @@ KeyboardFloaterPanel::KeyboardFloaterPanel()
 
 KeyboardFloaterPanel::~KeyboardFloaterPanel()
 {
+    keyWatch.stopTimer();
     keyboardState.removeListener(this);
     stopTimer();
 }
 
+bool KeyboardFloaterPanel::playComputerKey(const juce::KeyPress& key)
+{
+    if (!juce::JUCEApplicationBase::isStandaloneApp())
+        return false;
+
+    const int code = key.getKeyCode();
+    const int offset = ComputerKeys::offsetForKey(code);
+    const auto mods = key.getModifiers();
+    if (offset == -1 || mods.isCommandDown() || mods.isCtrlDown() || mods.isAltDown())
+        return false;
+    if (!CapsLock::isOn())
+        return false;
+
+    if (offset == ComputerKeys::octaveDown || offset == ComputerKeys::octaveUp)
+    {
+        shiftOctave(offset == ComputerKeys::octaveUp ? 12 : -12);
+        return true;
+    }
+
+    if (computerKeys.count(code) > 0)
+        return true;   // the key repeating while held
+
+    // The keyboard's C is the octave above the lowest one shown: C4 as it opens
+    // (setOctaveForMiddleC(4), so 60 reads C4 on the keys)
+    const int note = 60 + 12 * octave + offset;
+    if (note > 127)
+        return true;
+
+    computerKeys[code] = note;
+    keyboardState.noteOn(1, note, 1.0f);
+    keyWatch.startTimer(20);
+    return true;
+}
+
+void KeyboardFloaterPanel::releaseLiftedComputerKeys()
+{
+    for (auto it = computerKeys.begin(); it != computerKeys.end();)
+    {
+        if (juce::KeyPress::isKeyCurrentlyDown(it->first))
+        {
+            ++it;
+            continue;
+        }
+        const int note = it->second;
+        it = computerKeys.erase(it);
+
+        // Two keys can end on the same note after an octave shift: let it go
+        // with the last of them
+        bool stillHeld = false;
+        for (const auto& held : computerKeys)
+            stillHeld = stillHeld || held.second == note;
+        if (!stillHeld)
+            keyboardState.noteOff(1, note, 0.0f);
+    }
+
+    if (computerKeys.empty())
+        keyWatch.stopTimer();
+}
+
 void KeyboardFloaterPanel::shiftOctave(int semitones)
 {
-    keyboard.setLowestVisibleKey(juce::jlimit(24, 96, keyboard.getLowestVisibleKey() + semitones));
+    // The octave is kept here, not read back from the view: JUCE moves the view
+    // on its own when it resizes, and a closed floater has no size at all.
+    // C3 to C6 can start the view, so the computer keys play from C1 up.
+    octave = juce::jlimit(-2, 3, octave + semitones / 12);
+    keyboard.setLowestVisibleKey(48 + 12 * octave);
+    if (onOctaveChanged)
+        onOctaveChanged("C" + juce::String(4 + octave));
 }
 
 void KeyboardFloaterPanel::sendOn(int note)
@@ -203,6 +275,8 @@ void KeyboardFloaterPanel::allNotesOff()
     droneNote = -1;
     dronePendingOff = false;
     heldNote = -1;  // stop the repeat timer from pulsing after close
+    computerKeys.clear();
+    keyWatch.stopTimer();
 
     internalChange = true;
     keyboardState.allNotesOff(1);
@@ -282,6 +356,9 @@ KeyboardFloaterWindow::KeyboardFloaterWindow()
     };
     panel.onNoteOff = [this](int note) {
         if (onNoteOff) onNoteOff(note);
+    };
+    panel.onOctaveChanged = [this](const juce::String& c) {
+        if (onOctaveChanged) onOctaveChanged(c);
     };
 }
 

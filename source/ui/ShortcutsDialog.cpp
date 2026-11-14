@@ -83,7 +83,10 @@ const std::vector<ShortcutsDialog::Group>& ShortcutsDialog::groups()
             { "Ctrl+6", "Keyboard Floater" },
             { "Ctrl+7", "Patch Notes" },
             { "Ctrl+8", "Patch Mutator" },
-            { "Ctrl+9", "SysEx Monitor" } } },
+            { "Ctrl+9", "SysEx Monitor" },
+            { "Caps Lock on", "The computer keyboard plays the synth through the Keyboard Floater (standalone app)" },
+            { "A W S E D F T G Y H U J K O L P ;", "C up to the E of the next octave (; is the key right of L)" },
+            { "Z / X", "Octave down / up, while Caps Lock is on" } } },
         { "Sub-window", "These act on the slot and the selection of the sub-window that has the focus.", {
             { "Ctrl+R / Ctrl+Shift+R", "Randomize (uniform / gaussian)" },
             { "Ctrl+S / Ctrl+Shift+S", "Save / Save as" } } },
