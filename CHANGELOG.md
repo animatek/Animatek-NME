@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.27.0 — 2026-11-16
+
+- **Release notes for 0.27.0** (2026-11-16, Claude): `docs/releases/RELEASE_NOTES_0.27.0.md`, with
+  G1-Emu alpha.31 as the emulator to use. Version 0.27.0 in `CMakeLists.txt` and the README.
+
 - **Caps Lock plays the synth from the computer keyboard** (2026-11-14, Claude; #124, bacizone).
   In the standalone app, with Caps Lock on, the middle letter row is the white keys and the row
   above it the black ones (A W S E D F T G Y H U J K O L P ;, C up to the E of the next octave; `;`
